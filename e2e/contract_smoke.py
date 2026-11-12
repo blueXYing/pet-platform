@@ -118,6 +118,18 @@ MERCHANT_ORDER_LIST_OPERATIONS = {
         'get', '/merchant/orders',
         ('200', '400', '401', '403', '503')),
 }
+# Merchant verification-record read side (contract 48 K3 / CCR-M-VERIFY-RECORD-001,
+# 2026-11-12): the OWNER-only store verification-record list GET rides its own
+# pet.verification.merchant-read.http.enabled switch (default off, requires the completion
+# kernel). New operationId (not in LEGACY_OPERATIONS); pins the merchant-coordinate query,
+# the optional orderId/from/to filters, the Page/PageSize bounds and the PageResult envelope
+# with the record card fields (order summary carries the CCR-M-ORDER-CARD-001 additive
+# vocabulary; no phone ever crosses the wire).
+MERCHANT_VERIFICATION_READ_OPERATIONS = {
+    'merchantListVerifications': (
+        'get', '/merchant/verifications',
+        ('200', '400', '401', '403', '503')),
+}
 # Refund application C face (49号/10号 §3.9 slice, 2026-10-07): applyRefund leaves the draft
 # family behind, implemented default-off behind pet.refund.application.http.enabled (plus
 # pet.auth.c.enabled). The operation stays in LEGACY_OPERATIONS, so the path, the 201/200
@@ -1794,6 +1806,45 @@ def check_merchant_order_list(spec, operation, method, path):
     assert summary['properties']['payAmount']['pattern'] == r'^(0|[1-9][0-9]{0,15})\.[0-9]{2}$',         'Merchant summary amount format changed'
 
 
+def check_merchant_verification_read(spec, operation, method, path):
+    name = operation['operationId']
+    expected_method, expected_path, required_codes = MERCHANT_VERIFICATION_READ_OPERATIONS[name]
+    assert (method, path) == (expected_method, expected_path), f'Merchant verification read operation moved: {name}'
+    assert operation.get('security') == [{'bearerAuth': []}], f'Merchant verification read security changed: {name}'
+    assert operation.get('x-implementation-status') == 'IMPLEMENTED_DEFAULT_OFF', f'Merchant verification read status changed: {name}'
+    assert operation.get('x-default-enabled') is False, f'Merchant verification read must stay default off: {name}'
+    assert operation.get('x-contract') == '48-Verification-Completion-Contract-v0.1.md', f'Merchant verification read authority changed: {name}'
+    assert operation.get('x-assembly-switch') == 'pet.verification.merchant-read.http.enabled', f'Merchant verification read switch changed: {name}'
+    assert operation.get('x-route-party') == 'MERCHANT' and operation.get('x-audience') == 'MINIAPP', f'Merchant verification read identity changed: {name}'
+    assert 'requestBody' not in operation, f'Merchant verification read must stay bodyless: {name}'
+    responses = operation['responses']
+    assert set(responses) == set(required_codes), f'Merchant verification read response surface changed: {name}'
+    success = dereference(spec, responses['200'])
+    cache = dereference(spec, success['headers']['Cache-Control'])['schema']
+    assert cache == {'type': 'string', 'enum': ['no-store']}, f'Merchant verification read caching changed: {name}'
+    assert success['content'] == {'application/json': {'schema': {'$ref': '#/components/schemas/MerchantVerificationPageEnvelope'}}},         f'Merchant verification read success envelope changed: {name}'
+    for code in ('400', '401', '403', '503'):
+        assert dereference(spec, responses[code])['content']['application/json']['schema']             == {'$ref': '#/components/schemas/ErrorEnvelope'}, f'Merchant verification read error envelope changed: {name} {code}'
+    resolved = [dereference(spec, parameter) for parameter in operation['parameters']]
+    names = [(parameter['in'], parameter['name'], parameter.get('required', False)) for parameter in resolved]
+    assert names == [
+        ('query', 'merchantId', True), ('query', 'storeId', True),
+        ('query', 'orderId', False), ('query', 'verifiedFrom', False),
+        ('query', 'verifiedTo', False), ('query', 'page', False), ('query', 'pageSize', False)],         f'Merchant verification read query surface changed: {name}'
+    envelope = dereference(spec, responses['200']['content']['application/json']['schema'])
+    data = dereference(spec, envelope['properties']['data'])
+    record = dereference(spec, data['properties']['items']['items'])
+    assert record.get('additionalProperties') is False, 'Merchant verification record opened'
+    # CCR-M-VERIFY-RECORD-001: the record card carries the order-summary additive vocabulary
+    # (no pet fields on this card) plus the operator display block; phone and the raw
+    # operator userId never cross the wire.
+    assert set(record['properties']) == {'verificationId', 'orderId', 'serviceName', 'payAmount',
+        'customerNickname', 'customerAvatarUrl', 'verifiedAt', 'operatorKind', 'operatorName'},         'Merchant verification record fields changed'
+    assert set(record['required']) == {'verificationId', 'orderId', 'verifiedAt', 'operatorKind', 'operatorName'},         'Merchant verification record required set changed'
+    assert record['properties']['operatorKind']['enum'] == ['OWNER', 'STAFF'],         'Merchant verification operator vocabulary changed'
+    assert 'phone' not in record['properties'] and 'operatorId' not in record['properties'],         'Merchant verification record leaked phone or operator userId'
+
+
 def check_refund_http(spec, operation, method, path):
     name = operation['operationId']
     expected_method, expected_path, required_codes = REFUND_HTTP_OPERATIONS[name]
@@ -2216,6 +2267,8 @@ def check(spec):
                 check_merchant_order_http(spec, operation, method, path)
             if operation_id in MERCHANT_ORDER_LIST_OPERATIONS:
                 check_merchant_order_list(spec, operation, method, path)
+            if operation_id in MERCHANT_VERIFICATION_READ_OPERATIONS:
+                check_merchant_verification_read(spec, operation, method, path)
             if operation_id in REFUND_HTTP_OPERATIONS:
                 check_refund_http(spec, operation, method, path)
             if operation_id in PRIVATE_ASSET_OPERATIONS:
@@ -2389,7 +2442,7 @@ def check(spec):
     assert legacy_writes == 10, 'Legacy write surface changed'
     assert legacy_creates == LEGACY_CREATES, 'Legacy create surface changed'
 
-    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys() | ORDER_WRITE_OPERATIONS.keys() | REFUND_HTTP_OPERATIONS.keys() | MERCHANT_ORDER_LIST_OPERATIONS.keys() | RESCHEDULE_HTTP_OPERATIONS.keys() | REVIEW_HTTP_OPERATIONS.keys() | REVIEW_APPEAL_HTTP_OPERATIONS.keys() | MERCHANT_REFUND_HTTP_OPERATIONS.keys() | FAVTRACK_HTTP_OPERATIONS.keys() | ADDRESS_OPERATIONS.keys() | USER_SETTINGS_OPERATIONS.keys() | FEEDBACK_HTTP_OPERATIONS.keys() | POINTS_TASK_OPERATIONS.keys() | BAIKE_OPERATIONS.keys() | ADMIN_TRADE_OPERATIONS.keys() | ADMIN_GOVERNANCE_OPERATIONS.keys() | ADMIN_OPS_OPERATIONS.keys() | FEEDBACK_OPS_OPERATIONS.keys() | CATALOG_SEARCH_OPERATIONS.keys() | CITY_OPERATIONS.keys() | PET_HEALTH_RECORD_OPERATIONS.keys() | MERCHANT_CONSOLE_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
+    assert operations == LEGACY_OPERATIONS.keys() | AUTH_OPERATIONS.keys() | MERCHANT_OPERATIONS.keys() | APPLICATION_OPERATIONS.keys() | PRIVATE_ASSET_OPERATIONS.keys() | SERVICE_CATALOG_OPERATIONS.keys() | STORE_CATALOG_OPERATIONS.keys() | SERVICE_WRITE_OPERATIONS.keys() | SCHEDULE_AVAILABILITY_OPERATIONS.keys() | SCHEDULE_WRITE_OPERATIONS.keys() | CREDENTIAL_OPERATIONS.keys() | AFTERSALE_OPERATIONS.keys() | COUPON_POINTS_READ_OPERATIONS.keys() | VERIFICATION_HTTP_OPERATIONS.keys() | NOTIFICATION_PREFERENCE_OPERATIONS.keys() | STAFF_INVITATION_LIST_OPERATIONS.keys() | ORDER_WRITE_OPERATIONS.keys() | REFUND_HTTP_OPERATIONS.keys() | MERCHANT_ORDER_LIST_OPERATIONS.keys() | MERCHANT_VERIFICATION_READ_OPERATIONS.keys() | RESCHEDULE_HTTP_OPERATIONS.keys() | REVIEW_HTTP_OPERATIONS.keys() | REVIEW_APPEAL_HTTP_OPERATIONS.keys() | MERCHANT_REFUND_HTTP_OPERATIONS.keys() | FAVTRACK_HTTP_OPERATIONS.keys() | ADDRESS_OPERATIONS.keys() | USER_SETTINGS_OPERATIONS.keys() | FEEDBACK_HTTP_OPERATIONS.keys() | POINTS_TASK_OPERATIONS.keys() | BAIKE_OPERATIONS.keys() | ADMIN_TRADE_OPERATIONS.keys() | ADMIN_GOVERNANCE_OPERATIONS.keys() | ADMIN_OPS_OPERATIONS.keys() | FEEDBACK_OPS_OPERATIONS.keys() | CATALOG_SEARCH_OPERATIONS.keys() | CITY_OPERATIONS.keys() | PET_HEALTH_RECORD_OPERATIONS.keys() | MERCHANT_CONSOLE_OPERATIONS.keys(), 'Unexpected or missing reviewed operations'
 
     schemes = spec['components']['securitySchemes']
     assert schemes['bearerAuth']['type'] == 'http' and schemes['bearerAuth']['scheme'] == 'bearer'
@@ -2440,6 +2493,7 @@ def check(spec):
             'verificationHttpOperations': len(operations & VERIFICATION_HTTP_OPERATIONS.keys()),
             'merchantOrderHttpOperations': len(operations & MERCHANT_ORDER_HTTP_OPERATIONS.keys()),
             'merchantOrderListOperations': len(operations & MERCHANT_ORDER_LIST_OPERATIONS.keys()),
+            'merchantVerificationReadOperations': len(operations & MERCHANT_VERIFICATION_READ_OPERATIONS.keys()),
             'rescheduleHttpOperations': len(operations & RESCHEDULE_HTTP_OPERATIONS.keys()),
             'reviewHttpOperations': len(operations & REVIEW_HTTP_OPERATIONS.keys()),
 

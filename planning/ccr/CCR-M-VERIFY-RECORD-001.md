@@ -43,8 +43,9 @@ VER 只读自身所有权表（verification_record）；订单摘要由 boot 装
 
 新增 `GET /api/v1/merchant/verifications`（记录列表，PageResult 信封）：
 
-- 开关 `pet.verification.merchant-read.http.enabled` 默认 false（家族惯例，开启前置
-  completion 内核）。
+- 开关 `pet.verification.merchant-read.http.enabled` 默认 false（家族惯例；实施取
+  开启前置 `pet.order.merchant.enabled`——复用 10号 §4.1 订单读侧 guard/authority/卡片
+  装配链，实施同步修订）。
 - 鉴权：MINIAPP 会话 + 商家工作台坐标（merchantId+storeId）门店 guard + OWNER
   重验，与 `GET /api/v1/merchant/orders` 同款；跨店行不可见。
 - 过滤器（全部可选）：`orderId` 精确、`verifiedFrom`/`verifiedTo`（UTC，跨度 ≤366 天）；

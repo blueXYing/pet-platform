@@ -4408,6 +4408,73 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PointsTaskConfigEnvelope'
+  /merchant/verifications:
+    get:
+      tags:
+      - Merchant-Verification
+      summary: 商家端核销记录列表
+      operationId: merchantListVerifications
+      x-implementation-status: IMPLEMENTED_DEFAULT_OFF
+      x-default-enabled: false
+      x-contract: 48-Verification-Completion-Contract-v0.1.md
+      x-assembly-switch: pet.verification.merchant-read.http.enabled
+      x-route-party: MERCHANT
+      x-audience: MINIAPP
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/MerchantIdQuery'
+      - $ref: '#/components/parameters/StoreIdQuery'
+      - name: orderId
+        in: query
+        required: false
+        description: 精确过滤某订单的核销记录；缺省不过滤。
+        schema:
+          $ref: '#/components/schemas/PublicId'
+      - name: verifiedFrom
+        in: query
+        required: false
+        description: verified_at 下界（UTC）；与 verifiedTo 成对提供，跨度 ≤366 天。
+        schema:
+          type: string
+          format: date-time
+          x-precision: milliseconds
+      - name: verifiedTo
+        in: query
+        required: false
+        description: verified_at 上界（UTC）；与 verifiedFrom 成对提供，跨度 ≤366 天。
+        schema:
+          type: string
+          format: date-time
+          x-precision: milliseconds
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: '商家端核销记录页（CCR-M-VERIFY-RECORD-001，48号 K3）：PageResult 信封
+            items/page/pageSize/total；固定排序 verified_at DESC, id DESC。item 含
+            verificationId/orderId/serviceName/payAmount/customerNickname/customerAvatarUrl/
+            verifiedAt/operatorKind/operatorName；订单摘要沿 CCR-M-ORDER-CARD-001 口径
+            （缺事实 null 不伪造），不返回手机号（含脱敏）与 operatorId 真实 userId。
+            Cache-Control: no-store。'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerchantVerificationPageEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/DependencyUnavailable'
   /merchant/orders:
     get:
       tags:
@@ -20480,6 +20547,86 @@ components:
           minLength: 1
         data:
           $ref: '#/components/schemas/MerchantOrderPageData'
+        traceId:
+          type: string
+          minLength: 1
+    MerchantVerificationRecord:
+      type: object
+      additionalProperties: false
+      required: [verificationId, orderId, verifiedAt, operatorKind, operatorName]
+      description: 商家端核销记录条目（48号 K3 / CCR-M-VERIFY-RECORD-001）：订单摘要四键沿
+        CCR-M-ORDER-CARD-001 口径可空（缺事实 null 不伪造）；operatorKind=OWNER 时
+        operatorName 固定「店长」，STAFF 时为 52号同店成员真名；永不返回手机号与
+        operatorId 真实 userId。
+      properties:
+        verificationId:
+          type: string
+          minLength: 1
+          maxLength: 19
+          pattern: '^[1-9][0-9]{0,18}(?![\s\S])'
+        orderId:
+          type: string
+          minLength: 1
+          maxLength: 19
+          pattern: '^[1-9][0-9]{0,18}(?![\s\S])'
+        serviceName:
+          type: string
+          nullable: true
+        payAmount:
+          type: string
+          nullable: true
+          description: 两位小数字符串；订单摘要缺失时 null。
+        customerNickname:
+          type: string
+          nullable: true
+        customerAvatarUrl:
+          type: string
+          nullable: true
+        verifiedAt:
+          type: string
+          format: date-time
+          x-precision: milliseconds
+        operatorKind:
+          type: string
+          enum: [OWNER, STAFF]
+        operatorName:
+          type: string
+          minLength: 1
+    MerchantVerificationPageData:
+      type: object
+      additionalProperties: false
+      required: [items, page, pageSize, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MerchantVerificationRecord'
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 100
+        total:
+          type: integer
+          minimum: 0
+    MerchantVerificationPageEnvelope:
+      type: object
+      additionalProperties: false
+      required: [success, code, message, data, traceId]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        code:
+          type: string
+          enum: [SUCCESS]
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/MerchantVerificationPageData'
         traceId:
           type: string
           minLength: 1
