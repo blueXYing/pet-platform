@@ -1,12 +1,12 @@
 # 选窗与预约到期协调 v0.1
 
-状态：实现中、默认关闭，验收以本轮 PR 及集成回执为准。来源为已批准 34/36/37/38 号、最终 PRD 十分钟待支付占位和 Scheduler 09 §11 的支付未知保护；不修改产品规则，不开放消费者创建订单，不执行生产迁移。
+状态：实现中、默认关闭，验收以本轮 PR 及集成回执为准。2026-11-13 注记（[CCR-SCH-SLOT-001](../../planning/ccr/CCR-SCH-SLOT-001.md)）：窗口自该裁决起为全店共享统一槽（`storeId+时间区间`，无服务/kind 维度）；本契约 §2 到期关闭/释放链不引用窗口服务/kind 字段，语义不变；§1 已按统一槽口径收口（2026-11-13 同批）：`kind` 增列/过滤随统一槽取消，`windowId` 增列仍待 SCH-003 批次交付，C 端响应形状不变（CCR §3）。来源为已批准 34/36/37/38 号、最终 PRD 十分钟待支付占位和 Scheduler 09 §11 的支付未知保护；不修改产品规则，不开放消费者创建订单，不执行生产迁移。
 
 ## 1. 原窗选择投影
 
-`pet.schedule.query.enabled=true` 且 `pet.schedule.selection.enabled=true` 时，既有登录态 GET `/api/v1/c/services/{serviceId}/availability` 的 item 增加正 Long 十进制字符串 `windowId`、`kind=GENERAL/PICKUP/RETURN`，其余六字段和日期范围、时间格式、no-store、鉴权规则保持。关闭 selection 时仍是旧六字段，拒绝 kind 参数。开启后允许可选 kind；未知值、重复参数、与服务履约方式不符返回 400。
+`pet.schedule.query.enabled=true` 且 `pet.schedule.selection.enabled=true` 时，既有登录态 GET `/api/v1/c/services/{serviceId}/availability` 的 item 增加正 Long 十进制字符串 `windowId`，其余六字段和日期范围、时间格式、no-store、鉴权规则保持；C 端响应形状不变（2026-11-13 [CCR-SCH-SLOT-001](../../planning/ccr/CCR-SCH-SLOT-001.md)：`kind` 增列随统一槽取消——窗口无类型维度；`windowId` 增列仍待 SCH-003 批次交付）。关闭 selection 时仍是旧六字段。
 
-SERVICE 公共事实确定服务可见性和履约方式。到店只输出 GENERAL，接送只输出 PICKUP/RETURN；旧接送 GENERAL 不猜测方向、不复制、不释放。SCH 读取自己的窗口、父预约及 claim，TEMP_LOCKED/CONFIRMED 按真实 claim 统计占用。过了截止时间但尚未成功关闭的 TEMP_LOCKED 仍占容量；接送两段之间不因父区间包络而占用。
+SERVICE 公共事实确定服务可见性和履约方式。窗口为全店共享统一槽（`storeId+时间区间`，无服务/kind 维度），不按履约方式分类输出，某服务可约 ⇔ 该服务具备能力且排班覆盖该时段的员工数 ≥ 1（CCR §3）；SCH 读取自己的窗口、父预约及 claim，TEMP_LOCKED/CONFIRMED 按真实 claim 统计占用。过了截止时间但尚未成功关闭的 TEMP_LOCKED 仍占容量；接送两段之间不因父区间包络而占用。
 
 每条仍代表原始营业窗口，不代表某个服务开始分钟或接送组合已通过可行性证明。长到店窗口的整窗剩余量是保守展示；不能据此宣称窗口内每个更短区间都不可约。接送两窗单独有余量也不等于同一个员工能覆盖两段。最终创建始终以 36/37/38 号当前事实和完整人员证明为准；本轮不切固定槽、不新增开始时间枚举算法。
 

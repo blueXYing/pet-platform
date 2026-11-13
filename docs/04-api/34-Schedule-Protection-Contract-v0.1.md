@@ -1,6 +1,6 @@
 # 排期写入保护与双向选窗契约补充 v0.1
 
-状态：**ACCEPTED_CONTRACT_NOT_IMPLEMENTED**（仅 SCHC-1～4 已批逻辑）；2026-09-24。批准来源：[四项技术裁决回执](../../planning/ccr/CCR-W2-API-001/schedule-write-completion-decisions.md)。本补充以 SSOT §12/§13/§29、最终 C/商家 PRD、[排期写入 v0.2](../../planning/ccr/CCR-W2-API-001/schedule-write-proposal.md)为前提。它不是已装配的 Java 接口、已开放 HTTP 路由、OpenAPI 实现标签或生产 Schema。07/10/11/12 号将在后续实现切片由唯一 Writer 正式同步；当前已运行接口以其现状为准。
+状态：**ACCEPTED_CONTRACT_NOT_IMPLEMENTED**（仅 SCHC-1～4 已批逻辑）；2026-09-24。2026-11-13 注记（[CCR-SCH-SLOT-001](../../planning/ccr/CCR-SCH-SLOT-001.md)）：窗口自该裁决起为全店共享统一槽（`storeId+时间区间`，无服务/kind 维度），求解器/占用与重叠不变量按**同店**口径；SCHC 闸门与事务序不变；§1/§4/§5 已按统一槽口径收口（2026-11-13 同批），claim 腿型为预约侧结构、非窗口分类。批准来源：[四项技术裁决回执](../../planning/ccr/CCR-W2-API-001/schedule-write-completion-decisions.md)。本补充以 SSOT §12/§13/§29、最终 C/商家 PRD、[排期写入 v0.2](../../planning/ccr/CCR-W2-API-001/schedule-write-proposal.md)为前提。它不是已装配的 Java 接口、已开放 HTTP 路由、OpenAPI 实现标签或生产 Schema。07/10/11/12 号将在后续实现切片由唯一 Writer 正式同步；当前已运行接口以其现状为准。
 
 ## 1. 当前供给与交付闭环
 
@@ -10,11 +10,11 @@
 
 | 后续目标契约，当前尚不可调用 | 必要字段/守卫 |
 |---|---|
-| C 端可约 GET 保持原路由 | 保留原六字段语义；每项**增列** `windowId`（正 Long 十进制 String）和 `kind`（`GENERAL/PICKUP/RETURN`）；可选 `kind` 过滤与服务履约方式对应。IN_STORE 只给 GENERAL，PICKUP_DELIVERY 分别取 PICKUP/RETURN。窗口 ID 为供选的 SCH 权威 ID，不是客户端拼接的时间键；不暴露配置容量或版本等商家维护细节。当前接口遇未知 `kind` 参数仍按现行 400，直到正式增量发布。 |
-| 接送创建订单与改期请求传到 `ScheduleCommandApi.hold/swap` | 对 PICKUP_DELIVERY 增 `selectedPickupWindowId` 和 `selectedReturnWindowId`（跨模块/HTTP 均 String）并保留原 `pickupStart/returnStart`；两 ID 缺失、重复、归属/服务/kind 错误或与所报开始不一致均拒绝，不以六字段旧响应猜测 ID。IN_STORE 不填这两个方向 ID，既有到店时段语义不改。最终请求形状由 07/10/11 同步。 |
-| SCH-003 权威复核 | 同一门店闸门事务内按两 ID 当前读 OPEN 窗，确认同店同服务、方向分别为 PICKUP/RETURN、`pickupStart == PICKUP.startAt`、`returnStart == RETURN.startAt`，校验 `returnStart >= pickupStart+120分钟`，再用**各自完整窗口** `[startAt,endAt)` 形成两条 claim 并原子锁定。展示 GET 不构成租约；窗/容量变化时服务端拒绝并让用户重选。 |
+| C 端可约 GET 保持原路由 | 保留原六字段语义；每项**增列** `windowId`（正 Long 十进制 String）（2026-11-13 CCR-SCH-SLOT-001：`kind` 增列与可选 `kind` 过滤随统一槽取消——窗口无类型维度，不按履约方式分类输出；`windowId` 增列仍待正式增量发布）。窗口 ID 为供选的 SCH 权威 ID，不是客户端拼接的时间键；不暴露配置容量或版本等商家维护细节。 |
+| 接送创建订单与改期请求传到 `ScheduleCommandApi.hold/swap` | 对 PICKUP_DELIVERY 增 `selectedPickupWindowId` 和 `selectedReturnWindowId`（跨模块/HTTP 均 String）并保留原 `pickupStart/returnStart`；两 ID 缺失、重复、归属错误或与所报开始不一致均拒绝（服务/kind 维度随统一槽取消，上/返程两个时间点各自命中同店开放统一槽），不以六字段旧响应猜测 ID。IN_STORE 不填这两个方向 ID，既有到店时段语义不改。最终请求形状由 07/10/11 同步。 |
+| SCH-003 权威复核 | 同一门店闸门事务内按两 ID 当前读 OPEN 统一槽，确认同店归属、`pickupStart`/`returnStart` 与各自命中槽的 `startAt` 一致（2026-11-13 起无 PICKUP/RETURN 窗类型），校验 `returnStart >= pickupStart+120分钟`，再用**各自完整窗口** `[startAt,endAt)` 形成两条 claim 并原子锁定。展示 GET 不构成租约；窗/容量变化时服务端拒绝并让用户重选。 |
 
-最终 C 端 PRD §5.1 写“用户必须选择一个上门时段，作为接宠时间窗口”；例子为上门 10:00–11:00，最早送回 12:00–13:00。商家 PRD §5.4 要求接送分别占用上门、送回预约时段。整窗占用沿用该产品选择行为；没有批准在一个商家窗口内任意截取子区间、固定 60 分钟或用服务项目 duration 推算两段时长。到店 GENERAL 继续按服务时长/原预约区间合同处理。
+最终 C 端 PRD §5.1 写“用户必须选择一个上门时段，作为接宠时间窗口”；例子为上门 10:00–11:00，最早送回 12:00–13:00。商家 PRD §5.4 要求接送分别占用上门、送回预约时段。整窗占用沿用该产品选择行为；没有批准在一个商家窗口内任意截取子区间、固定 60 分钟或用服务项目 duration 推算两段时长。到店预约继续按服务时长/原预约区间合同处理（统一槽口径，CCR-SCH-SLOT-001）。
 
 ## 2. SCHC-1：共同锁与权威事实
 
@@ -47,15 +47,15 @@ PUT 是**全量替换具体服务 ID 集合**：重复 ID 拒绝 400，跨店/�
 
 ## 4. SCHC-3：完整所选窗的 claim 与旧窗保护
 
-到店服务仅用 GENERAL，接送仅用 PICKUP/RETURN。每个接送预约的两个 selected windowId 指向原 OPEN 窗，形成两条按 `reservationId+kind` 唯一的权威 claim；各 claim 保存原 `windowId,storeId,serviceId,kind,startAt,endAt`，时间为完整所选窗的 `[startAt,endAt)`。两 claim 与父 `schedule_reservation` 的新增/状态变化同事务，不允许只建立 PICKUP 或 RETURN 的半预约。`TEMP_LOCKED/CONFIRMED` 计占用；只有已提交 `RELEASED/EXPIRED` 才解除。SCH-001 的旧单区间重叠计数不能冒充接送两方向的权威计数。
+到店与接送均命中同店开放统一槽（2026-11-13 CCR-SCH-SLOT-001：窗口无 kind 维度，原「到店服务仅用 GENERAL，接送仅用 PICKUP/RETURN」的窗口分类废止；claim 腿型仍按 36 号保留）。每个接送预约的两个 selected windowId 指向原 OPEN 统一槽，形成两条按 `reservationId+kind` 唯一的权威 claim；各 claim 保存原 `windowId,storeId,serviceId,kind,startAt,endAt`（其中 serviceId/kind 为预约侧事实、非窗口归属），时间为完整所选窗的 `[startAt,endAt)`。两 claim 与父 `schedule_reservation` 的新增/状态变化同事务，不允许只建立上门或返程的半预约。`TEMP_LOCKED/CONFIRMED` 计占用；只有已提交 `RELEASED/EXPIRED` 才解除。SCH-001 的旧单区间重叠计数不能冒充接送两方向的权威计数。
 
-**到店 GENERAL 关联仍有技术缺口**：现有到店 hold 只有 `appointmentStart/appointmentEnd`，没有 GENERAL 选窗 ID；本次仅批准接送两个 selected windowId，没有把到店关联一并视为解决。SCH-003 推荐在共同 guard 内按已选 `storeId/serviceId` 与完整预约 `[appointmentStart,appointmentEnd)` 当前读，只有**唯一一条**同店同服务 OPEN GENERAL 窗完整覆盖该区间，才可把该窗 ID 记入 GENERAL claim；不能取“第一条”、凭开始点命中就选、默认造窗或把歧义当无占用。若跨相邻窗或多个窗均可能关联，是否补 `selectedGeneralWindowId`、如何表示跨窗 claim，必须按既有到店服务时长和 C 端选择行为由 SCH-003 进一步核对后冻结；在此之前对歧义/跨窗情形失败关闭，不擅改到店产品规则。
+**到店选窗关联仍有技术缺口**：现有到店 hold 只有 `appointmentStart/appointmentEnd`，没有选窗 ID；本次仅批准接送两个 selected windowId，没有把到店关联一并视为解决。SCH-003 推荐在共同 guard 内按已选 `storeId` 与完整预约 `[appointmentStart,appointmentEnd)` 当前读，只有**唯一一条**同店 OPEN 统一槽完整覆盖该区间（2026-11-13 起窗口无服务归属），才可把该窗 ID 记入到店 claim；不能取“第一条”、凭开始点命中就选、默认造窗或把歧义当无占用。若跨相邻窗或多个窗均可能关联，是否补 `selectedGeneralWindowId`（字段名保留，语义=顾客所选时间点命中的全店统一槽 ID）、如何表示跨窗 claim，必须按既有到店服务时长和 C 端选择行为由 SCH-003 进一步核对后冻结；在此之前对歧义/跨窗情形失败关闭，不擅改到店产品规则。
 
-窗 close、降容量、移时间或改变服务/kind 的守卫以**旧窗口 ID 与旧时间**及新候选事实共同检验，不能先改变 identity 再查“新窗无占用”。`storeId/serviceId/kind` 建窗后固定；要换目标或 kind，应在原窗合法关闭后另建新窗，且有占用时原窗不得关。已占用窗升容量仍经权限、版本、审计等已批守卫。同店/同服务/同 kind 的 OPEN 窗不得重叠，相邻半开区间可衔接。没有固定 60 分钟槽。
+窗 close、降容量、移时间的守卫以**旧窗口 ID 与旧时间**及新候选事实共同检验，不能先改变 identity 再查“新窗无占用”。`storeId` 建窗后固定（2026-11-13 CCR-SCH-SLOT-001：窗口身份=`storeId+时间区间`的全店统一槽，无 `serviceId`/`windowKind` 维度）；要换目标，应在原窗合法关闭后另建新窗，且有占用时原窗不得关。已占用窗升容量仍经权限、版本、审计等已批守卫。同店的 OPEN 窗不得重叠（原「同店/同服务/同 kind」占用不变量随统一槽简化为同店），相邻半开区间可衔接。没有固定 60 分钟槽。
 
 ## 5. SCHC-4：旧 GENERAL 分组与上线门禁
 
-启用分方向预约前按店/服务/履约方式、窗口状态与有效预约逐项盘点旧 GENERAL。IN_STORE 的 GENERAL 可在核验现有订单主区间与选窗关系后保留；PICKUP_DELIVERY 的旧 GENERAL **不得复制**成两条 OPEN PICKUP/RETURN，因为它缺方向和第二段结束，复制会凭空扩大可约容量。接送旧 GENERAL 从**新预约可约投影**隔离，已有 TEMP_LOCKED/CONFIRMED 继续保留原履约与保护；能用可信历史事实还原完整双 claim 的才迁移。不能恢复的记录列 ID、原因和受影响门店/服务，阻断相关接送发布/减员，逐单处置并验证回滚；不得自动取消、改变旧订单或假定旧预约已经释放。商家再按真实营业安排创建两组新窗。
+启用分方向预约前按店/服务/履约方式、窗口状态与有效预约逐项盘点旧 GENERAL。（2026-11-13 注：CCR-SCH-SLOT-001 统一槽后无 kind 窗分类，本条按「按服务×履约方式×kind 分窗」组织的盘点对象随统一槽废止，盘点范围改按**全店槽**口径；V1 未上线、无生产存量，隔离原则不变。）IN_STORE 的 GENERAL 可在核验现有订单主区间与选窗关系后保留；PICKUP_DELIVERY 的旧 GENERAL **不得复制**成两条 OPEN PICKUP/RETURN，因为它缺方向和第二段结束，复制会凭空扩大可约容量。接送旧 GENERAL 从**新预约可约投影**隔离，已有 TEMP_LOCKED/CONFIRMED 继续保留原履约与保护；能用可信历史事实还原完整双 claim 的才迁移。不能恢复的记录列 ID、原因和受影响门店/服务，阻断相关接送发布/减员，逐单处置并验证回滚；不得自动取消、改变旧订单或假定旧预约已经释放。商家再按真实营业安排创建统一槽新窗。
 
 ## 6. 明确未冻结的依赖与交付状态
 
