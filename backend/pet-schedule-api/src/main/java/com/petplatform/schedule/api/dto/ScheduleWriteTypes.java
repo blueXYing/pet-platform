@@ -2,6 +2,7 @@ package com.petplatform.schedule.api.dto;
 
 import com.petplatform.common.CommandContext;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -34,6 +35,16 @@ public final class ScheduleWriteTypes {
     public record BatchCloseCommand(CommandContext context, String merchantId, String storeId,
             LocalDate fromDate, LocalDate toDate, String reason) {}
 
+    /**
+     * CCR-SCH-SLOT-002 batch-generate:覆盖重建语义 — the calendar-day range is closed first
+     * (occupied windows are skipped and reported), then minute-level windows are created over
+     * [dailyStart, dailyEnd) per day stepping {@code intervalMinutes}. No weekly-template data
+     * structure exists: the range is materialized into real unified slots once.
+     */
+    public record BatchGenerateCommand(CommandContext context, String merchantId, String storeId,
+            LocalDate fromDate, LocalDate toDate, LocalTime dailyStart, LocalTime dailyEnd,
+            int intervalMinutes, int configuredCapacity, String reason) {}
+
     public record WindowResult(String windowId, String merchantId, String storeId,
             OffsetDateTime startAt, OffsetDateTime endAt, int configuredCapacity,
             String status, String version) {}
@@ -47,6 +58,35 @@ public final class ScheduleWriteTypes {
             blockedWindows = List.copyOf(blockedWindows);
         }
     }
+
+    /** An occupied window the覆盖重建 could not close; reasonCode is OCCUPIED (53号 §3.4). */
+    public record SkippedWindow(WindowResult window, String reasonCode) {}
+
+    public record BatchGenerateResult(String storeId, List<WindowResult> createdWindows,
+            List<WindowResult> closedWindows, List<SkippedWindow> skippedWindows) {
+        public BatchGenerateResult {
+            createdWindows = List.copyOf(createdWindows);
+            closedWindows = List.copyOf(closedWindows);
+            skippedWindows = List.copyOf(skippedWindows);
+        }
+    }
+
+    // ------------------------------------------------------------------ booking window (CCR-SCH-SLOT-002)
+
+    public record BookingWindowQuery(CommandContext context, String merchantId, String storeId) {}
+
+    /** Absent row = defaults leadMinutes 60 / maxDays 7 with logical version "0" and a null
+     * updatedAt (the H5-pinned GET shape carries no storeId). */
+    public record BookingWindowView(int leadMinutes, int maxDays, String version,
+            OffsetDateTime updatedAt) {}
+
+    /** Full replacement; lead 0..1440 minutes, maxDays 1..90 days, no reason (not an
+     * availability reduction). */
+    public record BookingWindowReplaceCommand(CommandContext context, String merchantId,
+            String storeId, int leadMinutes, int maxDays, String expectedVersion) {}
+
+    /** The H5-pinned PUT receipt shape: {leadMinutes, maxDays, version}, no updatedAt. */
+    public record BookingWindowResult(int leadMinutes, int maxDays, String version) {}
 
     // ------------------------------------------------------------------ staff availability
 

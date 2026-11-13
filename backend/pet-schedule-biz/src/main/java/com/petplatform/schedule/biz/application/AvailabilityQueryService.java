@@ -7,6 +7,7 @@ import com.petplatform.schedule.api.dto.AvailabilityPageDTO;
 import com.petplatform.schedule.api.dto.AvailabilityWindowDTO;
 import com.petplatform.schedule.api.query.AvailabilityQuery;
 import com.petplatform.schedule.biz.infrastructure.persistence.ScheduleReadStore;
+import com.petplatform.schedule.biz.infrastructure.persistence.ScheduleSqlRows;
 import com.petplatform.schedule.biz.infrastructure.persistence.entity.ScheduleAvailabilityWindowEntity;
 import com.petplatform.schedule.biz.infrastructure.persistence.mapper.ScheduleReadMapper;
 import com.petplatform.service.api.dto.ServiceBookabilityDTO;
@@ -21,6 +22,7 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -76,6 +78,18 @@ public final class AvailabilityQueryService {
         List<AvailabilityWindowDTO> items =
                 store.read(
                         mapper -> {
+                            // CCR-SCH-SLOT-002: the store's bookable range (lead/maxDays,
+                            // defaults 60/7) hides every slot starting before now+lead or after
+                            // now+maxDays — out-of-range items are not returned at all.
+                            Map<String, Object> bookingRow =
+                                    mapper.selectBookingWindow(targetId(query.storeId()));
+                            BookingWindowRule.Range range = BookingWindowRule.resolve(
+                                    bookingRow == null ? null
+                                            : ScheduleSqlRows.nullableNumber(bookingRow,
+                                                    "lead_minutes"),
+                                    bookingRow == null ? null
+                                            : ScheduleSqlRows.nullableNumber(bookingRow,
+                                                    "max_days"));
                             // CCR-SCH-SLOT-001: candidate slots are the store's whole open slot
                             // timeline; this service's bookability is decided per slot by the
                             // qualified-staff coverage below, not by a window ownership filter.
@@ -87,6 +101,11 @@ public final class AvailabilityQueryService {
                             List<AvailabilityWindowDTO> result = new ArrayList<>(rows.size());
                             for (ScheduleAvailabilityWindowEntity row : rows) {
                                 if (!notFinished(row, now)) continue; // ended windows never return
+                                if (!BookingWindowRule.within(
+                                        row.getStartAt().atOffset(ZoneOffset.UTC).toInstant(),
+                                        now, range)) {
+                                    continue; // outside the bookable range stays hidden
+                                }
                                 result.add(aggregate(row, query, staff, mapper, now));
                             }
                             return List.copyOf(result);

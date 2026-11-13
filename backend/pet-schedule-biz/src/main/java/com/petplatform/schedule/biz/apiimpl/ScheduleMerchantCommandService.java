@@ -22,13 +22,20 @@ import com.petplatform.schedule.api.dto.ScheduleProtectionTypes.StoreScheduleFac
 import com.petplatform.schedule.api.dto.ScheduleProtectionTypes.WindowFact;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BatchCloseCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BatchCloseResult;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BatchGenerateCommand;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BatchGenerateResult;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BlockedWindow;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BookingWindowQuery;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BookingWindowReplaceCommand;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BookingWindowResult;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BookingWindowView;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CapabilityQuery;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CapabilityResult;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CapabilityView;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CreateStaffWindowCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CreateWindowCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.ReplaceCapabilitiesCommand;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.SkippedWindow;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.StaffWindowCloseCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.StaffWindowOpenCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.StaffWindowResult;
@@ -41,6 +48,7 @@ import com.petplatform.schedule.api.error.ScheduleWriteApiCodes;
 import com.petplatform.schedule.api.protection.ScheduleCapacityGuardApi;
 import com.petplatform.schedule.api.protection.ScheduleProtectionFactsApi;
 import com.petplatform.schedule.biz.application.AvailabilityQueryService;
+import com.petplatform.schedule.biz.application.BookingWindowRule;
 import com.petplatform.schedule.biz.application.ScheduleAdmissionGate;
 import com.petplatform.schedule.biz.application.ScheduleCanonicalParams;
 import com.petplatform.schedule.biz.infrastructure.persistence.ScheduleSqlRows;
@@ -54,6 +62,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
@@ -384,6 +393,253 @@ public final class ScheduleMerchantCommandService implements ScheduleMerchantCom
                                 Long.parseLong(window.version()) + 1);
                     }
                     return new BatchCloseResult(c.storeId(), closed, blocked);
+                });
+        return executed.result();
+    }
+
+    /**
+     * CCR-SCH-SLOT-002 覆盖重建 (53号 §3.4): inside one guarded transaction the unified
+     * slots intersecting the GENERATION interval [fromDate@dailyStart, toDate@dailyEnd]
+     * (Asia/Shanghai) close first — the close scope is the generation interval itself, not
+     * whole calendar days, so the editor's per-day per-segment "保存并生效" calls never
+     * close windows an earlier segment call of the same day just created (half-open
+     * adjacency is safe). SOLD_OUT counts as open exactly like batch-close; occupied
+     * windows are skipped and listed with reasonCode OCCUPIED. Minute-level slots are then
+     * created over [dailyStart, dailyEnd) per calendar day stepping intervalMinutes.
+     * Candidates overlapping a still-open window (an occupied skip or an open slot outside
+     * the generation interval) are never created — the store-wide overlap rule holds
+     * without a partial overlap ever surfacing. Partial success is reported honestly.
+     */
+    @Override
+    public BatchGenerateResult batchGenerate(BatchGenerateCommand c) {
+        CommandContext ctx = user(c == null ? null : c.context());
+        windowId(c.merchantId(), "merchantId");
+        windowId(c.storeId(), "storeId");
+        if (c.fromDate() == null || c.toDate() == null || c.toDate().isBefore(c.fromDate())
+                || ChronoUnit.DAYS.between(c.fromDate(), c.toDate()) + 1 > 366) {
+            invalid("batch generate date range must span 1 to 366 calendar days");
+        }
+        if (c.dailyStart() == null || c.dailyEnd() == null
+                || !c.dailyEnd().isAfter(c.dailyStart())) {
+            invalid("dailyStart must be before dailyEnd");
+        }
+        if (c.intervalMinutes() < 1 || c.intervalMinutes() > 1440) {
+            invalid("intervalMinutes must be between 1 and 1440");
+        }
+        if (c.configuredCapacity() < 1 || c.configuredCapacity() > 999) {
+            invalid("configuredCapacity must be between 1 and 999");
+        }
+        String reason = requiredReason(c.reason());
+        Map<String, Object> p = new LinkedHashMap<>();
+        p.put("merchantId", c.merchantId());
+        p.put("storeId", c.storeId());
+        p.put("fromDate", c.fromDate().toString());
+        p.put("toDate", c.toDate().toString());
+        p.put("dailyStart", c.dailyStart().toString());
+        p.put("dailyEnd", c.dailyEnd().toString());
+        p.put("intervalMinutes", Integer.toString(c.intervalMinutes()));
+        p.put("configuredCapacity", Integer.toString(c.configuredCapacity()));
+        p.put("reason", reason);
+        Executed<BatchGenerateResult> executed = command(
+                "merchant.schedule.window.batchGenerate",
+                ctx,
+                "STORE:" + c.merchantId() + ":" + c.storeId(),
+                p,
+                BatchGenerateResult.class,
+                m -> {
+                    admissions.requireOperable(query(ctx), id(c.merchantId()), id(c.storeId()));
+                    guard.acquire(List.of(c.storeId()), query(ctx));
+                    StoreScheduleFacts snapshot = facts.readStore(c.storeId(), query(ctx));
+                    // Close scope = the generation interval itself (H5 pinned semantics,
+                    // 2026-11-13): [fromDate@dailyStart, toDate@dailyEnd] in the business
+                    // zone, NOT whole calendar days — a later segment call of the same day
+                    // must not close the windows an earlier segment just created.
+                    OffsetDateTime from = c.fromDate().atTime(c.dailyStart())
+                            .atZone(AvailabilityQueryService.BUSINESS_ZONE)
+                            .toOffsetDateTime();
+                    OffsetDateTime to = c.toDate().atTime(c.dailyEnd())
+                            .atZone(AvailabilityQueryService.BUSINESS_ZONE)
+                            .toOffsetDateTime();
+                    // Split the interval's open-derived targets the same way batch-close
+                    // does: occupied windows are skipped (never force-closed), the rest close.
+                    List<WindowFact> closable = new ArrayList<>();
+                    List<WindowFact> skipped = new ArrayList<>();
+                    Set<String> closableIds = new HashSet<>();
+                    for (WindowFact window : snapshot.windows()) {
+                        // SOLD_OUT is open-derived and a batch target; occupied ones are
+                        // reported as skipped, never silently dropped (SCHW-D5 family).
+                        if (!"OPEN".equals(window.status())
+                                && !"SOLD_OUT".equals(window.status())) continue;
+                        boolean intersects = window.startAt().isBefore(to)
+                                && window.endAt().isAfter(from);
+                        if (!intersects) continue;
+                        if (!activeClaimsOn(snapshot, id(window.windowId())).isEmpty()) {
+                            skipped.add(window);
+                        } else {
+                            closable.add(window);
+                            closableIds.add(window.windowId());
+                        }
+                    }
+                    // Slots still open after the closes: the occupied skips plus every
+                    // open-derived window outside the generation interval. They keep their
+                    // open slot, so no candidate may overlap them.
+                    List<WindowFact> remainingOpen = new ArrayList<>();
+                    for (WindowFact window : snapshot.windows()) {
+                        if (("OPEN".equals(window.status()) || "SOLD_OUT".equals(window.status()))
+                                && !closableIds.contains(window.windowId())) {
+                            remainingOpen.add(window);
+                        }
+                    }
+                    // Materialize the generation plan per calendar day: half-open segments
+                    // [dailyStart + k*interval, +interval) that fit inside [dailyStart,
+                    // dailyEnd). Segments overlapping a remaining open slot are dropped —
+                    // the skipped window's own interval is therefore never regenerated.
+                    List<OffsetDateTime> planStarts = new ArrayList<>();
+                    List<OffsetDateTime> planEnds = new ArrayList<>();
+                    for (LocalDate day = c.fromDate(); !day.isAfter(c.toDate());
+                            day = day.plusDays(1)) {
+                        OffsetDateTime cursor = day.atTime(c.dailyStart())
+                                .atZone(AvailabilityQueryService.BUSINESS_ZONE)
+                                .toOffsetDateTime().withOffsetSameInstant(ZoneOffset.UTC);
+                        OffsetDateTime dayEnd = day.atTime(c.dailyEnd())
+                                .atZone(AvailabilityQueryService.BUSINESS_ZONE)
+                                .toOffsetDateTime().withOffsetSameInstant(ZoneOffset.UTC);
+                        while (!cursor.plusMinutes(c.intervalMinutes()).isAfter(dayEnd)) {
+                            OffsetDateTime end = cursor.plusMinutes(c.intervalMinutes());
+                            if (!overlapsOpenSlot(remainingOpen, cursor, end)) {
+                                planStarts.add(cursor);
+                                planEnds.add(end);
+                            }
+                            cursor = end;
+                        }
+                    }
+                    // 2026-10-05 ruling (blocker 3) family ceiling: one batch command
+                    // processes at most 200 candidate entries (created + closed + skipped),
+                    // rejected whole before any window closes.
+                    if (planStarts.size() + closable.size() + skipped.size()
+                            > MAX_BATCH_ENTRIES) {
+                        invalid("batch generate exceeds " + MAX_BATCH_ENTRIES
+                                + " candidate entries per command");
+                    }
+                    List<WindowResult> closed = new ArrayList<>();
+                    for (WindowFact window : closable) {
+                        long target = id(window.windowId());
+                        one(m.closeWindow(target, Long.parseLong(window.version()), now()));
+                        closed.add(toWindow(window));
+                        audit(m, ctx, "WINDOW", target, id(c.merchantId()), id(c.storeId()),
+                                "WINDOW_BATCH_CLOSE", reason, Long.parseLong(window.version()),
+                                Long.parseLong(window.version()) + 1);
+                    }
+                    List<WindowResult> created = new ArrayList<>(planStarts.size());
+                    for (int index = 0; index < planStarts.size(); index++) {
+                        OffsetDateTime start = planStarts.get(index);
+                        OffsetDateTime end = planEnds.get(index);
+                        long windowId = store.nextId();
+                        one(m.insertWindow(ScheduleSqlRows.values(
+                                "id", windowId, "merchantId", id(c.merchantId()),
+                                "storeId", id(c.storeId()),
+                                "startAt", utc(start), "endAt", utc(end),
+                                "configuredCapacity", c.configuredCapacity(), "now", now())));
+                        created.add(new WindowResult(IDS.toApi(windowId), c.merchantId(),
+                                c.storeId(), start, end,
+                                c.configuredCapacity(), "OPEN", "0"));
+                        audit(m, ctx, "WINDOW", windowId, id(c.merchantId()), id(c.storeId()),
+                                "WINDOW_CREATE", null, null, 0L);
+                    }
+                    List<SkippedWindow> skippedWindows = new ArrayList<>(skipped.size());
+                    for (WindowFact window : skipped) {
+                        // reasonCode=OCCUPIED follows the batch-close blocked naming family
+                        // (CCR-SCH-SLOT-002 §1); the interval is reported, never regenerated.
+                        skippedWindows.add(new SkippedWindow(toWindow(window), "OCCUPIED"));
+                    }
+                    return new BatchGenerateResult(c.storeId(), created, closed, skippedWindows);
+                });
+        return executed.result();
+    }
+
+    /** Half-open [start,end) intersection against a still-open slot, adjacency allowed. */
+    private static boolean overlapsOpenSlot(List<WindowFact> remainingOpen,
+            OffsetDateTime start, OffsetDateTime end) {
+        for (WindowFact window : remainingOpen) {
+            if (window.startAt().isBefore(end) && start.isBefore(window.endAt())) return true;
+        }
+        return false;
+    }
+
+    // ------------------------------------------------------ booking window (CCR-SCH-SLOT-002)
+
+    /** 53号 §3.5 GET: an absent row answers the defaults 60/7 at logical version "0" with a
+     * null updatedAt, creating nothing; the row never backfills. */
+    @Override
+    public BookingWindowView getBookingWindow(BookingWindowQuery q) {
+        CommandContext ctx = user(q == null ? null : q.context());
+        windowId(q.merchantId(), "merchantId");
+        windowId(q.storeId(), "storeId");
+        return store.execute(m -> {
+            admissions.requireOperable(query(ctx), id(q.merchantId()), id(q.storeId()));
+            guard.acquire(List.of(q.storeId()), query(ctx));
+            Map<String, Object> row = m.selectBookingWindowForUpdate(id(q.storeId()));
+            if (row == null) {
+                return new BookingWindowView(BookingWindowRule.DEFAULT_LEAD_MINUTES,
+                        BookingWindowRule.DEFAULT_MAX_DAYS, "0", null);
+            }
+            BookingWindowRule.Range range = BookingWindowRule.resolve(
+                    ScheduleSqlRows.nullableNumber(row, "lead_minutes"),
+                    ScheduleSqlRows.nullableNumber(row, "max_days"));
+            return new BookingWindowView((int) range.leadMinutes(), (int) range.maxDays(),
+                    ScheduleSqlRows.version(row, "version"),
+                    ScheduleSqlRows.at(row, "updated_at"));
+        });
+    }
+
+    /** 53号 §3.5 PUT: full replacement with expectedVersion optimistic locking. The range
+     * envelope is enforced here (readers trust stored values); a stale version is a 409
+     * COMMON_CONFLICT to re-read. No reason: tuning the range is not an availability
+     * reduction, and no schedule_write_action row is written (its target-type lexicon is
+     * the WINDOW/STAFF_WINDOW/CAPABILITY_SET family, unchanged). */
+    @Override
+    public BookingWindowResult replaceBookingWindow(BookingWindowReplaceCommand c) {
+        CommandContext ctx = user(c == null ? null : c.context());
+        windowId(c.merchantId(), "merchantId");
+        windowId(c.storeId(), "storeId");
+        if (c.leadMinutes() < 0 || c.leadMinutes() > BookingWindowRule.MAX_LEAD_MINUTES) {
+            invalid("leadMinutes must be between 0 and " + BookingWindowRule.MAX_LEAD_MINUTES);
+        }
+        if (c.maxDays() < 1 || c.maxDays() > BookingWindowRule.MAX_DAYS) {
+            invalid("maxDays must be between 1 and " + BookingWindowRule.MAX_DAYS);
+        }
+        long expectedVersion = nonNegativeVersion(c.expectedVersion());
+        Map<String, Object> p = new LinkedHashMap<>();
+        p.put("merchantId", c.merchantId());
+        p.put("storeId", c.storeId());
+        p.put("leadMinutes", Integer.toString(c.leadMinutes()));
+        p.put("maxDays", Integer.toString(c.maxDays()));
+        p.put("expectedVersion", Long.toString(expectedVersion));
+        Executed<BookingWindowResult> executed = command(
+                "merchant.schedule.bookingWindow.replace",
+                ctx,
+                "STORE:" + c.merchantId() + ":" + c.storeId(),
+                p,
+                BookingWindowResult.class,
+                m -> {
+                    admissions.requireOperable(query(ctx), id(c.merchantId()), id(c.storeId()));
+                    guard.acquire(List.of(c.storeId()), query(ctx));
+                    Map<String, Object> row =
+                            m.selectBookingWindowForUpdate(id(c.storeId()));
+                    long nextVersion = expectedVersion + 1;
+                    if (row == null) {
+                        // First PUT carries expectedVersion "0" and creates the row at 1
+                        // atomically (SCHC-2 capability-set precedent).
+                        if (expectedVersion != 0) conflict("booking window version changed");
+                        one(m.insertBookingWindow(id(c.storeId()), c.leadMinutes(), c.maxDays(),
+                                nextVersion, now()));
+                    } else {
+                        requireCurrentVersion(row, expectedVersion);
+                        one(m.casBookingWindow(id(c.storeId()), c.leadMinutes(), c.maxDays(),
+                                expectedVersion, nextVersion, now()));
+                    }
+                    return new BookingWindowResult(c.leadMinutes(), c.maxDays(),
+                            Long.toString(nextVersion));
                 });
         return executed.result();
     }

@@ -106,7 +106,8 @@ class ScheduleAvailabilityHttpTest {
               "26-Admin-Auth-Schema-v0.1.sql",
               "28-Merchant-Agreement-Schema-v0.1.sql",
               "29-Merchant-Application-Schema-v0.1.sql",
-              "33-Service-Write-Schema-v0.1.sql")) {
+              "33-Service-Write-Schema-v0.1.sql",
+              "53-Schedule-Write-Schema-v0.1.sql")) {
         ScriptUtils.executeSqlScript(
             connection,
             new EncodedResource(
@@ -250,6 +251,14 @@ class ScheduleAvailabilityHttpTest {
         db.jdbc.queryForObject(
             "SELECT id FROM merchant_store WHERE merchant_id=?", Long.class, merchantId);
     String store = String.valueOf(storeId);
+    // CCR-SCH-SLOT-002: this acceptance keeps its far-future (2030) and now-relative
+    // in-progress fixtures outside the default 60/7 bookable range on purpose (they test
+    // aggregation and timezone rendering, not the range rule), so the store carries a
+    // permissive configured range; the default-range filter has its own MySQL tests.
+    db.jdbc.update(
+        "INSERT INTO merchant_schedule_booking_window(store_id,lead_minutes,max_days,version,"
+            + "created_at,updated_at) VALUES(?,0,999999,0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+        storeId);
     long categoryId = db.ids.nextId();
     db.jdbc.update(
         "INSERT INTO service_category(id,category_name,created_at,updated_at)"

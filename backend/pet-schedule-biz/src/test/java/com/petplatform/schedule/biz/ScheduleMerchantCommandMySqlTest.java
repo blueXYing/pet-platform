@@ -2,6 +2,8 @@ package com.petplatform.schedule.biz;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -26,13 +28,20 @@ import com.petplatform.schedule.api.dto.ReservationHoldTypes.HoldCommand;
 import com.petplatform.schedule.api.dto.ReservationHoldTypes.HoldResult;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BatchCloseCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BatchCloseResult;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BatchGenerateCommand;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BatchGenerateResult;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BlockedWindow;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BookingWindowQuery;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BookingWindowReplaceCommand;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BookingWindowResult;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BookingWindowView;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CapabilityQuery;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CapabilityResult;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CapabilityView;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CreateStaffWindowCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CreateWindowCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.ReplaceCapabilitiesCommand;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.SkippedWindow;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.StaffWindowCloseCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.StaffWindowResult;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.UpdateWindowCommand;
@@ -62,6 +71,7 @@ import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -249,6 +259,271 @@ class ScheduleMerchantCommandMySqlTest {
                     + "WHERE action='WINDOW_BATCH_CLOSE'", Integer.class));
             assertEquals(1, db.count("schedule_reservation"));
         }
+    }
+
+    // ------------------------------------------------------- CCR-SCH-SLOT-002 batch-generate
+
+    /**
+     * 覆盖重建 (53号 §3.4): unified slots intersecting the GENERATION interval
+     * [fromDate@dailyStart, toDate@dailyEnd] close first, then minute-level windows tile the
+     * interval. Fixtures live at UTC 01:00-03:00 = Beijing 09:00-11:00, so dailyStart/dailyEnd
+     * address them through the business zone.
+     */
+    @Test
+    void batchGenerateClosesIntervalIntersectingWindowsAndCreatesMinuteSlots() throws Exception {
+        try (Database db = new Database()) {
+            Components app = new Components(db);
+            app.commands.createWindowOutcome(create("960"), new WindowResult[1]); // [01,02Z)
+            app.commands.createWindowOutcome(create("961", E, E300), new WindowResult[1]); // [02,03Z)
+            // An adjacent after-interval slot must survive: the close scope is the
+            // generation interval, not whole calendar days (H5 pinned semantics).
+            app.commands.createWindowOutcome(create("962", E300,
+                    OffsetDateTime.parse("2030-01-01T04:00:00Z")), new WindowResult[1]);
+            BatchGenerateResult result = app.commands.batchGenerate(generate("970",
+                    LocalDate.parse("2030-01-01"), LocalDate.parse("2030-01-01"),
+                    LocalTime.of(9, 0), LocalTime.of(11, 0), 30, 6));
+            assertEquals(4, result.createdWindows().size());
+            assertEquals(2, result.closedWindows().size());
+            assertEquals(0, result.skippedWindows().size());
+            for (WindowResult created : result.createdWindows()) {
+                assertEquals("OPEN", created.status());
+                assertEquals("0", created.version());
+                assertEquals(6, created.configuredCapacity());
+            }
+            assertEquals(OffsetDateTime.parse("2030-01-01T01:00:00Z").toInstant(),
+                    result.createdWindows().get(0).startAt().toInstant());
+            assertEquals(OffsetDateTime.parse("2030-01-01T01:30:00Z").toInstant(),
+                    result.createdWindows().get(0).endAt().toInstant());
+            // Two closed + three survivors (2 old CLOSED, 1 untouched after-interval OPEN) + 4.
+            assertEquals(7, db.count("schedule_availability_window"));
+            assertEquals(5, db.jdbc.queryForObject("SELECT COUNT(*) FROM "
+                    + "schedule_availability_window WHERE status='OPEN'", Integer.class));
+            // One audit row per closed target and per created window under one requestId.
+            assertEquals(2, db.jdbc.queryForObject("SELECT COUNT(*) FROM schedule_write_action"
+                    + " WHERE action='WINDOW_BATCH_CLOSE'", Integer.class));
+            assertEquals(4, db.jdbc.queryForObject("SELECT COUNT(*) FROM schedule_write_action"
+                    + " WHERE action='WINDOW_CREATE'", Integer.class));
+        }
+    }
+
+    /** Occupied windows are skipped (reasonCode OCCUPIED) and their interval is never
+     * regenerated — the candidates overlapping the skip are dropped, not created. */
+    @Test
+    void batchGenerateSkipsOccupiedWindowsAndNeverRegeneratesTheirInterval() throws Exception {
+        try (Database db = new Database()) {
+            Components app = new Components(db);
+            db.seedGeneral(); // window 101 [01,02Z) capacity 2, store has a permissive range
+            db.hold(app, "501"); // TEMP_LOCKED claim occupies window 101
+            app.commands.createWindowOutcome(create("961", E, E300), new WindowResult[1]);
+            BatchGenerateResult result = app.commands.batchGenerate(generate("971",
+                    LocalDate.parse("2030-01-01"), LocalDate.parse("2030-01-01"),
+                    LocalTime.of(9, 0), LocalTime.of(11, 0), 60, 6));
+            assertEquals(1, result.skippedWindows().size());
+            assertEquals("101", result.skippedWindows().getFirst().window().windowId());
+            assertEquals("OCCUPIED", result.skippedWindows().getFirst().reasonCode());
+            assertEquals(1, result.closedWindows().size());
+            // [01,02Z) overlaps the occupied skip and is not created; [02,03Z) is.
+            assertEquals(1, result.createdWindows().size());
+            assertEquals(OffsetDateTime.parse("2030-01-01T02:00:00Z").toInstant(),
+                    result.createdWindows().getFirst().startAt().toInstant());
+            assertEquals("OPEN", db.windowStatus(101)); // the occupied skip stays open
+            assertEquals(1, db.jdbc.queryForObject("SELECT COUNT(*) FROM "
+                    + "schedule_availability_window WHERE status='CLOSED'", Integer.class));
+        }
+    }
+
+    /** A partially overlapping occupied skip swallows every candidate touching it: the
+     * store-wide overlap rule holds, no partial overlap is ever created. */
+    @Test
+    void batchGenerateDropsEveryCandidateOverlappingAPartialSkip() throws Exception {
+        try (Database db = new Database()) {
+            Components app = new Components(db);
+            db.seedGeneral();
+            // Move the occupied window to straddle the candidate grid: [01:30Z, 02:30Z); the
+            // seeded staff availability [01:00Z,02:00Z) still covers the tighter claim.
+            db.jdbc.update("UPDATE schedule_availability_window SET start_at="
+                    + "'2030-01-01 01:30:00', end_at='2030-01-01 02:30:00' WHERE id=101");
+            db.hold(app, "501", OffsetDateTime.parse("2030-01-01T01:45:00Z"),
+                    OffsetDateTime.parse("2030-01-01T02:00:00Z"));
+            BatchGenerateResult result = app.commands.batchGenerate(generate("975",
+                    LocalDate.parse("2030-01-01"), LocalDate.parse("2030-01-01"),
+                    LocalTime.of(9, 0), LocalTime.of(11, 0), 60, 6));
+            assertEquals(1, result.skippedWindows().size());
+            assertEquals(0, result.closedWindows().size());
+            // [01,02Z) and [02,03Z) both touch [01:30,02:30Z): neither is created.
+            assertEquals(0, result.createdWindows().size());
+            assertEquals("OPEN", db.windowStatus(101));
+            assertEquals(1, db.count("schedule_availability_window"));
+        }
+    }
+
+    /** H5 pinned "保存并生效" semantics: a second segment call of the same day must not close
+     * the windows the first segment just created (adjacency to the generation interval). */
+    @Test
+    void batchGenerateSameDaySecondSegmentKeepsFirstSegmentWindows() throws Exception {
+        try (Database db = new Database()) {
+            Components app = new Components(db);
+            BatchGenerateResult first = app.commands.batchGenerate(generate("980",
+                    LocalDate.parse("2030-01-01"), LocalDate.parse("2030-01-01"),
+                    LocalTime.of(9, 0), LocalTime.of(10, 0), 60, 6));
+            BatchGenerateResult second = app.commands.batchGenerate(generate("981",
+                    LocalDate.parse("2030-01-01"), LocalDate.parse("2030-01-01"),
+                    LocalTime.of(10, 0), LocalTime.of(11, 0), 60, 6));
+            assertEquals(1, first.createdWindows().size());
+            assertEquals(1, second.createdWindows().size());
+            assertEquals(0, second.closedWindows().size());
+            assertEquals(0, second.skippedWindows().size());
+            assertEquals(2, db.jdbc.queryForObject("SELECT COUNT(*) FROM "
+                    + "schedule_availability_window WHERE status='OPEN'", Integer.class));
+        }
+    }
+
+    /** §3.2 family ceiling: created+closed+skipped candidates over 200 reject the whole
+     * command before any close or creation. */
+    @Test
+    void batchGenerateRejectsMoreThan200CandidatesWhole() throws Exception {
+        try (Database db = new Database()) {
+            Components app = new Components(db);
+            db.seedGeneral(); // one open window inside the interval -> 376+1 candidates
+            assertEquals(CommonApiCodes.INVALID_ARGUMENT, assertThrows(ApiException.class,
+                    () -> app.commands.batchGenerate(generate("982",
+                            LocalDate.parse("2030-01-01"), LocalDate.parse("2030-01-08"),
+                            LocalTime.of(0, 0), LocalTime.of(23, 59), 30, 6))).code());
+            assertEquals("OPEN", db.windowStatus(101));
+            assertEquals(1, db.count("schedule_availability_window"));
+            assertEquals(0, db.count("schedule_write_action"));
+        }
+    }
+
+    /** Request lexicon (CCR §1): date span 1..366, start<end, interval 1..1440, capacity
+     * 1..999, reason 1..500 mandatory. */
+    @Test
+    void batchGenerateValidatesTheRequestLexicon() throws Exception {
+        try (Database db = new Database()) {
+            Components app = new Components(db);
+            LocalDate day = LocalDate.parse("2030-01-01");
+            for (BatchGenerateCommand bad : List.of(
+                    generate("983", day, day, LocalTime.of(9, 0), LocalTime.of(9, 0), 60, 6, "覆盖"),
+                    generate("984", day, day, LocalTime.of(10, 0), LocalTime.of(9, 0), 60, 6, "覆盖"),
+                    generate("985", day, day, LocalTime.of(9, 0), LocalTime.of(11, 0), 1441, 6, "覆盖"),
+                    generate("986", day, day, LocalTime.of(9, 0), LocalTime.of(11, 0), 0, 6, "覆盖"),
+                    generate("987", day, day, LocalTime.of(9, 0), LocalTime.of(11, 0), 60, 1000, "覆盖"),
+                    generate("988", day, day, LocalTime.of(9, 0), LocalTime.of(11, 0), 60, 0, "覆盖"),
+                    generate("989", LocalDate.parse("2030-01-01"),
+                            LocalDate.parse("2031-01-02"), LocalTime.of(9, 0),
+                            LocalTime.of(11, 0), 60, 6, "覆盖"),
+                    generate("990", day, day, LocalTime.of(9, 0), LocalTime.of(11, 0), 60, 6, " "),
+                    generate("991", day, day, LocalTime.of(9, 0), LocalTime.of(11, 0), 60, 6, null))) {
+                assertEquals(CommonApiCodes.INVALID_ARGUMENT, assertThrows(ApiException.class,
+                        () -> app.commands.batchGenerate(bad)).code());
+            }
+            assertEquals(0, db.count("schedule_availability_window"));
+        }
+    }
+
+    /** 23号 idempotency: the same command replays the first receipt (no second rows); the
+     * same requestId with different parameters is a 409 key conflict. */
+    @Test
+    void batchGenerateReplaysFirstReceiptAndConflictsOnDifferentParameters() throws Exception {
+        try (Database db = new Database()) {
+            Components app = new Components(db);
+            CommandContext pinned = ctx();
+            BatchGenerateCommand command = new BatchGenerateCommand(pinned, "10", "201",
+                    LocalDate.parse("2030-01-01"), LocalDate.parse("2030-01-01"),
+                    LocalTime.of(9, 0), LocalTime.of(11, 0), 60, 6, "周模板保存");
+            BatchGenerateResult first = app.commands.batchGenerate(command);
+            BatchGenerateResult replay = app.commands.batchGenerate(command);
+            assertEquals(first.createdWindows().size(), replay.createdWindows().size());
+            assertEquals(first.createdWindows().getFirst().windowId(),
+                    replay.createdWindows().getFirst().windowId());
+            assertEquals(2, db.count("schedule_availability_window"));
+            assertEquals(CommonApiCodes.IDEMPOTENCY_KEY_CONFLICT, assertThrows(ApiException.class,
+                    () -> app.commands.batchGenerate(new BatchGenerateCommand(pinned, "10",
+                            "201", LocalDate.parse("2030-01-01"), LocalDate.parse("2030-01-01"),
+                            LocalTime.of(9, 0), LocalTime.of(11, 0), 30, 6, "周模板保存")))
+                    .code());
+            assertEquals(2, db.count("schedule_availability_window"));
+        }
+    }
+
+    // ------------------------------------------------------- CCR-SCH-SLOT-002 booking-window
+
+    /** §3.5: absent row = defaults 60/7 at version "0" with a null updatedAt; PUT is a full
+     * replacement under expectedVersion CAS; replays return the first receipt; boundary
+     * values outside lead 0..1440 / maxDays 1..90 are 400s. */
+    @Test
+    void bookingWindowGetDefaultsPutCasAndBoundaries() throws Exception {
+        try (Database db = new Database()) {
+            Components app = new Components(db);
+            BookingWindowView absent = app.commands.getBookingWindow(
+                    new BookingWindowQuery(ctx(), "10", "201"));
+            assertEquals(60, absent.leadMinutes());
+            assertEquals(7, absent.maxDays());
+            assertEquals("0", absent.version());
+            assertNull(absent.updatedAt());
+            assertEquals(0, db.count("merchant_schedule_booking_window")); // never backfilled
+            BookingWindowResult created = app.commands.replaceBookingWindow(
+                    replaceBookingWindow("0", 30, 14));
+            assertEquals(30, created.leadMinutes());
+            assertEquals(14, created.maxDays());
+            assertEquals("1", created.version());
+            BookingWindowView stored = app.commands.getBookingWindow(
+                    new BookingWindowQuery(ctx(), "10", "201"));
+            assertEquals(30, stored.leadMinutes());
+            assertEquals(14, stored.maxDays());
+            assertEquals("1", stored.version());
+            assertNotNull(stored.updatedAt());
+            // A second editor still holding "0" loses with COMMON_CONFLICT (no LWW).
+            assertEquals(CommonApiCodes.CONFLICT, assertThrows(ApiException.class,
+                    () -> app.commands.replaceBookingWindow(replaceBookingWindow("0", 45, 30)))
+                    .code());
+            // Same pinned key replays the first receipt without advancing the version.
+            CommandContext pinned = ctx();
+            assertEquals("2", app.commands.replaceBookingWindow(
+                    new BookingWindowReplaceCommand(pinned, "10", "201", 45, 30, "1"))
+                    .version());
+            assertEquals("2", app.commands.replaceBookingWindow(
+                    new BookingWindowReplaceCommand(pinned, "10", "201", 45, 30, "1"))
+                    .version());
+            assertEquals(CommonApiCodes.IDEMPOTENCY_KEY_CONFLICT, assertThrows(ApiException.class,
+                    () -> app.commands.replaceBookingWindow(new BookingWindowReplaceCommand(
+                            pinned, "10", "201", 46, 30, "2"))).code());
+            assertEquals(1, db.jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM merchant_schedule_booking_window", Integer.class));
+            assertEquals(45, db.jdbc.queryForObject(
+                    "SELECT lead_minutes FROM merchant_schedule_booking_window", Integer.class));
+            // Envelope: lead 0..1440 minutes, maxDays 1..90 days.
+            for (int[] bad : List.of(new int[] {-1, 7}, new int[] {1441, 7},
+                    new int[] {60, 0}, new int[] {60, 91})) {
+                assertEquals(CommonApiCodes.INVALID_ARGUMENT, assertThrows(ApiException.class,
+                        () -> app.commands.replaceBookingWindow(
+                                replaceBookingWindow("3", bad[0], bad[1]))).code());
+            }
+            assertEquals(45, db.jdbc.queryForObject(
+                    "SELECT lead_minutes FROM merchant_schedule_booking_window", Integer.class));
+        }
+    }
+
+    private static BatchGenerateCommand generate(String requestId, LocalDate fromDate,
+            LocalDate toDate, LocalTime dailyStart, LocalTime dailyEnd, int intervalMinutes,
+            int configuredCapacity, String reason) {
+        return new BatchGenerateCommand(
+                new CommandContext(requestId, "sch004-test", OperatorType.USER, "601", "test"),
+                "10", "201", fromDate, toDate, dailyStart, dailyEnd, intervalMinutes,
+                configuredCapacity, reason);
+    }
+
+    private static BatchGenerateCommand generate(String requestId, LocalDate fromDate,
+            LocalDate toDate, LocalTime dailyStart, LocalTime dailyEnd, int intervalMinutes,
+            int configuredCapacity) {
+        return generate(requestId, fromDate, toDate, dailyStart, dailyEnd, intervalMinutes,
+                configuredCapacity, "模板生成");
+    }
+
+    private static BookingWindowReplaceCommand replaceBookingWindow(String expectedVersion,
+            int leadMinutes, int maxDays) {
+        return new BookingWindowReplaceCommand(ctx(), "10", "201", leadMinutes, maxDays,
+                expectedVersion);
     }
 
     @Test
@@ -609,6 +884,12 @@ class ScheduleMerchantCommandMySqlTest {
         }
 
         private void seedGeneral() {
+            // CCR-SCH-SLOT-002: the seeded hold uses a far-future (2030) window against the
+            // 2026 fixed clock, so the store carries a permissive configured bookable range
+            // (default 60/7 behaviour is covered in ReservationHoldMySqlTest).
+            jdbc.update("INSERT INTO merchant_schedule_booking_window(store_id,lead_minutes,"
+                    + "max_days,version,created_at,updated_at) VALUES(201,0,999999,0,"
+                    + "UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
             // CCR-SCH-SLOT-001: store-wide unified slot (no service_id/window_kind columns).
             jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,"
                     + "start_at,end_at,configured_capacity,status,version,created_at,"
@@ -635,6 +916,12 @@ class ScheduleMerchantCommandMySqlTest {
 
         /** One TEMP_LOCKED hold plus its bound order, both committed. */
         private void hold(Components app, String orderId) {
+            hold(app, orderId, S, OffsetDateTime.parse("2030-01-01T01:30:00Z"));
+        }
+
+        /** Same hold on window 101 with a caller-chosen appointment interval. */
+        private void hold(Components app, String orderId, OffsetDateTime start,
+                OffsetDateTime end) {
             ScheduleProtectionFactsApi facts =
                     new ScheduleProtectionFactsApiImpl(source, app.guard);
             ReservationHoldApiImpl holdApi = new ReservationHoldApiImpl(source, seq(2000),
@@ -647,8 +934,7 @@ class ScheduleMerchantCommandMySqlTest {
                 app.guard.acquire(List.of("201"),
                         new QueryContext("sch004-test", OperatorType.USER, "601"));
                 HoldResult result = holdApi.hold(new HoldCommand(ctx(), orderId, "601", "10",
-                        "201", "301", "IN_STORE", S,
-                        OffsetDateTime.parse("2030-01-01T01:30:00Z"), null, null, "101",
+                        "201", "301", "IN_STORE", start, end, null, null, "101",
                         null, null));
                 insertOrder(result);
                 return result;

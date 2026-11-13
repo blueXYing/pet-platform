@@ -80,4 +80,12 @@
         WHERE store_id = #{storeId} AND staff_id = #{staffId}
         ORDER BY start_at, id
     </select>
+
+    <!-- CCR-SCH-SLOT-002: the store bookable range gates the availability item list;
+         no row = defaults (lead 60 minutes, horizon 7 days). -->
+    <select id="selectBookingWindow" resultType="map">
+        SELECT store_id, lead_minutes, max_days, version
+        FROM merchant_schedule_booking_window
+        WHERE store_id = #{storeId}
+    </select>
 </mapper>

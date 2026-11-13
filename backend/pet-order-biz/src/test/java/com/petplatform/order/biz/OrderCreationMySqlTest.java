@@ -810,7 +810,9 @@ class OrderCreationMySqlTest {
                             "39-Booking-Expiry-Schema-v0.1.sql",
                             "40-Payment-Foundation-Schema-v0.1.sql",
                 "41-Payment-Dispatch-Schema-v0.1.sql",
-                "44-Late-Refund-Order-Projection-Schema-v0.1.sql")) {
+                "44-Late-Refund-Order-Projection-Schema-v0.1.sql",
+                // CCR-SCH-SLOT-002: the hold admission reads the store bookable range.
+                "53-Schedule-Write-Schema-v0.1.sql")) {
                         ScriptUtils.executeSqlScript(connection, new EncodedResource(
                                 new FileSystemResource(root.resolve("docs/03-database/" + file)),
                                 StandardCharsets.UTF_8));

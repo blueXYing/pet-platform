@@ -69,6 +69,20 @@ public interface ScheduleWriteMapper {
     List<Map<String, Object>> listStaffWindows(@Param("storeId") long storeId,
             @Param("staffId") long staffId);
 
+    // ------------------------------------------------------------ booking window (CCR-SCH-SLOT-002)
+
+    /** Store-level bookable range; null = defaults (60/7) at logical version 0. */
+    Map<String, Object> selectBookingWindowForUpdate(@Param("storeId") long storeId);
+
+    int insertBookingWindow(@Param("storeId") long storeId,
+            @Param("leadMinutes") int leadMinutes, @Param("maxDays") int maxDays,
+            @Param("version") long version, @Param("now") LocalDateTime now);
+
+    /** Full-replacement CAS: lead/maxDays move together with the version. */
+    int casBookingWindow(@Param("storeId") long storeId, @Param("leadMinutes") int leadMinutes,
+            @Param("maxDays") int maxDays, @Param("expectedVersion") long expectedVersion,
+            @Param("nextVersion") long nextVersion, @Param("now") LocalDateTime now);
+
     // ------------------------------------------------------------ capability set (SCHC-2)
 
     Map<String, Object> selectCapabilitySetForUpdate(@Param("staffId") long staffId);

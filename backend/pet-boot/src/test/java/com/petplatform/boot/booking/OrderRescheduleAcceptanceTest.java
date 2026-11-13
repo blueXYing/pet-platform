@@ -13,6 +13,7 @@ import com.petplatform.schedule.biz.apiimpl.*;
 import com.petplatform.verification.api.command.VerificationRescheduleFenceApi;
 import com.petplatform.task.core.*;
 import java.time.*;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
@@ -24,6 +25,29 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 class OrderRescheduleAcceptanceTest {
  static final AtomicLong IDS=new AtomicLong(9_070_000_000_000_000L);
  static final OffsetDateTime START=OffsetDateTime.parse("2030-01-01T09:15:00Z");
+ /** CCR-SCH-SLOT-002 (46号): an exchanged-to time outside the store bookable range is a 400
+  * COMMON_INVALID_ARGUMENT naming the range, refused before any swap write. The 2030 fixture
+  * world rides a permissive configured range; this test narrows it to 60/7 AFTER the order
+  * exists, so only the reschedule target time leaves the window. */
+ @Test void outOfRangeNewTimeIsRejectedBeforeAnyExchange() throws Exception {
+  try(var t=new T()){
+   String o=t.f.paid();String c0=t.text("SELECT CAST(version AS CHAR) FROM pet_order");
+   t.f.f.db.jdbc.update("UPDATE merchant_schedule_booking_window SET lead_minutes=60,max_days=7 WHERE store_id=710302");
+   var horizon=new Command(context("710100"),o,c0,OffsetDateTime.parse("2031-06-01T09:15:00Z"),
+     OffsetDateTime.parse("2031-06-01T10:45:00Z"),null,null,"710500",null,null);
+   var rejected=assertThrows(ApiException.class,()->t.service.reschedule(horizon));
+   assertEquals(CommonApiCodes.INVALID_ARGUMENT,rejected.code());
+   assertTrue(String.valueOf(rejected.getMessage()).contains("bookable range"));
+   assertEquals(0,t.count("SELECT COUNT(*) FROM order_reschedule_record"));
+   assertEquals(0,t.count("SELECT reschedule_count FROM pet_order"));
+   // Below the lead floor (now+30 minutes < now+60) refuses identically; nothing exchanged.
+   var belowLead=OffsetDateTime.now(ZoneOffset.UTC).plusMinutes(30).truncatedTo(ChronoUnit.MINUTES);
+   var early=new Command(context("710100"),o,c0,belowLead,belowLead.plusMinutes(90),null,null,"710500",null,null);
+   assertEquals(CommonApiCodes.INVALID_ARGUMENT,assertThrows(ApiException.class,
+     ()->t.service.reschedule(early)).code());
+   assertEquals(0,t.count("SELECT COUNT(*) FROM order_reschedule_record"));
+  }
+ }
  @Test void atomicExchangePreservesIdentityAndSnapshotsAndReplaysFirstReceipt() throws Exception {
   try(var t=new T()){
    String o=t.f.paid();String reservation=t.text("SELECT CAST(reservation_id AS CHAR) FROM pet_order");

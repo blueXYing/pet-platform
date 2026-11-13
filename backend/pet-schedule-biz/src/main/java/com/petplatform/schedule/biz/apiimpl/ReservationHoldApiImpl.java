@@ -21,6 +21,7 @@ import com.petplatform.schedule.api.protection.ScheduleCapacityGuardApi;
 import com.petplatform.schedule.api.protection.ScheduleProtectionFactsApi;
 import com.petplatform.schedule.biz.apiimpl.ScheduleCapacityProofApiImpl.HoldProofPlan;
 import com.petplatform.schedule.biz.apiimpl.ScheduleCapacityProofApiImpl.ProvenClaim;
+import com.petplatform.schedule.biz.application.BookingWindowRule;
 import com.petplatform.schedule.biz.infrastructure.persistence.ScheduleMybatis;
 import com.petplatform.schedule.biz.infrastructure.persistence.ScheduleSqlRows;
 import com.petplatform.schedule.biz.infrastructure.persistence.mapper.ScheduleCommandMapper;
@@ -68,6 +69,11 @@ public final class ReservationHoldApiImpl implements ReservationHoldApi {
     @Override
     public HoldResult hold(HoldCommand command) {
         QueryContext query = validate(command);
+        // CCR-SCH-SLOT-002 (38号 hold admission): the store's bookable range gates every new
+        // reservation time before any capacity proof or write; an out-of-range start is a 400
+        // COMMON_INVALID_ARGUMENT whose message names the range. An absent configuration row
+        // means the defaults (60 minutes / 7 days); unreadable facts fail closed.
+        requireWithinBookableRange(command);
         guard.requireHeld(command.storeId(), source);
         try {
             if (!mapper.lockReservationByOrder(id(command.orderId())).isEmpty()) {
@@ -201,6 +207,27 @@ public final class ReservationHoldApiImpl implements ReservationHoldApi {
                 }
             }
         });
+    }
+
+    /** The store bookable range resolves once per hold; IN_STORE checks the appointment
+     * start, PICKUP_DELIVERY checks both directional starts (38号/46号 share the rule). */
+    private void requireWithinBookableRange(HoldCommand command) {
+        java.util.Map<String, Object> row;
+        try {
+            row = mapper.selectBookingWindow(id(command.storeId()));
+        } catch (RuntimeException unreadable) {
+            throw unavailable("booking window facts are unavailable");
+        }
+        BookingWindowRule.Range range = BookingWindowRule.resolve(
+                row == null ? null : ScheduleSqlRows.nullableNumber(row, "lead_minutes"),
+                row == null ? null : ScheduleSqlRows.nullableNumber(row, "max_days"));
+        Instant now = clock.instant();
+        if ("IN_STORE".equals(command.fulfillmentType())) {
+            BookingWindowRule.requireWithin(command.appointmentStart().toInstant(), now, range);
+        } else {
+            BookingWindowRule.requireWithin(command.pickupStart().toInstant(), now, range);
+            BookingWindowRule.requireWithin(command.returnStart().toInstant(), now, range);
+        }
     }
 
     private static QueryContext validate(HoldCommand command) {

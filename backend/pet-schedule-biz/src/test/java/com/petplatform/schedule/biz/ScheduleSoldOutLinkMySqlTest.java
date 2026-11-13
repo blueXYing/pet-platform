@@ -715,6 +715,12 @@ class ScheduleSoldOutLinkMySqlTest {
          * qualified scheduled employees 401/402: overlapping claims each need a distinct
          * qualified staff member (SCH solver). */
         private void seedGeneral(int capacity) {
+            // CCR-SCH-SLOT-002: these fixtures hold far-future (2030) windows against the
+            // 2026 fixed clock, so the store carries a permissive configured bookable range
+            // (the default 60/7 range behaviour is covered in ReservationHoldMySqlTest).
+            jdbc.update("INSERT INTO merchant_schedule_booking_window(store_id,lead_minutes,"
+                    + "max_days,version,created_at,updated_at) VALUES(201,0,999999,0,"
+                    + "UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
             jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,"
                     + "start_at,end_at,configured_capacity,status,version,"
                     + "created_at,updated_at) VALUES(101,10,201,"

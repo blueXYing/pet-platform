@@ -87,7 +87,8 @@ class MerchantStaffAcceptanceHttpTest {
               "28-Merchant-Agreement-Schema-v0.1.sql",
               "29-Merchant-Application-Schema-v0.1.sql",
               "33-Service-Write-Schema-v0.1.sql",
-              "35-Merchant-Staff-Audit-Schema-v0.1.sql")) {
+              "35-Merchant-Staff-Audit-Schema-v0.1.sql",
+              "53-Schedule-Write-Schema-v0.1.sql")) {
         ScriptUtils.executeSqlScript(
             connection,
             new EncodedResource(
@@ -486,6 +487,13 @@ class MerchantStaffAcceptanceHttpTest {
     String service = createActiveService(token, merchantId, storeId, String.valueOf(category));
     LocalDate day = LocalDate.now(ZoneId.of("Asia/Shanghai")).plusDays(10);
     String start = utc(day, 9, 0), end = utc(day, 10, 0);
+    // CCR-SCH-SLOT-002: the fixture day is +10 business days, past the default 7-day horizon;
+    // this step tests staff readiness, not the bookable-range rule, so the store carries a
+    // permissive configured range.
+    db.jdbc.update(
+        "INSERT INTO merchant_schedule_booking_window(store_id,lead_minutes,max_days,version,"
+            + "created_at,updated_at) VALUES(?,0,999999,0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+        Long.parseLong(storeId));
     // CCR-SCH-SLOT-001: the slot is store-wide; the service's bookability comes from staff
     // capability + schedule coverage, which the steps below add progressively.
     db.jdbc.update(

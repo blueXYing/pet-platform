@@ -6,6 +6,7 @@ import com.petplatform.common.DecimalPublicIdCodec;
 import com.petplatform.schedule.api.dto.SelectionWindowDTO;
 import com.petplatform.schedule.api.dto.SelectionWindowPageDTO;
 import com.petplatform.schedule.api.query.SelectionWindowQuery;
+import com.petplatform.schedule.biz.infrastructure.persistence.ScheduleSqlRows;
 import com.petplatform.schedule.biz.infrastructure.persistence.SelectionReadStore;
 import com.petplatform.schedule.biz.infrastructure.persistence.SelectionReadStore.ClaimRow;
 import com.petplatform.schedule.biz.infrastructure.persistence.SelectionReadStore.WindowRow;
@@ -82,6 +83,15 @@ public final class SelectionWindowQueryService {
             if (store.hasBrokenClaimLinks(jdbc, id(query.storeId()), from, to)) {
                 unavailable("selection claim links are inconsistent");
             }
+            // CCR-SCH-SLOT-002: the store's bookable range (lead/maxDays, defaults 60/7)
+            // hides every slot starting before now+lead or after now+maxDays — the C-end
+            // selection list never offers an out-of-range slot.
+            Map<String, Object> bookingRow = jdbc.selectBookingWindow(id(query.storeId()));
+            BookingWindowRule.Range range = BookingWindowRule.resolve(
+                    bookingRow == null ? null
+                            : ScheduleSqlRows.nullableNumber(bookingRow, "lead_minutes"),
+                    bookingRow == null ? null
+                            : ScheduleSqlRows.nullableNumber(bookingRow, "max_days"));
             // Unified slots (CCR-SCH-SLOT-001): the whole store timeline is the candidate set.
             List<WindowRow> windows = store.windows(jdbc, id(query.storeId()), from, to);
             List<ClaimRow> claims = store.claims(jdbc, id(query.storeId()), from, to);
@@ -102,6 +112,10 @@ public final class SelectionWindowQueryService {
                 if (openDerived(row.status())) priorOpenEnd = row.end();
                 OffsetDateTime start = row.start().atOffset(ZoneOffset.UTC);
                 OffsetDateTime end = row.end().atOffset(ZoneOffset.UTC);
+                if (!BookingWindowRule.within(start.toInstant(), now, range)) {
+                    // Outside the bookable range: hidden from the selectable list entirely.
+                    continue;
+                }
                 int qualified;
                 try {
                     qualified = staff.countQualifiedAvailableStaff(query.storeId(),

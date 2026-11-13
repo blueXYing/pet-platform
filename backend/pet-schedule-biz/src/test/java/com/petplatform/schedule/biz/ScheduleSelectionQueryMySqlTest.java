@@ -10,10 +10,14 @@ import com.petplatform.common.ApiException;
 import com.petplatform.common.CommonApiCodes;
 import com.petplatform.common.OperatorType;
 import com.petplatform.common.QueryContext;
+import com.petplatform.schedule.api.dto.AvailabilityPageDTO;
 import com.petplatform.schedule.api.dto.SelectionWindowPageDTO;
+import com.petplatform.schedule.api.query.AvailabilityQuery;
 import com.petplatform.schedule.api.query.SelectionWindowQuery;
+import com.petplatform.schedule.biz.application.AvailabilityQueryService;
 import com.petplatform.schedule.biz.application.QualifiedStaffFactsPort;
 import com.petplatform.schedule.biz.application.SelectionWindowQueryService;
+import com.petplatform.schedule.biz.infrastructure.persistence.ScheduleReadStore;
 import com.petplatform.schedule.biz.infrastructure.persistence.SelectionReadStore;
 import com.petplatform.service.api.dto.ServiceBookabilityDTO;
 import com.petplatform.service.api.dto.ServiceSnapshotDTO;
@@ -177,6 +181,47 @@ class ScheduleSelectionQueryMySqlTest {
         }
     }
 
+    /**
+     * CCR-SCH-SLOT-002 (53号 §3.5 C 端强制): with no configuration row the default range is
+     * lead 60 minutes / horizon 7 days around the fixed clock 2029-12-31T00:00:00Z. Slots
+     * starting before now+60 or after now+7d never appear as items — neither in the
+     * selection projection nor in the availability aggregation — while the exact boundary
+     * starts (now+60m, now+7d) stay visible.
+     */
+    @Test
+    void defaultBookableRangeHidesOutOfRangeSlotsInSelectionAndAvailability() throws Exception {
+        try (Database db = new Database()) {
+            // Fixed "now" = 2029-12-31T00:00:00Z: +30m hidden, +60m visible (boundary),
+            // +90m visible, +7d visible (boundary), +7d30m hidden.
+            db.window(121, "2029-12-31 00:30:00", "2029-12-31 01:30:00");
+            db.window(122, "2029-12-31 01:00:00", "2029-12-31 01:30:00");
+            db.window(123, "2029-12-31 01:30:00", "2029-12-31 02:00:00");
+            db.window(124, "2030-01-07 00:00:00", "2030-01-07 00:30:00");
+            db.window(125, "2030-01-07 00:30:00", "2030-01-07 01:00:00");
+            SelectionWindowQuery range = new SelectionWindowQuery("301", "201",
+                    LocalDate.of(2029, 12, 31), LocalDate.of(2030, 1, 8), CONTEXT);
+            assertEquals(List.of("122", "123", "124"),
+                    service(db, FulfillmentType.IN_STORE).page(range).items().stream()
+                            .map(item -> item.windowId()).toList());
+            // The availability aggregation hides the same out-of-range slots.
+            AvailabilityPageDTO availability = availability(db).page(new AvailabilityQuery(
+                    "301", "201", LocalDate.of(2029, 12, 31), LocalDate.of(2030, 1, 8),
+                    CONTEXT));
+            assertEquals(List.of("2029-12-31T01:00Z", "2029-12-31T01:30Z", "2030-01-07T00:00Z"),
+                    availability.items().stream()
+                            .map(item -> item.start().toString()).toList());
+        }
+    }
+
+    private static AvailabilityQueryService availability(Database db) {
+        ServiceQueryApi services = mock(ServiceQueryApi.class);
+        when(services.checkBookable(any())).thenReturn(
+                new ServiceBookabilityDTO("301", "10", "201", true, List.of()));
+        QualifiedStaffFactsPort staff = (store, selectedService, from, to) -> 2;
+        return new AvailabilityQueryService(new ScheduleReadStore(db.source), services, staff,
+                Clock.fixed(Instant.parse("2029-12-31T00:00:00Z"), ZoneOffset.UTC));
+    }
+
     private static SelectionWindowQuery query() {
         return new SelectionWindowQuery("301", "201", DATE, DATE, CONTEXT);
     }
@@ -219,7 +264,8 @@ class ScheduleSelectionQueryMySqlTest {
                         "docs/03-database/06-核心数据库Schema-v0.1.sql"))) root = root.getParent();
                 if (root == null) throw new IllegalStateException("Schema06 is absent");
                 for (String script : List.of("06-核心数据库Schema-v0.1.sql",
-                        "37-Reservation-Protection-Foundation-Schema-v0.1.sql")) {
+                        "37-Reservation-Protection-Foundation-Schema-v0.1.sql",
+                        "53-Schedule-Write-Schema-v0.1.sql")) {
                     try (Connection connection = source.getConnection()) {
                         ScriptUtils.executeSqlScript(connection, new EncodedResource(
                                 new FileSystemResource(root.resolve("docs/03-database/" + script)),

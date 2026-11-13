@@ -5,7 +5,9 @@ import com.petplatform.common.*;
 import com.petplatform.schedule.api.command.ReservationSwapApi;
 import com.petplatform.schedule.api.dto.ScheduleProtectionTypes.*;
 import com.petplatform.schedule.api.protection.*;
+import com.petplatform.schedule.biz.application.BookingWindowRule;
 import com.petplatform.schedule.biz.infrastructure.persistence.ScheduleMybatis;
+import com.petplatform.schedule.biz.infrastructure.persistence.ScheduleSqlRows;
 import com.petplatform.schedule.biz.infrastructure.persistence.mapper.ScheduleSwapMapper;
 import com.petplatform.order.api.query.OrderProtectionFactsApi;
 import java.time.*;
@@ -32,6 +34,10 @@ public final class ReservationSwapApiImpl implements ReservationSwapApi {
  private final com.petplatform.schedule.biz.infrastructure.persistence.mapper.ScheduleCommandMapper commandMapper;
  public Result swap(Command c){
   if(c==null||c.context()==null||c.context().operatorType()!=OperatorType.USER||!Objects.equals(c.userId(),c.context().operatorId()))throw error(CommonApiCodes.FORBIDDEN);
+  // CCR-SCH-SLOT-002 (46号 reschedule): the exchanged-to times are new reservation times and
+  // must sit inside the store bookable range (absent row = defaults 60/7); out of range is a
+  // 400 COMMON_INVALID_ARGUMENT naming the range, before any proof or write.
+  requireWithinBookableRange(c);
   guard.requireHeld(c.storeId(),source);
   try{
    var q=new QueryContext(c.context().traceId(),OperatorType.SYSTEM,null);
@@ -102,6 +108,27 @@ public final class ReservationSwapApiImpl implements ReservationSwapApi {
    if(TransactionSynchronizationManager.getResource(source) instanceof ConnectionHolder h)h.setRollbackOnly();
    if(failure instanceof ApiException known)throw known;throw bad();
   }
+ }
+ /** 46号 shares the 38号 hold rule at the same admission point: IN_STORE checks the new
+   * appointment start, PICKUP_DELIVERY both directional starts; "now" is the caller's
+   * authoritative reschedule instant. */
+ private void requireWithinBookableRange(Command c){
+  Map<String,Object> row;
+  try{row=commandMapper.selectBookingWindow(apiId(c.storeId()));}
+  catch(RuntimeException unreadable){throw bad();}
+  var range=BookingWindowRule.resolve(row==null?null:ScheduleSqlRows.nullableNumber(row,"lead_minutes"),
+   row==null?null:ScheduleSqlRows.nullableNumber(row,"max_days"));
+  java.time.Instant now=c.rescheduledAt()==null?null:c.rescheduledAt().toInstant();
+  if("IN_STORE".equals(c.fulfillmentType())&&c.appointmentStart()!=null&&now!=null){
+   BookingWindowRule.requireWithin(c.appointmentStart().toInstant(),now,range);
+  }else if("PICKUP_DELIVERY".equals(c.fulfillmentType())&&now!=null){
+   if(c.pickupStart()!=null)BookingWindowRule.requireWithin(c.pickupStart().toInstant(),now,range);
+   if(c.returnStart()!=null)BookingWindowRule.requireWithin(c.returnStart().toInstant(),now,range);
+  }
+ }
+ private static long apiId(String value){
+  try{long id=IDS.fromApi(value);if(id<=0)throw new IllegalArgumentException("nonpositive");return id;}
+  catch(RuntimeException malformed){throw bad();}
  }
  private static LocalDateTime utc(OffsetDateTime t){return t==null?null:t.withOffsetSameInstant(ZoneOffset.UTC).toLocalDateTime();}
  private static Map<String,Object> values(Object...pairs){var m=new LinkedHashMap<String,Object>();for(int i=0;i<pairs.length;i+=2)m.put((String)pairs[i],pairs[i+1]);return m;}

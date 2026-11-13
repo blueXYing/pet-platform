@@ -44,4 +44,8 @@ public interface ScheduleCommandMapper {
     List<Long> crossStoreClaims(@Param("storeId") long storeId);
     List<Map<String, Object>> lockedCapabilities(@Param("staffIds") List<Long> staffIds);
     List<Map<String, Object>> lockedAvailability(@Param("storeId") long storeId);
+
+    /** Store-level bookable range for hold/swap admission (CCR-SCH-SLOT-002);
+     *  null = defaults (60/7). */
+    Map<String, Object> selectBookingWindow(@Param("storeId") long storeId);
 }

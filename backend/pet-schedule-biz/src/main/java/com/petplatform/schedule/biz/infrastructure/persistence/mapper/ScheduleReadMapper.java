@@ -44,4 +44,7 @@ public interface ScheduleReadMapper {
     /** Workbench staff availability list for one staff member, all statuses. */
     List<java.util.Map<String, Object>> listStaffWindows(@Param("storeId") long storeId,
             @Param("staffId") long staffId);
+
+    /** Store bookable range for the availability filter (CCR-SCH-SLOT-002); null = defaults. */
+    java.util.Map<String, Object> selectBookingWindow(@Param("storeId") long storeId);
 }

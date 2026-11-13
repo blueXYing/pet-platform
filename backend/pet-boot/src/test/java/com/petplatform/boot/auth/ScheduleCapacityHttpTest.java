@@ -92,7 +92,8 @@ class ScheduleCapacityHttpTest {
               "26-Admin-Auth-Schema-v0.1.sql",
               "28-Merchant-Agreement-Schema-v0.1.sql",
               "29-Merchant-Application-Schema-v0.1.sql",
-              "33-Service-Write-Schema-v0.1.sql")) {
+              "33-Service-Write-Schema-v0.1.sql",
+              "53-Schedule-Write-Schema-v0.1.sql")) {
         ScriptUtils.executeSqlScript(
             connection,
             new EncodedResource(
@@ -236,6 +237,13 @@ class ScheduleCapacityHttpTest {
     long storeId =
         db.jdbc.queryForObject(
             "SELECT id FROM merchant_store WHERE merchant_id=?", Long.class, merchantId);
+    // CCR-SCH-SLOT-002: the fixture day is +10 business days, past the default 7-day horizon;
+    // this slice tests staff-fact aggregation, not the bookable-range rule, so the store
+    // carries a permissive configured range.
+    db.jdbc.update(
+        "INSERT INTO merchant_schedule_booking_window(store_id,lead_minutes,max_days,version,"
+            + "created_at,updated_at) VALUES(?,0,999999,0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+        storeId);
     long otherStoreId = db.ids.nextId();
     db.jdbc.update(
         "INSERT INTO merchant_store(id,merchant_id,store_name,address,status,version,created_at,updated_at)"

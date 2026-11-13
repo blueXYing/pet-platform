@@ -35,4 +35,11 @@
            OR w.store_id&lt;&gt;c.store_id
            OR r.merchant_id&lt;&gt;w.merchant_id)
     </select>
+    <!-- CCR-SCH-SLOT-002: the store bookable range gates the selectable slot list;
+         no row = defaults (lead 60 minutes, horizon 7 days). -->
+    <select id="selectBookingWindow" resultType="map">
+        SELECT store_id, lead_minutes, max_days, version
+        FROM merchant_schedule_booking_window
+        WHERE store_id=#{storeId}
+    </select>
 </mapper>

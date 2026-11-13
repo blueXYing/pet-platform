@@ -884,6 +884,9 @@ class BookingCreateAcceptanceTest {
                 "47-Verification-Credential-Schema-v0.1.sql",
                 "48-Verification-Completion-Schema-v0.1.sql",
                 "49-Refund-Application-Schema-v0.1.sql",
+                // CCR-SCH-SLOT-002: merchant_schedule_booking_window backs the hold-side
+                // bookable-range admission this booking chain exercises.
+                "53-Schedule-Write-Schema-v0.1.sql",
                 // Contract-63 v0.2 disposal audit tables (33号 ruling); production runs the
                 // same DDL as the opt-in V32 admin-trade migration, never on startup.
                 "63-Admin-Trade-Disposition-Schema-v0.1.sql",
@@ -981,6 +984,14 @@ class BookingCreateAcceptanceTest {
             jdbc.update("INSERT INTO merchant_store(id,merchant_id,store_name,address,status,created_at,updated_at)"
                     + " VALUES(?,?,'首店','成都市锦江区测试路1号','ACTIVE',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
                     STORE, MERCHANT);
+            // CCR-SCH-SLOT-002: this chain books far-future (2030) fixtures against fixed
+            // 2029/real-time clocks (the PaymentFoundation/MerchantOrder/OrderReschedule/
+            // AfterSale chain mounts system clocks), so the store carries a permissive
+            // configured bookable range; the default 60/7 behaviour is covered in
+            // ReservationHoldMySqlTest / ScheduleSelectionQueryMySqlTest.
+            jdbc.update("INSERT INTO merchant_schedule_booking_window(store_id,lead_minutes,"
+                    + "max_days,version,created_at,updated_at) VALUES(?,0,999999,0,"
+                    + "UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))", STORE);
             seedApprovedApplicationAndAgreement();
             jdbc.update("INSERT INTO merchant_staff(id,merchant_id,store_id,staff_name,"
                     + "employment_status,service_enabled,created_at,updated_at)"

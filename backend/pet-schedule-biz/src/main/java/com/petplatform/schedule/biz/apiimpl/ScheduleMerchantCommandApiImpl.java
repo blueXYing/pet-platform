@@ -3,6 +3,12 @@ package com.petplatform.schedule.biz.apiimpl;
 import com.petplatform.schedule.api.command.ScheduleMerchantCommandApi;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BatchCloseCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BatchCloseResult;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BatchGenerateCommand;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BatchGenerateResult;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BookingWindowQuery;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BookingWindowReplaceCommand;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BookingWindowResult;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BookingWindowView;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CapabilityQuery;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CapabilityResult;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CapabilityView;
@@ -68,6 +74,21 @@ public final class ScheduleMerchantCommandApiImpl implements ScheduleMerchantCom
     @Override
     public BatchCloseResult batchClose(BatchCloseCommand command) {
         return commands.batchClose(command);
+    }
+
+    @Override
+    public BatchGenerateResult batchGenerate(BatchGenerateCommand command) {
+        return commands.batchGenerate(command);
+    }
+
+    @Override
+    public BookingWindowView getBookingWindow(BookingWindowQuery query) {
+        return commands.getBookingWindow(query);
+    }
+
+    @Override
+    public BookingWindowResult replaceBookingWindow(BookingWindowReplaceCommand command) {
+        return commands.replaceBookingWindow(command);
     }
 
     @Override

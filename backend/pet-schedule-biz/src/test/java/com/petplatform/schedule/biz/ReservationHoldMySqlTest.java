@@ -193,6 +193,65 @@ class ReservationHoldMySqlTest {
         }
     }
 
+    /**
+     * CCR-SCH-SLOT-002 (38号 hold admission): with NO configuration row the default range is
+     * lead 60 minutes / horizon 7 days around the fixed NOW 2026-09-27T12:34:56.789Z. Store
+     * 202 carries no merchant_schedule_booking_window row: a start before NOW+60 minutes or
+     * after NOW+7 days is a 400 whose message names the bookable range, an in-range start
+     * holds normally, and no rows survive a refused hold.
+     */
+    @Test
+    void defaultBookableRangeGatesHoldStartsWithoutARow() throws Exception {
+        try (Database db = new Database()) {
+            db.seedDefaultRangeWorld();
+            Components app = new Components(db);
+            // NOW+59m56s (minute-aligned 13:34:00) is inside the window but before the lead.
+            ApiException tooEarly = assertThrows(ApiException.class,
+                    () -> db.transaction().execute(status -> {
+                        app.guard.acquire(List.of("202"), QUERY);
+                        app.hold.hold(defaultRange("601",
+                                OffsetDateTime.parse("2026-09-27T13:34:00Z"),
+                                OffsetDateTime.parse("2026-09-27T13:44:00Z")));
+                        return null;
+                    }));
+            assertEquals(CommonApiCodes.INVALID_ARGUMENT, tooEarly.code());
+            assertTrue(tooEarly.getMessage().contains("bookable range"));
+            // NOW+7d+3s in minute terms (2026-10-04T12:35:00) is past the horizon; a far
+            // future start is refused the same way.
+            for (OffsetDateTime start : List.of(
+                    OffsetDateTime.parse("2026-10-04T12:35:00Z"),
+                    OffsetDateTime.parse("2030-01-01T01:00:00Z"))) {
+                assertEquals(CommonApiCodes.INVALID_ARGUMENT, assertThrows(ApiException.class,
+                        () -> db.transaction().execute(status -> {
+                            app.guard.acquire(List.of("202"), QUERY);
+                            app.hold.hold(defaultRange("602", start, start.plusMinutes(10)));
+                            return null;
+                        })).code());
+            }
+            assertEquals(0, db.count("schedule_reservation"));
+            assertEquals(0, db.count("schedule_reservation_claim"));
+            // NOW+60m04s (minute-aligned 13:35:00) sits inside [NOW+60m, NOW+7d] and holds.
+            HoldResult held = db.transaction().execute(status -> {
+                app.guard.acquire(List.of("202"), QUERY);
+                HoldResult result = app.hold.hold(defaultRange("603",
+                        OffsetDateTime.parse("2026-09-27T13:35:00Z"),
+                        OffsetDateTime.parse("2026-09-27T13:45:00Z")));
+                db.insertOrder(result, "IN_STORE", 202);
+                return result;
+            });
+            assertEquals("111", held.claims().getFirst().windowId());
+            assertEquals(1, db.count("schedule_reservation"));
+        }
+    }
+
+    /** A store-202 world with no booking-window row and one NOW-adjacent slot. */
+    private static HoldCommand defaultRange(String orderId, OffsetDateTime start,
+            OffsetDateTime end) {
+        return new HoldCommand(new CommandContext(UUID.randomUUID().toString(), "hold-test",
+                OperatorType.USER, "601", "test"), orderId, "601", "10", "202", "301",
+                "IN_STORE", start, end, null, null, "111", null, null);
+    }
+
     private static HoldCommand general(String orderId) {
         return general(orderId, COMMAND);
     }
@@ -287,7 +346,8 @@ class ReservationHoldMySqlTest {
                 if (root == null) throw new IllegalStateException("Schema06 is absent");
                 for (String script : List.of("06-核心数据库Schema-v0.1.sql",
                         "37-Reservation-Protection-Foundation-Schema-v0.1.sql",
-                        "38-Booking-Create-Schema-v0.1.sql")) {
+                        "38-Booking-Create-Schema-v0.1.sql",
+                        "53-Schedule-Write-Schema-v0.1.sql")) {
                     try (Connection connection = source.getConnection()) {
                         ScriptUtils.executeSqlScript(connection, new EncodedResource(
                                 new FileSystemResource(root.resolve("docs/03-database/" + script)),
@@ -301,6 +361,12 @@ class ReservationHoldMySqlTest {
         }
 
         private void seedGeneral() {
+            // CCR-SCH-SLOT-002: the seeded world holds a far-future (2030) window against the
+            // 2026 fixed clock, so store 201 carries a permissive configured bookable range;
+            // store 202 keeps NO row and exercises the default 60/7 range below.
+            jdbc.update("INSERT INTO merchant_schedule_booking_window(store_id,lead_minutes,"
+                    + "max_days,version,created_at,updated_at) VALUES(201,0,999999,0,"
+                    + "UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
             // CCR-SCH-SLOT-001: store-wide unified slot (no service_id/window_kind columns).
             jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,"
                     + "start_at,end_at,configured_capacity,status,version,created_at,"
@@ -312,6 +378,9 @@ class ReservationHoldMySqlTest {
         /** Unified slots: 102 carries the pickup time point, 103 the return time point (the
          * PICKUP/RETURN roles come from the hold selection, not from window columns). */
         private void seedPickup() {
+            jdbc.update("INSERT INTO merchant_schedule_booking_window(store_id,lead_minutes,"
+                    + "max_days,version,created_at,updated_at) VALUES(201,0,999999,0,"
+                    + "UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
             jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,"
                     + "start_at,end_at,configured_capacity,status,version,created_at,"
                     + "updated_at) VALUES"
@@ -336,15 +405,36 @@ class ReservationHoldMySqlTest {
         }
 
         private void insertOrder(HoldResult held, String type) {
+            insertOrder(held, type, 201);
+        }
+
+        private void insertOrder(HoldResult held, String type, long store) {
             jdbc.update("INSERT INTO pet_order(id,order_no,user_id,merchant_id,store_id,service_id,"
                     + "pet_id,reservation_id,order_stage,payment_status,verification_status,"
                     + "fulfillment_type,original_amount,discount_amount,pay_amount,refunded_amount,"
                     + "appointment_start_at,appointment_end_at,created_at,updated_at) VALUES"
-                    + "(?,901,601,10,201,301,701,?,'PENDING_PAYMENT','INIT','UNVERIFIED',"
+                    + "(?,901,601,10,?,301,701,?,'PENDING_PAYMENT','INIT','UNVERIFIED',"
                     + "?,100.00,0.00,100.00,0.00,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
-                    Long.parseLong(held.orderId()), Long.parseLong(held.reservationId()), type,
+                    Long.parseLong(held.orderId()), store, Long.parseLong(held.reservationId()),
+                    type,
                     java.sql.Timestamp.from(held.startAt().toInstant()),
                     java.sql.Timestamp.from(held.endAt().toInstant()));
+        }
+
+        /** Store-202 world for the CCR-SCH-SLOT-002 default-range test: no booking-window
+         * row, one NOW-adjacent unified slot and one covering qualified employee. */
+        private void seedDefaultRangeWorld() {
+            jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,"
+                    + "start_at,end_at,configured_capacity,status,version,created_at,"
+                    + "updated_at) VALUES(111,10,202,'2026-09-27 13:35:00',"
+                    + "'2026-09-27 14:05:00',2,'OPEN',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
+            jdbc.update("INSERT INTO staff_service_capability(id,staff_id,service_id,status,"
+                    + "created_at,updated_at) VALUES(422,401,301,'ENABLED',UTC_TIMESTAMP(3),"
+                    + "UTC_TIMESTAMP(3))");
+            jdbc.update("INSERT INTO staff_availability_window(id,store_id,staff_id,start_at,"
+                    + "end_at,status,version,created_at,updated_at) VALUES(424,202,401,"
+                    + "'2026-09-27 13:30:00','2026-09-27 14:10:00','AVAILABLE',0,"
+                    + "UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
         }
 
         private int count(String table) {
