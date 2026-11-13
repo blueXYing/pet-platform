@@ -2,8 +2,9 @@
 -- MySQL 8.0+. Apply after Schema06 (06号) and 37-Reservation-Protection-Foundation-Schema
 -- (37号) in an isolated/explicitly approved database only.
 -- No automatic migration, legacy backfill or production enablement.
--- window_kind on schedule_availability_window already exists via 37号; no window/availability
--- column changes are required for the write side.
+-- CCR-SCH-SLOT-001 (2026-11-13): schedule_availability_window is the store-wide unified
+-- slot table (no service/window_kind columns); no window/availability column changes are
+-- required for the write side.
 
 -- SCHC-2 capability set header (34号 Schedule-Protection-Storage §3): one monotonic BIGINT
 -- version per staff. Absent header + absent details reads as version "0"; details without a

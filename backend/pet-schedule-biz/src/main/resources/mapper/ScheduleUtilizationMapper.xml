@@ -9,7 +9,8 @@
       overlap(reservation,[from,to)) minutes.
     GREATEST(0, …) guards reversed rows; minute granularity is exact (minute-aligned facts,
     SSOT §13). Both statements carry the merchant+store double key and use the store-prefixed
-    index of their table (idx_schedule_service_time / idx_reservation_service_time).
+    index of their table (idx_schedule_store_time / idx_reservation_service_time; CCR-SCH-SLOT-001
+    renamed the window index when service_id left the table).
   -->
   <select id="availableMinutes" resultType="long">
     SELECT COALESCE(SUM(

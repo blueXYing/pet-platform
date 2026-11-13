@@ -81,7 +81,6 @@ public final class ScheduleMerchantCommandService implements ScheduleMerchantCom
     private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
     private static final ObjectMapper JSON =
             new ObjectMapper().registerModule(new JavaTimeModule());
-    private static final Set<String> WINDOW_KINDS = Set.of("GENERAL", "PICKUP", "RETURN");
     /** Technical column guard (06号 INT); no approved business capacity maximum exists. */
     private static final int MAX_CONFIGURED_CAPACITY = 1_000_000_000;
     /** 2026-10-05 ruling (blocker 3): one batch command processes at most 200 entries. */
@@ -124,26 +123,20 @@ public final class ScheduleMerchantCommandService implements ScheduleMerchantCom
 
     private record Executed<T>(boolean fresh, T result) {}
 
-    // ------------------------------------------------------------------ service windows
+    // ------------------------------------------------------- store-wide unified slot windows
 
     @Override
     public boolean createWindowOutcome(CreateWindowCommand c, WindowResult[] out) {
         CommandContext ctx = user(c == null ? null : c.context());
         windowId(c.merchantId(), "merchantId");
         windowId(c.storeId(), "storeId");
-        windowId(c.serviceId(), "serviceId");
         interval(c.startAt(), c.endAt());
-        if (c.windowKind() == null || !WINDOW_KINDS.contains(c.windowKind())) {
-            invalid("windowKind is invalid");
-        }
         if (c.configuredCapacity() < 1 || c.configuredCapacity() > MAX_CONFIGURED_CAPACITY) {
             invalid("configuredCapacity is invalid");
         }
         Map<String, Object> p = new LinkedHashMap<>();
         p.put("merchantId", c.merchantId());
         p.put("storeId", c.storeId());
-        p.put("serviceId", c.serviceId());
-        p.put("windowKind", c.windowKind());
         p.put("startAt", c.startAt().toString());
         p.put("endAt", c.endAt().toString());
         p.put("configuredCapacity", Integer.toString(c.configuredCapacity()));
@@ -156,16 +149,14 @@ public final class ScheduleMerchantCommandService implements ScheduleMerchantCom
                 m -> {
                     admissions.requireOperable(query(ctx), id(c.merchantId()), id(c.storeId()));
                     guard.acquire(List.of(c.storeId()), query(ctx));
-                    requireServiceIdentity(ctx, c.merchantId(), c.storeId(), c.serviceId(),
-                            c.windowKind());
+                    // CCR-SCH-SLOT-001: a window is a store-wide unified slot. No service
+                    // identity or fulfillment-kind binding exists to verify.
                     StoreScheduleFacts snapshot = facts.readStore(c.storeId(), query(ctx));
-                    ensureNoOpenOverlap(snapshot, c.serviceId(), c.windowKind(),
-                            c.startAt(), c.endAt(), null);
+                    ensureNoOpenOverlap(snapshot, c.startAt(), c.endAt(), null);
                     long windowId = store.nextId();
                     one(m.insertWindow(ScheduleSqlRows.values(
                             "id", windowId, "merchantId", id(c.merchantId()),
-                            "storeId", id(c.storeId()), "serviceId", id(c.serviceId()),
-                            "windowKind", c.windowKind(),
+                            "storeId", id(c.storeId()),
                             "startAt", utc(c.startAt()), "endAt", utc(c.endAt()),
                             "configuredCapacity", c.configuredCapacity(), "now", now())));
                     WindowResult result = rowToWindow(m.selectWindowByIdForUpdate(windowId));
@@ -229,9 +220,7 @@ public final class ScheduleMerchantCommandService implements ScheduleMerchantCom
                         stateNotAllowed();
                     }
                     if (timesChanged) {
-                        ensureNoOpenOverlap(snapshot, ScheduleSqlRows.id(row, "service_id"),
-                                ScheduleSqlRows.text(row, "window_kind"),
-                                c.startAt(), c.endAt(), c.windowId());
+                        ensureNoOpenOverlap(snapshot, c.startAt(), c.endAt(), c.windowId());
                     }
                     one(m.updateWindow(target, utc(c.startAt()), utc(c.endAt()), nextCapacity,
                             c.expectedVersion(), now()));
@@ -313,9 +302,7 @@ public final class ScheduleMerchantCommandService implements ScheduleMerchantCom
                     if (!"CLOSED".equals(ScheduleSqlRows.text(row, "status"))) stateNotAllowed();
                     requireCurrentVersion(row, c.expectedVersion());
                     StoreScheduleFacts snapshot = facts.readStore(c.storeId(), query(ctx));
-                    ensureNoOpenOverlap(snapshot, ScheduleSqlRows.id(row, "service_id"),
-                            ScheduleSqlRows.text(row, "window_kind"),
-                            ScheduleSqlRows.at(row, "start_at"),
+                    ensureNoOpenOverlap(snapshot, ScheduleSqlRows.at(row, "start_at"),
                             ScheduleSqlRows.at(row, "end_at"), c.windowId());
                     one(m.openWindow(id(c.windowId()), c.expectedVersion(), now()));
                     // Reopening re-derives the state from occupancy (2026-10-05 ruling): a
@@ -645,7 +632,7 @@ public final class ScheduleMerchantCommandService implements ScheduleMerchantCom
                     guard.acquire(List.of(c.storeId()), query(ctx));
                     requireActiveStaff(ctx, c.storeId(), c.staffId(), c.merchantId());
                     for (String serviceId : distinct) {
-                        requireServiceIdentity(ctx, c.merchantId(), c.storeId(), serviceId, null);
+                        requireServiceIdentity(ctx, c.merchantId(), c.storeId(), serviceId);
                     }
                     long staffKey = id(c.staffId());
                     Map<String, Object> header = m.selectCapabilitySetForUpdate(staffKey);
@@ -794,8 +781,10 @@ public final class ScheduleMerchantCommandService implements ScheduleMerchantCom
 
     // ------------------------------------------------------------------ guards and checks
 
+    /** Capability-set identity check (SCHC-2): the service must exist and belong to the store.
+     * CCR-SCH-SLOT-001 removed the fulfillment×kind matrix — windows carry no kind. */
     private void requireServiceIdentity(CommandContext ctx, String merchantId, String storeId,
-            String serviceId, String windowKind) {
+            String serviceId) {
         ServiceSnapshotDTO snapshot;
         try {
             snapshot = serviceFacts.getServiceSnapshot(
@@ -808,16 +797,6 @@ public final class ScheduleMerchantCommandService implements ScheduleMerchantCom
         }
         if (snapshot == null || !storeId.equals(snapshot.storeId())
                 || !merchantId.equals(snapshot.merchantId())) notFound();
-        if (windowKind == null) return;
-        // SCHW-D2 matrix: IN_STORE maintains GENERAL only; PICKUP_DELIVERY maintains
-        // PICKUP/RETURN only. Written command validation is a 400 (approved recommendation).
-        String fulfillment = snapshot.fulfillmentType() == null
-                ? null : snapshot.fulfillmentType().name();
-        boolean valid = "IN_STORE".equals(fulfillment)
-                ? "GENERAL".equals(windowKind)
-                : "PICKUP_DELIVERY".equals(fulfillment)
-                    && ("PICKUP".equals(windowKind) || "RETURN".equals(windowKind));
-        if (!valid) invalid("windowKind does not match the service fulfillment type");
     }
 
     private void requireActiveStaff(CommandContext ctx, String storeId, String staffId,
@@ -868,15 +847,14 @@ public final class ScheduleMerchantCommandService implements ScheduleMerchantCom
         }
     }
 
-    private static void ensureNoOpenOverlap(StoreScheduleFacts snapshot, String serviceId,
-            String kind, OffsetDateTime start, OffsetDateTime end, String excludedWindowId) {
+    /** CCR-SCH-SLOT-001: store-wide unified slots must not overlap — same store, every window. */
+    private static void ensureNoOpenOverlap(StoreScheduleFacts snapshot,
+            OffsetDateTime start, OffsetDateTime end, String excludedWindowId) {
         for (WindowFact window : snapshot.windows()) {
             // SOLD_OUT windows still hold their open slot: a sold-out window blocks overlapping
             // creations and reopens, so a later release can return it to OPEN without ever
             // producing two overlapping open windows (Contract53 §3).
             if ((!"OPEN".equals(window.status()) && !"SOLD_OUT".equals(window.status()))
-                    || !serviceId.equals(window.serviceId())
-                    || !kind.equals(window.kind())
                     || window.windowId().equals(excludedWindowId)) {
                 continue;
             }
@@ -884,7 +862,7 @@ public final class ScheduleMerchantCommandService implements ScheduleMerchantCom
             if (window.startAt().isBefore(end) && start.isBefore(window.endAt())) {
                 throw new ApiException(
                         ScheduleWriteApiCodes.SCHEDULE_WINDOW_OVERLAP,
-                        "an open window of the same service and kind already covers this interval");
+                        "an open window of this store already covers this interval");
             }
         }
     }
@@ -979,8 +957,6 @@ public final class ScheduleMerchantCommandService implements ScheduleMerchantCom
                 ScheduleSqlRows.id(row, "id"),
                 ScheduleSqlRows.id(row, "merchant_id"),
                 ScheduleSqlRows.id(row, "store_id"),
-                ScheduleSqlRows.id(row, "service_id"),
-                ScheduleSqlRows.text(row, "window_kind"),
                 ScheduleSqlRows.at(row, "start_at"),
                 ScheduleSqlRows.at(row, "end_at"),
                 (int) ScheduleSqlRows.number(row, "configured_capacity"),
@@ -990,7 +966,7 @@ public final class ScheduleMerchantCommandService implements ScheduleMerchantCom
 
     private static WindowResult toWindow(WindowFact window) {
         return new WindowResult(window.windowId(), window.merchantId(), window.storeId(),
-                window.serviceId(), window.kind(), window.startAt(), window.endAt(),
+                window.startAt(), window.endAt(),
                 window.configuredCapacity(), window.status(), window.version());
     }
 

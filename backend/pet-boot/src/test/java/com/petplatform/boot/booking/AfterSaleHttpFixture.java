@@ -193,14 +193,16 @@ final class AfterSaleHttpFixture implements AutoCloseable {
         var issued=credentials.issue(new VerificationCredentialApi.Issue(user(BUYER),id,view.credentialVersion(),"INITIAL"));as(ownerToken);
         var result=context.getBean(VerificationCompletionService.class).verify(new VerificationCompletionApi.Command(user(OWNER),id,STORE,issued.code(),issued.credentialVersion(),true));
         assertEquals("VERIFIED",result.resultCode());RequestContextHolder.resetRequestAttributes();return id;}
-    /** Same-store second verified order for ruling-32 sibling assertions: extend only static
-     * availability, advance the controlled clock past the first completed reservation's claim
-     * end, and rebook through the real APIs with the same live clock (the inherited foundation
-     * booking chain reads the system clock and would see the first claim as still future). */
+    /** Same-store second verified order for ruling-32 sibling assertions: book the second
+     * order on a fresh afternoon slot (CCR-SCH-SLOT-001: unified slots never overlap), advance
+     * the controlled clock past the first completed reservation's claim end, and rebook
+     * through the real APIs with the same live clock (the inherited foundation booking chain
+     * reads the system clock and would see the first claim as still future). */
     String secondVerifiedOrder()throws Exception{
         var foundation=ordinary.t.r.f.f;
-        foundation.db.jdbc.update("UPDATE schedule_availability_window SET end_at='2030-01-01 13:00:00' WHERE id=710500");
-        var start=OffsetDateTime.parse("2030-01-01T11:00:00Z");
+        var secondWindow=IDS.incrementAndGet();
+        foundation.db.jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,start_at,end_at,configured_capacity,status,created_at,updated_at) VALUES(?,710301,710302,'2030-01-01 12:20:00','2030-01-01 14:00:00',1,'OPEN',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",secondWindow);
+        var start=OffsetDateTime.parse("2030-01-01T12:30:00Z");
         var previousEnd=foundation.db.jdbc.queryForObject("SELECT MAX(end_at) FROM schedule_reservation",
                 LocalDateTime.class).atOffset(ZoneOffset.UTC);
         at(previousEnd.plusSeconds(1).toInstant());
@@ -216,7 +218,7 @@ final class AfterSaleHttpFixture implements AutoCloseable {
                 new BookingServiceFactsApiImpl(source,guard),guard,hold,new BookingCreateAcceptanceTest.InputProtector(),null,clock);
         String id=booking.create(new com.petplatform.order.api.dto.OrderCreationTypes.CreateOrderCommand(
                 user(BUYER),STORE,"710401","710200","IN_STORE",start,start.plusMinutes(90),
-                null,null,"710500",null,null,null,null,null)).orderId();
+                null,null,Long.toString(secondWindow),null,null,null,null,null)).orderId();
         var payment=foundation.prepare(id,rid());
         var notice=foundation.notice(payment,"SUCCESS","QA_AFS_HTTP_2ND_"+IDS.incrementAndGet(),payment.amount(),payment.amount());
         foundation.notification.receive(notice.headers(),notice.body());

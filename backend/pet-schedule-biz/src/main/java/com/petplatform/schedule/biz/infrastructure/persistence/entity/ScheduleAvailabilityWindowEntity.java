@@ -2,12 +2,12 @@ package com.petplatform.schedule.biz.infrastructure.persistence.entity;
 
 import java.time.LocalDateTime;
 
-/** Window row of schedule_availability_window (06 schema section 2). */
+/** Slot row of schedule_availability_window (06 schema section 2, CCR-SCH-SLOT-001 unified
+ * store-wide slots — no service/kind dimensions). */
 public final class ScheduleAvailabilityWindowEntity {
     private Long id;
     private Long merchantId;
     private Long storeId;
-    private Long serviceId;
     private LocalDateTime startAt;
     private LocalDateTime endAt;
     private Integer configuredCapacity;
@@ -17,7 +17,6 @@ public final class ScheduleAvailabilityWindowEntity {
     public Long getId() { return id; }
     public Long getMerchantId() { return merchantId; }
     public Long getStoreId() { return storeId; }
-    public Long getServiceId() { return serviceId; }
     public LocalDateTime getStartAt() { return startAt; }
     public LocalDateTime getEndAt() { return endAt; }
     public Integer getConfiguredCapacity() { return configuredCapacity; }
@@ -27,7 +26,6 @@ public final class ScheduleAvailabilityWindowEntity {
     public void setId(Long value) { id = value; }
     public void setMerchantId(Long value) { merchantId = value; }
     public void setStoreId(Long value) { storeId = value; }
-    public void setServiceId(Long value) { serviceId = value; }
     public void setStartAt(LocalDateTime value) { startAt = value; }
     public void setEndAt(LocalDateTime value) { endAt = value; }
     public void setConfiguredCapacity(Integer value) { configuredCapacity = value; }

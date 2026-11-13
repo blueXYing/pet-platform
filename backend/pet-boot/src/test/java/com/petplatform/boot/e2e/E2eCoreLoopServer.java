@@ -1203,10 +1203,10 @@ public final class E2eCoreLoopServer {
         String end = beijingToday.plusDays(day).atTime(hour, 0).plusMinutes(60)
             .atZone(CHANNEL_ZONE).withZoneSameInstant(java.time.ZoneOffset.UTC)
             .format(sql);
-        jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,service_id,"
-            + "start_at,end_at,configured_capacity,status,window_kind,created_at,updated_at)"
-            + " VALUES(?,?,?,?,?, ?,6,'OPEN','GENERAL',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
-            ids.nextId(), MERCHANT, STORE, SERVICE, start, end);
+        jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,"
+            + "start_at,end_at,configured_capacity,status,created_at,updated_at)"
+            + " VALUES(?,?,?, ?,?, 6,'OPEN',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+            ids.nextId(), MERCHANT, STORE, start, end);
       }
     }
     // Round 3: contract-61 coupon walkthrough facts for the seeded C user. The template carries

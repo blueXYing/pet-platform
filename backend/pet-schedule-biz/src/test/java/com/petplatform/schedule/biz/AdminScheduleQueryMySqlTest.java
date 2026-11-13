@@ -70,11 +70,12 @@ class AdminScheduleQueryMySqlTest {
     }
 
     private void seed() {
-        // Service windows: one OPEN with live claims, one CLOSED, one SOLD_OUT, one far away.
-        window(101, "GENERAL", "2030-01-01 01:00:00", "2030-01-01 02:00:00", 3, "OPEN", 5);
-        window(102, "GENERAL", "2030-01-02 01:00:00", "2030-01-02 02:00:00", 2, "CLOSED", 2);
-        window(103, "PICKUP", "2030-01-03 01:00:00", "2030-01-03 02:00:00", 1, "SOLD_OUT", 3);
-        window(104, "GENERAL", "2030-02-01 01:00:00", "2030-02-01 02:00:00", 2, "OPEN", 0);
+        // Unified slots (CCR-SCH-SLOT-001): one OPEN with live claims, one CLOSED, one
+        // SOLD_OUT, one far away; claim kinds (GENERAL/PICKUP) stay on the claim rows.
+        window(101, "2030-01-01 01:00:00", "2030-01-01 02:00:00", 3, "OPEN", 5);
+        window(102, "2030-01-02 01:00:00", "2030-01-02 02:00:00", 2, "CLOSED", 2);
+        window(103, "2030-01-03 01:00:00", "2030-01-03 02:00:00", 1, "SOLD_OUT", 3);
+        window(104, "2030-02-01 01:00:00", "2030-02-01 02:00:00", 2, "OPEN", 0);
         // Reservations: confirmed + live lock on 101; expired lock; timeout release; pickup trip.
         reservation(601, 701, "CONFIRMED", "IN_STORE", "2030-01-01 01:00:00", "2030-01-01 02:00:00", "2030-01-01 00:30:00");
         reservation(602, 702, "TEMP_LOCKED", "IN_STORE", "2030-01-01 01:00:00", "2030-01-01 02:00:00", "2030-01-01 00:30:00");
@@ -92,9 +93,9 @@ class AdminScheduleQueryMySqlTest {
         jdbc().update("INSERT INTO staff_availability_window(id,store_id,staff_id,start_at,end_at,status,version,created_at,updated_at) VALUES(802,201,402,'2030-01-01 01:00:00','2030-01-01 02:00:00','CLOSED',1,'2029-12-30 08:00:00','2029-12-30 08:00:00')");
     }
 
-    private void window(long id, String kind, String start, String end, int capacity, String status, int version) {
-        jdbc().update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,service_id,window_kind,start_at,end_at,configured_capacity,status,version,created_at,updated_at) VALUES(?,10,201,301,?,?,?,?,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
-                id, kind, start, end, capacity, status, version);
+    private void window(long id, String start, String end, int capacity, String status, int version) {
+        jdbc().update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,start_at,end_at,configured_capacity,status,version,created_at,updated_at) VALUES(?,10,201,?,?,?,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+                id, start, end, capacity, status, version);
     }
 
     private void reservation(long id, long orderId, String status, String fulfillment,
@@ -167,7 +168,7 @@ class AdminScheduleQueryMySqlTest {
     @Test
     void windowListCarriesSoldOutNotionOccupancyAndFilters() {
         PageResult<AdminScheduleQueryApi.AdminScheduleWindow> page = api.listWindows(
-                new AdminWindowListQuery(null, null, null, null, null, null, null, 1, 20,
+                new AdminWindowListQuery(null, null, null, null, null, 1, 20,
                         query(), authorization()));
         assertEquals("schedule.read", lastCollectionAction.get());
         assertEquals(4, page.total());
@@ -183,19 +184,16 @@ class AdminScheduleQueryMySqlTest {
         assertEquals("SOLD_OUT", soldOut.status());
         assertEquals(1, soldOut.confirmedCount());
         assertEquals(0, soldOut.tempLockedCount());
-        assertEquals("PICKUP", soldOut.windowKind());
-        assertEquals(1, api.listWindows(new AdminWindowListQuery(null, null, null, null,
+        assertEquals(1, api.listWindows(new AdminWindowListQuery(null, null,
                 "SOLD_OUT", null, null, 1, 20, query(), authorization())).total());
-        assertEquals(1, api.listWindows(new AdminWindowListQuery(null, null, null, "PICKUP",
+        assertEquals(0, api.listWindows(new AdminWindowListQuery("11", null,
                 null, null, null, 1, 20, query(), authorization())).total());
-        assertEquals(0, api.listWindows(new AdminWindowListQuery("11", null, null, null, null,
-                null, null, 1, 20, query(), authorization())).total());
-        var range = api.listWindows(new AdminWindowListQuery(null, null, null, null, null,
+        var range = api.listWindows(new AdminWindowListQuery(null, null, null,
                 utc("2030-01-01T00:00:00.000Z"), utc("2030-01-03T00:00:00.000Z"), 1, 20,
                 query(), authorization()));
         assertEquals(2, range.total());
-        var paged = api.listWindows(new AdminWindowListQuery(null, null, null, null, null, null,
-                null, 2, 2, query(), authorization()));
+        var paged = api.listWindows(new AdminWindowListQuery(null, null, null, null, null,
+                2, 2, query(), authorization()));
         assertEquals(4, paged.total());
         assertEquals(2, paged.items().size());
         assertEquals("102", paged.items().get(0).windowId());
@@ -243,18 +241,16 @@ class AdminScheduleQueryMySqlTest {
 
     @Test
     void vocabularyRangeValidationRejectsInvalidInput() {
-        assertInvalidWindows(new AdminWindowListQuery(null, null, null, "DROPIN", null, null, null, 1,
-                20, query(), authorization()));
-        assertInvalidWindows(new AdminWindowListQuery(null, null, null, null, "PAUSED", null, null, 1,
+        assertInvalidWindows(new AdminWindowListQuery(null, null, "PAUSED", null, null, 1,
                 20, query(), authorization()));
         assertInvalidStaff(new AdminStaffWindowListQuery(null, null, "SLEEPING", null, null, 1, 20,
                 query(), authorization()));
         assertInvalidReservations(new AdminReservationListQuery(null, null, null, null, "LOCKED", null, null,
                 1, 20, query(), authorization()));
         // Unpaired range and over-long range (92-day cap) both reject.
-        assertInvalidWindows(new AdminWindowListQuery(null, null, null, null, null,
+        assertInvalidWindows(new AdminWindowListQuery(null, null, null,
                 utc("2030-01-01T00:00:00.000Z"), null, 1, 20, query(), authorization()));
-        assertInvalidWindows(new AdminWindowListQuery(null, null, null, null, null,
+        assertInvalidWindows(new AdminWindowListQuery(null, null, null,
                 utc("2030-01-01T00:00:00.000Z"), utc("2030-05-01T00:00:00.000Z"), 1, 20,
                 query(), authorization()));
         assertInvalidReservations(new AdminReservationListQuery(null, null, null, null, null,
@@ -281,7 +277,7 @@ class AdminScheduleQueryMySqlTest {
     void authorizationFailuresStayClosed() {
         assertEquals(CommonApiCodes.FORBIDDEN, assertThrows(ApiException.class,
                 () -> api(false, "ACTION_NOT_GRANTED").listWindows(new AdminWindowListQuery(null,
-                        null, null, null, null, null, null, 1, 20, query(), authorization())))
+                        null, null, null, null, 1, 20, query(), authorization())))
                 .code());
         // A present but denied decision stays 403 even without a reason code.
         assertEquals(CommonApiCodes.FORBIDDEN, assertThrows(ApiException.class,
@@ -298,7 +294,7 @@ class AdminScheduleQueryMySqlTest {
                         authorization()))).code());
         assertEquals(CommonApiCodes.UNAUTHORIZED, assertThrows(ApiException.class,
                 () -> api.listWindows(new AdminWindowListQuery(null, null, null, null, null,
-                        null, null, 1, 20, query(), new AdminAuthorization("", 1)))).code());
+                        1, 20, query(), new AdminAuthorization("", 1)))).code());
     }
 
     private static final class Database implements AutoCloseable {

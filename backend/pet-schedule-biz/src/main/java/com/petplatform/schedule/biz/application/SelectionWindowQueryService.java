@@ -29,7 +29,14 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-/** SCH original-window display projection. It never creates a hold or promises a staff assignment. */
+/**
+ * SCH slot display projection (CCR-SCH-SLOT-001 unified slots). It never creates a hold or
+ * promises a staff assignment. The slot list is the store's whole open timeline; a slot is
+ * bookable for the queried service when that service has qualified, scheduled staff covering
+ * it. The C-side item keeps its historical windowId/kind shape: kind is the selection ROLE the
+ * service's fulfillment projects onto the slot (GENERAL for IN_STORE; PICKUP and RETURN for
+ * PICKUP_DELIVERY), so the existing booking/reschedule consumers stay unchanged.
+ */
 public final class SelectionWindowQueryService {
     private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
     private final SelectionReadStore store;
@@ -61,15 +68,8 @@ public final class SelectionWindowQueryService {
                 || !snapshot.merchantId().equals(latest.merchantId())) {
             unavailable("service binding changed during selection read");
         }
-        String applicable = switch (snapshot.fulfillmentType()) {
-            case IN_STORE -> "GENERAL";
-            case PICKUP_DELIVERY -> "PICKUP_RETURN";
-        };
-        if (query.kind() != null && !("GENERAL".equals(applicable) && "GENERAL".equals(query.kind()))
-                && !("PICKUP_RETURN".equals(applicable)
-                        && ("PICKUP".equals(query.kind()) || "RETURN".equals(query.kind())))) {
-            invalid("kind does not match service fulfillment");
-        }
+        boolean pickupDelivery =
+                snapshot.fulfillmentType() == FulfillmentType.PICKUP_DELIVERY;
         if (staff == null) unavailable("qualified staff facts provider is unavailable");
 
         LocalDateTime from = query.startDate().atStartOfDay(AvailabilityQueryService.BUSINESS_ZONE)
@@ -79,22 +79,27 @@ public final class SelectionWindowQueryService {
                 .withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
         Instant now = clock.instant();
         List<SelectionWindowDTO> items = store.read(jdbc -> {
-            if (store.hasBrokenClaimLinks(jdbc, id(query.storeId()), id(query.serviceId()),
-                    from, to)) unavailable("selection claim links are inconsistent");
-            List<WindowRow> windows = store.windows(jdbc, id(query.storeId()),
-                    id(query.serviceId()), from, to);
-            List<ClaimRow> claims = store.claims(jdbc, id(query.storeId()),
-                    id(query.serviceId()), from, to);
+            if (store.hasBrokenClaimLinks(jdbc, id(query.storeId()), from, to)) {
+                unavailable("selection claim links are inconsistent");
+            }
+            // Unified slots (CCR-SCH-SLOT-001): the whole store timeline is the candidate set.
+            List<WindowRow> windows = store.windows(jdbc, id(query.storeId()), from, to);
+            List<ClaimRow> claims = store.claims(jdbc, id(query.storeId()), from, to);
             Map<Long, Set<Long>> occupied = occupancy(claims, query, snapshot);
             List<SelectionWindowDTO> result = new ArrayList<>();
-            Map<String, LocalDateTime> openEnds = new HashMap<>();
             Set<Long> windowIds = new HashSet<>();
+            LocalDateTime priorOpenEnd = null;
             for (WindowRow row : windows) {
-                validateWindow(row, query, snapshot.merchantId(), windowIds, openEnds);
-                // SOLD_OUT stays listed as an open-derived window: remaining=0 keeps it
-                // unbookable exactly like an at-capacity OPEN window was (Contract53 §3).
-                if (!openDerived(row.status()) || !matches(row.kind(), applicable, query.kind())
+                validateWindow(row, query, snapshot.merchantId(), windowIds);
+                // SOLD_OUT stays listed as an open-derived slot: remaining=0 keeps it
+                // unbookable exactly like an at-capacity OPEN slot was (Contract53 §3).
+                if (!openDerived(row.status())
                         || !row.end().toInstant(ZoneOffset.UTC).isAfter(now)) continue;
+                // Store-wide slots may not overlap; adjacency is allowed.
+                if (priorOpenEnd != null && priorOpenEnd.isAfter(row.start())) {
+                    unavailable("overlapping original selection slots");
+                }
+                if (openDerived(row.status())) priorOpenEnd = row.end();
                 OffsetDateTime start = row.start().atOffset(ZoneOffset.UTC);
                 OffsetDateTime end = row.end().atOffset(ZoneOffset.UTC);
                 int qualified;
@@ -108,12 +113,23 @@ public final class SelectionWindowQueryService {
                             "qualified staff facts are unavailable");
                 }
                 if (qualified < 0) unavailable("qualified staff count is invalid");
+                // Effective capacity keeps the SSOT §12 service view: min(slot capacity,
+                // qualified staff of this service covering the slot).
                 int effective = Math.min(row.configuredCapacity(), qualified);
                 int taken = occupied.getOrDefault(row.id(), Set.of()).size();
                 int remaining = Math.max(0, effective - taken);
-                result.add(new SelectionWindowDTO(IDS.toApi(row.id()), row.kind(), start, end,
-                        effective, taken, remaining,
-                        start.toInstant().isAfter(now) && remaining > 0));
+                boolean available = start.toInstant().isAfter(now) && remaining > 0;
+                // Role projection keeps the historical item shape: a pickup-delivery service
+                // sees the same slot as both a PICKUP and a RETURN candidate.
+                if (pickupDelivery) {
+                    result.add(new SelectionWindowDTO(IDS.toApi(row.id()), "PICKUP", start, end,
+                            effective, taken, remaining, available));
+                    result.add(new SelectionWindowDTO(IDS.toApi(row.id()), "RETURN", start, end,
+                            effective, taken, remaining, available));
+                } else {
+                    result.add(new SelectionWindowDTO(IDS.toApi(row.id()), "GENERAL", start, end,
+                            effective, taken, remaining, available));
+                }
             }
             return List.copyOf(result);
         });
@@ -134,30 +150,15 @@ public final class SelectionWindowQueryService {
         return facts;
     }
 
-    private static boolean matches(String kind, String applicable, String requested) {
-        return ("GENERAL".equals(applicable) ? "GENERAL".equals(kind)
-                : ("PICKUP".equals(kind) || "RETURN".equals(kind)))
-                && (requested == null || requested.equals(kind));
-    }
-
     private static void validateWindow(WindowRow row, SelectionWindowQuery query,
-            String merchantId, Set<Long> ids, Map<String, LocalDateTime> openEnds) {
-        if (row.id() <= 0 || row.merchantId() <= 0 || row.storeId() <= 0
-                || row.serviceId() <= 0 || !ids.add(row.id())
+            String merchantId, Set<Long> ids) {
+        if (row.id() <= 0 || row.merchantId() <= 0 || row.storeId() <= 0 || !ids.add(row.id())
                 || !merchantId.equals(IDS.toApi(row.merchantId()))
                 || !query.storeId().equals(IDS.toApi(row.storeId()))
-                || !query.serviceId().equals(IDS.toApi(row.serviceId()))
-                || !validKind(row.kind()) || !validInterval(row.start(), row.end())
+                || !validInterval(row.start(), row.end())
                 || row.configuredCapacity() < 1 || row.version() < 0
                 || !(openDerived(row.status()) || "CLOSED".equals(row.status()))) {
             unavailable("selection window facts are invalid");
-        }
-        // SOLD_OUT is an open-derived sub-state and joins the same overlap invariant.
-        if (openDerived(row.status())) {
-            LocalDateTime priorEnd = openEnds.put(row.kind(), row.end());
-            if (priorEnd != null && priorEnd.isAfter(row.start())) {
-                unavailable("overlapping original selection windows");
-            }
         }
     }
 
@@ -165,15 +166,15 @@ public final class SelectionWindowQueryService {
         return "OPEN".equals(status) || "SOLD_OUT".equals(status);
     }
 
+    /** Single-pool occupancy (CCR-SCH-SLOT-001): active claims on each slot across all
+     * services — each reservation's claim structure follows its own fulfillment type. */
     private static Map<Long, Set<Long>> occupancy(List<ClaimRow> rows,
             SelectionWindowQuery query, ServiceSnapshotDTO snapshot) {
-        FulfillmentType fulfillment = snapshot.fulfillmentType();
         Map<Long, List<ClaimRow>> byReservation = new HashMap<>();
         for (ClaimRow row : rows) {
             if (row.reservationId() <= 0 || row.merchantId() <= 0
                     || !snapshot.merchantId().equals(IDS.toApi(row.merchantId()))
                     || !query.storeId().equals(IDS.toApi(row.storeId()))
-                    || !query.serviceId().equals(IDS.toApi(row.serviceId()))
                     || !validInterval(row.start(), row.end())
                     || !("TEMP_LOCKED".equals(row.status()) || "CONFIRMED".equals(row.status())
                             || "RELEASED".equals(row.status()) || "EXPIRED".equals(row.status()))) {
@@ -187,8 +188,14 @@ public final class SelectionWindowQueryService {
         Map<Long, Set<Long>> occupied = new HashMap<>();
         for (List<ClaimRow> claims : byReservation.values()) {
             ClaimRow parent = claims.getFirst();
-            if (!fulfillment.name().equals(parent.fulfillmentType())
-                    || claims.size() != (fulfillment == FulfillmentType.IN_STORE ? 1 : 2)) {
+            FulfillmentType fulfillment;
+            try {
+                fulfillment = FulfillmentType.valueOf(parent.fulfillmentType());
+            } catch (RuntimeException unknown) {
+                unavailable("active reservation fulfillment is unknown");
+                throw unknown;
+            }
+            if (claims.size() != (fulfillment == FulfillmentType.IN_STORE ? 1 : 2)) {
                 unavailable("active reservation claims are incomplete");
             }
             Set<String> kinds = new HashSet<>();
@@ -196,15 +203,13 @@ public final class SelectionWindowQueryService {
                 if (claim.claimId() == null || claim.claimId() <= 0
                         || claim.windowId() == null || claim.windowId() <= 0
                         || claim.claimStoreId() == null || claim.claimStoreId() != parent.storeId()
-                        || claim.claimServiceId() == null || claim.claimServiceId() != parent.serviceId()
+                        || claim.claimServiceId() == null
+                        || claim.claimServiceId() != parent.serviceId()
                         || claim.originalMerchantId() == null
                         || claim.originalMerchantId() != parent.merchantId()
                         || claim.originalStoreId() == null
                         || claim.originalStoreId() != parent.storeId()
-                        || claim.originalServiceId() == null
-                        || claim.originalServiceId() != parent.serviceId()
                         || !validKind(claim.claimKind()) || !kinds.add(claim.claimKind())
-                        || !claim.claimKind().equals(claim.originalKind())
                         || !("OPEN".equals(claim.originalStatus())
                                 || "SOLD_OUT".equals(claim.originalStatus()))
                         || !validInterval(claim.claimStart(), claim.claimEnd())
@@ -252,7 +257,6 @@ public final class SelectionWindowQueryService {
                 || ChronoUnit.DAYS.between(query.startDate(), query.endDate()) + 1 > 31) {
             invalid("selection date range is invalid");
         }
-        if (query.kind() != null && !validKind(query.kind())) invalid("kind is invalid");
     }
 
     private static boolean validKind(String kind) {

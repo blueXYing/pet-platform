@@ -11,8 +11,8 @@ import java.util.List;
 public final class ScheduleWorkbenchTypes {
     private ScheduleWorkbenchTypes() {}
 
-    public record WindowItem(String windowId, String merchantId, String storeId, String serviceId,
-            String windowKind, OffsetDateTime startAt, OffsetDateTime endAt, int configuredCapacity,
+    public record WindowItem(String windowId, String merchantId, String storeId,
+            OffsetDateTime startAt, OffsetDateTime endAt, int configuredCapacity,
             String status, String version, OffsetDateTime updatedAt) {}
 
     /** Pagination envelope (53号 §3.3): total/page/pageSize are null in the legacy unpaginated

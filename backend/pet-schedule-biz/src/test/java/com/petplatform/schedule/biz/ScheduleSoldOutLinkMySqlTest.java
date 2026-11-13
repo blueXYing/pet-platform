@@ -145,6 +145,36 @@ class ScheduleSoldOutLinkMySqlTest {
         }
     }
 
+    /**
+     * CCR-SCH-SLOT-001 single capacity pool: service 301 and service 302 share slot 101. Two
+     * cross-service claims fill capacity 2, the slot derives SOLD_OUT from the cross-service
+     * claim total, and a third hold of either service is refused by the shared pool — not by
+     * per-service accounting.
+     */
+    @Test
+    void crossServiceClaimsShareOneCapacityPoolAndSoldOutDerivation() throws Exception {
+        try (Database db = new Database()) {
+            App app = new App(db);
+            db.seedGeneral(2);
+            db.seedSecondService(); // staff 401 also qualified for service 302
+            HoldResult serviceA = app.hold("501", "301");
+            HoldResult serviceB = app.hold("502", "302");
+            assertEquals("101", serviceA.claims().getFirst().windowId());
+            assertEquals("101", serviceB.claims().getFirst().windowId());
+            // Two active claims from two different services fill the unified slot's capacity 2.
+            assertEquals("SOLD_OUT", db.windowStatus(101));
+            assertEquals("1", db.windowVersion(101));
+            // The pool is exhausted for every service of the store, not just the ones holding
+            // claims: a fresh candidate of service 302 (which made only one claim) is refused.
+            assertEquals("SCHEDULE_CAPACITY_EXCEEDED", assertThrows(ApiException.class,
+                    () -> app.checkBooking("302", S,
+                            OffsetDateTime.parse("2030-01-01T01:30:00Z"))).code());
+            // Freeing the service-302 occupancy returns the slot to the shared pool.
+            app.release(serviceB, "701");
+            assertEquals("OPEN", db.windowStatus(101));
+        }
+    }
+
     @Test
     void concurrentHoldsCannotOversellTheLastSlot() throws Exception {
         try (Database db = new Database()) {
@@ -293,10 +323,10 @@ class ScheduleSoldOutLinkMySqlTest {
             app.hold("501");
             assertEquals("SOLD_OUT", db.windowStatus(101));
             db.jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,"
-                    + "service_id,start_at,end_at,configured_capacity,status,version,"
-                    + "created_at,updated_at,window_kind) VALUES(105,10,201,301,"
+                    + "start_at,end_at,configured_capacity,status,version,"
+                    + "created_at,updated_at) VALUES(105,10,201,"
                     + "'2030-01-01 03:00:00','2030-01-01 04:00:00',1,'OPEN',0,"
-                    + "UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),'GENERAL')");
+                    + "UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
             BatchCloseResult result = app.commands.batchClose(
                     batch(LocalDate.parse("2030-01-01"), LocalDate.parse("2030-01-01")));
             assertEquals(List.of("105"), result.closedWindows().stream()
@@ -415,13 +445,18 @@ class ScheduleSoldOutLinkMySqlTest {
 
         /** One guarded booking hold on window 101's interval; commits with its order row. */
         private HoldResult hold(String orderId) {
+            return hold(orderId, "301");
+        }
+
+        /** Same hold for an arbitrary service of the store (cross-service pool coverage). */
+        private HoldResult hold(String orderId, String serviceId) {
             HoldResult held = tx.execute(status -> {
                 guard.acquire(List.of(STORE), query());
                 HoldResult result = holds.hold(new HoldCommand(ctx(), orderId, "601", "10",
-                        STORE, "301", "IN_STORE", S,
+                        STORE, serviceId, "IN_STORE", S,
                         OffsetDateTime.parse("2030-01-01T01:30:00Z"), null, null, "101",
                         null, null));
-                insertOrder(result);
+                insertOrder(result, serviceId);
                 return result;
             });
             if (held == null) throw new IllegalStateException("hold failed");
@@ -437,16 +472,20 @@ class ScheduleSoldOutLinkMySqlTest {
                         STORE, "301", "IN_STORE", S,
                         OffsetDateTime.parse("2030-01-01T01:30:00Z"), null, null, "101",
                         null, null));
-                insertOrder(result);
+                insertOrder(result, "301");
                 return result;
             });
         }
 
         /** Re-proof through the public booking guard: a fresh candidate must be refused. */
         private void checkBooking(OffsetDateTime start, OffsetDateTime end) {
+            checkBooking("301", start, end);
+        }
+
+        private void checkBooking(String serviceId, OffsetDateTime start, OffsetDateTime end) {
             tx.execute(status -> {
                 guard.acquire(List.of(STORE), query());
-                proof.checkNewReservation(new CapacityProofQuery(STORE, "301", "IN_STORE",
+                proof.checkNewReservation(new CapacityProofQuery(STORE, serviceId, "IN_STORE",
                         start, end, null, null, null, query()));
                 return null;
             });
@@ -487,15 +526,16 @@ class ScheduleSoldOutLinkMySqlTest {
             });
         }
 
-        private void insertOrder(HoldResult held) {
+        private void insertOrder(HoldResult held, String serviceId) {
             db.jdbc.update("INSERT INTO pet_order(id,order_no,user_id,merchant_id,"
                     + "store_id,service_id,pet_id,reservation_id,order_stage,payment_status,"
                     + "verification_status,fulfillment_type,original_amount,discount_amount,"
                     + "pay_amount,refunded_amount,appointment_start_at,appointment_end_at,"
-                    + "created_at,updated_at) VALUES(?,?,601,10,201,301,701,?,"
+                    + "created_at,updated_at) VALUES(?,?,601,10,201,?,701,?,"
                     + "'PENDING_PAYMENT','INIT','UNVERIFIED','IN_STORE',100.00,0.00,100.00,"
                     + "0.00,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
                     Long.parseLong(held.orderId()), Long.parseLong(held.orderId()),
+                    Long.parseLong(serviceId),
                     Long.parseLong(held.reservationId()),
                     java.sql.Timestamp.from(held.startAt().toInstant()),
                     java.sql.Timestamp.from(held.endAt().toInstant()));
@@ -671,14 +711,15 @@ class ScheduleSoldOutLinkMySqlTest {
             }
         }
 
-        /** Window 101 (capacity as given) plus two qualified scheduled employees 401/402:
-         * overlapping claims each need a distinct qualified staff member (SCH solver). */
+        /** Window 101 (capacity as given, CCR-SCH-SLOT-001 store-wide unified slot) plus two
+         * qualified scheduled employees 401/402: overlapping claims each need a distinct
+         * qualified staff member (SCH solver). */
         private void seedGeneral(int capacity) {
             jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,"
-                    + "service_id,start_at,end_at,configured_capacity,status,version,"
-                    + "created_at,updated_at,window_kind) VALUES(101,10,201,301,"
+                    + "start_at,end_at,configured_capacity,status,version,"
+                    + "created_at,updated_at) VALUES(101,10,201,"
                     + "'2030-01-01 01:00:00','2030-01-01 02:00:00'," + capacity
-                    + ",'OPEN',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),'GENERAL')");
+                    + ",'OPEN',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
             jdbc.update("INSERT INTO staff_service_capability(id,staff_id,service_id,status,"
                     + "created_at,updated_at) VALUES(402,401,301,'ENABLED',UTC_TIMESTAMP(3),"
                     + "UTC_TIMESTAMP(3))");
@@ -695,8 +736,16 @@ class ScheduleSoldOutLinkMySqlTest {
                     + "UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
         }
 
-        /** `count` non-overlapping hourly open GENERAL windows intersecting the batch range
-         * 2030-01-01..2030-01-09 (one service+kind window pair must never overlap). */
+        /** A second service of the same store sharing the unified slot pool: staff 401 is
+         * qualified for both 301 and 302 (CCR-SCH-SLOT-001 cross-service capacity pool). */
+        private void seedSecondService() {
+            jdbc.update("INSERT INTO staff_service_capability(id,staff_id,service_id,status,"
+                    + "created_at,updated_at) VALUES(422,401,302,'ENABLED',UTC_TIMESTAMP(3),"
+                    + "UTC_TIMESTAMP(3))");
+        }
+
+        /** `count` non-overlapping hourly open unified slots intersecting the batch range
+         * 2030-01-01..2030-01-09 (store-wide slots must never overlap). */
         private void seedWindows(long first, int count) {
             java.time.format.DateTimeFormatter stamp =
                     java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -707,10 +756,10 @@ class ScheduleSoldOutLinkMySqlTest {
                 String from = start.plusHours(index).format(stamp);
                 String to = start.plusHours(index + 1).format(stamp);
                 jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,"
-                        + "service_id,start_at,end_at,configured_capacity,status,version,"
-                        + "created_at,updated_at,window_kind) VALUES(" + id + ",10,201,301,'"
+                        + "start_at,end_at,configured_capacity,status,version,"
+                        + "created_at,updated_at) VALUES(" + id + ",10,201,'"
                         + from + "','" + to + "',1,'OPEN',0,UTC_TIMESTAMP(3),"
-                        + "UTC_TIMESTAMP(3),'GENERAL')");
+                        + "UTC_TIMESTAMP(3))");
             }
         }
 

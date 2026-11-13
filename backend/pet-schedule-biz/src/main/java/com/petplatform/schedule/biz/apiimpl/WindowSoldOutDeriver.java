@@ -19,16 +19,17 @@ import java.util.TreeSet;
 
 /**
  * System-side link between reservation capacity changes and the derived SOLD_OUT window state
- * (Contract53 §7 blocker 1, ruling 2026-10-05, plan A): a service window is an explicit,
- * system-computed SOLD_OUT ("已约满") while its effective claims fill its capacity and returns
- * to OPEN when a release frees it. Occupancy counts the active TEMP_LOCKED/CONFIRMED claims on
- * the window's original row — the same occupied notion as SCHW-D4 and the solver's store-wide
- * occupancy invariant — and capacity is the window's own configured capacity. The flip always
- * runs inside the caller's already-guarded transaction, so confirm/hold and the release paths
- * (ReservationExpiryApiImpl/ReservationRefundReleaseApiImpl/cancel-expiry, swap) commit their
- * reservation change and the window flip together; there is no second write channel. Flips are
- * derived facts, not merchant actions: they bump the window version but never write a
- * schedule_write_action audit row.
+ * (Contract53 §7 blocker 1, ruling 2026-10-05, plan A; CCR-SCH-SLOT-001 single pool): a
+ * store-wide slot is an explicit, system-computed SOLD_OUT ("已约满") while effective claims fill
+ * its capacity and returns to OPEN when a release frees it. Occupancy counts the active
+ * TEMP_LOCKED/CONFIRMED claims on the slot's original row — every service of the store shares
+ * the same pool, cross-service totals included, the same occupied notion as SCHW-D4 and the
+ * solver's store-wide occupancy invariant — and capacity is the slot's own configured capacity.
+ * The flip always runs inside the caller's already-guarded transaction, so confirm/hold and the
+ * release paths (ReservationExpiryApiImpl/ReservationRefundReleaseApiImpl/cancel-expiry, swap)
+ * commit their reservation change and the window flip together; there is no second write
+ * channel. Flips are derived facts, not merchant actions: they bump the window version but
+ * never write a schedule_write_action audit row.
  */
 final class WindowSoldOutDeriver {
     private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();

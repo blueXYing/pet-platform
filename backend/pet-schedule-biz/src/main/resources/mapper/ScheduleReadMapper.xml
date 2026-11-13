@@ -23,13 +23,14 @@
     </select>
 
     <!-- C-end visibility: SOLD_OUT stays listed with remaining=0/available=false, matching the
-         presentation an at-capacity OPEN window already had (Contract53 §3, 2026-10-05). -->
+         presentation an at-capacity OPEN window already had (Contract53 §3, 2026-10-05).
+         CCR-SCH-SLOT-001: the slot timeline is store-wide; per-service bookability is computed
+         by the caller from staff capability coverage. -->
     <select id="selectOpenWindows"
             resultType="com.petplatform.schedule.biz.infrastructure.persistence.entity.ScheduleAvailabilityWindowEntity">
         SELECT id,
                merchant_id,
                store_id,
-               service_id,
                start_at,
                end_at,
                configured_capacity,
@@ -37,34 +38,31 @@
                version
         FROM schedule_availability_window
         WHERE store_id = #{storeId}
-          AND service_id = #{serviceId}
           AND status IN ('OPEN', 'SOLD_OUT')
           AND start_at &lt; #{toAt}
           AND end_at &gt; #{fromAt}
         ORDER BY start_at, id
     </select>
 
-    <select id="countActiveReservations" resultType="long">
+    <!-- Single pool (CCR-SCH-SLOT-001): every effective claim on the slot counts, regardless
+         of which service made it — the SOLD_OUT deriver's occupancy notion. -->
+    <select id="countActiveClaimsOnWindow" resultType="long">
         SELECT COUNT(*)
-        FROM schedule_reservation
-        WHERE store_id = #{storeId}
-          AND service_id = #{serviceId}
-          AND status IN ('TEMP_LOCKED', 'CONFIRMED')
-          AND start_at &lt; #{toAt}
-          AND end_at &gt; #{fromAt}
+        FROM schedule_reservation_claim c
+        JOIN schedule_reservation r ON r.id = c.reservation_id
+        WHERE c.window_id = #{windowId}
+          AND r.status IN ('TEMP_LOCKED', 'CONFIRMED')
     </select>
 
-    <!-- SCH-004 merchant workbench reads: full states incl. CLOSED, filters optional. The
-         filter fragment is shared with the pagination count so total always matches the
-         listed rows (53号 §3.3, 2026-10-07). -->
+    <!-- SCH-004 merchant workbench reads: full states incl. CLOSED, status filter optional.
+         The filter fragment is shared with the pagination count so total always matches the
+         listed rows (53号 §3.3, 2026-10-07; CCR-SCH-SLOT-001 drops service/kind filters). -->
     <sql id="workbenchWindowFilters">
         WHERE store_id = #{storeId}
-        <if test="serviceId != null">AND service_id = #{serviceId}</if>
-        <if test="kind != null">AND window_kind = #{kind}</if>
         <if test="status != null">AND status = #{status}</if>
     </sql>
     <select id="listWindows" resultType="map">
-        SELECT id, merchant_id, store_id, service_id, window_kind, start_at, end_at,
+        SELECT id, merchant_id, store_id, start_at, end_at,
                configured_capacity, status, version, updated_at
         FROM schedule_availability_window
         <include refid="workbenchWindowFilters"/>

@@ -17,7 +17,7 @@ import java.time.OffsetDateTime;
  */
 public interface AdminScheduleQueryApi {
 
-    /** Service window rows, newest first (start_at DESC, id DESC). */
+    /** Store-wide unified slot rows, newest first (start_at DESC, id DESC). */
     PageResult<AdminScheduleWindow> listWindows(AdminWindowListQuery query);
 
     /** Staff availability rows, newest first (start_at DESC, id DESC). */
@@ -33,7 +33,7 @@ public interface AdminScheduleQueryApi {
     record AdminAuthorization(String sessionId, long sessionGeneration) {}
 
     record AdminWindowListQuery(
-            String merchantId, String storeId, String serviceId, String windowKind,
+            String merchantId, String storeId,
             String status, OffsetDateTime startFrom, OffsetDateTime startTo,
             int page, int pageSize, QueryContext context, AdminAuthorization authorization) {}
 
@@ -48,14 +48,16 @@ public interface AdminScheduleQueryApi {
             int page, int pageSize, QueryContext context, AdminAuthorization authorization) {}
 
     /**
-     * One service window with occupancy facts. status is the storage-derived OPEN/CLOSED/
-     * SOLD_OUT vocabulary (53号 §7); confirmedCount counts claims of CONFIRMED reservations,
-     * tempLockedCount claims of unexpired TEMP_LOCKED reservations — the same effective-claim
-     * notion the SOLD_OUT deriver uses. Utilization renders client-side from these facts.
+     * One store-wide unified slot with occupancy facts (CCR-SCH-SLOT-001: no service/kind
+     * dimensions on windows). status is the storage-derived OPEN/CLOSED/SOLD_OUT vocabulary
+     * (53号 §7); confirmedCount counts claims of CONFIRMED reservations, tempLockedCount
+     * claims of unexpired TEMP_LOCKED reservations — the same effective-claim notion the
+     * SOLD_OUT deriver uses (cross-service on the single pool). Utilization renders
+     * client-side from these facts.
      */
     record AdminScheduleWindow(
-            String windowId, String merchantId, String storeId, String serviceId,
-            String windowKind, OffsetDateTime startAt, OffsetDateTime endAt,
+            String windowId, String merchantId, String storeId,
+            OffsetDateTime startAt, OffsetDateTime endAt,
             int configuredCapacity, String status, String version, OffsetDateTime updatedAt,
             int confirmedCount, int tempLockedCount) {}
 

@@ -7,8 +7,8 @@ CREATE TABLE schedule_store_capacity_guard (
     CONSTRAINT chk_capacity_guard_identity CHECK (store_id > 0 AND version >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-ALTER TABLE schedule_availability_window
-    ADD COLUMN window_kind VARCHAR(16) NOT NULL DEFAULT 'GENERAL';
+-- CCR-SCH-SLOT-001（2026-11-13）：window_kind 增列废除——排期已改全店统一时间槽，
+-- schedule_availability_window 无窗口类型维度（06号随裁决重开即得新 DDL）。
 -- NULL identifies legacy rows requiring evidence-based recovery before protected use.
 ALTER TABLE schedule_reservation ADD COLUMN user_id BIGINT NULL;
 

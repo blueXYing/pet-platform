@@ -164,12 +164,12 @@ class ScheduleProtectionFoundationMySqlTest {
             ScheduleCapacityGuardApiImpl guard = new ScheduleCapacityGuardApiImpl(db.source);
             ScheduleProtectionFactsApiImpl facts = new ScheduleProtectionFactsApiImpl(db.source, guard);
             db.jdbc.update("INSERT INTO schedule_availability_window "
-                    + "(id,merchant_id,store_id,service_id,start_at,end_at,configured_capacity,"
-                    + "status,version,created_at,updated_at,window_kind) VALUES "
-                    + "(1,10,201,301,'2030-01-01 01:00:00','2030-01-01 02:00:00',2,"
-                    + "'OPEN',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),'PICKUP'),"
-                    + "(2,10,201,301,'2030-01-01 03:00:00','2030-01-01 04:00:00',2,"
-                    + "'OPEN',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),'RETURN')");
+                    + "(id,merchant_id,store_id,start_at,end_at,configured_capacity,"
+                    + "status,version,created_at,updated_at) VALUES "
+                    + "(1,10,201,'2030-01-01 01:00:00','2030-01-01 02:00:00',2,"
+                    + "'OPEN',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3)),"
+                    + "(2,10,201,'2030-01-01 03:00:00','2030-01-01 04:00:00',2,"
+                    + "'OPEN',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
             db.jdbc.update("INSERT INTO schedule_reservation "
                     + "(id,order_id,user_id,merchant_id,store_id,service_id,fulfillment_type,"
                     + "start_at,end_at,pickup_start_at,return_start_at,status,capacity_snapshot,"
@@ -206,8 +206,8 @@ class ScheduleProtectionFoundationMySqlTest {
                         .configuredCapacity(), "configured zero is valid source data");
                 return null;
             });
-            assertEquals("idx_schedule_service_time", db.explain("SELECT id FROM "
-                    + "schedule_availability_window FORCE INDEX(idx_schedule_service_time) "
+            assertEquals("idx_schedule_store_time", db.explain("SELECT id FROM "
+                    + "schedule_availability_window FORCE INDEX(idx_schedule_store_time) "
                     + "WHERE store_id=201 ORDER BY id FOR UPDATE"));
             assertEquals("idx_reservation_service_time", db.explain("SELECT id FROM "
                     + "schedule_reservation FORCE INDEX(idx_reservation_service_time) "
@@ -215,11 +215,13 @@ class ScheduleProtectionFoundationMySqlTest {
             assertEquals("idx_claim_store_reservation", db.explain("SELECT id FROM "
                     + "schedule_reservation_claim FORCE INDEX(idx_claim_store_reservation) "
                     + "WHERE store_id=201 ORDER BY id FOR UPDATE"));
+            // CCR-SCH-SLOT-001: unified slots may never overlap within one store, whatever
+            // service or direction the claims would carry.
             db.jdbc.update("INSERT INTO schedule_availability_window "
-                    + "(id,merchant_id,store_id,service_id,start_at,end_at,configured_capacity,"
-                    + "status,version,created_at,updated_at,window_kind) VALUES "
-                    + "(3,10,201,301,'2030-01-01 01:30:00','2030-01-01 02:30:00',1,"
-                    + "'OPEN',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),'PICKUP')");
+                    + "(id,merchant_id,store_id,start_at,end_at,configured_capacity,"
+                    + "status,version,created_at,updated_at) VALUES "
+                    + "(3,10,201,'2030-01-01 01:30:00','2030-01-01 02:30:00',1,"
+                    + "'OPEN',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
             assertThrows(UnexpectedRollbackException.class, () -> db.transaction().execute(status -> {
                 guard.acquire(List.of("201"), CONTEXT);
                 assertEquals(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
@@ -237,12 +239,12 @@ class ScheduleProtectionFoundationMySqlTest {
             ScheduleCapacityGuardApiImpl guard = new ScheduleCapacityGuardApiImpl(db.source);
             ScheduleProtectionFactsApiImpl facts = new ScheduleProtectionFactsApiImpl(db.source, guard);
             db.jdbc.update("INSERT INTO schedule_availability_window "
-                    + "(id,merchant_id,store_id,service_id,start_at,end_at,configured_capacity,"
-                    + "status,version,created_at,updated_at,window_kind) VALUES "
-                    + "(1,10,301,401,'2025-01-01 01:00:00','2025-01-01 02:00:00',1,"
-                    + "'OPEN',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),'GENERAL'),"
-                    + "(2,10,301,401,'2030-01-01 01:00:00','2030-01-01 02:00:00',1,"
-                    + "'OPEN',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),'GENERAL')");
+                    + "(id,merchant_id,store_id,start_at,end_at,configured_capacity,"
+                    + "status,version,created_at,updated_at) VALUES "
+                    + "(1,10,301,'2025-01-01 01:00:00','2025-01-01 02:00:00',1,"
+                    + "'OPEN',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3)),"
+                    + "(2,10,301,'2030-01-01 01:00:00','2030-01-01 02:00:00',1,"
+                    + "'OPEN',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
             db.jdbc.update("INSERT INTO schedule_reservation "
                     + "(id,order_id,user_id,merchant_id,store_id,service_id,fulfillment_type,"
                     + "start_at,end_at,status,capacity_snapshot,qualified_staff_count_snapshot,"

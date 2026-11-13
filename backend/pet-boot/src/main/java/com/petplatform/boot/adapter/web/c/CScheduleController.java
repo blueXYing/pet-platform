@@ -68,12 +68,14 @@ public class CScheduleController {
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
             HttpServletRequest req) {
-        rejectUnknownParameters(req, selectionEnabled);
+        rejectUnknownParameters(req);
         if (storeId == null || storeId.isBlank()) throw invalid("storeId");
         if (selectionEnabled) {
             if(selection==null) throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,"selection facts unavailable");
+            // CCR-SCH-SLOT-001: unified store-wide slots; the kind projection is derived from
+            // the service's fulfillment role, so the historical item shape (windowId/kind) stays.
             var selected=selection.querySelectableWindows(new com.petplatform.schedule.api.query.SelectionWindowQuery(
-                    serviceId,storeId,date(startDate,"startDate"),date(endDate,"endDate"),req.getParameter("kind"),context(req)));
+                    serviceId,storeId,date(startDate,"startDate"),date(endDate,"endDate"),context(req)));
             Map<String,Object> data=new LinkedHashMap<>();
             data.put("items",selected.items().stream().map(CScheduleController::selectedWindow).toList());
             return ApiResponse.success(data,trace(req));
@@ -137,13 +139,13 @@ public class CScheduleController {
         }
     }
 
-    private static void rejectUnknownParameters(HttpServletRequest req,boolean selectionEnabled) {
-        for (String name : new String[] {"storeId", "startDate", "endDate", "kind"}) {
+    private static void rejectUnknownParameters(HttpServletRequest req) {
+        for (String name : new String[] {"storeId", "startDate", "endDate"}) {
             String[] values = req.getParameterValues(name);
             if (values != null && values.length > 1) throw invalid(name);
         }
         for (String name : req.getParameterMap().keySet()) {
-            if (!"storeId".equals(name) && !"startDate".equals(name) && !"endDate".equals(name) && !(selectionEnabled && "kind".equals(name))) {
+            if (!"storeId".equals(name) && !"startDate".equals(name) && !"endDate".equals(name)) {
                 throw invalid(name);
             }
         }

@@ -42,7 +42,7 @@ class ScheduleWorkbenchPaginationValidationTest {
             }));
 
     private static WorkbenchWindowQuery query(Integer page, Integer pageSize) {
-        return new WorkbenchWindowQuery("10", "201", null, null, null, page, pageSize,
+        return new WorkbenchWindowQuery("10", "201", null, page, pageSize,
                 new QueryContext("schpg-test", OperatorType.USER, "601"));
     }
 

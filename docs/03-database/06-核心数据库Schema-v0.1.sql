@@ -190,22 +190,24 @@ CREATE TABLE staff_service_capability (
 -- 2. 分钟级排期
 -- ============================================================
 
+-- CCR-SCH-SLOT-001（2026-11-13 裁决）：全店统一时间槽，单容量池。窗口身份 = store_id+时间区间，
+-- 无 service_id / window_kind 维度；同店不重叠；任何服务的有效预约共同消耗槽容量（占满即 SOLD_OUT）。
 CREATE TABLE schedule_availability_window (
     id                    BIGINT       NOT NULL,
     merchant_id           BIGINT       NOT NULL,
     store_id              BIGINT       NOT NULL,
-    service_id            BIGINT       NOT NULL,
     start_at              DATETIME(3)  NOT NULL,
     end_at                DATETIME(3)  NOT NULL,
     configured_capacity   INT          NOT NULL,
-    status                VARCHAR(16)  NOT NULL DEFAULT 'OPEN' COMMENT 'OPEN/CLOSED',
+    status                VARCHAR(16)  NOT NULL DEFAULT 'OPEN' COMMENT 'OPEN/CLOSED；SOLD_OUT 为系统按槽上全店有效 claim 数派生的已约满态',
     version               BIGINT       NOT NULL DEFAULT 0,
     created_at            DATETIME(3)  NOT NULL,
     updated_at            DATETIME(3)  NOT NULL,
     PRIMARY KEY (id),
-    KEY idx_schedule_service_time (store_id, service_id, start_at, end_at),
+    KEY idx_schedule_store_time (store_id, start_at, end_at),
     KEY idx_schedule_status_time (status, start_at, end_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+  COMMENT='全店统一时间槽（CCR-SCH-SLOT-001）：单容量池，跨服务共享，同店不重叠';
 
 CREATE TABLE staff_availability_window (
     id                    BIGINT       NOT NULL,

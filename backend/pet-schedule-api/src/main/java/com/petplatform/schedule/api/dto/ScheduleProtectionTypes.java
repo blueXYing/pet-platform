@@ -4,8 +4,8 @@ import java.time.OffsetDateTime;
 import java.util.List;
 public final class ScheduleProtectionTypes {
     private ScheduleProtectionTypes() {}
-    public record WindowFact(String windowId, String merchantId, String storeId, String serviceId,
-            String kind, OffsetDateTime startAt, OffsetDateTime endAt, int configuredCapacity,
+    public record WindowFact(String windowId, String merchantId, String storeId,
+            OffsetDateTime startAt, OffsetDateTime endAt, int configuredCapacity,
             String status, String version) {}
     public record ReservationFact(String reservationId, String orderId, String userId,
             String merchantId, String storeId, String serviceId, String fulfillmentType,

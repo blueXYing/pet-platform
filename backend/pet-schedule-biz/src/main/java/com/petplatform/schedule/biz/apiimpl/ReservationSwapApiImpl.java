@@ -44,7 +44,7 @@ public final class ReservationSwapApiImpl implements ReservationSwapApi {
    if("IN_STORE".equals(c.fulfillmentType())&&old.startAt().isEqual(c.appointmentStart())&&old.endAt().isEqual(c.appointmentEnd()))throw error(CommonApiCodes.CONFLICT);
    if("PICKUP_DELIVERY".equals(c.fulfillmentType())){
     var selected=snapshot.windows().stream().filter(w->w.windowId().equals(c.selectedPickupWindowId())||w.windowId().equals(c.selectedReturnWindowId())).toList();
-    if(selected.size()==2&&original.size()==2&&selected.stream().allMatch(w->original.stream().anyMatch(o->o.kind().equals(w.kind())&&o.startAt().isEqual(w.startAt())&&o.endAt().isEqual(w.endAt())))
+    if(selected.size()==2&&original.size()==2&&selected.stream().allMatch(w->original.stream().anyMatch(o->o.startAt().isEqual(w.startAt())&&o.endAt().isEqual(w.endAt())))
       &&Objects.equals(old.pickupStartAt(),c.pickupStart())&&Objects.equals(old.returnStartAt(),c.returnStart()))throw error(CommonApiCodes.CONFLICT);
    }
    var plan=proof.prepareForSwap(new CapacityProofQuery(c.storeId(),c.serviceId(),c.fulfillmentType(),c.appointmentStart(),c.appointmentEnd(),

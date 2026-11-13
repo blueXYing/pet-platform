@@ -78,9 +78,9 @@
         WHERE id=#{windowId} AND status=#{expectedStatus}
     </update>
     <select id="lockedWindows" resultType="map">
-        SELECT id,merchant_id,store_id,service_id,window_kind,start_at,end_at,
+        SELECT id,merchant_id,store_id,start_at,end_at,
                configured_capacity,status,version
-        FROM schedule_availability_window FORCE INDEX (idx_schedule_service_time)
+        FROM schedule_availability_window FORCE INDEX (idx_schedule_store_time)
         WHERE store_id=#{storeId} ORDER BY id FOR UPDATE
     </select>
     <select id="lockedReservations" resultType="map">

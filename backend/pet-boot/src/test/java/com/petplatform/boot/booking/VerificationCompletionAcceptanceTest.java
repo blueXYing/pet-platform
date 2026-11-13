@@ -102,8 +102,8 @@ class VerificationCompletionAcceptanceTest {
  }}
  @Test void autoConfirmationAndRescheduledPickupCanComplete()throws Exception{for(boolean pickup:List.of(false,true))try(var t=new T()){
   String o;if(pickup){o=t.r.pickupPaid();t.r.assign(o);t.confirm(o,0);t.issue(o,"INITIAL");
-   t.r.window(710503,"PICKUP","2030-01-01 09:40:00","2030-01-01 10:15:00");t.r.window(710504,"RETURN","2030-01-01 12:30:00","2030-01-01 13:20:00");
-   t.r.service.reschedule(new com.petplatform.order.api.command.OrderRescheduleApi.Command(ctx("710100"),o,t.text("SELECT CAST(version AS CHAR) FROM pet_order"),null,null,java.time.OffsetDateTime.parse("2030-01-01T09:40Z"),java.time.OffsetDateTime.parse("2030-01-01T12:30Z"),null,"710503","710504"));t.confirm(o,1);
+   t.r.window(710503, "2030-01-01 08:35:00","2030-01-01 09:00:00");t.r.window(710504, "2030-01-01 12:30:00","2030-01-01 13:20:00");
+   t.r.service.reschedule(new com.petplatform.order.api.command.OrderRescheduleApi.Command(ctx("710100"),o,t.text("SELECT CAST(version AS CHAR) FROM pet_order"),null,null,java.time.OffsetDateTime.parse("2030-01-01T08:35Z"),java.time.OffsetDateTime.parse("2030-01-01T12:30Z"),null,"710503","710504"));t.confirm(o,1);
   }else{o=t.r.f.paid(true);t.r.f.auto().autoConfirm(t.r.f.autoCommand(o));}
   assertEquals("VERIFIED",build(t).verify(command(o,t.issue(o,"INITIAL"))).resultCode());
  }}

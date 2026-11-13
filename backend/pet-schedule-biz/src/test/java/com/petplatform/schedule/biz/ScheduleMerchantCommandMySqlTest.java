@@ -103,7 +103,6 @@ class ScheduleMerchantCommandMySqlTest {
             assertTrue(app.commands.createWindowOutcome(create("950"), out));
             assertEquals("OPEN", out[0].status());
             assertEquals("0", out[0].version());
-            assertEquals("GENERAL", out[0].windowKind());
             assertEquals(1, db.count("schedule_availability_window"));
             assertEquals(1, db.count("schedule_write_action"));
             // Same requestId replays the stored receipt without a second row or audit.
@@ -124,7 +123,7 @@ class ScheduleMerchantCommandMySqlTest {
             app.commands.createWindowOutcome(create("950"), new WindowResult[1]);
             CreateWindowCommand different = new CreateWindowCommand(
                     new CommandContext("950", "sch004-test", OperatorType.USER, "601", "test"),
-                    "10", "201", "301", "GENERAL", S, E, 5);
+                    "10", "201", S, E, 5);
             ApiException conflict = assertThrows(ApiException.class,
                     () -> app.commands.createWindowOutcome(different, new WindowResult[1]));
             assertEquals(CommonApiCodes.IDEMPOTENCY_KEY_CONFLICT, conflict.code());
@@ -416,7 +415,7 @@ class ScheduleMerchantCommandMySqlTest {
             OffsetDateTime end) {
         return new CreateWindowCommand(
                 new CommandContext(requestId, "sch004-test", OperatorType.USER, "601", "test"),
-                "10", "201", "301", "GENERAL", start, end, 2);
+                "10", "201", start, end, 2);
     }
 
     private static ReplaceCapabilitiesCommand replace(String expectedVersion, String reason,
@@ -610,11 +609,11 @@ class ScheduleMerchantCommandMySqlTest {
         }
 
         private void seedGeneral() {
+            // CCR-SCH-SLOT-001: store-wide unified slot (no service_id/window_kind columns).
             jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,"
-                    + "service_id,start_at,end_at,configured_capacity,status,version,created_at,"
-                    + "updated_at,window_kind) VALUES(101,10,201,301,'2030-01-01 01:00:00',"
-                    + "'2030-01-01 02:00:00',2,'OPEN',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),"
-                    + "'GENERAL')");
+                    + "start_at,end_at,configured_capacity,status,version,created_at,"
+                    + "updated_at) VALUES(101,10,201,'2030-01-01 01:00:00',"
+                    + "'2030-01-01 02:00:00',2,'OPEN',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
             jdbc.update("INSERT INTO staff_service_capability(id,staff_id,service_id,status,"
                     + "created_at,updated_at) VALUES(402,401,301,'ENABLED',UTC_TIMESTAMP(3),"
                     + "UTC_TIMESTAMP(3))");

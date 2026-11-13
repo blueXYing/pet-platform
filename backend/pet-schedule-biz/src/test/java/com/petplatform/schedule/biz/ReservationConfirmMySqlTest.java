@@ -153,10 +153,10 @@ class ReservationConfirmMySqlTest {
         private void seed() {
             jdbc.update("""
                     INSERT INTO schedule_availability_window
-                      (id,merchant_id,store_id,service_id,start_at,end_at,configured_capacity,
-                       status,version,created_at,updated_at,window_kind)
-                    VALUES (101,10,201,301,'2030-01-01 01:00:00','2030-01-01 02:00:00',1,
-                            'OPEN',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),'GENERAL')
+                      (id,merchant_id,store_id,start_at,end_at,configured_capacity,
+                       status,version,created_at,updated_at)
+                    VALUES (101,10,201,'2030-01-01 01:00:00','2030-01-01 02:00:00',1,
+                            'OPEN',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))
                     """);
             jdbc.update("""
                     INSERT INTO schedule_reservation

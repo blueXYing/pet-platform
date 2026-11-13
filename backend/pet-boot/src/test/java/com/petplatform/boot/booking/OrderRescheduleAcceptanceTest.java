@@ -123,12 +123,14 @@ class OrderRescheduleAcceptanceTest {
  @Test void pickupSwapsTwoWholeWindowsAndKeepsTheOriginalStaff() throws Exception {
   try(var t=new T()){
    String o=t.pickupPaid();t.assign(o);
-   t.window(710503,"PICKUP","2030-01-01 09:40:00","2030-01-01 10:15:00");
-   t.window(710504,"RETURN","2030-01-01 12:30:00","2030-01-01 13:20:00");
+   // Unified slots never overlap: the swap targets sit in the free gaps around the
+   // existing 09:00-11:00 slot (08:35-09:00 and 12:20-14:00; 12:20-08:35 clears +120).
+   t.window(710503, "2030-01-01 08:35:00","2030-01-01 09:00:00");
+   t.window(710504, "2030-01-01 12:20:00","2030-01-01 14:00:00");
    var c=new Command(context("710100"),o,t.text("SELECT CAST(version AS CHAR) FROM pet_order"),null,null,
-    START.plusMinutes(25),START.plusMinutes(195),null,"710503","710504");
-   var r=t.service.reschedule(c);assertEquals("2030-01-01T09:40Z",r.pickupStart());assertEquals("2030-01-01T12:30Z",r.returnStart());
-   assertEquals("2030-01-01T13:20Z",r.appointmentEnd());assertEquals(2,t.count("SELECT COUNT(*) FROM schedule_reservation_claim"));
+    OffsetDateTime.parse("2030-01-01T08:35Z"),OffsetDateTime.parse("2030-01-01T12:20Z"),null,"710503","710504");
+   var r=t.service.reschedule(c);assertEquals("2030-01-01T08:35Z",r.pickupStart());assertEquals("2030-01-01T12:20Z",r.returnStart());
+   assertEquals("2030-01-01T14:00Z",r.appointmentEnd());assertEquals(2,t.count("SELECT COUNT(*) FROM schedule_reservation_claim"));
    assertEquals("710303",t.text("SELECT CAST(service_staff_id AS CHAR) FROM pet_order"));
    assertEquals(1,t.count("SELECT COUNT(*) FROM order_staff_assignment WHERE is_current=1"));
   }
@@ -136,10 +138,15 @@ class OrderRescheduleAcceptanceTest {
  @Test void newTimeConflictsWithAnotherServiceAndRetainsAllOldClaims() throws Exception {
   try(var t=new T()){
    String o=t.f.paid();
-   t.f.f.db.jdbc.update("UPDATE schedule_availability_window SET start_at='2030-01-01 10:30:00',end_at='2030-01-01 11:05:00' WHERE id=710501");
-   t.f.f.db.jdbc.update("UPDATE schedule_availability_window SET start_at='2030-01-01 12:30:00',end_at='2030-01-01 13:20:00' WHERE id=710502");
-   t.pickupBook(OffsetDateTime.parse("2030-01-01T10:30Z"),OffsetDateTime.parse("2030-01-01T12:30Z"));
-   code("SCHEDULE_CAPACITY_EXCEEDED",()->t.service.reschedule(t.command(o)));
+   // Move the directional slots into the morning/afternoon gaps, book a second (pickup)
+   // order on them, then reschedule the in-store order INTO the slot the pickup claim
+   // already fills: the single shared pool (capacity 1) refuses the crossing service.
+   t.f.f.db.jdbc.update("UPDATE schedule_availability_window SET start_at='2030-01-01 08:35:00',end_at='2030-01-01 09:00:00' WHERE id=710501");
+   t.f.f.db.jdbc.update("UPDATE schedule_availability_window SET start_at='2030-01-01 12:20:00',end_at='2030-01-01 12:55:00' WHERE id=710502");
+   t.pickupBook(OffsetDateTime.parse("2030-01-01T08:35Z"),OffsetDateTime.parse("2030-01-01T12:20Z"));
+   code("SCHEDULE_CAPACITY_EXCEEDED",()->t.service.reschedule(new Command(context("710100"),o,
+    t.text("SELECT CAST(version AS CHAR) FROM pet_order"),OffsetDateTime.parse("2030-01-01T08:40Z"),
+    OffsetDateTime.parse("2030-01-01T08:50Z"),null,null,"710501",null,null)));
    assertEquals(0,t.count("SELECT COUNT(*) FROM schedule_reservation_change"));assertEquals(3,t.count("SELECT COUNT(*) FROM schedule_reservation_claim"));
   }
  }
@@ -293,10 +300,10 @@ class OrderRescheduleAcceptanceTest {
    f.f.db.jdbc.update("UPDATE pet_order SET service_staff_id=710303 WHERE id=?",Long.parseLong(o));
    f.f.db.jdbc.update("INSERT INTO order_staff_assignment(id,order_id,staff_id,assigned_by_type,is_current,assigned_at,version) VALUES(?,?,710303,'MERCHANT',1,UTC_TIMESTAMP(3),0)",IDS.incrementAndGet(),Long.parseLong(o));
   }
-  void window(long id,String kind,String start,String end){f.f.db.jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,service_id,start_at,end_at,configured_capacity,status,window_kind,created_at,updated_at) VALUES(?,710301,710302,710402,?,?,1,'OPEN',?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",id,start,end,kind);}
+  void window(long id,String start,String end){f.f.db.jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,start_at,end_at,configured_capacity,status,created_at,updated_at) VALUES(?,710301,710302,?,?,1,'OPEN',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",id,start,end);}
   String pickupBook(OffsetDateTime pickup,OffsetDateTime returning){return f.f.book(new com.petplatform.order.api.dto.OrderCreationTypes.CreateOrderCommand(context("710100"),"710302","710402","710200","PICKUP_DELIVERY",null,null,pickup,returning,null,"710501","710502",null,null,"QA service address")).orderId();}
   String pickupPaid()throws Exception{
-   String o=pickupBook(OffsetDateTime.parse("2030-01-01T09:00Z"),OffsetDateTime.parse("2030-01-01T11:30Z"));
+   String o=pickupBook(OffsetDateTime.parse("2030-01-01T08:00Z"),OffsetDateTime.parse("2030-01-01T11:30Z"));
    var p=f.f.prepare(o,UUID.randomUUID().toString());var n=f.f.notice(p,"SUCCESS","QA_PICKUP_"+IDS.incrementAndGet(),p.amount(),p.amount());
    f.f.notification.receive(n.headers(),n.body());f.f.result.consume(AutoConfirmTaskPreparationAcceptanceTest.event(f.f));return o;
   }

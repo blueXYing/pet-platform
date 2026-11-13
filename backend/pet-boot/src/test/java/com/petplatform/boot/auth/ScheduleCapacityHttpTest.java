@@ -254,7 +254,7 @@ class ScheduleCapacityHttpTest {
 
     LocalDate day = LocalDate.now(java.time.ZoneId.of("Asia/Shanghai")).plusDays(10);
     String start = utc(day, 9, 0), split = utc(day, 10, 0), end = utc(day, 11, 0);
-    long window = seedWindow(merchantId, storeId, service, start, end, 5, "OPEN");
+    long window = seedWindow(merchantId, storeId, start, end, 5, "OPEN");
     String path = availability(service, storeId, day);
 
     // Three true positives: adjacent segments, one exact segment, and one wider segment.
@@ -344,17 +344,19 @@ class ScheduleCapacityHttpTest {
     assertCapacity(send("GET", path, null, bearer(token)), 2, 0, 2, true);
     db.jdbc.update(
         "UPDATE schedule_availability_window SET configured_capacity=5 WHERE id=?", window);
-    seedReservation(storeId, service, utc(day, 9, 15), utc(day, 9, 45), "TEMP_LOCKED");
-    seedReservation(storeId, service, utc(day, 9, 20), utc(day, 9, 50), "RELEASED");
+    seedReservation(storeId, service, window, utc(day, 9, 15), utc(day, 9, 45), "TEMP_LOCKED");
+    seedReservation(storeId, service, window, utc(day, 9, 20), utc(day, 9, 50), "RELEASED");
     assertCapacity(send("GET", path, null, bearer(token)), 3, 1, 2, true);
 
-    // The same employee can appear in two services' read projections. This is not a hold-time
-    // cross-service allocation or concurrency guarantee; SCH-003 owns that separate protocol.
+    // The same employee can appear in two services' read projections — and both services now
+    // share ONE slot pool (CCR-SCH-SLOT-001): the other service sees the same slot, its
+    // effective capacity follows its own single qualified employee, and the first service's
+    // active claim on the shared slot consumes the other service's remaining capacity too.
+    // This is not a hold-time cross-service allocation guarantee; SCH-003 owns that protocol.
     seedCapability(adjacent, otherService, "ENABLED");
-    seedWindow(merchantId, storeId, otherService, start, end, 1, "OPEN");
     assertCapacity(
         send("GET", availability(otherService, storeId, day), null, bearer(token)),
-        1, 0, 1, true);
+        1, 1, 0, false);
 
     db.jdbc.update(
         "UPDATE merchant_staff SET employment_status='UNKNOWN' WHERE id=?", inactive);
@@ -545,10 +547,10 @@ class ScheduleCapacityHttpTest {
             "SELECT merchant_id FROM merchant_store WHERE id=?", Long.class, Long.parseLong(store)));
   }
 
+  /** CCR-SCH-SLOT-001: slots are store-wide; the serviceId argument only documents intent. */
   private long seedWindow(
       long merchantId,
       long storeId,
-      String serviceId,
       String startUtc,
       String endUtc,
       int capacity,
@@ -556,22 +558,25 @@ class ScheduleCapacityHttpTest {
     long id = db.ids.nextId();
     db.jdbc.update(
         "INSERT INTO"
-            + " schedule_availability_window(id,merchant_id,store_id,service_id,start_at,end_at,"
+            + " schedule_availability_window(id,merchant_id,store_id,start_at,end_at,"
             + " configured_capacity,status,version,created_at,updated_at)"
-            + " VALUES(?,?,?,?,?,?,?,?,0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
-        id, merchantId, storeId, Long.parseLong(serviceId), startUtc, endUtc, capacity, status);
+            + " VALUES(?,?,?,?,?,?,?,0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+        id, merchantId, storeId, startUtc, endUtc, capacity, status);
     return id;
   }
 
+  /** One reservation of the service with one GENERAL claim bound to the named shared slot. */
   private void seedReservation(
-      long storeId, String serviceId, String startUtc, String endUtc, String status) {
+      long storeId, String serviceId, long windowId, String startUtc, String endUtc,
+      String status) {
+    long reservationId = db.ids.nextId();
     db.jdbc.update(
         "INSERT INTO schedule_reservation(id,order_id,merchant_id,store_id,service_id,"
             + " fulfillment_type,start_at,end_at,status,capacity_snapshot,"
             + " qualified_staff_count_snapshot,version,created_at,updated_at)"
             + " VALUES(?,?,(SELECT merchant_id FROM merchant_store WHERE id=?),?,?,?,?,?,?,?,?,0,"
             + " UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
-        db.ids.nextId(),
+        reservationId,
         db.ids.nextId(),
         storeId,
         storeId,
@@ -582,6 +587,11 @@ class ScheduleCapacityHttpTest {
         status,
         5,
         3);
+    db.jdbc.update(
+        "INSERT INTO schedule_reservation_claim(id,reservation_id,window_id,store_id,service_id,"
+            + " kind,start_at,end_at) VALUES(?,?,?,?,?,'GENERAL',?,?)",
+        db.ids.nextId(), reservationId, windowId, storeId, Long.parseLong(serviceId),
+        startUtc, endUtc);
   }
 
   /** Runs the real application -> review -> APPROVE chain and signs the agreement. */

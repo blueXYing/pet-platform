@@ -67,21 +67,25 @@ class ScheduleSelectionHttpContractTest {
         assertEquals(200, all.getStatus());
         assertEquals("no-store", all.getHeader("Cache-Control"));
         JsonNode items = body(all).path("data").path("items");
-        assertEquals(2, items.size());
+        // CCR-SCH-SLOT-001: store-shared slots — a pickup-delivery service projects BOTH legs
+        // (PICKUP then RETURN) onto each slot, so two seeded slots answer four items.
+        assertEquals(4, items.size());
         assertEquals(SELECTED_KEYS, keys(items.get(0)));
         assertEquals("11", items.get(0).path("windowId").asText());
         assertEquals("PICKUP", items.get(0).path("kind").asText());
         assertEquals("2030-01-01T09:00:00+08:00", items.get(0).path("start").asText());
-        assertEquals("12", items.get(1).path("windowId").asText());
+        assertEquals("11", items.get(1).path("windowId").asText());
         assertEquals("RETURN", items.get(1).path("kind").asText());
+        assertEquals("12", items.get(2).path("windowId").asText());
+        assertEquals("PICKUP", items.get(2).path("kind").asText());
+        assertEquals("12", items.get(3).path("windowId").asText());
+        assertEquals("RETURN", items.get(3).path("kind").asText());
 
+        // The historical kind query filter is gone with the unified slots (no window classes
+        // to filter by) — kind now reads as an unknown parameter and fails closed with 400.
         MockHttpServletResponse filtered = mvc.perform(get(PATH + "&kind=RETURN")
                 .header("Authorization", "Bearer ok")).andReturn().getResponse();
-        assertEquals(200, filtered.getStatus());
-        JsonNode filteredItems = body(filtered).path("data").path("items");
-        assertEquals(1, filteredItems.size());
-        assertEquals("RETURN", filteredItems.get(0).path("kind").asText());
-        assertEquals("12", filteredItems.get(0).path("windowId").asText());
+        assertError(filtered, 400, "COMMON_INVALID_ARGUMENT");
     }
 
     @Test
@@ -161,14 +165,16 @@ class ScheduleSelectionHttpContractTest {
             }
             return org.mockito.Answers.RETURNS_DEFAULTS.answer(invocation);
         });
-        when(store.windows(any(), anyLong(), anyLong(), any(), any())).thenReturn(List.of(
-                new WindowRow(11, 4, 2, 3, "PICKUP",
+        // CCR-SCH-SLOT-001: windows are store-shared unified slots (no serviceId/kind); the
+        // pickup/return leg projection now happens in the service from the fulfillment type.
+        when(store.windows(any(), anyLong(), any(), any())).thenReturn(List.of(
+                new WindowRow(11, 4, 2,
                         LocalDateTime.of(2030, 1, 1, 1, 0),
                         LocalDateTime.of(2030, 1, 1, 1, 35), 3, "OPEN", 0),
-                new WindowRow(12, 4, 2, 3, "RETURN",
+                new WindowRow(12, 4, 2,
                         LocalDateTime.of(2030, 1, 1, 4, 0),
                         LocalDateTime.of(2030, 1, 1, 4, 35), 3, "OPEN", 0)));
-        when(store.claims(any(), anyLong(), anyLong(), any(), any())).thenReturn(List.of());
+        when(store.claims(any(), anyLong(), any(), any())).thenReturn(List.of());
         ServiceQueryApi services = mock(ServiceQueryApi.class);
         when(services.checkBookable(any())).thenReturn(new ServiceBookabilityDTO(
                 "3", "4", "2", true, List.of()));

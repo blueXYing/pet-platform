@@ -12,8 +12,6 @@
     <sql id="windowFilter">
         <if test="merchantId != null">AND w.merchant_id = #{merchantId}</if>
         <if test="storeId != null">AND w.store_id = #{storeId}</if>
-        <if test="serviceId != null">AND w.service_id = #{serviceId}</if>
-        <if test="windowKind != null">AND w.window_kind = #{windowKind}</if>
         <if test="status != null">AND w.status = #{status}</if>
         <if test="startFrom != null">AND w.start_at &gt;= #{startFrom}</if>
         <if test="startTo != null">AND w.start_at &lt;= #{startTo}</if>
@@ -28,7 +26,7 @@
     </select>
 
     <select id="selectWindowPage" resultType="com.petplatform.schedule.biz.infrastructure.persistence.entity.ScheduleAdminViewRows$AdminWindowRow">
-        SELECT w.id, w.merchant_id, w.store_id, w.service_id, w.window_kind,
+        SELECT w.id, w.merchant_id, w.store_id,
                w.start_at, w.end_at, w.configured_capacity, w.status, w.version, w.updated_at,
                (SELECT COUNT(*) FROM schedule_reservation_claim cl
                     JOIN schedule_reservation r ON r.id = cl.reservation_id AND r.status = 'CONFIRMED'

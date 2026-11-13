@@ -31,7 +31,6 @@ import java.util.Set;
 public final class ScheduleMerchantQueryApiImpl implements ScheduleMerchantQueryApi {
     private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
     private static final Set<String> STATUSES = Set.of("OPEN", "CLOSED", "SOLD_OUT", "AVAILABLE");
-    private static final Set<String> KINDS = Set.of("GENERAL", "PICKUP", "RETURN");
     // 53号 §3.3 (2026-10-07): the notification-list pagination baseline (10号 §3.14 先例),
     // re-validated here so a direct API caller gets the same 400 as the HTTP surface.
     private static final int PAGE_MAX = 10_000;
@@ -57,7 +56,6 @@ public final class ScheduleMerchantQueryApiImpl implements ScheduleMerchantQuery
         user(q == null ? null : q.context());
         positive(q.merchantId(), "merchantId");
         positive(q.storeId(), "storeId");
-        if (q.windowKind() != null && !KINDS.contains(q.windowKind())) throw invalid("windowKind");
         if (q.status() != null && !STATUSES.contains(q.status())) throw invalid("status");
         boolean paged = q.page() != null || q.pageSize() != null;
         if (paged && (q.page() == null || q.pageSize() == null)) throw invalid("page/pageSize");
@@ -68,13 +66,11 @@ public final class ScheduleMerchantQueryApiImpl implements ScheduleMerchantQuery
         return store.read(mapper -> {
             admissions.requireOperable(q.context(), id(q.merchantId()), id(q.storeId()));
             long storeId = id(q.storeId());
-            Long serviceId = q.serviceId() == null ? null : id(q.serviceId());
             // Same repeatable-read snapshot for rows and total, so a paged answer never
-            // mixes two moments of the table (53号 §3.3).
-            Long total = paged ? mapper.countWindows(storeId, serviceId,
-                    q.windowKind(), q.status()) : null;
-            List<Map<String, Object>> rows = mapper.listWindows(storeId, serviceId,
-                    q.windowKind(), q.status(), paged ? q.pageSize() : null,
+            // mixes two moments of the table (53号 §3.3; CCR-SCH-SLOT-001 store-wide slots).
+            Long total = paged ? mapper.countWindows(storeId, q.status()) : null;
+            List<Map<String, Object>> rows = mapper.listWindows(storeId, q.status(),
+                    paged ? q.pageSize() : null,
                     paged ? (q.page() - 1) * q.pageSize() : 0);
             List<WindowItem> items = new ArrayList<>(rows.size());
             for (Map<String, Object> row : rows) {
@@ -82,8 +78,6 @@ public final class ScheduleMerchantQueryApiImpl implements ScheduleMerchantQuery
                         ScheduleSqlRows.id(row, "id"),
                         ScheduleSqlRows.id(row, "merchant_id"),
                         ScheduleSqlRows.id(row, "store_id"),
-                        ScheduleSqlRows.id(row, "service_id"),
-                        ScheduleSqlRows.text(row, "window_kind"),
                         ScheduleSqlRows.at(row, "start_at"),
                         ScheduleSqlRows.at(row, "end_at"),
                         (int) ScheduleSqlRows.number(row, "configured_capacity"),

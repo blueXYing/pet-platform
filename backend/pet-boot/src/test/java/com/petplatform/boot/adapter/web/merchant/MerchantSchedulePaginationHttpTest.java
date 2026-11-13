@@ -65,10 +65,10 @@ class MerchantSchedulePaginationHttpTest {
 
     private static final String STORE = "201";
     /**
-     * Seed order, fixed start_at-ascending/id-tiebreak expectation for store 201 (11 rows:
-     * GENERAL 101..107 hourly 02:00..08:00, PICKUP 108 sharing 03:00 with 102, CLOSED 109 at
-     * 09:00, service-302 rows 210 at 02:00 / SOLD_OUT 211 at 03:00). Id 301 belongs to
-     * another store and must never appear.
+     * Seed order, fixed start_at-ascending/id-tiebreak expectation for store 201 (11 unified
+     * slot rows: 101..107 hourly 02:00..08:00, 108 sharing 03:00 with 102 to pin the id
+     * tiebreak, CLOSED 109 at 09:00, rows 210 at 02:00 / SOLD_OUT 211 at 03:00). Id 301
+     * belongs to another store and must never appear.
      */
     private static final List<String> ALL_ORDERED = List.of(
             "101", "210", "102", "108", "211", "103", "104", "105", "106", "107", "109");
@@ -174,38 +174,38 @@ class MerchantSchedulePaginationHttpTest {
     }
 
     /**
-     * Store 201 window rows, inserted deliberately out of order. GENERAL ids 101..107 start
-     * hourly 02:00..08:00; id 108 is a PICKUP window sharing 03:00 with 102 (pins the id
-     * tiebreak); id 109 is CLOSED at 09:00. Ids 210/211 belong to service 302, id 301 to a
-     * different store: both must stay isolated from the paged totals.
+     * Store 201 unified slot rows, inserted deliberately out of order. Ids 101..107 start
+     * hourly 02:00..08:00; id 108 shares 03:00 with 102 (pins the id tiebreak); id 109 is
+     * CLOSED at 09:00. Id 301 belongs to a different store and must stay isolated from the
+     * paged totals (CCR-SCH-SLOT-001: one shared slot list per store, no service/kind split).
      */
     private static void seed(Fixture fixture) {
         JdbcTemplate jdbc = fixture.jdbc;
-        window(jdbc, 101, 301, "GENERAL", "2030-01-01 02:00:00", "2030-01-01 03:00:00", "OPEN");
-        window(jdbc, 102, 301, "GENERAL", "2030-01-01 03:00:00", "2030-01-01 04:00:00", "OPEN");
-        window(jdbc, 103, 301, "GENERAL", "2030-01-01 04:00:00", "2030-01-01 05:00:00", "OPEN");
-        window(jdbc, 104, 301, "GENERAL", "2030-01-01 05:00:00", "2030-01-01 06:00:00", "OPEN");
-        window(jdbc, 105, 301, "GENERAL", "2030-01-01 06:00:00", "2030-01-01 07:00:00", "OPEN");
-        window(jdbc, 106, 301, "GENERAL", "2030-01-01 07:00:00", "2030-01-01 08:00:00", "OPEN");
-        window(jdbc, 107, 301, "GENERAL", "2030-01-01 08:00:00", "2030-01-01 09:00:00", "OPEN");
-        window(jdbc, 108, 301, "PICKUP", "2030-01-01 03:00:00", "2030-01-01 03:30:00", "OPEN");
-        window(jdbc, 109, 301, "GENERAL", "2030-01-01 09:00:00", "2030-01-01 10:00:00",
+        window(jdbc, 101, "2030-01-01 02:00:00", "2030-01-01 03:00:00", "OPEN");
+        window(jdbc, 102, "2030-01-01 03:00:00", "2030-01-01 04:00:00", "OPEN");
+        window(jdbc, 103, "2030-01-01 04:00:00", "2030-01-01 05:00:00", "OPEN");
+        window(jdbc, 104, "2030-01-01 05:00:00", "2030-01-01 06:00:00", "OPEN");
+        window(jdbc, 105, "2030-01-01 06:00:00", "2030-01-01 07:00:00", "OPEN");
+        window(jdbc, 106, "2030-01-01 07:00:00", "2030-01-01 08:00:00", "OPEN");
+        window(jdbc, 107, "2030-01-01 08:00:00", "2030-01-01 09:00:00", "OPEN");
+        window(jdbc, 108, "2030-01-01 03:00:00", "2030-01-01 03:30:00", "OPEN");
+        window(jdbc, 109, "2030-01-01 09:00:00", "2030-01-01 10:00:00",
                 "CLOSED");
-        window(jdbc, 210, 302, "GENERAL", "2030-01-01 02:00:00", "2030-01-01 03:00:00", "OPEN");
-        window(jdbc, 211, 302, "GENERAL", "2030-01-01 03:00:00", "2030-01-01 04:00:00",
+        window(jdbc, 210, "2030-01-01 02:00:00", "2030-01-01 03:00:00", "OPEN");
+        window(jdbc, 211, "2030-01-01 03:00:00", "2030-01-01 04:00:00",
                 "SOLD_OUT");
         jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,"
-                + "service_id,start_at,end_at,configured_capacity,status,version,created_at,"
-                + "updated_at,window_kind) VALUES(301,10,999,301,'2030-01-01 02:00:00',"
-                + "'2030-01-01 03:00:00',1,'OPEN',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),'GENERAL')");
+                + "start_at,end_at,configured_capacity,status,version,created_at,"
+                + "updated_at) VALUES(301,10,999,'2030-01-01 02:00:00',"
+                + "'2030-01-01 03:00:00',1,'OPEN',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
     }
 
-    private static void window(JdbcTemplate jdbc, long id, long service, String kind,
+    private static void window(JdbcTemplate jdbc, long id,
             String start, String end, String status) {
         jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,"
-                + "service_id,start_at,end_at,configured_capacity,status,version,created_at,"
-                + "updated_at,window_kind) VALUES(?,?,201,?,?,?,1,?,0,UTC_TIMESTAMP(3),"
-                + "UTC_TIMESTAMP(3),?)", id, 10L, service, start, end, status, kind);
+                + "start_at,end_at,configured_capacity,status,version,created_at,"
+                + "updated_at) VALUES(?,?,201,?,?,1,?,0,UTC_TIMESTAMP(3),"
+                + "UTC_TIMESTAMP(3))", id, 10L, start, end, status);
     }
 
     private static MockHttpServletRequest request(String query) {
@@ -239,7 +239,7 @@ class MerchantSchedulePaginationHttpTest {
 
     @Test
     void unpaginatedRequestKeepsTheLegacyShapeAndFullList() {
-        Map<String, Object> data = data(controller.listWindows(STORE, "10", null, null, null,
+        Map<String, Object> data = data(controller.listWindows(STORE, "10", null,
                 null, null, request("merchantId=10")));
         // Byte-compatible legacy answer: exactly {storeId, items}, no envelope keys, no LIMIT.
         assertEquals(List.of("storeId", "items"), List.copyOf(data.keySet()));
@@ -251,16 +251,16 @@ class MerchantSchedulePaginationHttpTest {
 
     @Test
     void explicitPagingSlicesInFixedOrderWithFilterMatchedTotal() {
-        Map<String, Object> page2 = data(controller.listWindows(STORE, "10", null, null, null, "2",
+        Map<String, Object> page2 = data(controller.listWindows(STORE, "10", null, "2",
                 "3", request("merchantId=10&page=2&pageSize=3")));
         assertEquals(11L, page2.get("total"));
         assertEquals(2, page2.get("page"));
         assertEquals(3, page2.get("pageSize"));
         assertEquals(ALL_ORDERED.subList(3, 6), ids(page2));
 
-        Map<String, Object> page1 = data(controller.listWindows(STORE, "10", null, null, null, "1",
+        Map<String, Object> page1 = data(controller.listWindows(STORE, "10", null, "1",
                 "3", request("merchantId=10&page=1&pageSize=3")));
-        Map<String, Object> page3 = data(controller.listWindows(STORE, "10", null, null, null, "3",
+        Map<String, Object> page3 = data(controller.listWindows(STORE, "10", null, "3",
                 "3", request("merchantId=10&page=3&pageSize=3")));
         // Pages 1..3 concatenated reproduce the full start-ascending/id-tiebreak order.
         assertEquals(ALL_ORDERED.subList(0, 3), ids(page1));
@@ -270,7 +270,7 @@ class MerchantSchedulePaginationHttpTest {
     @Test
     void partialPagingFallsBackToDefaultsAndEmptyStringCountsAsAbsent() {
         // Only pageSize: page defaults to 1.
-        Map<String, Object> sizeOnly = data(controller.listWindows(STORE, "10", null, null, null,
+        Map<String, Object> sizeOnly = data(controller.listWindows(STORE, "10", null,
                 null, "5", request("merchantId=10&pageSize=5")));
         assertEquals(1, sizeOnly.get("page"));
         assertEquals(5, sizeOnly.get("pageSize"));
@@ -278,7 +278,7 @@ class MerchantSchedulePaginationHttpTest {
         assertEquals(ALL_ORDERED.subList(0, 5), ids(sizeOnly));
 
         // A bare empty page value is absent, so the request stays unpaginated (legacy shape).
-        Map<String, Object> legacy = data(controller.listWindows(STORE, "10", null, null, null, "",
+        Map<String, Object> legacy = data(controller.listWindows(STORE, "10", null, "",
                 null, request("merchantId=10&page=")));
         assertEquals(List.of("storeId", "items"), List.copyOf(legacy.keySet()));
         assertEquals(ALL_ORDERED, ids(legacy));
@@ -286,7 +286,7 @@ class MerchantSchedulePaginationHttpTest {
 
     @Test
     void overEndPageAnswersEmptyItemsWithUnchangedTotal() {
-        Map<String, Object> data = data(controller.listWindows(STORE, "10", null, null, null, "5",
+        Map<String, Object> data = data(controller.listWindows(STORE, "10", null, "5",
                 "3", request("merchantId=10&page=5&pageSize=3")));
         assertEquals(List.of(), ids(data));
         assertEquals(11L, data.get("total"));
@@ -295,23 +295,22 @@ class MerchantSchedulePaginationHttpTest {
 
     @Test
     void filtersApplyBeforeCountingAndSlicing() {
-        Map<String, Object> openOnly = data(controller.listWindows(STORE, "10", null, null, "OPEN",
+        Map<String, Object> openOnly = data(controller.listWindows(STORE, "10", "OPEN",
                 "1", "20", request("merchantId=10&status=OPEN&page=1&pageSize=20")));
         assertEquals(9L, openOnly.get("total"));
         assertEquals(9, items(openOnly).size());
 
-        Map<String, Object> pickup = data(controller.listWindows(STORE, "10", null, "PICKUP", null,
-                "1", "20", request("merchantId=10&kind=PICKUP&page=1&pageSize=20")));
-        assertEquals(1L, pickup.get("total"));
-        assertEquals(List.of("108"), ids(pickup));
-
-        Map<String, Object> otherService = data(controller.listWindows(STORE, "10", "302", null,
-                null, "1", "1", request("merchantId=10&serviceId=302&page=1&pageSize=1")));
-        assertEquals(2L, otherService.get("total"));
-        assertEquals(List.of("210"), ids(otherService));
+        // CCR-SCH-SLOT-001: the slot list is one store-wide pool — service/kind filters no
+        // longer exist, and the removed parameters are rejected like any unknown parameter.
+        assertEquals(CommonApiCodes.INVALID_ARGUMENT, assertThrows(ApiException.class,
+                () -> controller.listWindows(STORE, "10", null, "1", "20",
+                        request("merchantId=10&kind=PICKUP&page=1&pageSize=20"))).code());
+        assertEquals(CommonApiCodes.INVALID_ARGUMENT, assertThrows(ApiException.class,
+                () -> controller.listWindows(STORE, "10", null, "1", "20",
+                        request("merchantId=10&serviceId=302&page=1&pageSize=20"))).code());
 
         // Closed windows stay listed in the unfiltered totals (workbench sees full states).
-        Map<String, Object> closed = data(controller.listWindows(STORE, "10", null, null,
+        Map<String, Object> closed = data(controller.listWindows(STORE, "10",
                 "CLOSED", null, null, request("merchantId=10&status=CLOSED")));
         assertEquals(List.of("storeId", "items"), List.copyOf(closed.keySet()));
         assertEquals(List.of("109"), ids(closed));
@@ -326,17 +325,17 @@ class MerchantSchedulePaginationHttpTest {
                 "merchantId=10&foo=1"}) {
             String page = param(query, "page"), size = param(query, "pageSize");
             assertEquals(CommonApiCodes.INVALID_ARGUMENT, assertThrows(ApiException.class,
-                    () -> controller.listWindows(STORE, "10", null, null, null, page, size,
+                    () -> controller.listWindows(STORE, "10", null, page, size,
                             request(query))).code(), query);
         }
         // Duplicate paging parameters are rejected like every other query violation.
         MockHttpServletRequest duplicated = request("merchantId=10");
         duplicated.addParameter("page", new String[] {"1", "2"});
         assertEquals(CommonApiCodes.INVALID_ARGUMENT, assertThrows(ApiException.class,
-                () -> controller.listWindows(STORE, "10", null, null, null, "1", null,
+                () -> controller.listWindows(STORE, "10", null, "1", null,
                         duplicated)).code());
         // The paging bounds follow the notification-list baseline: the edges are legal.
-        Map<String, Object> edge = data(controller.listWindows(STORE, "10", null, null, null,
+        Map<String, Object> edge = data(controller.listWindows(STORE, "10", null,
                 "10000", "50", request("merchantId=10&page=10000&pageSize=50")));
         assertEquals(List.of(), ids(edge));
         assertEquals(11L, edge.get("total"));
@@ -396,8 +395,8 @@ class MerchantSchedulePaginationHttpTest {
                 Path script = Objects.requireNonNull(root,
                         "Repository root with SQL06 was not found")
                         .resolve("docs/03-database/06-核心数据库Schema-v0.1.sql");
-                // SQL06 creates schedule_availability_window; SQL37 adds the window_kind
-                // column the seeded rows carry (the same core pair the SCH-003 tests load).
+                // SQL06 creates schedule_availability_window (CCR-SCH-SLOT-001 unified slot
+                // table); SQL37 carries the reservation-protection tables of this pair.
                 try (Connection connection = source.getConnection()) {
                     ScriptUtils.executeSqlScript(connection, new EncodedResource(
                             new FileSystemResource(script), StandardCharsets.UTF_8));
