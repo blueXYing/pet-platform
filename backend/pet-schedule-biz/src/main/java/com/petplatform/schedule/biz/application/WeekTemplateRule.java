@@ -108,7 +108,9 @@ public final class WeekTemplateRule {
                 }
             }
             for (int index = 1; index < ordered.size(); index++) {
-                if (!ordered.get(index).start().isBefore(ordered.get(index - 1).end())) {
+                // Overlap only: start strictly before the previous end. Half-open adjacency
+                // (start == prev.end) is legal (same fixed sense as the batch-generate check).
+                if (ordered.get(index).start().isBefore(ordered.get(index - 1).end())) {
                     invalid("week template segments of one day must not overlap");
                 }
             }
