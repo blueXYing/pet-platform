@@ -80,13 +80,11 @@ export type BatchGenerateResult = Readonly<{
  *  defaults (60/7) when no row exists; the read projection carries updatedAt like every
  *  other read in the family. */
 export type BookingWindowView = Readonly<{
-  merchantId: string; storeId: string
   leadMinutes: number; maxDays: number
-  version: string; updatedAt: string
+  version: string; updatedAt: string | null
 }>
 /** PUT booking-window receipt: full replace answers the new head without updatedAt. */
 export type BookingWindowReceipt = Readonly<{
-  merchantId: string; storeId: string
   leadMinutes: number; maxDays: number; version: string
 }>
 export type StaffWindowItem = Readonly<{
@@ -242,19 +240,18 @@ const maxDaysOf = (value: any): number => {
   return value
 }
 export function decodeBookingWindowView(value: unknown): BookingWindowView {
-  const v = exact(value, ['merchantId', 'storeId', 'leadMinutes', 'maxDays', 'version', 'updatedAt'])
+  // CCR-SCH-SLOT-002 §2 wire shape (pinned with the backend): exactly four keys — no
+  // merchantId/storeId on this store-scoped read; updatedAt is null for the default row.
+  const v = exact(value, ['leadMinutes', 'maxDays', 'version', 'updatedAt'])
   return {
-    merchantId: isId(v.merchantId) ? v.merchantId : invalid(),
-    storeId: isId(v.storeId) ? v.storeId : invalid(),
     leadMinutes: leadMinutesOf(v.leadMinutes), maxDays: maxDaysOf(v.maxDays),
-    version: isVersion(v.version) ? v.version : invalid(), updatedAt: timestamp(v.updatedAt),
+    version: isVersion(v.version) ? v.version : invalid(),
+    updatedAt: v.updatedAt === null ? null : timestamp(v.updatedAt),
   }
 }
 export function decodeBookingWindowReceipt(value: unknown): BookingWindowReceipt {
-  const v = exact(value, ['merchantId', 'storeId', 'leadMinutes', 'maxDays', 'version'])
+  const v = exact(value, ['leadMinutes', 'maxDays', 'version'])
   return {
-    merchantId: isId(v.merchantId) ? v.merchantId : invalid(),
-    storeId: isId(v.storeId) ? v.storeId : invalid(),
     leadMinutes: leadMinutesOf(v.leadMinutes), maxDays: maxDaysOf(v.maxDays),
     version: isVersion(v.version) ? v.version : invalid(),
   }
@@ -937,10 +934,10 @@ export class PreviewScheduleRepository implements ScheduleDeps {
     this.gate(true)
     const head = this.bookingHead
     return {
-      merchantId: fixtureMerchantId, storeId: fixtureStoreId,
       leadMinutes: head?.leadMinutes ?? bookingLeadMinutesDefault,
       maxDays: head?.maxDays ?? bookingMaxDaysDefault,
-      version: head?.version ?? '0', updatedAt: this.now(),
+      // Wire shape (CCR §2): four keys, updatedAt null while the default row is unset.
+      version: head ? head.version : '0', updatedAt: head ? this.now() : null,
     }
   }
   async saveBookingWindow(slot: string, form: BookingWindowForm, expectedVersion: string): Promise<BookingWindowReceipt> {
@@ -951,7 +948,7 @@ export class PreviewScheduleRepository implements ScheduleDeps {
       if ((current?.version ?? '0') !== expectedVersion) throw new ScheduleMockError('COMMON_CONFLICT', 409)
       const next = { leadMinutes: form.leadMinutes!, maxDays: form.maxDays!, version: this.bump() }
       this.bookingHead = next
-      return { merchantId: fixtureMerchantId, storeId: fixtureStoreId, ...next }
+      return { ...next }
     })
   }
   async staffWindows(staffId: string): Promise<StaffWindowPage> {

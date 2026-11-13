@@ -305,7 +305,10 @@ export default function ScheduleTemplatePage() {
       })
       if (listOpen && listLoadedOnce.current) await loadList()
     } catch (error) {
-      setNotice(scheduleMessage(error))
+      // TEMP-DIAG(2026-11-13): surface the raw error shape — the fallback message hid the
+      // real client-side rejection; remove once the acceptance round pinpoints it.
+      const raw = error instanceof Error ? `${error.name}:${error.message}` : String(error)
+      setNotice(`${scheduleMessage(error)}［诊断:${raw.slice(0, 120)}］`)
     } finally {
       if (mounted.current) setBusy(false)
     }

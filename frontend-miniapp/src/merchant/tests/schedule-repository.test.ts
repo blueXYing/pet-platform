@@ -493,10 +493,11 @@ test('real repository wires batch-generate and booking-window (CCR-SCH-SLOT-002)
       })
     }
     if (call.method === 'GET' && call.path.endsWith('/booking-window')) {
-      return ok({ merchantId: '958001', storeId: '958002', leadMinutes: 60, maxDays: 7, version: '0', updatedAt: '2026-11-13T02:00:00.000Z' })
+      // CCR §2 wire shape: four keys, no coordinates; null updatedAt = default row.
+      return ok({ leadMinutes: 60, maxDays: 7, version: '0', updatedAt: null })
     }
     if (call.method === 'PUT' && call.path.endsWith('/booking-window')) {
-      return ok({ merchantId: '958001', storeId: '958002', leadMinutes: 30, maxDays: 14, version: '1' })
+      return ok({ leadMinutes: 30, maxDays: 14, version: '1' })
     }
     return undefined
   })

@@ -241,14 +241,18 @@ test('batch-generate decoder is exact-key and enforces the 200-candidate cap', (
 })
 
 test('booking-window decoders are exact-key with lead 0..1440 / maxDays 1..90 bounds', () => {
+  // CCR-SCH-SLOT-002 §2 wire shape: four keys (no merchantId/storeId); updatedAt may be
+  // null while the default row is unset (the acceptance round caught the six-key mismatch).
   const view = {
-    merchantId: '958001', storeId: '958002', leadMinutes: 60, maxDays: 7,
+    leadMinutes: 60, maxDays: 7,
     version: '0', updatedAt: '2026-11-13T02:00:00.000Z',
   }
   assert.equal(decodeBookingWindowView(view).leadMinutes, 60)
+  assert.equal(decodeBookingWindowView({ ...view, updatedAt: null }).updatedAt, null)
+  assert.throws(() => decodeBookingWindowView({ ...view, merchantId: '958001' }), /INVALID_RESPONSE/)
   // Receipt is a separate shape (no updatedAt on the wire).
   assert.throws(() => decodeBookingWindowReceipt(view), /INVALID_RESPONSE/)
-  const receiptShape = { merchantId: '958001', storeId: '958002', leadMinutes: 30, maxDays: 14, version: '1' }
+  const receiptShape = { leadMinutes: 30, maxDays: 14, version: '1' }
   assert.equal(decodeBookingWindowReceipt(receiptShape).maxDays, 14)
   assert.throws(() => decodeBookingWindowView(receiptShape), /INVALID_RESPONSE/)
   for (const mutate of [
