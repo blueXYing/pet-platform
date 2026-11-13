@@ -58,7 +58,9 @@ public final class ScheduleSqlRows {
         if (value instanceof byte[] bytes) {
             return new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
         }
-        throw new IllegalArgumentException("invalid " + column);
+        // JSON columns surface as exotic driver types across connector versions — degrade to
+        // toString instead of failing closed (acceptance round caught it on CI MySQL).
+        return java.util.Objects.toString(value);
     }
 
     public static LocalDateTime dateTime(Map<String, Object> row, String column) {

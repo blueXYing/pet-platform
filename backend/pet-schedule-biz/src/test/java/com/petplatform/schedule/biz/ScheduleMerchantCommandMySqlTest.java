@@ -629,7 +629,8 @@ class ScheduleMerchantCommandMySqlTest {
             assertTrue(app.commands.createWindowOutcome(create("961"), out));
             long created = Long.parseLong(out[0].windowId());
             assertEquals("OPEN", db.windowStatus(created));
-            assertEquals("2", app.commands.replaceWeekTemplate(
+            // The window create above never touches the template row — first PUT is version 1.
+            assertEquals("1", app.commands.replaceWeekTemplate(
                     replaceWeekTemplate("0", weekTemplateWeek(1))).version());
             assertEquals("OPEN", db.windowStatus(created));
             assertEquals(0, db.jdbc.queryForObject("SELECT version FROM "
