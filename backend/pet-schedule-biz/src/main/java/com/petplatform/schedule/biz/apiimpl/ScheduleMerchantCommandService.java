@@ -45,6 +45,11 @@ import com.petplatform.schedule.api.dto.ScheduleWriteTypes.UpdateWindowCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WindowCloseCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WindowOpenCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WindowResult;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WeekTemplateDay;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WeekTemplateQuery;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WeekTemplateReplaceCommand;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WeekTemplateResult;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WeekTemplateView;
 import com.petplatform.schedule.api.error.ScheduleWriteApiCodes;
 import com.petplatform.schedule.api.protection.ScheduleCapacityGuardApi;
 import com.petplatform.schedule.api.protection.ScheduleProtectionFactsApi;
@@ -52,6 +57,7 @@ import com.petplatform.schedule.biz.application.AvailabilityQueryService;
 import com.petplatform.schedule.biz.application.BookingWindowRule;
 import com.petplatform.schedule.biz.application.ScheduleAdmissionGate;
 import com.petplatform.schedule.biz.application.ScheduleCanonicalParams;
+import com.petplatform.schedule.biz.application.WeekTemplateRule;
 import com.petplatform.schedule.biz.infrastructure.persistence.ScheduleSqlRows;
 import com.petplatform.schedule.biz.infrastructure.persistence.ScheduleWriteStore;
 import com.petplatform.schedule.biz.infrastructure.persistence.mapper.ScheduleWriteMapper;
@@ -436,7 +442,9 @@ public final class ScheduleMerchantCommandService implements ScheduleMerchantCom
             }
         }
         for (int i = 1; i < ordered.size(); i++) {
-            if (!ordered.get(i).start().isBefore(ordered.get(i - 1).end())) {
+            // Overlap only: start strictly before the previous end. Half-open adjacency
+            // (start == prev.end) is legal — interval slicing produces exactly that.
+            if (ordered.get(i).start().isBefore(ordered.get(i - 1).end())) {
                 invalid("batch generate segments must not overlap");
             }
         }
@@ -653,6 +661,120 @@ public final class ScheduleMerchantCommandService implements ScheduleMerchantCom
                             Long.toString(nextVersion));
                 });
         return executed.result();
+    }
+
+    // ------------------------------------------------------ week template (CCR-SCH-SLOT-003)
+
+    /** 53号 §3.6 GET: an absent row answers seven closed days at logical version "0"
+     * with a null updatedAt, creating nothing; the row never backfills. */
+    @Override
+    public WeekTemplateView getWeekTemplate(WeekTemplateQuery q) {
+        CommandContext ctx = user(q == null ? null : q.context());
+        windowId(q.merchantId(), "merchantId");
+        windowId(q.storeId(), "storeId");
+        return store.execute(m -> {
+            admissions.requireOperable(query(ctx), id(q.merchantId()), id(q.storeId()));
+            guard.acquire(List.of(q.storeId()), query(ctx));
+            Map<String, Object> row = m.selectWeekTemplateForUpdate(id(q.storeId()));
+            if (row == null) {
+                return new WeekTemplateView(templateDays(WeekTemplateRule.absent()), "0", null);
+            }
+            String days = ScheduleSqlRows.json(row, "days");
+            if (days == null) unavailable("week template facts are invalid");
+            return new WeekTemplateView(
+                    templateDays(WeekTemplateRule.parse(days)),
+                    ScheduleSqlRows.version(row, "version"),
+                    ScheduleSqlRows.at(row, "updated_at"));
+        });
+    }
+
+    /** 53号 §3.6 PUT: full replacement of the whole 7-day cycle with expectedVersion
+     * optimistic locking (a stale version is 409 COMMON_CONFLICT to re-read; the first
+     * PUT carries "0" and creates the row at 1 atomically). No reason: editing the
+     * template is not an availability reduction — already-materialized windows (booked
+     * or merchant-created) are never touched, only future not-yet-materialized expansion
+     * changes (CCR-SCH-SLOT-003 §1). Like booking-window PUT no schedule_write_action row
+     * is written (the target-type lexicon stays WINDOW/STAFF_WINDOW/CAPABILITY_SET). */
+    @Override
+    public WeekTemplateResult replaceWeekTemplate(WeekTemplateReplaceCommand c) {
+        CommandContext ctx = user(c == null ? null : c.context());
+        windowId(c.merchantId(), "merchantId");
+        windowId(c.storeId(), "storeId");
+        List<WeekTemplateDay> days = c.days() == null ? List.of() : c.days();
+        // Writer-side envelope (WeekTemplateRule): exactly 7 days, per day 0..24
+        // non-overlapping segments, capacity 1..999. Re-validated here so the service is
+        // safe against non-HTTP callers too.
+        List<WeekTemplateRule.Day> ruleDays = ruleDays(days);
+        WeekTemplateRule.validate(ruleDays);
+        String daysJson = WeekTemplateRule.write(ruleDays);
+        long expectedVersion = nonNegativeVersion(c.expectedVersion());
+        Map<String, Object> p = new LinkedHashMap<>();
+        p.put("merchantId", c.merchantId());
+        p.put("storeId", c.storeId());
+        p.put("days", daysJson);
+        p.put("expectedVersion", Long.toString(expectedVersion));
+        Executed<WeekTemplateResult> executed = command(
+                "merchant.schedule.weekTemplate.replace",
+                ctx,
+                "STORE:" + c.merchantId() + ":" + c.storeId(),
+                p,
+                WeekTemplateResult.class,
+                m -> {
+                    admissions.requireOperable(query(ctx), id(c.merchantId()), id(c.storeId()));
+                    guard.acquire(List.of(c.storeId()), query(ctx));
+                    Map<String, Object> row =
+                            m.selectWeekTemplateForUpdate(id(c.storeId()));
+                    long nextVersion = expectedVersion + 1;
+                    if (row == null) {
+                        // First PUT carries expectedVersion "0" and creates the row at 1
+                        // atomically (booking-window/capability-set precedent).
+                        if (expectedVersion != 0) conflict("week template version changed");
+                        one(m.insertWeekTemplate(id(c.storeId()), daysJson,
+                                nextVersion, now()));
+                    } else {
+                        requireCurrentVersion(row, expectedVersion);
+                        one(m.casWeekTemplate(id(c.storeId()), daysJson,
+                                expectedVersion, nextVersion, now()));
+                    }
+                    return new WeekTemplateResult(days, Long.toString(nextVersion));
+                });
+        return executed.result();
+    }
+
+    /** Cross-module record conversion (api WeekTemplateDay -> rule Day, both validated). */
+    private static List<WeekTemplateRule.Day> ruleDays(List<WeekTemplateDay> days) {
+        List<WeekTemplateRule.Day> converted = new ArrayList<>(days.size());
+        for (WeekTemplateDay day : days) {
+            List<WeekTemplateRule.Segment> segments = new ArrayList<>(
+                    day == null || day.segments() == null ? 0 : day.segments().size());
+            if (day != null && day.segments() != null) {
+                for (var segment : day.segments()) {
+                    if (segment == null || segment.start() == null
+                            || segment.end() == null) {
+                        invalid("each week template segment must have start before end");
+                    }
+                    segments.add(new WeekTemplateRule.Segment(
+                            segment.start(), segment.end(), segment.capacity()));
+                }
+            }
+            converted.add(new WeekTemplateRule.Day(day != null && day.enabled(), segments));
+        }
+        return converted;
+    }
+
+    private static List<WeekTemplateDay> templateDays(WeekTemplateRule.Template template) {
+        List<WeekTemplateDay> days = new ArrayList<>(template.days().size());
+        for (WeekTemplateRule.Day day : template.days()) {
+            List<com.petplatform.schedule.api.dto.ScheduleWriteTypes.WeekTemplateSegment>
+                    segments = new ArrayList<>(day.segments().size());
+            for (var segment : day.segments()) {
+                segments.add(new com.petplatform.schedule.api.dto.ScheduleWriteTypes
+                        .WeekTemplateSegment(segment.start(), segment.end(),
+                        segment.capacity()));
+            }
+            days.add(new WeekTemplateDay(day.enabled(), List.copyOf(segments)));
+        }
+        return List.copyOf(days);
     }
 
     // ------------------------------------------------------------------ staff windows

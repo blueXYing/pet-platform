@@ -42,4 +42,11 @@
         FROM merchant_schedule_booking_window
         WHERE store_id=#{storeId}
     </select>
+    <!-- CCR-SCH-SLOT-003: the weekly cycling template expands into virtual selection
+         slots; no row = no expansion (seven closed days). -->
+    <select id="selectWeekTemplate" resultType="map">
+        SELECT store_id, days, version
+        FROM merchant_schedule_week_template
+        WHERE store_id=#{storeId}
+    </select>
 </mapper>

@@ -16,4 +16,7 @@ public interface ScheduleSelectionMapper {
 
     /** Store bookable range for the selection filter (CCR-SCH-SLOT-002); null = defaults. */
     Map<String, Object> selectBookingWindow(@Param("storeId") long storeId);
+
+    /** Store weekly cycling template days JSON (CCR-SCH-SLOT-003); null = no expansion. */
+    Map<String, Object> selectWeekTemplate(@Param("storeId") long storeId);
 }

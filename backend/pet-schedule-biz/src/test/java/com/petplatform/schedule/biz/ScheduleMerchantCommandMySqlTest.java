@@ -45,6 +45,11 @@ import com.petplatform.schedule.api.dto.ScheduleWriteTypes.SkippedWindow;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.StaffWindowCloseCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.StaffWindowResult;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.UpdateWindowCommand;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WeekTemplateDay;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WeekTemplateQuery;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WeekTemplateReplaceCommand;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WeekTemplateResult;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WeekTemplateView;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WindowCloseCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WindowOpenCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WindowResult;
@@ -545,6 +550,123 @@ class ScheduleMerchantCommandMySqlTest {
             int leadMinutes, int maxDays) {
         return new BookingWindowReplaceCommand(ctx(), "10", "201", leadMinutes, maxDays,
                 expectedVersion);
+    }
+
+    // ------------------------------------------------------- CCR-SCH-SLOT-003 week-template
+
+    /** §3.6: absent row = seven closed days at version "0" with a null updatedAt; PUT is a
+     * whole-cycle full replacement under expectedVersion CAS; replays return the first
+     * receipt; envelope violations (day count / overlap / start>=end / capacity bounds)
+     * are 400s that change nothing. */
+    @Test
+    void weekTemplateGetDefaultsPutCasAndBoundaries() throws Exception {
+        try (Database db = new Database()) {
+            Components app = new Components(db);
+            WeekTemplateView absent = app.commands.getWeekTemplate(
+                    new WeekTemplateQuery(ctx(), "10", "201"));
+            assertEquals(7, absent.days().size());
+            for (var day : absent.days()) {
+                assertFalse(day.enabled());
+                assertTrue(day.segments().isEmpty());
+            }
+            assertEquals("0", absent.version());
+            assertNull(absent.updatedAt());
+            assertEquals(0, db.count("merchant_schedule_week_template")); // never backfilled
+            WeekTemplateResult created = app.commands.replaceWeekTemplate(
+                    replaceWeekTemplate("0", weekTemplateWeek(1)));
+            assertEquals("1", created.version());
+            assertEquals(7, created.days().size());
+            WeekTemplateView stored = app.commands.getWeekTemplate(
+                    new WeekTemplateQuery(ctx(), "10", "201"));
+            assertEquals("1", stored.version());
+            assertNotNull(stored.updatedAt());
+            assertTrue(stored.days().get(0).enabled()); // Monday carries the segment
+            assertEquals(1, stored.days().get(0).segments().size());
+            assertFalse(stored.days().get(6).enabled());
+            // A second editor still holding "0" loses with COMMON_CONFLICT (no LWW).
+            assertEquals(CommonApiCodes.CONFLICT, assertThrows(ApiException.class,
+                    () -> app.commands.replaceWeekTemplate(
+                            replaceWeekTemplate("0", weekTemplateWeek(2)))).code());
+            // Same pinned key replays the first receipt without advancing the version.
+            CommandContext pinned = ctx();
+            assertEquals("2", app.commands.replaceWeekTemplate(
+                    new WeekTemplateReplaceCommand(pinned, "10", "201",
+                            weekTemplateWeek(3), "1")).version());
+            assertEquals("2", app.commands.replaceWeekTemplate(
+                    new WeekTemplateReplaceCommand(pinned, "10", "201",
+                            weekTemplateWeek(3), "1")).version());
+            assertEquals(CommonApiCodes.IDEMPOTENCY_KEY_CONFLICT, assertThrows(ApiException.class,
+                    () -> app.commands.replaceWeekTemplate(new WeekTemplateReplaceCommand(
+                            pinned, "10", "201", weekTemplateWeek(4), "2"))).code());
+            assertEquals(1, db.count("merchant_schedule_week_template"));
+            // Envelope 400s: day count 6/8, overlapping segments, start>=end, capacity 0/1000.
+            List<WeekTemplateDay> sixDays = new java.util.ArrayList<>(weekTemplateWeek(1));
+            sixDays.removeLast();
+            java.util.List<List<WeekTemplateDay>> bad = List.of(
+                    sixDays,
+                    weekTemplateWithSegments(List.of(segment("09:00", "11:00", 6),
+                            segment("10:30", "12:00", 6))), // overlap
+                    weekTemplateWithSegments(List.of(segment("11:00", "11:00", 6))), // start==end
+                    weekTemplateWithSegments(List.of(segment("09:00", "11:00", 0))),
+                    weekTemplateWithSegments(List.of(segment("09:00", "11:00", 1000))));
+            for (List<WeekTemplateDay> invalid : bad) {
+                assertEquals(CommonApiCodes.INVALID_ARGUMENT, assertThrows(ApiException.class,
+                        () -> app.commands.replaceWeekTemplate(
+                                replaceWeekTemplate("2", invalid))).code());
+            }
+            assertEquals(1, db.count("merchant_schedule_week_template"));
+            assertEquals(3, db.jdbc.queryForObject(
+                    "SELECT version FROM merchant_schedule_week_template", Integer.class));
+        }
+    }
+
+    /** §3.6 red line: a template PUT never touches already-materialized windows. */
+    @Test
+    void weekTemplatePutNeverTouchesMaterializedWindows() throws Exception {
+        try (Database db = new Database()) {
+            Components app = new Components(db);
+            WindowResult[] out = new WindowResult[1];
+            assertTrue(app.commands.createWindowOutcome(create("961"), out));
+            long created = Long.parseLong(out[0].windowId());
+            assertEquals("OPEN", db.windowStatus(created));
+            assertEquals("2", app.commands.replaceWeekTemplate(
+                    replaceWeekTemplate("0", weekTemplateWeek(1))).version());
+            assertEquals("OPEN", db.windowStatus(created));
+            assertEquals(0, db.jdbc.queryForObject("SELECT version FROM "
+                    + "schedule_availability_window WHERE id=" + created, Integer.class));
+            assertEquals(0, db.jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM schedule_write_action WHERE action='WINDOW_CREATE' "
+                            + "AND actor_user_id=0", Integer.class));
+            assertEquals(1, db.jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM schedule_availability_window", Integer.class));
+        }
+    }
+
+    private static com.petplatform.schedule.api.dto.ScheduleWriteTypes.WeekTemplateSegment
+            segment(String start, String end, int capacity) {
+        return new com.petplatform.schedule.api.dto.ScheduleWriteTypes.WeekTemplateSegment(
+                LocalTime.parse(start), LocalTime.parse(end), capacity);
+    }
+
+    /** Week with every day disabled except Monday (index 0) carrying the given segments. */
+    private static List<WeekTemplateDay> weekTemplateWithSegments(
+            List<com.petplatform.schedule.api.dto.ScheduleWriteTypes.WeekTemplateSegment> segments) {
+        List<WeekTemplateDay> days = new java.util.ArrayList<>(7);
+        for (int index = 0; index < 7; index++) {
+            days.add(new WeekTemplateDay(index == 0, index == 0 ? List.copyOf(segments)
+                    : List.of()));
+        }
+        return List.copyOf(days);
+    }
+
+    /** Monday 09:00..capacity 6-style single-segment week; capacity param varies the doc. */
+    private static List<WeekTemplateDay> weekTemplateWeek(int capacity) {
+        return weekTemplateWithSegments(List.of(segment("09:00", "11:00", capacity)));
+    }
+
+    private static WeekTemplateReplaceCommand replaceWeekTemplate(String expectedVersion,
+            List<WeekTemplateDay> days) {
+        return new WeekTemplateReplaceCommand(ctx(), "10", "201", days, expectedVersion);
     }
 
     @Test

@@ -604,6 +604,8 @@ V1.0：
 
 2026-11-13 裁决补充（[CCR-SCH-SLOT-001](../../planning/ccr/CCR-SCH-SLOT-001.md)）：排期开窗为**全店统一时间槽**——窗口身份 = `storeId+时间区间`，全店共享，无服务归属与到店/上门/送回类型区分；容量为**全店单容量池**：槽容量 N，任何服务的有效预约共同占用，占满即已约满（SOLD_OUT）；同店开放窗不重叠。本裁决不改变上述分钟级粒度与「不做」各项。
 
+2026-11-13 裁决补充（[CCR-SCH-SLOT-003](../../planning/ccr/CCR-SCH-SLOT-003.md)，修订上列「不做」中的周模板项）：不做周期性**窗口数据结构**；周模板=独立配置面（`merchant_schedule_week_template`，53号 §3.6），读时展开、下单物化为真实分钟级窗口（CCR-SCH-SLOT-003）。窗口表本身仍无任何周期性字段（dayOfWeek/repeatWeekly/copyNextWeek 禁令保持），全部预约保护链不变。
+
 ### 12.2 容量
 
 ```text

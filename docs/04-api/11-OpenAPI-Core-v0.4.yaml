@@ -1891,6 +1891,175 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MerErrorEnvelope'
+  /merchant/stores/{storeId}/week-template:
+    get:
+      tags:
+      - Merchant-Schedule
+      summary: merchantGetScheduleWeekTemplate
+      operationId: merchantGetScheduleWeekTemplate
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-contract: 53-Schedule-Write-Contract-v0.1.md
+      x-audience: MINIAPP
+      x-authorization: 'Current OWNER; absent row answers seven closed days with version "0" and updatedAt null (CCR-SCH-SLOT-003 §3.6, 2026-11-13); read-time expansion only — no window rows are created by the read.'
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/StoreId'
+      - $ref: '#/components/parameters/MerchantIdQuery'
+      responses:
+        '200':
+          description: Store weekly cycling template (seven closed days when unset).
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleWeekTemplateEnvelope'
+        '400':
+          description: Invalid request rejected whole; no partial business effect.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Session missing or expired.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '403':
+          description: Authenticated principal is not allowed this action.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Dependency unavailable; the whole read fails closed.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+    put:
+      tags:
+      - Merchant-Schedule
+      summary: merchantReplaceScheduleWeekTemplate
+      operationId: merchantReplaceScheduleWeekTemplate
+      x-contract-status: IMPLEMENTED_DEFAULT_OFF
+      x-contract: 53-Schedule-Write-Contract-v0.1.md
+      x-audience: MINIAPP
+      x-authorization: 'Current OWNER; full replacement of the whole 7-day cycle with expectedVersion optimistic lock (409 COMMON_CONFLICT); editing is not an availability reduction — already-materialized windows are never touched, no reason required (CCR-SCH-SLOT-003 §3.6, 2026-11-13).'
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/StoreId'
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduleWeekTemplateReplaceRequest'
+      responses:
+        '200':
+          description: Replaced cycle receipt (echoed days with the new version).
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleWeekTemplateReplaceEnvelope'
+        '400':
+          description: Invalid request rejected whole; no partial business effect.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '401':
+          description: Session missing or expired.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '403':
+          description: Authenticated principal is not allowed this action.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '409':
+          description: CAS version or idempotency conflict.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
+        '503':
+          description: Dependency unavailable; the whole command rolls back.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                - no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerErrorEnvelope'
   /merchant/stores/{storeId}/availability-windows/batch-close:
     post:
       tags:
@@ -19408,6 +19577,152 @@ components:
           minLength: 1
         data:
           $ref: '#/components/schemas/ScheduleBookingWindowView'
+        traceId:
+          type: string
+          minLength: 1
+    ScheduleWeekTemplateSegment:
+      type: object
+      additionalProperties: false
+      required:
+      - start
+      - end
+      - capacity
+      properties:
+        start:
+          type: string
+          pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+          description: 段开始 HH:mm（Asia/Shanghai 门店日，分钟精度）。
+        end:
+          type: string
+          pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+          description: 段结束 HH:mm；必须晚于 start（同日内，半开区间）。
+        capacity:
+          type: integer
+          minimum: 1
+          maximum: 999
+          description: 段自带容量（物化窗口容量=段容量）。
+    ScheduleWeekTemplateDay:
+      type: object
+      additionalProperties: false
+      required:
+      - enabled
+      - segments
+      description: '一周中的一天：enabled=false 或 segments 为空即该天休（CCR-SCH-SLOT-003 §3.6）；
+        days 数组固定 7 项，下标 0=周一 … 6=周日（ISO 顺序）。'
+      properties:
+        enabled:
+          type: boolean
+        segments:
+          type: array
+          maxItems: 24
+          description: 每天 0..24 段，start<end 不重叠（半开相邻可衔接）。
+          items:
+            $ref: '#/components/schemas/ScheduleWeekTemplateSegment'
+    ScheduleWeekTemplateDays:
+      type: array
+      minItems: 7
+      maxItems: 7
+      description: 整周全量替换；下标 0=周一 … 6=周日。
+      items:
+        $ref: '#/components/schemas/ScheduleWeekTemplateDay'
+    ScheduleWeekTemplateView:
+      type: object
+      additionalProperties: false
+      required:
+      - days
+      - version
+      - updatedAt
+      description: '缺行=七天全休（enabled=false、segments 空）与逻辑版本 "0"、updatedAt null，
+        读不建行（CCR-SCH-SLOT-003 §3.6）。'
+      properties:
+        days:
+          $ref: '#/components/schemas/ScheduleWeekTemplateDays'
+        version:
+          type: string
+          pattern: '^[0-9]+$'
+        updatedAt:
+          type: string
+          format: date-time
+          x-precision: milliseconds
+          nullable: true
+    ScheduleWeekTemplateResult:
+      type: object
+      additionalProperties: false
+      required:
+      - days
+      - version
+      description: PUT 回执=保存后的整周回显与新版本（无 updatedAt，沿 booking-window 家族）。
+      properties:
+        days:
+          $ref: '#/components/schemas/ScheduleWeekTemplateDays'
+        version:
+          type: string
+          pattern: '^[0-9]+$'
+    ScheduleWeekTemplateReplaceRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - merchantId
+      - days
+      - expectedVersion
+      description: 全替换+乐观锁；改模板非减少可用性动作（已物化窗口不动），reason 不需要。
+      properties:
+        merchantId:
+          $ref: '#/components/schemas/PublicId'
+        days:
+          $ref: '#/components/schemas/ScheduleWeekTemplateDays'
+        expectedVersion:
+          type: string
+          pattern: '^[0-9]+$'
+    ScheduleWeekTemplateEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/ScheduleWeekTemplateView'
+        traceId:
+          type: string
+          minLength: 1
+    ScheduleWeekTemplateReplaceEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - success
+      - code
+      - message
+      - data
+      - traceId
+      properties:
+        success:
+          type: boolean
+          enum:
+          - true
+        code:
+          type: string
+          enum:
+          - SUCCESS
+        message:
+          type: string
+          minLength: 1
+        data:
+          $ref: '#/components/schemas/ScheduleWeekTemplateResult'
         traceId:
           type: string
           minLength: 1

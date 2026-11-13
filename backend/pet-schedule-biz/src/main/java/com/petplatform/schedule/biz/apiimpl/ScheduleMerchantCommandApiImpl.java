@@ -23,6 +23,10 @@ import com.petplatform.schedule.api.dto.ScheduleWriteTypes.UpdateWindowCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WindowCloseCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WindowOpenCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WindowResult;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WeekTemplateQuery;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WeekTemplateReplaceCommand;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WeekTemplateResult;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WeekTemplateView;
 /** Local implementation of the merchant schedule write contract; delegates to the command
  * service and exposes the created-vs-replayed flag for the 201/200 mapping (23号 §6).
  * Assembles its own persistence store so terminals never touch schedule persistence types
@@ -89,6 +93,16 @@ public final class ScheduleMerchantCommandApiImpl implements ScheduleMerchantCom
     @Override
     public BookingWindowResult replaceBookingWindow(BookingWindowReplaceCommand command) {
         return commands.replaceBookingWindow(command);
+    }
+
+    @Override
+    public WeekTemplateView getWeekTemplate(WeekTemplateQuery query) {
+        return commands.getWeekTemplate(query);
+    }
+
+    @Override
+    public WeekTemplateResult replaceWeekTemplate(WeekTemplateReplaceCommand command) {
+        return commands.replaceWeekTemplate(command);
     }
 
     @Override

@@ -1,6 +1,7 @@
 package com.petplatform.schedule.biz;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -21,6 +22,7 @@ import com.petplatform.schedule.biz.apiimpl.ReservationHoldApiImpl;
 import com.petplatform.schedule.biz.apiimpl.ScheduleCapacityGuardApiImpl;
 import com.petplatform.schedule.biz.apiimpl.ScheduleCapacityProofApiImpl;
 import com.petplatform.schedule.biz.apiimpl.ScheduleProtectionFactsApiImpl;
+import com.petplatform.schedule.biz.application.WeekTemplateRule;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -252,6 +254,176 @@ class ReservationHoldMySqlTest {
                 "IN_STORE", start, end, null, null, "111", null, null);
     }
 
+    // ------------------------------------------------------- CCR-SCH-SLOT-003 materialization
+
+    /**
+     * CCR-SCH-SLOT-003 order-time materialization: an IN_STORE hold whose appointment has
+     * no real window but falls inside an enabled template segment (Tuesday 2030-01-01
+     * 09:00-11:00 Asia/Shanghai = 01:00-03:00Z, capacity 2) creates the real minute-level
+     * window in the same transaction — segment interval, segment capacity, version 0, a
+     * WINDOW_CREATE audit row with the SYSTEM actor — and the claim lands on it. The
+     * selectedGeneralWindowId is the virtual id a C-end selection echo would carry; it
+     * resolves to the materialized window.
+     */
+    @Test
+    void generalHoldMaterializesTemplateSegmentIntoARealWindow() throws Exception {
+        try (Database db = new Database()) {
+            db.seedTemplateWorld(2, "09:00", "11:00");
+            Components app = new Components(db);
+            String virtualId = Long.toString(WeekTemplateRule.virtualWindowId(
+                    OffsetDateTime.parse("2030-01-01T01:00:00Z"),
+                    OffsetDateTime.parse("2030-01-01T03:00:00Z")));
+            HoldResult held = db.transaction().execute(status -> {
+                app.guard.acquire(List.of("201"), QUERY);
+                HoldResult result = app.hold.hold(new HoldCommand(COMMAND, "511", "601", "10",
+                        "201", "301", "IN_STORE",
+                        OffsetDateTime.parse("2030-01-01T01:30:00Z"),
+                        OffsetDateTime.parse("2030-01-01T02:30:00Z"), null, null,
+                        virtualId, null, null));
+                db.insertOrder(result, "IN_STORE");
+                return result;
+            });
+            assertEquals(1, db.count("schedule_availability_window"));
+            assertEquals(1, db.count("schedule_reservation_claim"));
+            String materialized = held.claims().getFirst().windowId();
+            assertNotEquals(virtualId, materialized); // the claim sits on the real window
+            assertEquals(2, db.jdbc.queryForObject(
+                    "SELECT configured_capacity FROM schedule_availability_window",
+                    Integer.class));
+            assertEquals(0, db.jdbc.queryForObject(
+                    "SELECT version FROM schedule_availability_window", Integer.class));
+            assertEquals("OPEN", db.jdbc.queryForObject(
+                    "SELECT status FROM schedule_availability_window", String.class));
+            assertEquals("2030-01-01 01:00:00", db.jdbc.queryForObject(
+                    "SELECT DATE_FORMAT(start_at,'%Y-%m-%d %H:%i:%s') "
+                            + "FROM schedule_availability_window", String.class));
+            assertEquals("2030-01-01 03:00:00", db.jdbc.queryForObject(
+                    "SELECT DATE_FORMAT(end_at,'%Y-%m-%d %H:%i:%s') "
+                            + "FROM schedule_availability_window", String.class));
+            assertEquals(1, db.jdbc.queryForObject("SELECT COUNT(*) FROM schedule_write_action"
+                    + " WHERE action='WINDOW_CREATE' AND actor_user_id=0", Integer.class));
+            assertEquals(materialized, db.jdbc.queryForObject(
+                    "SELECT window_id FROM schedule_reservation_claim", String.class));
+        }
+    }
+
+    /**
+     * The protection chain runs unchanged on a materialized window: with segment capacity 1
+     * the first hold fills it and the SOLD_OUT deriver flips the window in the same
+     * transaction; a second hold on the same time is refused (SCHEDULE_CAPACITY_EXCEEDED);
+     * an appointment outside every enabled segment (03:30Z) is refused exactly like a
+     * no-window time always was and materializes nothing; and the hold-expiry release
+     * returns the materialized window to OPEN so the time is bookable again — the whole
+     * materialize→claim→SOLD_OUT→release cycle lives on one real window row.
+     */
+    @Test
+    void materializedWindowRunsTheFullProtectionChain() throws Exception {
+        try (Database db = new Database()) {
+            db.seedTemplateWorld(1, "09:00", "11:00");
+            Components app = new Components(db);
+            String reservation = db.transaction().execute(status -> {
+                app.guard.acquire(List.of("201"), QUERY);
+                HoldResult result = app.hold.hold(new HoldCommand(COMMAND, "521", "601", "10",
+                        "201", "301", "IN_STORE",
+                        OffsetDateTime.parse("2030-01-01T01:30:00Z"),
+                        OffsetDateTime.parse("2030-01-01T02:30:00Z"), null, null,
+                        null, null, null));
+                db.insertOrder(result, "IN_STORE");
+                return result.reservationId();
+            });
+            assertEquals("SOLD_OUT", db.jdbc.queryForObject(
+                    "SELECT status FROM schedule_availability_window", String.class));
+            assertEquals("SCHEDULE_CAPACITY_EXCEEDED", assertThrows(ApiException.class,
+                    () -> db.transaction().execute(status -> {
+                        app.guard.acquire(List.of("201"), QUERY);
+                        return app.hold.hold(new HoldCommand(COMMAND, "522", "601", "10",
+                                "201", "301", "IN_STORE",
+                                OffsetDateTime.parse("2030-01-01T01:30:00Z"),
+                                OffsetDateTime.parse("2030-01-01T02:30:00Z"), null, null,
+                                null, null, null));
+                    })).code());
+            // 03:30Z-04:00Z is outside every enabled segment: the historical conflict
+            // fires and no second window is ever created.
+            assertEquals("SCHEDULE_CAPACITY_EXCEEDED", assertThrows(ApiException.class,
+                    () -> db.transaction().execute(status -> {
+                        app.guard.acquire(List.of("201"), QUERY);
+                        return app.hold.hold(new HoldCommand(COMMAND, "523", "601", "10",
+                                "201", "301", "IN_STORE",
+                                OffsetDateTime.parse("2030-01-01T03:30:00Z"),
+                                OffsetDateTime.parse("2030-01-01T04:00:00Z"), null, null,
+                                null, null, null));
+                    })).code());
+            assertEquals(1, db.count("schedule_availability_window"));
+            assertEquals(1, db.count("schedule_reservation"));
+            // Expiry release (39号): the same materialized row returns to OPEN and the
+            // time becomes bookable again on that very row (no second materialization).
+            com.petplatform.schedule.biz.apiimpl.ReservationExpiryApiImpl expiry =
+                    new com.petplatform.schedule.biz.apiimpl.ReservationExpiryApiImpl(
+                            db.source, new java.util.concurrent.atomic.AtomicLong(5000)
+                                    ::incrementAndGet,
+                            app.guard, (orderId, reservationId, storeId, query) -> {},
+                            new com.petplatform.schedule.biz.apiimpl.ScheduleProtectionFactsApiImpl(
+                                    db.source, app.guard));
+            db.transaction().execute(status -> {
+                app.guard.acquire(List.of("201"), QUERY);
+                expiry.expire(new com.petplatform.schedule.api.dto.ReservationExpiryTypes
+                        .ExpireHoldCommand(
+                        new CommandContext("TASK:RESERVATION_HOLD_EXPIRE:" + reservation + ":0",
+                                null, OperatorType.SYSTEM, "task", "internal"),
+                        "521", reservation, "201", 0,
+                        OffsetDateTime.parse("2026-09-27T12:44:56.789Z"),
+                        OffsetDateTime.parse("2026-09-27T12:45:00.000Z")));
+                return null;
+            });
+            assertEquals("OPEN", db.jdbc.queryForObject(
+                    "SELECT status FROM schedule_availability_window", String.class));
+            db.transaction().execute(status -> {
+                app.guard.acquire(List.of("201"), QUERY);
+                HoldResult again = app.hold.hold(new HoldCommand(COMMAND, "524", "601", "10",
+                        "201", "301", "IN_STORE",
+                        OffsetDateTime.parse("2030-01-01T01:30:00Z"),
+                        OffsetDateTime.parse("2030-01-01T02:30:00Z"), null, null,
+                        null, null, null));
+                db.insertOrder(again, "IN_STORE");
+                return again;
+            });
+            assertEquals(1, db.count("schedule_availability_window"));
+            assertEquals("SOLD_OUT", db.jdbc.queryForObject(
+                    "SELECT status FROM schedule_availability_window", String.class));
+        }
+    }
+
+    /** PICKUP_DELIVERY materializes both directional legs from their own segments. */
+    @Test
+    void pickupHoldMaterializesBothLegWindowsFromTheTemplate() throws Exception {
+        try (Database db = new Database()) {
+            db.seedTemplatePickupWorld();
+            Components app = new Components(db);
+            String pickupVirtual = Long.toString(WeekTemplateRule.virtualWindowId(
+                    OffsetDateTime.parse("2030-01-01T01:00:00Z"),
+                    OffsetDateTime.parse("2030-01-01T02:00:00Z")));
+            String returnVirtual = Long.toString(WeekTemplateRule.virtualWindowId(
+                    OffsetDateTime.parse("2030-01-01T06:00:00Z"),
+                    OffsetDateTime.parse("2030-01-01T07:00:00Z")));
+            HoldResult held = db.transaction().execute(status -> {
+                app.guard.acquire(List.of("201"), QUERY);
+                HoldResult result = app.hold.hold(new HoldCommand(COMMAND, "531", "601", "10",
+                        "201", "301", "PICKUP_DELIVERY", null, null,
+                        OffsetDateTime.parse("2030-01-01T01:00:00Z"),
+                        OffsetDateTime.parse("2030-01-01T06:00:00Z"),
+                        null, pickupVirtual, returnVirtual));
+                db.insertOrder(result, "PICKUP_DELIVERY");
+                return result;
+            });
+            assertEquals(2, db.count("schedule_availability_window"));
+            assertEquals(List.of("PICKUP", "RETURN"),
+                    held.claims().stream().map(claim -> claim.kind()).toList());
+            assertNotEquals(held.claims().get(0).windowId(), held.claims().get(1).windowId());
+            assertEquals(2, db.jdbc.queryForObject("SELECT COUNT(*) FROM schedule_write_action"
+                    + " WHERE action='WINDOW_CREATE' AND actor_user_id=0", Integer.class));
+        }
+    }
+
     private static HoldCommand general(String orderId) {
         return general(orderId, COMMAND);
     }
@@ -435,6 +607,59 @@ class ReservationHoldMySqlTest {
                     + "end_at,status,version,created_at,updated_at) VALUES(424,202,401,"
                     + "'2026-09-27 13:30:00','2026-09-27 14:10:00','AVAILABLE',0,"
                     + "UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
+        }
+
+        /** CCR-SCH-SLOT-003 store-201 world: permissive bookable range, one qualified
+         * employee covering 2030-01-01 01:00-03:00Z and a Tuesday (index 1) template
+         * segment [start,end) Asia/Shanghai — no real window at all. */
+        private void seedTemplateWorld(int capacity, String start, String end) {
+            jdbc.update("INSERT INTO merchant_schedule_booking_window(store_id,lead_minutes,"
+                    + "max_days,version,created_at,updated_at) VALUES(201,0,999999,0,"
+                    + "UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
+            staff("2030-01-01 01:00:00", "2030-01-01 03:00:00");
+            template(singleDayJson(1, "[{\"start\":\"" + start + "\",\"end\":\"" + end
+                    + "\",\"capacity\":" + capacity + "}]"));
+        }
+
+        /** Pickup world: Tuesday template segments 09:00-10:00 and 14:00-15:00
+         * (Asia/Shanghai = 01:00-02:00Z / 06:00-07:00Z) with one qualified employee
+         * covering both legs. */
+        private void seedTemplatePickupWorld() {
+            jdbc.update("INSERT INTO merchant_schedule_booking_window(store_id,lead_minutes,"
+                    + "max_days,version,created_at,updated_at) VALUES(201,0,999999,0,"
+                    + "UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
+            jdbc.update("INSERT INTO staff_service_capability(id,staff_id,service_id,status,"
+                    + "created_at,updated_at) VALUES(402,401,301,'ENABLED',UTC_TIMESTAMP(3),"
+                    + "UTC_TIMESTAMP(3))");
+            jdbc.update("INSERT INTO staff_availability_window(id,store_id,staff_id,start_at,"
+                    + "end_at,status,version,created_at,updated_at) VALUES(424,201,401,"
+                    + "'2030-01-01 01:00:00','2030-01-01 02:00:00','AVAILABLE',0,"
+                    + "UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
+            jdbc.update("INSERT INTO staff_availability_window(id,store_id,staff_id,start_at,"
+                    + "end_at,status,version,created_at,updated_at) VALUES(425,201,401,"
+                    + "'2030-01-01 06:00:00','2030-01-01 07:00:00','AVAILABLE',0,"
+                    + "UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
+            template(singleDayJson(1, "[{\"start\":\"09:00\",\"end\":\"10:00\","
+                    + "\"capacity\":2},{\"start\":\"14:00\",\"end\":\"15:00\","
+                    + "\"capacity\":2}]"));
+        }
+
+        private void template(String days) {
+            jdbc.update("INSERT INTO merchant_schedule_week_template(store_id,days,version,"
+                    + "created_at,updated_at) VALUES(201,?,0,UTC_TIMESTAMP(3),"
+                    + "UTC_TIMESTAMP(3))", days);
+        }
+
+        /** One enabled weekday (index) with the given segments JSON; other six days closed. */
+        private static String singleDayJson(int index, String segmentsJson) {
+            StringBuilder days = new StringBuilder("[");
+            for (int day = 0; day < 7; day++) {
+                if (day > 0) days.append(',');
+                days.append(day == index
+                        ? "{\"enabled\":true,\"segments\":" + segmentsJson + "}"
+                        : "{\"enabled\":false,\"segments\":[]}");
+            }
+            return days.append(']').toString();
         }
 
         private int count(String table) {

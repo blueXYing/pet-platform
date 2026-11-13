@@ -282,6 +282,15 @@ SCHEDULE_WRITE_OPERATIONS = {
     'merchantReplaceScheduleBookingWindow': (
         'put', '/merchant/stores/{storeId}/booking-window',
         ('200', '400', '401', '403', '409', '503')),
+    # CCR-SCH-SLOT-003 (2026-11-13) weekly cycling template: persistent per-store config
+    # (read-time expansion + order-time materialization); the GET answers seven closed
+    # days at version "0" when no row exists, the PUT is a full-replacement CAS.
+    'merchantGetScheduleWeekTemplate': (
+        'get', '/merchant/stores/{storeId}/week-template',
+        ('200', '400', '401', '403', '503')),
+    'merchantReplaceScheduleWeekTemplate': (
+        'put', '/merchant/stores/{storeId}/week-template',
+        ('200', '400', '401', '403', '409', '503')),
     'merchantListStaffAvailabilityWindows': (
         'get', '/merchant/staff/{staffId}/availability-windows',
         ('200', '400', '401', '403', '503')),

@@ -31,6 +31,11 @@ import com.petplatform.schedule.api.dto.ScheduleWriteTypes.UpdateWindowCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WindowCloseCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WindowOpenCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WindowResult;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WeekTemplateDay;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WeekTemplateReplaceCommand;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WeekTemplateResult;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WeekTemplateSegment;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WeekTemplateView;
 import com.petplatform.schedule.api.dto.ScheduleWorkbenchTypes.StaffWindowItem;
 import com.petplatform.schedule.api.dto.ScheduleWorkbenchTypes.StaffWindowPage;
 import com.petplatform.schedule.api.dto.ScheduleWorkbenchTypes.WindowItem;
@@ -296,6 +301,120 @@ public final class MerchantScheduleController {
         out.put("maxDays", result.maxDays());
         out.put("version", result.version());
         return envelope(out, req);
+    }
+
+    // ------------------------------------------------------------------ week template (CCR-SCH-SLOT-003)
+
+    /** 53号 §3.6 GET: absent row = seven closed days, version "0", updatedAt null. */
+    @GetMapping("/stores/{storeId}/week-template")
+    Map<String, Object> getWeekTemplate(
+            @PathVariable String storeId,
+            @RequestParam String merchantId,
+            HttpServletRequest req) {
+        onlyParameters(req, "merchantId");
+        var session = mini(req);
+        // Read-only view on the write assembly (booking-window precedent): the terminal
+        // X-Request-Id is mandatory on writes only, a missing header degrades to a local
+        // correlation id and binds nothing.
+        String requestId;
+        try {
+            requestId = requestId(req);
+        } catch (ApiException missing) {
+            requestId = UUID.randomUUID().toString();
+        }
+        WeekTemplateView view = commands.getWeekTemplate(
+                new com.petplatform.schedule.api.dto.ScheduleWriteTypes.WeekTemplateQuery(
+                        new CommandContext(requestId, trace(req), OperatorType.USER,
+                                session.userId(), "MINIAPP"),
+                        id(merchantId), id(storeId)));
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("days", view.days().stream()
+                .map(MerchantScheduleController::weekTemplateDay).toList());
+        out.put("version", view.version());
+        out.put("updatedAt", time(view.updatedAt()));
+        return envelope(out, req);
+    }
+
+    /** 53号 §3.6 PUT: strict full-replacement body {merchantId, days, expectedVersion};
+     * days = exactly 7 day objects {enabled, segments:[{start,end,capacity}]} with per
+     * day at most 24 segments; start<end and non-overlap are re-checked in the service. */
+    @PutMapping(value = "/stores/{storeId}/week-template",
+            consumes = MediaType.APPLICATION_JSON_VALUE)
+    Map<String, Object> replaceWeekTemplate(
+            @PathVariable String storeId, @RequestBody String json, HttpServletRequest req) {
+        onlyParameters(req);
+        mini(req);
+        JsonNode root = readObject(json);
+        WeekTemplateResult result = commands.replaceWeekTemplate(new WeekTemplateReplaceCommand(
+                userCommand(req), id(text(root, "merchantId")), id(storeId),
+                weekTemplateDays(root, "days"),
+                expectedVersion(text(root, "expectedVersion"))));
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("days", result.days().stream()
+                .map(MerchantScheduleController::weekTemplateDay).toList());
+        out.put("version", result.version());
+        return envelope(out, req);
+    }
+
+    /** Strict days list (53号 §3.6 lexicon): array of exactly 7 objects with exactly the
+     * keys {enabled, segments}; segments 0..24 objects with exactly {start,end,capacity},
+     * start/end strict "HH:mm", capacity an integer within [1,999]. */
+    private static List<WeekTemplateDay> weekTemplateDays(JsonNode root, String field) {
+        JsonNode node = root.get(field);
+        if (node == null || !node.isArray() || node.size() != 7) throw invalid();
+        List<WeekTemplateDay> days = new java.util.ArrayList<>(7);
+        for (JsonNode day : node) {
+            if (day == null || !day.isObject() || day.size() != 2
+                    || day.get("enabled") == null || day.get("segments") == null
+                    || !day.get("enabled").isBoolean()
+                    || !day.get("segments").isArray()) {
+                throw invalid();
+            }
+            JsonNode segments = day.get("segments");
+            if (segments.size() > 24) throw invalid();
+            List<WeekTemplateSegment> parsed = new java.util.ArrayList<>(segments.size());
+            for (JsonNode segment : segments) {
+                if (segment == null || !segment.isObject() || segment.size() != 3
+                        || segment.get("start") == null || segment.get("end") == null
+                        || segment.get("capacity") == null) {
+                    throw invalid();
+                }
+                JsonNode start = segment.get("start");
+                JsonNode end = segment.get("end");
+                JsonNode capacity = segment.get("capacity");
+                if (!start.isString() || !end.isString()
+                        || !start.asString().matches("([01][0-9]|2[0-3]):[0-5][0-9]")
+                        || !end.asString().matches("([01][0-9]|2[0-3]):[0-5][0-9]")) {
+                    throw invalid();
+                }
+                if (!capacity.isIntegralNumber() || !capacity.canConvertToInt()
+                        || capacity.asInt() < 1 || capacity.asInt() > 999) {
+                    throw invalid();
+                }
+                parsed.add(new WeekTemplateSegment(
+                        java.time.LocalTime.parse(start.asString()),
+                        java.time.LocalTime.parse(end.asString()),
+                        capacity.asInt()));
+            }
+            days.add(new WeekTemplateDay(day.get("enabled").asBoolean(), List.copyOf(parsed)));
+        }
+        return days;
+    }
+
+    private static Map<String, Object> weekTemplateDay(WeekTemplateDay day) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("enabled", day.enabled());
+        out.put("segments", day.segments().stream()
+                .map(MerchantScheduleController::weekTemplateSegment).toList());
+        return out;
+    }
+
+    private static Map<String, Object> weekTemplateSegment(WeekTemplateSegment segment) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("start", segment.start().toString());
+        out.put("end", segment.end().toString());
+        out.put("capacity", segment.capacity());
+        return out;
     }
 
     // ------------------------------------------------------------------ staff windows

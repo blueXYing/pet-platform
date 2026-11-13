@@ -52,6 +52,7 @@ public final class ReservationHoldApiImpl implements ReservationHoldApi {
     private final OrderProtectionFactsApi order;
     private final Clock clock;
     private final ScheduleCommandMapper mapper;
+    private final WeekTemplateMaterializer templates;
 
     public ReservationHoldApiImpl(DataSource source, SnowflakeIdGenerator ids,
             ScheduleCapacityGuardApi guard, ScheduleProtectionFactsApi facts,
@@ -64,6 +65,7 @@ public final class ReservationHoldApiImpl implements ReservationHoldApi {
         this.order = Objects.requireNonNull(order);
         this.clock = Objects.requireNonNull(clock);
         this.mapper = ScheduleMybatis.template(source).getMapper(ScheduleCommandMapper.class);
+        this.templates = new WeekTemplateMaterializer(source, ids);
     }
 
     @Override
@@ -79,11 +81,42 @@ public final class ReservationHoldApiImpl implements ReservationHoldApi {
             if (!mapper.lockReservationByOrder(id(command.orderId())).isEmpty()) {
                 throw new ApiException(CommonApiCodes.CONFLICT, "order already has a reservation");
             }
+            // CCR-SCH-SLOT-003 order-time materialization (38号 internal step, external
+            // error surface unchanged): a target time with no real OPEN/SOLD_OUT window
+            // but a weekly-template segment hit becomes a real minute-level window in this
+            // same transaction (capacity = segment capacity, version 0, WINDOW_CREATE
+            // audit with the SYSTEM actor) before the normal proof/claim runs. A selected
+            // windowId naming an existing row keeps the original logic untouched; only an
+            // unknown id (the selection read's virtual segment id) resolves by time.
+            Instant materializeAt = clock.instant().truncatedTo(ChronoUnit.MILLIS);
+            String generalWindowId = command.selectedGeneralWindowId();
+            String pickupWindowId = command.selectedPickupWindowId();
+            String returnWindowId = command.selectedReturnWindowId();
+            if ("IN_STORE".equals(command.fulfillmentType())) {
+                String effective = templates.ensureClaimableWindow(
+                        id(command.storeId()), id(command.merchantId()),
+                        command.appointmentStart(), command.appointmentEnd(),
+                        generalWindowId, command.context().requestId(),
+                        command.context().traceId(), materializeAt);
+                if (effective != null) generalWindowId = effective;
+            } else {
+                String effectivePickup = templates.ensureClaimableWindow(
+                        id(command.storeId()), id(command.merchantId()),
+                        command.pickupStart(), null, pickupWindowId,
+                        command.context().requestId(), command.context().traceId(),
+                        materializeAt);
+                if (effectivePickup != null) pickupWindowId = effectivePickup;
+                String effectiveReturn = templates.ensureClaimableWindow(
+                        id(command.storeId()), id(command.merchantId()),
+                        command.returnStart(), null, returnWindowId,
+                        command.context().requestId(), command.context().traceId(),
+                        materializeAt);
+                if (effectiveReturn != null) returnWindowId = effectiveReturn;
+            }
             HoldProofPlan plan = proof.prepareForHold(new CapacityProofQuery(
                     command.storeId(), command.serviceId(), command.fulfillmentType(),
                     command.appointmentStart(), command.appointmentEnd(),
-                    command.selectedGeneralWindowId(), command.selectedPickupWindowId(),
-                    command.selectedReturnWindowId(), query));
+                    generalWindowId, pickupWindowId, returnWindowId, query));
             for (ProvenClaim claim : plan.claims()) {
                 if (!command.merchantId().equals(claim.merchantId())) {
                     throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,

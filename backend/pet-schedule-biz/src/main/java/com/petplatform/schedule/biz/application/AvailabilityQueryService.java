@@ -98,6 +98,18 @@ public final class AvailabilityQueryService {
                                             targetId(query.storeId()),
                                             utc(from),
                                             utc(to));
+                            // CCR-SCH-SLOT-003: every fetched OPEN/SOLD_OUT window holds its
+                            // open slot (even an out-of-range one), so a template segment
+                            // intersecting it is skipped — the merged item list never presents
+                            // the same time twice.
+                            List<WeekTemplateRule.Expanded> realIntervals =
+                                    new ArrayList<>(rows.size());
+                            for (ScheduleAvailabilityWindowEntity row : rows) {
+                                realIntervals.add(new WeekTemplateRule.Expanded(
+                                        row.getStartAt().atOffset(ZoneOffset.UTC),
+                                        row.getEndAt().atOffset(ZoneOffset.UTC),
+                                        row.getConfiguredCapacity()));
+                            }
                             List<AvailabilityWindowDTO> result = new ArrayList<>(rows.size());
                             for (ScheduleAvailabilityWindowEntity row : rows) {
                                 if (!notFinished(row, now)) continue; // ended windows never return
@@ -107,6 +119,30 @@ public final class AvailabilityQueryService {
                                     continue; // outside the bookable range stays hidden
                                 }
                                 result.add(aggregate(row, query, staff, mapper, now));
+                            }
+                            // CCR-SCH-SLOT-003 read-time expansion: items = real windows ∪
+                            // template expansion of the future weekdays, bounded by
+                            // now+maxDays; a virtual segment answers effectiveCapacity =
+                            // segment capacity, occupied 0 (it materializes at hold time).
+                            Map<String, Object> templateRow =
+                                    mapper.selectWeekTemplate(targetId(query.storeId()));
+                            if (templateRow != null) {
+                                String days = ScheduleSqlRows.json(templateRow, "days");
+                                if (days == null) unavailable("week template facts are invalid");
+                                for (WeekTemplateRule.Expanded virtual : WeekTemplateRule.expand(
+                                        WeekTemplateRule.parse(days), query.startDate(),
+                                        query.endDate(), now, range, realIntervals,
+                                        BUSINESS_ZONE)) {
+                                    result.add(new AvailabilityWindowDTO(
+                                            query.storeId(), query.serviceId(),
+                                            virtual.start(), virtual.end(),
+                                            virtual.capacity(), virtual.capacity(),
+                                            virtual.capacity(), 0, virtual.capacity(),
+                                            virtual.start().toInstant().isAfter(now)));
+                                }
+                                result.sort(java.util.Comparator.comparing(
+                                        AvailabilityWindowDTO::start)
+                                        .thenComparing(AvailabilityWindowDTO::end));
                             }
                             return List.copyOf(result);
                         });

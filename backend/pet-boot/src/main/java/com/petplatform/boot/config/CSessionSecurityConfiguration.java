@@ -242,7 +242,10 @@ public class CSessionSecurityConfiguration {
                       "/api/v1/merchant/staff/*/service-capabilities",
                       // CCR-SCH-SLOT-002 §2: store-level bookable-range config read (the
                       // wildcard above only covers the availability-windows subpaths).
-                      "/api/v1/merchant/stores/*/booking-window")
+                      "/api/v1/merchant/stores/*/booking-window",
+                      // CCR-SCH-SLOT-003 §3.6: weekly cycling template read (same store
+                      // family; the /api/v1/merchant/stores/ filter prefix already covers).
+                      "/api/v1/merchant/stores/*/week-template")
                   .permitAll();
               a.requestMatchers(HttpMethod.POST,
                       "/api/v1/merchant/stores/*/availability-windows",
@@ -255,7 +258,10 @@ public class CSessionSecurityConfiguration {
                       "/api/v1/merchant/staff/*/availability-windows/*",
                       "/api/v1/merchant/staff/*/service-capabilities",
                       // CCR-SCH-SLOT-002 §2: bookable-range full replace (optimistic lock).
-                      "/api/v1/merchant/stores/*/booking-window")
+                      "/api/v1/merchant/stores/*/booking-window",
+                      // CCR-SCH-SLOT-003 §3.6: weekly cycling template full replace
+                      // (optimistic lock; already-materialized windows never move).
+                      "/api/v1/merchant/stores/*/week-template")
                   .permitAll();
             }
             if (verificationHttpEnabled) {

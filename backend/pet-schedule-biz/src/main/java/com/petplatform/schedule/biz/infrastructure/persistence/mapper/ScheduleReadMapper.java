@@ -47,4 +47,7 @@ public interface ScheduleReadMapper {
 
     /** Store bookable range for the availability filter (CCR-SCH-SLOT-002); null = defaults. */
     java.util.Map<String, Object> selectBookingWindow(@Param("storeId") long storeId);
+
+    /** Store weekly cycling template days JSON (CCR-SCH-SLOT-003); null = no expansion. */
+    java.util.Map<String, Object> selectWeekTemplate(@Param("storeId") long storeId);
 }

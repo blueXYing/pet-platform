@@ -50,6 +50,17 @@ public final class ScheduleSqlRows {
         return (String) row.get(column);
     }
 
+    /** MySQL JSON column read: drivers may answer String or byte[] (CCR-SCH-SLOT-003). */
+    public static String json(Map<String, Object> row, String column) {
+        Object value = row.get(column);
+        if (value == null) return null;
+        if (value instanceof String text) return text;
+        if (value instanceof byte[] bytes) {
+            return new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+        }
+        throw new IllegalArgumentException("invalid " + column);
+    }
+
     public static LocalDateTime dateTime(Map<String, Object> row, String column) {
         Object value = row.get(column);
         if (value == null) return null;

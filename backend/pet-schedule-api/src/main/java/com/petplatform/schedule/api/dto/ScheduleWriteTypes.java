@@ -92,6 +92,49 @@ public final class ScheduleWriteTypes {
     /** The H5-pinned PUT receipt shape: {leadMinutes, maxDays, version}, no updatedAt. */
     public record BookingWindowResult(int leadMinutes, int maxDays, String version) {}
 
+    // ------------------------------------------------------------- week template (CCR-SCH-SLOT-003)
+
+    /** One template segment of a weekday: minute-precision [start,end) with its own capacity. */
+    public record WeekTemplateSegment(LocalTime start, LocalTime end, int capacity) {}
+
+    /** One weekday of the cycle; days[0]=Monday .. days[6]=Sunday (ISO order). A disabled
+     * day (or an empty segment list) is closed; segments of a disabled day are kept
+     * verbatim by PUT/GET but never expand on reads. */
+    public record WeekTemplateDay(boolean enabled, List<WeekTemplateSegment> segments) {
+        public WeekTemplateDay {
+            segments = segments == null ? List.of() : List.copyOf(segments);
+        }
+    }
+
+    public record WeekTemplateQuery(CommandContext context, String merchantId,
+            String storeId) {}
+
+    /** Absent row = seven closed days with logical version "0" and a null updatedAt. */
+    public record WeekTemplateView(List<WeekTemplateDay> days, String version,
+            OffsetDateTime updatedAt) {
+        public WeekTemplateView {
+            days = List.copyOf(days);
+        }
+    }
+
+    /** Full replacement of the whole 7-day cycle (53号 §3.6): every day must be listed;
+     * segments per day 0..24 non-overlapping with capacity 1..999 (writer-side 400s);
+     * no reason (editing the template is not an availability reduction — already
+     * materialized windows are never touched). */
+    public record WeekTemplateReplaceCommand(CommandContext context, String merchantId,
+            String storeId, List<WeekTemplateDay> days, String expectedVersion) {
+        public WeekTemplateReplaceCommand {
+            days = List.copyOf(days);
+        }
+    }
+
+    /** PUT receipt: the saved cycle echoed back with its new version. */
+    public record WeekTemplateResult(List<WeekTemplateDay> days, String version) {
+        public WeekTemplateResult {
+            days = List.copyOf(days);
+        }
+    }
+
     // ------------------------------------------------------------------ staff availability
 
     public record CreateStaffWindowCommand(CommandContext context, String merchantId,
