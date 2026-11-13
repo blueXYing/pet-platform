@@ -332,6 +332,9 @@ class ScheduleCapacityHttpTest {
                         new QueryContext("sch002-qa", OperatorType.SYSTEM, null))));
     assertEquals("COMMON_NOT_FOUND", missingStore.code());
 
+    // CCR-SCH-SLOT-003: the availability read now also consults merchant_schedule_week_template
+    // (created by the 53号 schema above). No row is seeded = absent template = seven closed
+    // days = zero expansion, so every capacity assertion below stays on the one seeded window.
     assertCapacity(send("GET", path, null, bearer(token)), 3, 0, 3, true);
     db.jdbc.update(
         "UPDATE staff_availability_window SET start_at=? WHERE id=?",

@@ -299,6 +299,9 @@ class ScheduleAvailabilityHttpTest {
     String availability = "/api/v1/c/services/" + grooming + "/availability";
 
     // ---- W2-SCH-001/006: aggregation over real MER/SCH SQL facts (three qualified staff).
+    // CCR-SCH-SLOT-003: the availability read now also consults merchant_schedule_week_template
+    // (created by the 53号 schema above). No row is seeded = absent template = seven closed
+    // days = zero expansion, so every expected item count below stays the real windows only.
     // The grooming view lists the whole store timeline: its own three OPEN slots plus the two
     // directional slots of the pickup service (bookability per slot is a staff-coverage
     // computation, not an ownership filter).
