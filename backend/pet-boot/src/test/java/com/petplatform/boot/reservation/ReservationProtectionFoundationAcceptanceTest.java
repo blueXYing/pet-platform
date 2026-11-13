@@ -917,9 +917,11 @@ class ReservationProtectionFoundationAcceptanceTest {
         /** CCR-SCH-SLOT-001: store-wide unified slots (no service_id/window_kind columns). */
         void window(long id, long storeId,
                 String start, String end, int configuredCapacity) {
+            // 5 columns take params: id, store_id, start_at, end_at, configured_capacity
+            // (merchant_id=700000, status='OPEN', timestamps are literals).
             jdbc.update("INSERT INTO schedule_availability_window"
                     + "(id,merchant_id,store_id,start_at,end_at,configured_capacity,status,created_at,updated_at)"
-                    + " VALUES(?,700000,?,?,?,?,?,'OPEN',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+                    + " VALUES(?,700000,?,?,?,?,'OPEN',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
                     id, storeId, start, end, configuredCapacity);
         }
 

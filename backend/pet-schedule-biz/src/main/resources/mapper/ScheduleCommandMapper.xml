@@ -115,4 +115,10 @@
         FROM staff_availability_window FORCE INDEX (idx_store_avail_time)
         WHERE store_id=#{storeId} ORDER BY staff_id,start_at,id FOR UPDATE
     </select>
+    <!-- CCR-SCH-SLOT-002: store bookable range for hold/swap admission; no row = defaults -->
+    <select id="selectBookingWindow" resultType="map">
+        SELECT store_id, lead_minutes, max_days, version
+        FROM merchant_schedule_booking_window
+        WHERE store_id=#{storeId}
+    </select>
 </mapper>

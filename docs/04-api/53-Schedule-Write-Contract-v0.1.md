@@ -1,10 +1,10 @@
 # Schedule Write Contract v0.1（商家排期写侧）
 
-状态：IMPLEMENTED_DEFAULT_OFF，2026-10-02；默认关闭，不表示生产已开放或页面已联调。2026-10-05 用户裁决：§7-1（B5）按方案 A 落地显式 SOLD_OUT 派生态与释放联动、§7-3（原登记的 200 上限问题）落地批量命令单次 200 条上限，均已并入本契约（见 §3 与 §3.1）；§7-2（C 端 kind）裁决本批不做。**2026-10-07 增补：§3.3 商家窗口列表标准分页（#106 登记的契约缺口，向后兼容、无新错误码、无 Schema 变更）。****本文档原编号 52：与 #101（staff-identity，52-Merchant-Staff-Identity）撞号，#101 合并后已重编号为 53（2026-10-06，含 docs/03-database/SQL53、11号 x-contract、代码注释与测试引用同步）。** **2026-11-13 修订（v0.2，[CCR-SCH-SLOT-001](../../planning/ccr/CCR-SCH-SLOT-001.md) 全店统一时间槽+单容量池）：§3 窗口身份改为 `storeId+时间区间`（全店共享，去 `serviceId`/`windowKind` 维度），请求/响应示例与 §3.3 列表过滤参数同步去 serviceId/kind，履约方式×kind 写入校验删除，窗口重叠校验改同店口径；batch-close、SCHC 闸门与事务序、幂等/审计/乐观并发/SOLD_OUT 派生态均不变；涉及 `kind` 的 C 端增列/过滤项随维度取消不再适用。** 产品依据：[SSOT §29](../00-ssot/01-SSOT-宠物平台V1.0-最终业务基线.md)、[PRD29](../01-prd/29-排期人员容量与维护人工裁决补充-v1.0.md)、SSOT §12/§13；技术契约：[34号排期保护契约](34-Schedule-Protection-Contract-v0.1.md)（SCHC-1～4，已批）、[34号存储](../03-database/34-Schedule-Protection-Storage-v0.1.md)、[36号预约与订单人员保护](36-Reservation-Order-Protection-Contract-v0.1.md)（ROC 已批、事实 API 已交付）、[写入提案 v0.2](../../planning/ccr/CCR-W2-API-001/schedule-write-proposal.md) 与[联合审阅回执](../../planning/ccr/CCR-W2-API-001/schedule-review-decisions.md)、[四项技术裁决回执](../../planning/ccr/CCR-W2-API-001/schedule-write-completion-decisions.md)。存储增量见 [SQL53](../03-database/53-Schedule-Write-Schema-v0.1.sql) 与隔离迁移 `schedule-migration/V29__schedule_write.sql`（仅显式 `schw001_*` 库可执行，永不跑共享数据源；SOLD_OUT 为既有 `status VARCHAR(16)` 列的应用层枚举值，无 DDL 变更）。
+状态：IMPLEMENTED_DEFAULT_OFF，2026-10-02；默认关闭，不表示生产已开放或页面已联调。2026-10-05 用户裁决：§7-1（B5）按方案 A 落地显式 SOLD_OUT 派生态与释放联动、§7-3（原登记的 200 上限问题）落地批量命令单次 200 条上限，均已并入本契约（见 §3 与 §3.1）；§7-2（C 端 kind）裁决本批不做。**2026-10-07 增补：§3.3 商家窗口列表标准分页（#106 登记的契约缺口，向后兼容、无新错误码、无 Schema 变更）。****本文档原编号 52：与 #101（staff-identity，52-Merchant-Staff-Identity）撞号，#101 合并后已重编号为 53（2026-10-06，含 docs/03-database/SQL53、11号 x-contract、代码注释与测试引用同步）。** **2026-11-13 修订（v0.2，[CCR-SCH-SLOT-001](../../planning/ccr/CCR-SCH-SLOT-001.md) 全店统一时间槽+单容量池）：§3 窗口身份改为 `storeId+时间区间`（全店共享，去 `serviceId`/`windowKind` 维度），请求/响应示例与 §3.3 列表过滤参数同步去 serviceId/kind，履约方式×kind 写入校验删除，窗口重叠校验改同店口径；batch-close、SCHC 闸门与事务序、幂等/审计/乐观并发/SOLD_OUT 派生态均不变；涉及 `kind` 的 C 端增列/过滤项随维度取消不再适用。** **2026-11-13 修订（v0.3，[CCR-SCH-SLOT-003](../../planning/ccr/CCR-SCH-SLOT-003.md) 周循环模板·读时展开+下单物化混合模型）：新增 §3.6 周模板配置面（`GET/PUT /merchant/stores/{storeId}/week-template`，新表 `merchant_schedule_week_template` 进 SQL53/V29）；C 端 availability/selection items = 真实窗口 ∪ 模板展开（未来周几展开至 now+maxDays 边界，与真实 OPEN/SOLD_OUT 窗重叠的模板段跳过）；38号 booking hold（及 46号换期同链）增加"模板段物化"内部步骤——选定时刻无真实窗口且命中启用日段内时同事务创建真实分钟级窗口（容量=段容量、version 0、WINDOW_CREATE 审计 actor 系统）后正常 claim，对外错误面不变；§3.4 batch-generate 保留为手动批量入口（不再是周模板的保存路径）；SSOT §12.1 周模板禁令按 CCR §3 措辞修订（窗口数据结构仍禁周期字段）。** 产品依据：[SSOT §29](../00-ssot/01-SSOT-宠物平台V1.0-最终业务基线.md)、[PRD29](../01-prd/29-排期人员容量与维护人工裁决补充-v1.0.md)、SSOT §12/§13；技术契约：[34号排期保护契约](34-Schedule-Protection-Contract-v0.1.md)（SCHC-1～4，已批）、[34号存储](../03-database/34-Schedule-Protection-Storage-v0.1.md)、[36号预约与订单人员保护](36-Reservation-Order-Protection-Contract-v0.1.md)（ROC 已批、事实 API 已交付）、[写入提案 v0.2](../../planning/ccr/CCR-W2-API-001/schedule-write-proposal.md) 与[联合审阅回执](../../planning/ccr/CCR-W2-API-001/schedule-review-decisions.md)、[四项技术裁决回执](../../planning/ccr/CCR-W2-API-001/schedule-write-completion-decisions.md)。存储增量见 [SQL53](../03-database/53-Schedule-Write-Schema-v0.1.sql) 与隔离迁移 `schedule-migration/V29__schedule_write.sql`（仅显式 `schw001_*` 库可执行，永不跑共享数据源；SOLD_OUT 为既有 `status VARCHAR(16)` 列的应用层枚举值，无 DDL 变更；v0.3 增 `merchant_schedule_week_template`）。
 
 ## 1. 范围与开关
 
-本契约承接 SCH-004 写侧：服务时段窗口（2026-11-13 起为全店统一时间槽，无 `windowKind`/服务维度，见文首 v0.2 修订；原 `window_kind=GENERAL/PICKUP/RETURN` 分类废除）、员工排班（AVAILABLE/CLOSED）、员工具体服务能力集合及商家工作台读。员工档案六接口归 MER（27号 §6.1），订单指派归 SCH-003/ORDER（07号 §6.2），运营只读监管延后（SCHW-D8），均不在本批。C 端可约响应的 `windowId` 增列须与 SCH-003 hold/swap 及 07/10/11 联合交付（`kind` 增列随统一槽取消），本批不改 C 端读契约。
+本契约承接 SCH-004 写侧：服务时段窗口（2026-11-13 起为全店统一时间槽，无 `windowKind`/服务维度，见文首 v0.2 修订；原 `window_kind=GENERAL/PICKUP/RETURN` 分类废除）、员工排班（AVAILABLE/CLOSED）、员工具体服务能力集合、门店可预约范围配置（§3.5）及商家工作台读；v0.3 起新增门店周循环模板配置面（§3.6，独立配置行，窗口表仍无周期字段）。员工档案六接口归 MER（27号 §6.1），订单指派归 SCH-003/ORDER（07号 §6.2），运营只读监管延后（SCHW-D8），均不在本批。C 端可约响应的 `windowId` 增列须与 SCH-003 hold/swap 及 07/10/11 联合交付（`kind` 增列随统一槽取消），本批不改 C 端读契约。
 
 开关分层默认关闭：
 
@@ -46,8 +46,13 @@
 | POST | /merchant/stores/{storeId}/availability-windows/{windowId}/close | merchantId,expectedVersion,reason 必填 | `{window,status:"CLOSED"}`；占用（含 SOLD_OUT 满窗）409 `SCHEDULE_WINDOW_STATE_NOT_ALLOWED` |
 | POST | /merchant/stores/{storeId}/availability-windows/{windowId}/open | merchantId,expectedVersion | `{window,status:"OPEN"}`；重叠（含对 SOLD_OUT 窗）409 `SCHEDULE_WINDOW_OVERLAP`；重开后系统按占用重判，可能直接返回 SOLD_OUT |
 | POST | /merchant/stores/{storeId}/availability-windows/batch-close | merchantId,fromDate,toDate(Asia/Shanghai 日历日),reason 必填 | `{storeId,closedWindows:[…],blockedWindows:[{window…,reasonCode}]}`；部分成功允许，全受阻不伪称成功；跨天相交整窗处理（SCHW-D5）；**单次条目上限 200**（见 §3.2）；SOLD_OUT 目标视同开放目标参与相交计数，满窗占用照常列入 blockedWindows 明示 |
+| POST | /merchant/stores/{storeId}/availability-windows/batch-generate | merchantId,fromDate,toDate(Asia/Shanghai 日历日，跨度 1..366 天),dailyStart,dailyEnd("HH:mm"，start<end),intervalMinutes(1..1440，缺省 60),configuredCapacity(1..999),reason(1..500) 必填 | `{storeId,createdWindows:[…],closedWindows:[…],skippedWindows:[{window…,reasonCode:"OCCUPIED"}]}`；**覆盖重建语义**（覆盖关闭范围=与生成时间区间相交，非整天历日）见 §3.4（2026-11-13 CCR-SCH-SLOT-002 增补；v0.3 起保留为手动批量入口，不再是周模板的保存路径，见 §3.6） |
+| GET | /merchant/stores/{storeId}/booking-window | query: merchantId 必填 | `{leadMinutes,maxDays,version,updatedAt}`；缺行返回默认 60/7、version "0"、updatedAt null（§3.5；CCR-SCH-SLOT-002 增补；形状与前端 H5 钉死一致，无 storeId 字段） |
+| PUT | /merchant/stores/{storeId}/booking-window | merchantId,leadMinutes(0..1440),maxDays(1..90),expectedVersion 必填 | `{leadMinutes,maxDays,version}`（无 updatedAt）；全替换 + 乐观锁 409 `COMMON_CONFLICT`（§3.5）；调宽/调窄均非减少可用性动作，reason 不需要 |
+| GET | /merchant/stores/{storeId}/week-template | query: merchantId 必填 | `{days:[{enabled,segments:[{start,end,capacity}]}×7],version,updatedAt}`；缺行=七天全休（enabled=false、segments 空数组）、version "0"、updatedAt null（§3.6；CCR-SCH-SLOT-003 增补） |
+| PUT | /merchant/stores/{storeId}/week-template | merchantId,days(7 天全量),expectedVersion 必填 | `{days,version}`；全替换 + 乐观锁 409 `COMMON_CONFLICT`（§3.6）；改模板非减少可用性动作（已物化窗口一律不动），reason 不需要 |
 
-不提供 DELETE/物理删除（SCHW-D3）；禁周模板三字段（dayOfWeek/repeatWeekly/copyNextWeek）不引入（SSOT §12.1）。
+不提供 DELETE/物理删除（SCHW-D3）；窗口表禁周模板三字段（dayOfWeek/repeatWeekly/copyNextWeek）不引入（SSOT §12.1 v0.3 修订：周模板=独立配置面 `merchant_schedule_week_template`，读时展开、下单物化为真实分钟级窗口，见 §3.6）。
 
 ### 3.2 批量命令单次条目上限 200（2026-10-05 裁决）
 
@@ -62,6 +67,35 @@
 - **非法值 400 `COMMON_INVALID_ARGUMENT`**：非数字、越界（page<1 或 >10000、pageSize<1 或 >50）、未知参数、重复参数；空串视同缺省（仅剩空串则不分页/取默认）。
 - **排序固定不变**：`start_at` 升序、`id` 升序 tiebreak（既有口径），不接排序参数；过滤先应用、分页在过滤之后（先过滤再计数与切片）。
 - 幂等、审计（读侧本无审计）、`no-store`、OWNER 准入、开关分层语义均不变。
+
+### 3.4 排期模板批量生成 batch-generate（2026-11-13 增补，[CCR-SCH-SLOT-002](../../planning/ccr/CCR-SCH-SLOT-002.md)）
+
+`POST /merchant/stores/{storeId}/availability-windows/batch-generate`：**覆盖重建**语义，一个命令=一个事务（23号幂等绑定 + OWNER 准入 + 每店闸门 + append-only 审计全套沿 §2；关闭目标逐窗记 `WINDOW_BATCH_CLOSE` 审计、生成窗逐窗记 `WINDOW_CREATE` 审计，同表同动作族，无新审计目标类型）：
+
+- **请求体严格 JSON**：`{merchantId, fromDate, toDate, dailyStart, dailyEnd, intervalMinutes, configuredCapacity, reason}`；`fromDate/toDate` 为 Asia/Shanghai 历日（跨度 1..366 天）、`dailyStart/dailyEnd` 为 "HH:mm" 且 start<end、`intervalMinutes` 1..1440（缺省 60）、`configuredCapacity` 1..999、`reason` 1..500（覆盖动作必填沿 close 纪律）。
+- **覆盖关闭范围=生成时间区间相交，非整天历日**（2026-11-13 与前端 H5 钉死的口径）：只关闭与生成区间 `[fromDate 当日 dailyStart, toDate 当日 dailyEnd]`（Asia/Shanghai，半开）相交的既有 OPEN/SOLD_OUT 统一槽——保存并生效按"逐日逐段"多次调用时，同日后一段不会关掉前一段刚建的窗（半开相邻不相交）。SOLD_OUT 视同开放目标（沿 batch-close 口径）；**被占用（TEMP_LOCKED/CONFIRMED 有效 claim）的窗跳过**并列入 `skippedWindows`（`reasonCode=OCCUPIED`，沿 batch-close blocked 命名族）；随后按 `intervalMinutes` 从 `dailyStart` 起逐段创建分钟级半开窗口 `[dailyStart+k·interval, +interval)`（仅取完整落入 `[dailyStart,dailyEnd)` 的段；余量不足以再切一段时止；容量=请求值，逐日重复）。
+- **跳过窗区间内不再生成**：与仍处开放态的窗（被占用跳过窗 + 范围外开放窗）重叠的候选段不创建（同店重叠校验自然拦住；CLOSED 窗不占开放位、不拦生成）。重叠被跳过的候选段不进入任何返回列表，也不计入上限条目。
+- **部分成功允许，全受阻不伪称成功**（沿 batch-close）：响应如实分列 `createdWindows/closedWindows/skippedWindows`；关闭旧窗后创建失败留下空档时，商家按列表重试。
+- **单次候选条目（created+closed+skipped）上限 200**：超出整笔 400 `COMMON_INVALID_ARGUMENT`（沿 §3.2，拒绝先于任何关闭/创建）；7 天×细间隔场景由前端分段调用。
+- 红线不变：禁周模板三字段（dayOfWeek/repeatWeekly/copyNextWeek）指**窗口数据结构**——无任何周期性字段/表进入 `schedule_availability_window`。（2026-11-13 CCR-SCH-SLOT-003 后：周模板改为独立配置面 `week-template` 持久行、读时展开+下单物化，见 §3.6；本命令保留为手动批量入口，前端"周模板编辑器草稿铺排保存"模式废止。）
+
+### 3.5 可预约范围配置 booking-window（2026-11-13 增补，CCR-SCH-SLOT-002；SSOT §12 增行）
+
+规则：客户可预约的时段满足 `startAt ≥ now + leadMinutes` 且 `startAt ≤ now + maxDays 天`；默认 lead=60 分钟、maxDays=7，商家可调（lead 0..1440 分钟、maxDays 1..90 天）。存储=新表 `merchant_schedule_booking_window`（store_id 唯一键、lead_minutes、max_days、version、created/updated；**缺行=默认值，不回填**）——门店级配置，非窗口级，见 [SQL53](../03-database/53-Schedule-Write-Schema-v0.1.sql) 与 V29 增补。
+
+- **GET** 缺行返回默认值（60/7）与逻辑版本 `"0"`、`updatedAt` null，不建行；回执 data `{leadMinutes,maxDays,version,updatedAt}`（无 storeId，前端 H5 钉死形状）。**PUT** 全替换：`expectedVersion` 乐观锁（过期 409 `COMMON_CONFLICT` 提示重读，不 last-write-wins；首次 PUT 带 `"0"` 原子建行推进 `"1"`），回执 data `{leadMinutes,maxDays,version}`（无 updatedAt）；`leadMinutes/maxDays` 越界（lead<0 或 >1440、maxDays<1 或 >90）400 `COMMON_INVALID_ARGUMENT`；同 requestId 同参重放返回首次回执、异参 409 `IDEMPOTENCY_KEY_CONFLICT`（23号）。reason 不需要（调范围非减少可用性动作）；本配置不写 `schedule_write_action` 审计（该表目标类型词表维持 WINDOW/STAFF_WINDOW/CAPABILITY_SET 不变，未扩）。
+- **C 端强制**（不改 C 端读契约形状）：availability（含 selection 投影）items 不返回 `startAt < now+lead || startAt > now+maxDays` 的时段（范围外隐藏，非 available=false 呈现）；booking hold（38号）与 reschedule（46号换期=新预约时间）的新预约时间越界 → 400 `COMMON_INVALID_ARGUMENT`（message 说明可约范围；不发明新码）。「不可约日期」不新增规则——由既有 batch-close 实现。
+- 读失败关闭语义沿家族（503）；缺行=默认值。
+
+### 3.6 周循环模板 week-template（2026-11-13 增补，[CCR-SCH-SLOT-003](../../planning/ccr/CCR-SCH-SLOT-003.md)；SSOT §12.1 行修订）
+
+模型=**读时展开 + 下单物化**混合（用户 2026-11-13 两轮澄清拍板："365 天都按这个 7 天循环来，而不是生成 365 个 7 天"）。存储=新表 `merchant_schedule_week_template`（store_id 唯一、`days` JSON=7 天×段列表、version、created/updated；**持久配置，永不自动过期，缺行=七天全休 version "0"，不回填**），见 SQL53 与 V29 增补。`days` 数组固定 7 项（下标 0=周一 … 6=周日，ISO 顺序），每项 `{enabled,segments:[{start,end,capacity}]}`；每天 0..24 段、"HH:mm" start<end 不重叠（半开相邻可衔接）、capacity 1..999（段自带容量，缺省语义无——PUT 必须显式携带），空段=该天休；`enabled=false` 的天休（其 segments 原样存储、GET 原样回显、读侧不展开）。
+
+- **GET** 缺行返回七天全休（`enabled:false,segments:[]`）与逻辑版本 `"0"`、`updatedAt` null，不建行；回执 data `{days,version,updatedAt}`（无 storeId，沿 §3.5 家族形状）。**PUT** 严格 JSON 全替换：根对象仅 `{merchantId,days,expectedVersion}`，days 每项仅 `{enabled,segments}`、每段仅 `{start,end,capacity}`（HH:mm 严格校验、capacity 整数 1..999、每天 ≤24 段——越界 400 `COMMON_INVALID_ARGUMENT`；start<end 与不重叠由服务层复核同码拒绝）；`expectedVersion` 乐观锁（过期 409 `COMMON_CONFLICT` 提示重读；首次 PUT 带 `"0"` 原子建行推进 `"1"`），回执 data `{days,version}`；同 requestId 同参重放返回首次回执、异参 409 `IDEMPOTENCY_KEY_CONFLICT`（23号）。reason 不需要（改模板非减少可用性动作）；本配置不写 `schedule_write_action` 审计（目标类型词表维持 WINDOW/STAFF_WINDOW/CAPABILITY_SET 不变）。
+- **PUT 只影响未来未物化的展开；已物化窗口（有预约的/商家手建的）一律不动**（用户 2026-11-11 原口径）；商家窗口列表（§3.3）仍=真实窗口，页顶模板状态提示由前端呈现。
+- **C 端可约读**（不改 C 端响应形状）：availability/selection 的 items = 真实窗口 ∪ 模板展开——未来日期按周几展开虚拟段，仅展开到 now+maxDays 可约范围内（§3.5 范围闸共用）；与真实 OPEN/SOLD_OUT 窗重叠（半开相交）的模板段跳过（同一时刻不重复呈现）；虚拟段 `effectiveCapacity=段容量`、`occupied=0`；selection 腿型投影（PICKUP/RETURN 或 GENERAL）照常作用于合并集，虚拟段携带确定性虚拟 `windowId`（非真实窗 ID；下单时由物化步骤换成真实窗）。
+- **下单物化（38号 hold 内部步骤，46号换期同链）**：选定目标时刻无真实 OPEN/SOLD_OUT 窗口、且该时刻（Asia/Shanghai）落入某启用日的段内（IN_STORE 需整个预约区间含于段内）→ **同事务创建真实分钟级统一槽窗口**（容量=段容量、version 0、`WINDOW_CREATE` 审计 actor=系统）→ 正常 claim。窗口已存在（选定 windowId 命中既有行，含 CLOSED）则完全原逻辑。占用/SOLD_OUT 派生/退款释放/过期回位/改期不变量/批量关窗全链从此完全照常——预约事实 100% 落在真实窗口行上（红线论证见 CCR §2）；对外错误面不变（无模板命中=既有容量证明 409 语义）。
+- 红线不变：**无周期字段进入窗口表**（dayOfWeek/repeatWeekly/copyNextWeek 禁令保持，SSOT §12.1）；模板是独立配置面非窗口属性；§3.4 batch-generate 命令与契约保留（手动批量入口）。
 
 ## 4. 员工排班（SCHW-D6）
 
@@ -90,7 +124,7 @@ PUT 为全量替换：过期 `expectedVersion` 409 `COMMON_CONFLICT` 提示重�
 
 ## 6. 审计与验收边界
 
-`schedule_write_action` 唯一键 `(request_id,target_type,target_id)`；批量关窗按受影响目标逐窗留审计。测试映射：W2-SCHW-001/003/004/005/006/007/008/012 的核心行由 `ScheduleMerchantCommandMySqlTest`（真实 MySQL，含容量守卫与写侧一致性：占用窗守卫、指派保护、全店复核、CAS 冲突、幂等重放）与 `ScheduleWriteDisabledTest` 覆盖；§3.1/§3.2 裁决行为由 `ScheduleSoldOutLinkMySqlTest` 覆盖（真实 MySQL：SOLD_OUT 进入/退款释放与过期回位、双连接并发不双卖、守卫尊重 SOLD_OUT、批量 >200 整笔拒绝与 SOLD_OUT 目标明示）及 `ScheduleSelectionQueryMySqlTest`（SOLD_OUT 窗读侧保留呈现 remaining=0）；§3.3 分页增补由 `MerchantSchedulePaginationHttpTest`（pet-boot，隔离真实 MySQL：不分页向后兼容形状、显式切片与 total、超末页空 items、非法参数 400、排序稳定、过滤×分页合成）覆盖；W2-SCHW-002/011 中涉及 C 端 kind 增列与 07/10/11 旧字段兼容的完整联调、W2-SCHW-013 MER 员工录入全链路属后续切片验收，本批不冒认（真实 MySQL 多连接并发演练由 §3.1 的双连接竞争用例部分覆盖，全链路压测仍属后续）。
+`schedule_write_action` 唯一键 `(request_id,target_type,target_id)`；批量关窗按受影响目标逐窗留审计。测试映射：W2-SCHW-001/003/004/005/006/007/008/012 的核心行由 `ScheduleMerchantCommandMySqlTest`（真实 MySQL，含容量守卫与写侧一致性：占用窗守卫、指派保护、全店复核、CAS 冲突、幂等重放）与 `ScheduleWriteDisabledTest` 覆盖；§3.1/§3.2 裁决行为由 `ScheduleSoldOutLinkMySqlTest` 覆盖（真实 MySQL：SOLD_OUT 进入/退款释放与过期回位、双连接并发不双卖、守卫尊重 SOLD_OUT、批量 >200 整笔拒绝与 SOLD_OUT 目标明示）及 `ScheduleSelectionQueryMySqlTest`（SOLD_OUT 窗读侧保留呈现 remaining=0）；§3.3 分页增补由 `MerchantSchedulePaginationHttpTest`（pet-boot，隔离真实 MySQL：不分页向后兼容形状、显式切片与 total、超末页空 items、非法参数 400、排序稳定、过滤×分页合成）覆盖；§3.4/§3.5（CCR-SCH-SLOT-002）由 `ScheduleMerchantCommandMySqlTest`（batch-generate 覆盖重建/占用跳过+OCCUPIED/重叠不生成/>200 整笔 400/幂等重放与异参 409；booking-window GET 默认/PUT CAS 与 1..1440、1..90 边界 400）、`ReservationHoldMySqlTest`（默认 60/7 下 hold 越界 400 及 message 含可约范围）与 `ScheduleSelectionQueryMySqlTest`（lead/maxDays 边界时段隐藏）覆盖，46号换期越界随 `OrderRescheduleAcceptanceTest` 族；§3.6（CCR-SCH-SLOT-003）由 `ScheduleMerchantCommandMySqlTest`（week-template GET 缺行默认/PUT CAS 首建推进/七天与段边界 400/幂等重放与异参 409）、`ScheduleSelectionQueryMySqlTest`（模板∪真实去重、越 maxDays 不展开、七天休无展开、虚拟段形状与腿型投影）与 `ReservationHoldMySqlTest`（hold 物化建窗→claim 落真实窗→SOLD_OUT/释放链回归、无模板命中保持既有冲突）覆盖；W2-SCHW-002/011 中涉及 C 端 kind 增列与 07/10/11 旧字段兼容的完整联调、W2-SCHW-013 MER 员工录入全链路属后续切片验收，本批不冒认（真实 MySQL 多连接并发演练由 §3.1 的双连接竞争用例部分覆盖，全链路压测仍属后续）。
 
 ## 7. 阻塞与待裁决（2026-10-05 用户裁决落定）
 

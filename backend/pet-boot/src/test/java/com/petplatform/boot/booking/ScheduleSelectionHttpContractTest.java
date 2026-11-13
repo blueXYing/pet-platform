@@ -157,6 +157,12 @@ class ScheduleSelectionHttpContractTest {
 
     private SelectionWindowQueryService selectionService() {
         ScheduleSelectionMapper unusedMapper = mock(ScheduleSelectionMapper.class);
+        // CCR-SCH-SLOT-003: the selection read now consults the weekly template through the
+        // mapper. This mock passes the "default template" dependency explicitly: an absent
+        // row (null) means seven closed days = zero expansion, so the item list stays the
+        // real windows' leg projection only — Mockito's default null answer would be the
+        // same; the stub pins the absent-template contract visibly.
+        when(unusedMapper.selectWeekTemplate(anyLong())).thenReturn(null);
         SelectionReadStore store = mock(SelectionReadStore.class, invocation -> {
             if ("read".equals(invocation.getMethod().getName())) {
                 @SuppressWarnings("unchecked")

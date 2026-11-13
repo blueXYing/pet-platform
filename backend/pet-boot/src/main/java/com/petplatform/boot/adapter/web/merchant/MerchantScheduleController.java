@@ -9,13 +9,20 @@ import com.petplatform.common.OperatorType;
 import com.petplatform.common.QueryContext;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BatchCloseCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BatchCloseResult;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BatchGenerateCommand;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BatchGenerateResult;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BlockedWindow;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BookingWindowQuery;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BookingWindowReplaceCommand;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BookingWindowResult;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BookingWindowView;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CapabilityQuery;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CapabilityResult;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CapabilityView;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CreateStaffWindowCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CreateWindowCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.ReplaceCapabilitiesCommand;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.SkippedWindow;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.StaffWindowCloseCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.StaffWindowOpenCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.StaffWindowResult;
@@ -24,6 +31,11 @@ import com.petplatform.schedule.api.dto.ScheduleWriteTypes.UpdateWindowCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WindowCloseCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WindowOpenCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WindowResult;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WeekTemplateDay;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WeekTemplateReplaceCommand;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WeekTemplateResult;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WeekTemplateSegment;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WeekTemplateView;
 import com.petplatform.schedule.api.dto.ScheduleWorkbenchTypes.StaffWindowItem;
 import com.petplatform.schedule.api.dto.ScheduleWorkbenchTypes.StaffWindowPage;
 import com.petplatform.schedule.api.dto.ScheduleWorkbenchTypes.WindowItem;
@@ -215,6 +227,196 @@ public final class MerchantScheduleController {
         return envelope(data, req);
     }
 
+    /** CCR-SCH-SLOT-002 覆盖重建 (53号 §3.4): the "weekly template editor" is a pure client
+     *  draft — saving materializes real minute-level slots through this command. One request
+     *  carries the whole batch: dates + pre-sliced segments (user ruling 2026-11-13). */
+    @PostMapping(value = "/stores/{storeId}/availability-windows/batch-generate",
+            consumes = MediaType.APPLICATION_JSON_VALUE)
+    Map<String, Object> batchGenerate(
+            @PathVariable String storeId, @RequestBody String json, HttpServletRequest req) {
+        onlyParameters(req);
+        mini(req);
+        JsonNode root = readObject(json);
+        BatchGenerateResult result = commands.batchGenerate(new BatchGenerateCommand(
+                userCommand(req), id(text(root, "merchantId")), id(storeId),
+                dateList(root, "dates"), segmentList(root, "segments"),
+                boundedInt(root, "configuredCapacity", 1, 999),
+                text(root, "reason")));
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("storeId", result.storeId());
+        data.put("createdWindows", result.createdWindows().stream()
+                .map(MerchantScheduleController::window).toList());
+        data.put("closedWindows", result.closedWindows().stream()
+                .map(MerchantScheduleController::window).toList());
+        data.put("skippedWindows", result.skippedWindows().stream()
+                .map(MerchantScheduleController::skipped).toList());
+        return envelope(data, req);
+    }
+
+    // ------------------------------------------------------------------ booking window (CCR-SCH-SLOT-002)
+
+    @GetMapping("/stores/{storeId}/booking-window")
+    Map<String, Object> getBookingWindow(
+            @PathVariable String storeId,
+            @RequestParam String merchantId,
+            HttpServletRequest req) {
+        onlyParameters(req, "merchantId");
+        var session = mini(req);
+        // Read-only view on the write assembly (getCapabilities precedent): the terminal
+        // X-Request-Id is mandatory on writes only, so a missing header degrades to a local
+        // correlation id and binds nothing.
+        String requestId;
+        try {
+            requestId = requestId(req);
+        } catch (ApiException missing) {
+            requestId = UUID.randomUUID().toString();
+        }
+        BookingWindowView view = commands.getBookingWindow(new BookingWindowQuery(
+                new CommandContext(requestId, trace(req), OperatorType.USER, session.userId(),
+                        "MINIAPP"),
+                id(merchantId), id(storeId)));
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("leadMinutes", view.leadMinutes());
+        out.put("maxDays", view.maxDays());
+        out.put("version", view.version());
+        // H5-pinned shape (2026-11-13): updatedAt is null for the absent-row defaults.
+        out.put("updatedAt", time(view.updatedAt()));
+        return envelope(out, req);
+    }
+
+    @PutMapping(value = "/stores/{storeId}/booking-window",
+            consumes = MediaType.APPLICATION_JSON_VALUE)
+    Map<String, Object> replaceBookingWindow(
+            @PathVariable String storeId, @RequestBody String json, HttpServletRequest req) {
+        onlyParameters(req);
+        mini(req);
+        JsonNode root = readObject(json);
+        BookingWindowResult result = commands.replaceBookingWindow(new BookingWindowReplaceCommand(
+                userCommand(req), id(text(root, "merchantId")), id(storeId),
+                boundedInt(root, "leadMinutes", 0, 1440),
+                boundedInt(root, "maxDays", 1, 90),
+                expectedVersion(text(root, "expectedVersion"))));
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("leadMinutes", result.leadMinutes());
+        out.put("maxDays", result.maxDays());
+        out.put("version", result.version());
+        return envelope(out, req);
+    }
+
+    // ------------------------------------------------------------------ week template (CCR-SCH-SLOT-003)
+
+    /** 53号 §3.6 GET: absent row = seven closed days, version "0", updatedAt null. */
+    @GetMapping("/stores/{storeId}/week-template")
+    Map<String, Object> getWeekTemplate(
+            @PathVariable String storeId,
+            @RequestParam String merchantId,
+            HttpServletRequest req) {
+        onlyParameters(req, "merchantId");
+        var session = mini(req);
+        // Read-only view on the write assembly (booking-window precedent): the terminal
+        // X-Request-Id is mandatory on writes only, a missing header degrades to a local
+        // correlation id and binds nothing.
+        String requestId;
+        try {
+            requestId = requestId(req);
+        } catch (ApiException missing) {
+            requestId = UUID.randomUUID().toString();
+        }
+        WeekTemplateView view = commands.getWeekTemplate(
+                new com.petplatform.schedule.api.dto.ScheduleWriteTypes.WeekTemplateQuery(
+                        new CommandContext(requestId, trace(req), OperatorType.USER,
+                                session.userId(), "MINIAPP"),
+                        id(merchantId), id(storeId)));
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("days", view.days().stream()
+                .map(MerchantScheduleController::weekTemplateDay).toList());
+        out.put("version", view.version());
+        out.put("updatedAt", time(view.updatedAt()));
+        return envelope(out, req);
+    }
+
+    /** 53号 §3.6 PUT: strict full-replacement body {merchantId, days, expectedVersion};
+     * days = exactly 7 day objects {enabled, segments:[{start,end,capacity}]} with per
+     * day at most 24 segments; start<end and non-overlap are re-checked in the service. */
+    @PutMapping(value = "/stores/{storeId}/week-template",
+            consumes = MediaType.APPLICATION_JSON_VALUE)
+    Map<String, Object> replaceWeekTemplate(
+            @PathVariable String storeId, @RequestBody String json, HttpServletRequest req) {
+        onlyParameters(req);
+        mini(req);
+        JsonNode root = readObject(json);
+        WeekTemplateResult result = commands.replaceWeekTemplate(new WeekTemplateReplaceCommand(
+                userCommand(req), id(text(root, "merchantId")), id(storeId),
+                weekTemplateDays(root, "days"),
+                expectedVersion(text(root, "expectedVersion"))));
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("days", result.days().stream()
+                .map(MerchantScheduleController::weekTemplateDay).toList());
+        out.put("version", result.version());
+        return envelope(out, req);
+    }
+
+    /** Strict days list (53号 §3.6 lexicon): array of exactly 7 objects with exactly the
+     * keys {enabled, segments}; segments 0..24 objects with exactly {start,end,capacity},
+     * start/end strict "HH:mm", capacity an integer within [1,999]. */
+    private static List<WeekTemplateDay> weekTemplateDays(JsonNode root, String field) {
+        JsonNode node = root.get(field);
+        if (node == null || !node.isArray() || node.size() != 7) throw invalid();
+        List<WeekTemplateDay> days = new java.util.ArrayList<>(7);
+        for (JsonNode day : node) {
+            if (day == null || !day.isObject() || day.size() != 2
+                    || day.get("enabled") == null || day.get("segments") == null
+                    || !day.get("enabled").isBoolean()
+                    || !day.get("segments").isArray()) {
+                throw invalid();
+            }
+            JsonNode segments = day.get("segments");
+            if (segments.size() > 24) throw invalid();
+            List<WeekTemplateSegment> parsed = new java.util.ArrayList<>(segments.size());
+            for (JsonNode segment : segments) {
+                if (segment == null || !segment.isObject() || segment.size() != 3
+                        || segment.get("start") == null || segment.get("end") == null
+                        || segment.get("capacity") == null) {
+                    throw invalid();
+                }
+                JsonNode start = segment.get("start");
+                JsonNode end = segment.get("end");
+                JsonNode capacity = segment.get("capacity");
+                if (!start.isString() || !end.isString()
+                        || !start.asString().matches("([01][0-9]|2[0-3]):[0-5][0-9]")
+                        || !end.asString().matches("([01][0-9]|2[0-3]):[0-5][0-9]")) {
+                    throw invalid();
+                }
+                if (!capacity.isIntegralNumber() || !capacity.canConvertToInt()
+                        || capacity.asInt() < 1 || capacity.asInt() > 999) {
+                    throw invalid();
+                }
+                parsed.add(new WeekTemplateSegment(
+                        java.time.LocalTime.parse(start.asString()),
+                        java.time.LocalTime.parse(end.asString()),
+                        capacity.asInt()));
+            }
+            days.add(new WeekTemplateDay(day.get("enabled").asBoolean(), List.copyOf(parsed)));
+        }
+        return days;
+    }
+
+    private static Map<String, Object> weekTemplateDay(WeekTemplateDay day) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("enabled", day.enabled());
+        out.put("segments", day.segments().stream()
+                .map(MerchantScheduleController::weekTemplateSegment).toList());
+        return out;
+    }
+
+    private static Map<String, Object> weekTemplateSegment(WeekTemplateSegment segment) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("start", segment.start().toString());
+        out.put("end", segment.end().toString());
+        out.put("capacity", segment.capacity());
+        return out;
+    }
+
     // ------------------------------------------------------------------ staff windows
 
     @GetMapping("/staff/{staffId}/availability-windows")
@@ -378,9 +580,21 @@ public final class MerchantScheduleController {
         return out;
     }
 
+    /** Nested {window, reasonCode} per the OpenAPI ScheduleBlockedWindow schema — the flat
+     *  spread below never matched the shipped decoder (acceptance round caught it on
+     *  batch-generate skippedWindows; batch-close blockedWindows carried the same bug). */
     private static Map<String, Object> blocked(BlockedWindow b) {
-        Map<String, Object> out = window(b.window());
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("window", window(b.window()));
         out.put("reasonCode", b.reasonCode());
+        return out;
+    }
+
+    /** Same nested shape as blockedWindows (CCR-SCH-SLOT-002 §1 wire contract). */
+    private static Map<String, Object> skipped(SkippedWindow s) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("window", window(s.window()));
+        out.put("reasonCode", s.reasonCode());
         return out;
     }
 
@@ -461,6 +675,76 @@ public final class MerchantScheduleController {
             throw invalid();
         }
         return node.asInt();
+    }
+
+    /** Mandatory integral field inside [min, max] (CCR-SCH-SLOT-002 request lexicon). */
+    private static int boundedInt(JsonNode root, String field, int min, int max) {
+        JsonNode node = root.get(field);
+        if (node == null || !node.isIntegralNumber() || !node.canConvertToInt()
+                || node.asInt() < min || node.asInt() > max) {
+            throw invalid();
+        }
+        return node.asInt();
+    }
+
+    /** Optional integral field inside [min, max]; absent or null yields the default. */
+    private static int optionalBoundsInt(JsonNode root, String field, int min, int max,
+            int fallback) {
+        JsonNode node = root.get(field);
+        if (node == null || node.isNull()) return fallback;
+        if (!node.isIntegralNumber() || !node.canConvertToInt()
+                || node.asInt() < min || node.asInt() > max) {
+            throw invalid();
+        }
+        return node.asInt();
+    }
+
+    /** Strict "HH:mm" clock time (CCR-SCH-SLOT-002 §1 segment lexicon). */
+    private static java.time.LocalTime dailyTime(JsonNode root, String field) {
+        JsonNode node = root.get(field);
+        if (node == null || !node.isString()) throw invalid();
+        if (!node.asString().matches("([01][0-9]|2[0-3]):[0-5][0-9]")) throw invalid();
+        return java.time.LocalTime.parse(node.asString());
+    }
+
+    /** Strict calendar-day list for batch-generate (CCR-SCH-SLOT-002 §1, 2026-11-13 shape):
+     *  non-empty array of YYYY-MM-DD strings, each element exactly two keys-free. */
+    private static java.util.List<LocalDate> dateList(JsonNode root, String field) {
+        JsonNode node = root.get(field);
+        if (node == null || !node.isArray() || node.isEmpty()) throw invalid();
+        java.util.List<LocalDate> dates = new java.util.ArrayList<>();
+        for (JsonNode item : node) {
+            if (!item.isString()) throw invalid();
+            try {
+                dates.add(LocalDate.parse(item.asString()));
+            } catch (DateTimeParseException malformed) {
+                throw invalid();
+            }
+        }
+        return dates;
+    }
+
+    /** Strict segment list: objects with exactly {start, end} in "HH:mm" (user ruling
+     *  2026-11-13 — one request carries the whole pre-sliced batch). */
+    private static java.util.List<com.petplatform.schedule.api.dto.ScheduleWriteTypes.BatchSegment>
+            segmentList(JsonNode root, String field) {
+        JsonNode node = root.get(field);
+        if (node == null || !node.isArray() || node.isEmpty()) throw invalid();
+        java.util.List<com.petplatform.schedule.api.dto.ScheduleWriteTypes.BatchSegment> segments =
+                new java.util.ArrayList<>();
+        for (JsonNode item : node) {
+            if (item == null || !item.isObject() || item.size() != 2
+                    || item.get("start") == null || item.get("end") == null) throw invalid();
+            JsonNode start = item.get("start");
+            JsonNode end = item.get("end");
+            if (!start.isString() || !end.isString()) throw invalid();
+            if (!start.asString().matches("([01][0-9]|2[0-3]):[0-5][0-9]")
+                    || !end.asString().matches("([01][0-9]|2[0-3]):[0-5][0-9]")) throw invalid();
+            segments.add(new com.petplatform.schedule.api.dto.ScheduleWriteTypes.BatchSegment(
+                    java.time.LocalTime.parse(start.asString()),
+                    java.time.LocalTime.parse(end.asString())));
+        }
+        return segments;
     }
 
     private static String optionalReason(JsonNode root, String field) {

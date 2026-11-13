@@ -13,4 +13,10 @@ public interface ScheduleSelectionMapper {
             @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
     Integer brokenClaimLinks(@Param("storeId") long storeId,
             @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    /** Store bookable range for the selection filter (CCR-SCH-SLOT-002); null = defaults. */
+    Map<String, Object> selectBookingWindow(@Param("storeId") long storeId);
+
+    /** Store weekly cycling template days JSON (CCR-SCH-SLOT-003); null = no expansion. */
+    Map<String, Object> selectWeekTemplate(@Param("storeId") long storeId);
 }

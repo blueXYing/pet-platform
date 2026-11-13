@@ -4,15 +4,20 @@ import { randomUUID } from 'node:crypto'
 import { ApiError } from '../../shared/request'
 import { ConsumerApi, type LocalStore } from '../../shared/consumer-api'
 import {
-  emptyWindowForm, PreviewScheduleRepository, ScheduleMockError,
-  fixtureStaffWindows, fixtureWindows, scheduleAvailability, windowFormFromItem,
-  type ScheduleWindowReceipt,
+  defaultWeekDraft, emptyWindowForm, PreviewScheduleRepository, ScheduleMockError,
+  fixtureStaffWindows, fixtureWindows, scheduleAvailability, weekTemplateFromDraft,
+  windowFormFromItem, type ScheduleWindowReceipt,
 } from '../schedule/model'
 import { RealScheduleRepository } from '../schedule/repository'
+// CCR-SCH-SLOT-002：batch-generate（覆盖重建，保留为手动批量入口）与 booking-window。
+// CCR-SCH-SLOT-003：week-template（周循环模板，读时展开/下单物化）——「保存并生效」从
+// 002 的逐形状 batch-generate 铺排改为一次 PUT 全替换。
 
 async function rejects(call: () => Promise<unknown> | unknown): Promise<unknown> {
   try { await call(); return new Error('NO_THROW') } catch (error) { return error }
 }
+/** assert.rejects validator: the mock answered the generic 400. */
+const rejects400 = (error: unknown) => (error as ScheduleMockError).code === 'COMMON_INVALID_ARGUMENT'
 const formFor = (start: string, end: string, capacity: number) =>
   ({ startDate: start.slice(0, 10), startTime: start.slice(11, 16),
     endDate: end.slice(0, 10), endTime: end.slice(11, 16), configuredCapacity: capacity })
@@ -133,6 +138,160 @@ test('preview batch close: partial success names blocked windows; >200 entries r
   // Reason is mandatory; from>to is rejected client-side by the page and here via helper.
   const noReason = await rejects(() => repository.batchClose('b3', '2026-10-07', '2026-10-07', ' '))
   assert.equal((noReason as ScheduleMockError).code, 'COMMON_INVALID_ARGUMENT')
+})
+
+test('preview batch generate: coverage rebuild closes intersecting windows, skips occupied, 200 cap', async () => {
+  // Fixture day 2026-10-07: 61001 09:00-12:00 OPEN, 61002 15:00-17:00 OPEN occupied=1,
+  // 61004 13:00-14:30 OPEN, 61006 CLOSED. One request per segment SHAPE (2026-11-13
+  // ruling): the client pre-slices hourly capsules; a window per (date, segment).
+  const repository = new PreviewScheduleRepository()
+  const hourly = (from: string, to: string) => {
+    const segs: { start: string; end: string }[] = []
+    for (let h = Number(from.slice(0, 2)); h < Number(to.slice(0, 2)); h++) {
+      segs.push({ start: `${String(h).padStart(2, '0')}:00`, end: `${String(h + 1).padStart(2, '0')}:00` })
+    }
+    return segs
+  }
+  const clean = await repository.batchGenerate('g1', {
+    dates: ['2026-10-07'], segments: hourly('09:00', '12:00'),
+    configuredCapacity: 6, reason: '一键生成',
+  })
+  assert.equal(clean.closedWindows.length, 1, '61001 was rebuilt-over (closed first)')
+  assert.equal(clean.closedWindows[0]!.windowId, '61001')
+  assert.equal(clean.createdWindows.length, 3, '09-10/10-11/11-12 minute windows')
+  assert.equal(clean.skippedWindows.length, 0)
+  for (const created of clean.createdWindows) {
+    assert.equal(created.configuredCapacity, 6)
+    assert.equal(created.status, 'OPEN')
+  }
+  // Occupied window: skipped with OCCUPIED, and NO slot is generated inside its interval.
+  const blocked = await repository.batchGenerate('g2', {
+    dates: ['2026-10-07'], segments: [{ start: '15:00', end: '17:00' }],
+    configuredCapacity: 6, reason: '一键生成',
+  })
+  assert.equal(blocked.createdWindows.length, 0)
+  assert.equal(blocked.closedWindows.length, 0)
+  assert.equal(blocked.skippedWindows.length, 1)
+  assert.equal(blocked.skippedWindows[0]!.reasonCode, 'OCCUPIED')
+  assert.equal(blocked.skippedWindows[0]!.window.windowId, '61002')
+  // Mixed day: closes 61001/61004, skips 61002, suppresses the slot crossing 15:00.
+  const mixed = await new PreviewScheduleRepository().batchGenerate('g3', {
+    dates: ['2026-10-07'], segments: hourly('09:00', '16:00'),
+    configuredCapacity: 6, reason: '一键生成',
+  })
+  assert.equal(mixed.closedWindows.length, 2)
+  assert.equal(mixed.skippedWindows.length, 1)
+  assert.equal(mixed.createdWindows.length, 6, '7 hourly slots minus the occupied 15:00-16:00')
+  for (const created of mixed.createdWindows) {
+    const intersects = created.startAt < '2026-10-07T17:00:00.000+08:00'
+      && '2026-10-07T15:00:00.000+08:00' < created.endAt
+    assert.equal(intersects, false, 'no created window intersects the occupied window')
+  }
+  // Same slot replays the journaled receipt (idempotent).
+  const replay = await repository.batchGenerate('g1', {
+    dates: ['2026-10-07'], segments: hourly('09:00', '12:00'),
+    configuredCapacity: 6, reason: '一键生成',
+  })
+  assert.deepEqual(replay.createdWindows.map(item => item.windowId), clean.createdWindows.map(item => item.windowId))
+})
+
+test('preview batch generate rejects invalid ranges and the >200 candidate cap', async () => {
+  const repository = new PreviewScheduleRepository()
+  const good = (over: Record<string, unknown> = {}) => ({
+    dates: ['2026-11-13'], segments: [{ start: '09:00', end: '10:00' }],
+    configuredCapacity: 6, reason: '一键生成', ...over,
+  })
+  await assert.rejects(() => repository.batchGenerate('v1', good({ configuredCapacity: 0 })), rejects400)
+  await assert.rejects(() => repository.batchGenerate('v2', good({ segments: [{ start: '19:00', end: '09:00' }] })), rejects400)
+  await assert.rejects(() => repository.batchGenerate('v3', good({ segments: [{ start: '09:00', end: '10:00' }, { start: '09:30', end: '10:30' }] })), rejects400)
+  await assert.rejects(() => repository.batchGenerate('v4', good({ reason: ' ' })), rejects400)
+  await assert.rejects(() => repository.batchGenerate('v5', good({ dates: ['2026-11-13', '2026-11-13'] })), rejects400)
+  // 23 hourly segments/day on empty days: 8 days=184 fits, 9 days=207 exceeds the §1 cap.
+  const wide = (dates: string[]) => good({
+    dates, segments: Array.from({ length: 23 }, (_, h) =>
+      ({ start: `${String(h).padStart(2, '0')}:00`, end: `${String(h + 1).padStart(2, '0')}:00` })),
+  })
+  const fits = await repository.batchGenerate('v6', wide(['2026-11-13', '2026-11-14', '2026-11-15', '2026-11-16', '2026-11-17', '2026-11-18', '2026-11-19', '2026-11-20']))
+  assert.equal(fits.createdWindows.length, 8 * 23)
+  await assert.rejects(() => repository.batchGenerate('v7', wide(['2026-11-13', '2026-11-14', '2026-11-15', '2026-11-16', '2026-11-17', '2026-11-18', '2026-11-19', '2026-11-20', '2026-11-21'])), rejects400)
+})
+
+test('preview booking-window: GET answers defaults, PUT replaces under CAS', async () => {
+  const repository = new PreviewScheduleRepository()
+  const initial = await repository.bookingWindow()
+  assert.equal(initial.leadMinutes, 60)
+  assert.equal(initial.maxDays, 7)
+  assert.equal(initial.version, '0')
+  const saved = await repository.saveBookingWindow('bw1', { leadMinutes: 30, maxDays: 14 }, '0')
+  assert.equal(saved.leadMinutes, 30)
+  assert.equal(saved.maxDays, 14)
+  assert.notEqual(saved.version, '0')
+  const reread = await repository.bookingWindow()
+  assert.equal(reread.leadMinutes, 30)
+  assert.equal(reread.maxDays, 14)
+  // Stale expectedVersion → COMMON_CONFLICT; bounds mirror the server 400.
+  const stale = await rejects(() => repository.saveBookingWindow('bw2', { leadMinutes: 45, maxDays: 30 }, '0'))
+  assert.equal((stale as ScheduleMockError).code, 'COMMON_CONFLICT')
+  const bad = await rejects(() => repository.saveBookingWindow('bw3', { leadMinutes: 1441, maxDays: 7 }, saved.version))
+  assert.equal((bad as ScheduleMockError).code, 'COMMON_INVALID_ARGUMENT')
+  // Switch-off / dependency failure fails the read closed like every other schedule read.
+  const closed = new PreviewScheduleRepository(undefined, undefined, undefined, 'closed')
+  await assert.rejects(() => closed.bookingWindow())
+})
+
+test('preview week-template: GET answers the all-rest default, PUT replaces under CAS (CCR-SCH-SLOT-003)', async () => {
+  const repository = new PreviewScheduleRepository()
+  const initial = await repository.weekTemplate()
+  assert.equal(initial.version, '0')
+  assert.ok(initial.days.every(day => day.enabled === false && day.segments.length === 0))
+  const form = weekTemplateFromDraft(defaultWeekDraft(), 6)
+  const saved = await repository.saveWeekTemplate('wt1', form, '0')
+  assert.notEqual(saved.version, '0')
+  assert.equal(saved.days[0].segments[0].capacity, 6)
+  const reread = await repository.weekTemplate()
+  assert.equal(reread.version, saved.version)
+  assert.deepEqual(reread.days[0].segments, [{ start: '09:00', end: '19:00', capacity: 6 }])
+  // Stale expectedVersion → COMMON_CONFLICT；非法表单（容量越界）镜像服务端 400。
+  const stale = await rejects(() => repository.saveWeekTemplate('wt2', form, '0'))
+  assert.equal((stale as ScheduleMockError).code, 'COMMON_CONFLICT')
+  const bad = await rejects(() => repository.saveWeekTemplate('wt3', weekTemplateFromDraft(defaultWeekDraft(), 0), saved.version))
+  assert.equal((bad as ScheduleMockError).code, 'COMMON_INVALID_ARGUMENT')
+  // 同槽同载荷重放原回执（幂等）；改模板非减少可用性动作，无 reason 字段面。
+  const replay = await repository.saveWeekTemplate('wt1', form, '0')
+  assert.equal(replay.version, saved.version)
+  // Switch-off / dependency failure fails the read closed like every other schedule read.
+  const closed = new PreviewScheduleRepository(undefined, undefined, undefined, 'closed')
+  await assert.rejects(() => closed.weekTemplate())
+})
+
+test('preview list read unions the saved week-template expansion (§1 读时展开，preview 演示)', async () => {
+  const repository = new PreviewScheduleRepository()
+  // 锚点 2026-10-06（周二），默认 maxDays 7 → 展开 10-07..10-13；10-07 是周三（fixtures 日）。
+  const draft = defaultWeekDraft().map((day, index) => {
+    if (index === 2) return { enabled: true, segments: [{ start: '07:00', end: '08:30' }, { start: '13:30', end: '14:00' }] }
+    if (index === 3) return { enabled: true, segments: [{ start: '07:00', end: '08:30' }] }
+    return { enabled: false, segments: [] }
+  })
+  await repository.saveWeekTemplate('wt-expand', weekTemplateFromDraft(draft, 4), '0')
+  const page = await repository.windows({ page: 1, pageSize: 20 })
+  // 周三 07:00-08:30 虚拟段出现（不与 fixtures 相交，排最前）；13:30-14:00 与 61004
+  // （13:00-14:30）重叠被去重；周四段落在 10-08。总数 6 真实 + 2 虚拟。
+  assert.equal(page.total, 8)
+  assert.equal(page.items[0].windowId, '9000100')
+  assert.equal(page.items[0].startAt, '2026-10-07T07:00:00.000+08:00')
+  assert.equal(page.items[0].configuredCapacity, 4)
+  assert.equal(page.items[0].status, 'OPEN')
+  const thursday = page.items.find(item => item.windowId === '9000200')
+  assert.equal(thursday!.startAt, '2026-10-08T07:00:00.000+08:00')
+  assert.ok(!page.items.some(item => item.startAt === '2026-10-07T13:30:00.000+08:00'), '重叠段去重')
+  // 状态过滤：虚拟段恒 OPEN，并入 OPEN 汇总计数（真实 4 OPEN + 2 虚拟）。
+  assert.equal((await repository.windows({ page: 1, pageSize: 1, status: 'OPEN' })).total, 6)
+  assert.equal((await repository.windows({ page: 1, pageSize: 1, status: 'CLOSED' })).total, 1)
+  // 可约范围收缩到 maxDays=1（展开只剩 10-07）：周四段出界消失（§1 仅展开到 now+maxDays）。
+  await repository.saveBookingWindow('wt-expand-bw', { leadMinutes: 60, maxDays: 1 }, '0')
+  const shrunk = await repository.windows({ page: 1, pageSize: 50 })
+  assert.ok(shrunk.items.some(item => item.windowId === '9000100'))
+  assert.ok(!shrunk.items.some(item => item.windowId === '9000200'))
 })
 
 test('preview staff windows: overlap 409, assignment protection 409, CAS 409', async () => {
@@ -380,4 +539,124 @@ test('real repository fails closed on consumer coordinates and validates forms b
   const badForm = emptyWindowForm('2026-10-07', '09:00')
   await assert.rejects(() => repository.createWindow('slot-c', badForm), /WORKSPACE_FORM_INVALID/)
   await assert.rejects(() => repository.closeWindow('slot-d', '61009', '0', '   '), /WORKSPACE_FORM_INVALID/)
+})
+
+// ---------------------------------------------------------------------------
+// CCR-SCH-SLOT-002 real wiring: batch-generate + booking-window routes/bodies.
+// ---------------------------------------------------------------------------
+const generateReceipt = (windowId: string) => ({
+  windowId, merchantId: '958001', storeId: '958002',
+  startAt: '2026-11-13T01:00:00.000Z', endAt: '2026-11-13T02:00:00.000Z',
+  configuredCapacity: 6, status: 'OPEN' as const, version: '0',
+})
+
+test('real repository wires batch-generate and booking-window (CCR-SCH-SLOT-002)', async () => {
+  const { repository, seen } = await wiredApi(call => {
+    if (call.method === 'POST' && call.path.endsWith('/availability-windows/batch-generate')) {
+      return ok({
+        storeId: '958002',
+        createdWindows: [generateReceipt('61101')],
+        closedWindows: [generateReceipt('61001')],
+        skippedWindows: [{ window: { ...generateReceipt('61003'), status: 'SOLD_OUT' as const }, reasonCode: 'OCCUPIED' }],
+      })
+    }
+    if (call.method === 'GET' && call.path.endsWith('/booking-window')) {
+      // CCR §2 wire shape: four keys, no coordinates; null updatedAt = default row.
+      return ok({ leadMinutes: 60, maxDays: 7, version: '0', updatedAt: null })
+    }
+    if (call.method === 'PUT' && call.path.endsWith('/booking-window')) {
+      return ok({ leadMinutes: 30, maxDays: 14, version: '1' })
+    }
+    return undefined
+  })
+  const generated = await repository.batchGenerate('w1', {
+    dates: ['2026-11-13', '2026-11-19'],
+    segments: [{ start: '09:00', end: '10:00' }, { start: '10:00', end: '11:00' }],
+    configuredCapacity: 6, reason: ' 一键生成 ',
+  })
+  assert.equal(generated.createdWindows.length, 1)
+  assert.equal(generated.skippedWindows[0]!.reasonCode, 'OCCUPIED')
+  const generateCall = seen.find(item => item.method === 'POST' && item.path === '/api/v1/merchant/stores/958002/availability-windows/batch-generate')!
+  // §1 strict-JSON body (2026-11-13 shape): exactly the five contract fields; reason trimmed.
+  assert.deepEqual(Object.keys(generateCall.data ?? {}).sort(),
+    ['configuredCapacity', 'dates', 'merchantId', 'reason', 'segments'])
+  assert.deepEqual(generateCall.data?.dates, ['2026-11-13', '2026-11-19'])
+  assert.deepEqual(generateCall.data?.segments,
+    [{ start: '09:00', end: '10:00' }, { start: '10:00', end: '11:00' }])
+  assert.equal(generateCall.data?.configuredCapacity, 6)
+  assert.equal(generateCall.data?.reason, '一键生成')
+  assert.match(String(generateCall.requestId), /^[0-9a-f-]{36}$/)
+  // booking-window GET carries the workspace merchantId (store rides the path).
+  const view = await repository.bookingWindow()
+  assert.equal(view.leadMinutes, 60)
+  assert.equal(view.version, '0')
+  const readCall = seen.find(item => item.method === 'GET' && item.path === '/api/v1/merchant/stores/958002/booking-window')!
+  assert.equal(readCall.data?.merchantId, '958001')
+  // PUT is a full replace under expectedVersion (no reason field, §2).
+  const saved = await repository.saveBookingWindow('w2', { leadMinutes: 30, maxDays: 14 }, '0')
+  assert.equal(saved.version, '1')
+  const putCall = seen.find(item => item.method === 'PUT' && item.path === '/api/v1/merchant/stores/958002/booking-window')!
+  assert.deepEqual(Object.keys(putCall.data ?? {}).sort(), ['expectedVersion', 'leadMinutes', 'maxDays', 'merchantId'])
+  assert.equal(putCall.data?.expectedVersion, '0')
+  assert.equal(putCall.data?.reason, undefined)
+})
+
+test('real repository pre-validates batch-generate / booking-window before the wire', async () => {
+  const { repository, seen } = await wiredApi(() => undefined)
+  await assert.rejects(() => repository.batchGenerate('w3', {
+    dates: ['2026-11-13'], segments: [{ start: '19:00', end: '09:00' }],
+    configuredCapacity: 6, reason: '一键生成',
+  }), /WORKSPACE_FORM_INVALID/)
+  await assert.rejects(() => repository.batchGenerate('w4', {
+    dates: ['2026-11-13'], segments: [{ start: '09:00', end: '10:00' }],
+    configuredCapacity: 0, reason: '一键生成',
+  }), /WORKSPACE_FORM_INVALID/)
+  await assert.rejects(() => repository.saveBookingWindow('w5', { leadMinutes: 1441, maxDays: 7 }, '0'), /WORKSPACE_FORM_INVALID/)
+  assert.equal(seen.length, 0, 'nothing reaches the wire on a mirrored 400')
+})
+
+// ---------------------------------------------------------------------------
+// CCR-SCH-SLOT-003 real wiring：week-template GET/PUT——「保存并生效」的新保存路径
+// （一次 PUT 全替换；002 的逐形状 batch-generate 铺排不再是模板保存路径）。
+// ---------------------------------------------------------------------------
+const templateDays = () => [
+  { enabled: true, segments: [{ start: '09:00', end: '19:00', capacity: 6 }] },
+  ...Array.from({ length: 6 }, () => ({ enabled: false, segments: [] })),
+]
+
+test('real repository wires week-template GET/PUT once per save (CCR-SCH-SLOT-003)', async () => {
+  const { api, repository, seen } = await wiredApi(call => {
+    if (call.method === 'GET' && call.path.endsWith('/week-template')) return ok({ days: templateDays(), version: '2' })
+    if (call.method === 'PUT' && call.path.endsWith('/week-template')) return ok({ days: templateDays(), version: '3' })
+    return undefined
+  })
+  const view = await repository.weekTemplate()
+  assert.equal(view.version, '2')
+  assert.equal(view.days[0].segments[0].capacity, 6)
+  const readCall = seen.find(item => item.method === 'GET' && item.path === '/api/v1/merchant/stores/958002/week-template')!
+  assert.equal(readCall.data?.merchantId, '958001')
+  // 保存路径钉子：单次 PUT 全替换（expectedVersion CAS；无 reason——改模板非减少可用性动作）。
+  const draft = defaultWeekDraft().map((day, index) =>
+    index === 6 ? { enabled: false, segments: [{ start: '09:00', end: '19:00' }] } : day)
+  const saved = await repository.saveWeekTemplate('wt1', weekTemplateFromDraft(draft, 6), '2')
+  assert.equal(saved.version, '3')
+  const putCalls = seen.filter(item => item.method === 'PUT' && item.path === '/api/v1/merchant/stores/958002/week-template')
+  assert.equal(putCalls.length, 1, 'single PUT per save — no more batch-generate 铺排')
+  assert.deepEqual(Object.keys(putCalls[0].data ?? {}).sort(), ['days', 'expectedVersion', 'merchantId'])
+  assert.equal(putCalls[0].data?.reason, undefined)
+  assert.equal(putCalls[0].data?.expectedVersion, '2')
+  const putDays = putCalls[0].data?.days as { enabled: boolean; segments: unknown[] }[]
+  assert.deepEqual(putDays[0], { enabled: true, segments: [{ start: '09:00', end: '19:00', capacity: 6 }] })
+  assert.deepEqual(putDays[6], { enabled: false, segments: [] }, '停用日规范为空段（空=该天休）')
+  assert.match(String(putCalls[0].requestId), /^[0-9a-f-]{36}$/)
+  // 白名单钉子：week-template 只在 GET/PUT 之列——其余方法客户端直接拒绝（INVALID_PATH）。
+  await assert.rejects(() => api.request({ method: 'DELETE',
+    path: '/api/v1/merchant/stores/958002/week-template', data: { merchantId: '958001' } }, () => undefined), /INVALID_PATH/)
+})
+
+test('real repository pre-validates week-template before the wire', async () => {
+  const { repository, seen } = await wiredApi(() => undefined)
+  await assert.rejects(() => repository.saveWeekTemplate('wt2', weekTemplateFromDraft(defaultWeekDraft(), 0), '0'), /WORKSPACE_FORM_INVALID/)
+  await assert.rejects(() => repository.saveWeekTemplate('wt3', weekTemplateFromDraft(defaultWeekDraft(), 1000), '0'), /WORKSPACE_FORM_INVALID/)
+  assert.equal(seen.length, 0, 'nothing reaches the wire on a mirrored 400')
 })

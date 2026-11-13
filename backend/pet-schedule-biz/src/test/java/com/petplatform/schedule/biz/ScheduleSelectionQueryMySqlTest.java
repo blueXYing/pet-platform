@@ -1,7 +1,9 @@
 package com.petplatform.schedule.biz;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -10,10 +12,14 @@ import com.petplatform.common.ApiException;
 import com.petplatform.common.CommonApiCodes;
 import com.petplatform.common.OperatorType;
 import com.petplatform.common.QueryContext;
+import com.petplatform.schedule.api.dto.AvailabilityPageDTO;
 import com.petplatform.schedule.api.dto.SelectionWindowPageDTO;
+import com.petplatform.schedule.api.query.AvailabilityQuery;
 import com.petplatform.schedule.api.query.SelectionWindowQuery;
+import com.petplatform.schedule.biz.application.AvailabilityQueryService;
 import com.petplatform.schedule.biz.application.QualifiedStaffFactsPort;
 import com.petplatform.schedule.biz.application.SelectionWindowQueryService;
+import com.petplatform.schedule.biz.infrastructure.persistence.ScheduleReadStore;
 import com.petplatform.schedule.biz.infrastructure.persistence.SelectionReadStore;
 import com.petplatform.service.api.dto.ServiceBookabilityDTO;
 import com.petplatform.service.api.dto.ServiceSnapshotDTO;
@@ -177,6 +183,142 @@ class ScheduleSelectionQueryMySqlTest {
         }
     }
 
+    /**
+     * CCR-SCH-SLOT-002 (53号 §3.5 C 端强制): with no configuration row the default range is
+     * lead 60 minutes / horizon 7 days around the fixed clock 2029-12-31T00:00:00Z. Slots
+     * starting before now+60 or after now+7d never appear as items — neither in the
+     * selection projection nor in the availability aggregation — while the exact boundary
+     * starts (now+60m, now+7d) stay visible.
+     */
+    @Test
+    void defaultBookableRangeHidesOutOfRangeSlotsInSelectionAndAvailability() throws Exception {
+        try (Database db = new Database()) {
+            // Fixed "now" = 2029-12-31T00:00:00Z: +30m hidden, +60m visible (boundary),
+            // +90m visible, +7d visible (boundary), +7d30m hidden. CCR-SCH-SLOT-001: store
+            // slots never overlap, so the hidden +30m slot ends exactly at the +60m slot's
+            // start (adjacency allowed) instead of crossing it.
+            db.window(121, "2029-12-31 00:30:00", "2029-12-31 01:00:00");
+            db.window(122, "2029-12-31 01:00:00", "2029-12-31 01:30:00");
+            db.window(123, "2029-12-31 01:30:00", "2029-12-31 02:00:00");
+            db.window(124, "2030-01-07 00:00:00", "2030-01-07 00:30:00");
+            db.window(125, "2030-01-07 00:30:00", "2030-01-07 01:00:00");
+            SelectionWindowQuery range = new SelectionWindowQuery("301", "201",
+                    LocalDate.of(2029, 12, 31), LocalDate.of(2030, 1, 8), CONTEXT);
+            assertEquals(List.of("122", "123", "124"),
+                    service(db, FulfillmentType.IN_STORE).page(range).items().stream()
+                            .map(item -> item.windowId()).toList());
+            // The availability aggregation hides the same out-of-range slots.
+            AvailabilityPageDTO availability = availability(db).page(new AvailabilityQuery(
+                    "301", "201", LocalDate.of(2029, 12, 31), LocalDate.of(2030, 1, 8),
+                    CONTEXT));
+            assertEquals(List.of("2029-12-31T01:00Z", "2029-12-31T01:30Z", "2030-01-07T00:00Z"),
+                    availability.items().stream()
+                            .map(item -> item.start().toString()).toList());
+        }
+    }
+
+    /**
+     * CCR-SCH-SLOT-003 read-time expansion: items = real windows ∪ template expansion.
+     * Monday 09:00-12:00 (+08:00 → 01:00-04:00Z on 2029-12-31, a Monday) overlaps real
+     * window 101 (03:30-04:30Z) and is skipped; Tuesday 10:00-11:00 (+08:00 → 02:00-03:00Z
+     * on 2030-01-01) expands into a virtual slot beside the real 102; the disabled
+     * Wednesday never expands. Virtual slots carry the segment capacity, occupied 0, a
+     * virtual windowId and the same leg projection as real slots.
+     */
+    @Test
+    void weekTemplateExpandsVirtualSlotsMergedWithRealWindows() throws Exception {
+        try (Database db = new Database()) {
+            db.window(101, "2029-12-31 03:30:00", "2029-12-31 04:30:00");
+            db.window(102, "2030-01-01 04:00:00", "2030-01-01 05:00:00");
+            db.template("[{\"enabled\":true,\"segments\":[{\"start\":\"09:00\",\"end\":\"12:00\","
+                    + "\"capacity\":4}]},{\"enabled\":true,\"segments\":[{\"start\":\"10:00\","
+                    + "\"end\":\"11:00\",\"capacity\":2}]},{\"enabled\":false,\"segments\":[]},"
+                    + "{\"enabled\":false,\"segments\":[]},{\"enabled\":false,\"segments\":[]},"
+                    + "{\"enabled\":false,\"segments\":[]},{\"enabled\":false,\"segments\":[]}]");
+            SelectionWindowQuery range = new SelectionWindowQuery("301", "201",
+                    LocalDate.of(2029, 12, 31), LocalDate.of(2030, 1, 2), CONTEXT);
+            var items = service(db, FulfillmentType.IN_STORE).page(range).items();
+            assertEquals(3, items.size());
+            assertEquals("101", items.get(0).windowId()); // real Monday window
+            assertEquals("2029-12-31T03:30Z", items.get(0).start().toString());
+            // The Monday template segment (01:00-04:00Z) is skipped: 101 overlaps it.
+            assertEquals("102", items.get(2).windowId()); // real Tuesday window
+            var virtual = items.get(1);
+            assertNotEquals("101", virtual.windowId());
+            assertNotEquals("102", virtual.windowId());
+            assertEquals("2030-01-01T02:00Z", virtual.start().toString());
+            assertEquals("2030-01-01T03:00Z", virtual.end().toString());
+            assertEquals("GENERAL", virtual.kind());
+            assertEquals(2, virtual.effectiveCapacity());
+            assertEquals(0, virtual.occupiedCount());
+            assertEquals(2, virtual.remainingCapacity());
+            assertTrue(virtual.available());
+            // The availability aggregation merges the same set.
+            var availability = availability(db).page(new AvailabilityQuery("301", "201",
+                    LocalDate.of(2029, 12, 31), LocalDate.of(2030, 1, 2), CONTEXT));
+            assertEquals(List.of("2029-12-31T03:30Z", "2030-01-01T02:00Z",
+                    "2030-01-01T04:00Z"), availability.items().stream()
+                    .map(item -> item.start().toString()).toList());
+            var virtualAvailability = availability.items().get(1);
+            assertEquals(2, virtualAvailability.effectiveCapacity());
+            assertEquals(0, virtualAvailability.occupiedCount());
+            assertEquals(2, virtualAvailability.remainingCapacity());
+            // The pickup-delivery projection acts on the merged set: both legs per slot.
+            var legs = service(db, FulfillmentType.PICKUP_DELIVERY).page(range).items();
+            assertEquals(List.of("PICKUP", "RETURN", "PICKUP", "RETURN", "PICKUP", "RETURN"),
+                    legs.stream().map(item -> item.kind()).toList());
+            assertEquals(virtual.windowId(), legs.get(2).windowId());
+        }
+    }
+
+    /** Expansion stops at the now+maxDays boundary (defaults 60/7 around the fixed clock
+     * 2029-12-31T00:00Z): Monday 2030-01-07 segments starting 23:00Z (visible) and exactly
+     * at 00:00Z (visible, inclusive boundary) expand, the one starting 01:00Z (past the
+     * boundary) never appears; an all-closed template expands nothing. */
+    @Test
+    void weekTemplateExpansionHonorsMaxDaysBoundaryAndClosedDays() throws Exception {
+        try (Database db = new Database()) {
+            db.window(121, "2030-01-06 16:00:00", "2030-01-06 16:30:00");
+            // Monday (index 0) carries the three boundary segments; Sunday (index 6,
+            // 2030-01-06) one ordinary evening segment.
+            db.template("[{\"enabled\":true,\"segments\":[{\"start\":\"07:00\",\"end\":\"08:00\","
+                    + "\"capacity\":3},{\"start\":\"08:00\",\"end\":\"09:00\",\"capacity\":3},"
+                    + "{\"start\":\"09:00\",\"end\":\"10:00\",\"capacity\":3}]},"
+                    + "{\"enabled\":false,\"segments\":[]},{\"enabled\":false,\"segments\":[]},"
+                    + "{\"enabled\":false,\"segments\":[]},{\"enabled\":false,\"segments\":[]},"
+                    + "{\"enabled\":false,\"segments\":[]},{\"enabled\":true,\"segments\":"
+                    + "[{\"start\":\"23:00\",\"end\":\"23:30\",\"capacity\":5}]}]");
+            var items = service(db, FulfillmentType.IN_STORE).page(
+                    new SelectionWindowQuery("301", "201", LocalDate.of(2030, 1, 6),
+                            LocalDate.of(2030, 1, 7), CONTEXT)).items();
+            // Sunday evening 15:00Z virtual + real 121 + Monday 23:00Z + Monday 00:00Z
+            // boundary; the Monday 01:00Z segment (past now+7d) never expands.
+            assertEquals(List.of("2030-01-06T15:00Z", "2030-01-06T16:00Z", "2030-01-06T23:00Z",
+                    "2030-01-07T00:00Z"), items.stream()
+                    .map(item -> item.start().toString()).toList());
+            assertEquals("121", items.get(1).windowId()); // the real window between virtuals
+            assertEquals(5, items.getFirst().effectiveCapacity()); // Sunday segment capacity
+            // Seven closed days expand nothing: only the real window remains.
+            db.jdbc.update("UPDATE merchant_schedule_week_template SET days='[{\"enabled\":"
+                    + "false,\"segments\":[]},{\"enabled\":false,\"segments\":[]},{\"enabled\":"
+                    + "false,\"segments\":[]},{\"enabled\":false,\"segments\":[]},{\"enabled\":"
+                    + "false,\"segments\":[]},{\"enabled\":false,\"segments\":[]},{\"enabled\":"
+                    + "false,\"segments\":[]}]'");
+            assertEquals(1, service(db, FulfillmentType.IN_STORE).page(
+                    new SelectionWindowQuery("301", "201", LocalDate.of(2030, 1, 6),
+                            LocalDate.of(2030, 1, 7), CONTEXT)).items().size());
+        }
+    }
+
+    private static AvailabilityQueryService availability(Database db) {
+        ServiceQueryApi services = mock(ServiceQueryApi.class);
+        when(services.checkBookable(any())).thenReturn(
+                new ServiceBookabilityDTO("301", "10", "201", true, List.of()));
+        QualifiedStaffFactsPort staff = (store, selectedService, from, to) -> 2;
+        return new AvailabilityQueryService(new ScheduleReadStore(db.source), services, staff,
+                Clock.fixed(Instant.parse("2029-12-31T00:00:00Z"), ZoneOffset.UTC));
+    }
+
     private static SelectionWindowQuery query() {
         return new SelectionWindowQuery("301", "201", DATE, DATE, CONTEXT);
     }
@@ -219,7 +361,8 @@ class ScheduleSelectionQueryMySqlTest {
                         "docs/03-database/06-核心数据库Schema-v0.1.sql"))) root = root.getParent();
                 if (root == null) throw new IllegalStateException("Schema06 is absent");
                 for (String script : List.of("06-核心数据库Schema-v0.1.sql",
-                        "37-Reservation-Protection-Foundation-Schema-v0.1.sql")) {
+                        "37-Reservation-Protection-Foundation-Schema-v0.1.sql",
+                        "53-Schedule-Write-Schema-v0.1.sql")) {
                     try (Connection connection = source.getConnection()) {
                         ScriptUtils.executeSqlScript(connection, new EncodedResource(
                                 new FileSystemResource(root.resolve("docs/03-database/" + script)),
@@ -238,6 +381,13 @@ class ScheduleSelectionQueryMySqlTest {
                     + "start_at,end_at,configured_capacity,status,version,"
                     + "created_at,updated_at) VALUES(?,10,201,?,?,2,'OPEN',0,"
                     + "UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))", id, start, end);
+        }
+
+        /** CCR-SCH-SLOT-003: weekly cycling template row (days JSON, version 0). */
+        void template(String days) {
+            jdbc.update("INSERT INTO merchant_schedule_week_template(store_id,days,version,"
+                    + "created_at,updated_at) VALUES(201,?,0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+                    days);
         }
 
         void reservation(long id, String type, String start, String end,

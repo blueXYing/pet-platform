@@ -357,17 +357,19 @@ class Sch004JointAcceptanceMySqlTest {
                             "test"),
                     MERCHANT, STORE, AT_1000, AT_1100, 4), created));
             assertEquals("OPEN", created[0].status());
-            assertEquals(1, db.countWindows());
+            // CCR-SCH-SLOT-001: the two prologue slots (12:00/14:00, non-overlapping) are
+            // legal store-wide slots now, so this idempotency block counts three windows.
+            assertEquals(3, db.countWindows());
             WindowResult[] replay = new WindowResult[1];
             assertFalse(app.commands.createWindowOutcome(new CreateWindowCommand(
                     new CommandContext(requestId, "sch004-acc", OperatorType.USER, "601",
                             "test"),
                     MERCHANT, STORE, AT_1000, AT_1100, 4), replay));
             assertEquals(created[0].windowId(), replay[0].windowId());
-            assertEquals(1, db.countWindows());
+            assertEquals(3, db.countWindows());
             assertEquals(CommonApiCodes.IDEMPOTENCY_KEY_CONFLICT,
                     app.createFailureWithKey(requestId, AT_1030, AT_1100));
-            assertEquals(1, db.countWindows());
+            assertEquals(3, db.countWindows());
         }
     }
 
@@ -419,6 +421,13 @@ class Sch004JointAcceptanceMySqlTest {
 
         private App(Database db) {
             this.db = db;
+            // CCR-SCH-SLOT-002: this acceptance holds and reads 2030 fixtures against the
+            // 2026 fixed clock, so the store carries a permissive configured bookable range
+            // (the default 60/7 range behaviour is covered in ReservationHoldMySqlTest and
+            // ScheduleSelectionQueryMySqlTest).
+            db.jdbc.update("INSERT INTO merchant_schedule_booking_window(store_id,lead_minutes,"
+                    + "max_days,version,created_at,updated_at) VALUES(201,0,999999,0,"
+                    + "UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
             guard = new ScheduleCapacityGuardApiImpl(db.source);
             ScheduleProtectionFactsApi facts = new ScheduleProtectionFactsApiImpl(db.source,
                     guard);

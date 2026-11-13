@@ -21,6 +21,7 @@ import com.petplatform.schedule.api.protection.ScheduleCapacityGuardApi;
 import com.petplatform.schedule.api.protection.ScheduleProtectionFactsApi;
 import com.petplatform.schedule.biz.apiimpl.ScheduleCapacityProofApiImpl.HoldProofPlan;
 import com.petplatform.schedule.biz.apiimpl.ScheduleCapacityProofApiImpl.ProvenClaim;
+import com.petplatform.schedule.biz.application.BookingWindowRule;
 import com.petplatform.schedule.biz.infrastructure.persistence.ScheduleMybatis;
 import com.petplatform.schedule.biz.infrastructure.persistence.ScheduleSqlRows;
 import com.petplatform.schedule.biz.infrastructure.persistence.mapper.ScheduleCommandMapper;
@@ -51,6 +52,7 @@ public final class ReservationHoldApiImpl implements ReservationHoldApi {
     private final OrderProtectionFactsApi order;
     private final Clock clock;
     private final ScheduleCommandMapper mapper;
+    private final WeekTemplateMaterializer templates;
 
     public ReservationHoldApiImpl(DataSource source, SnowflakeIdGenerator ids,
             ScheduleCapacityGuardApi guard, ScheduleProtectionFactsApi facts,
@@ -63,21 +65,58 @@ public final class ReservationHoldApiImpl implements ReservationHoldApi {
         this.order = Objects.requireNonNull(order);
         this.clock = Objects.requireNonNull(clock);
         this.mapper = ScheduleMybatis.template(source).getMapper(ScheduleCommandMapper.class);
+        this.templates = new WeekTemplateMaterializer(source, ids);
     }
 
     @Override
     public HoldResult hold(HoldCommand command) {
         QueryContext query = validate(command);
+        // CCR-SCH-SLOT-002 (38号 hold admission): the store's bookable range gates every new
+        // reservation time before any capacity proof or write; an out-of-range start is a 400
+        // COMMON_INVALID_ARGUMENT whose message names the range. An absent configuration row
+        // means the defaults (60 minutes / 7 days); unreadable facts fail closed.
+        requireWithinBookableRange(command);
         guard.requireHeld(command.storeId(), source);
         try {
             if (!mapper.lockReservationByOrder(id(command.orderId())).isEmpty()) {
                 throw new ApiException(CommonApiCodes.CONFLICT, "order already has a reservation");
             }
+            // CCR-SCH-SLOT-003 order-time materialization (38号 internal step, external
+            // error surface unchanged): a target time with no real OPEN/SOLD_OUT window
+            // but a weekly-template segment hit becomes a real minute-level window in this
+            // same transaction (capacity = segment capacity, version 0, WINDOW_CREATE
+            // audit with the SYSTEM actor) before the normal proof/claim runs. A selected
+            // windowId naming an existing row keeps the original logic untouched; only an
+            // unknown id (the selection read's virtual segment id) resolves by time.
+            Instant materializeAt = clock.instant().truncatedTo(ChronoUnit.MILLIS);
+            String generalWindowId = command.selectedGeneralWindowId();
+            String pickupWindowId = command.selectedPickupWindowId();
+            String returnWindowId = command.selectedReturnWindowId();
+            if ("IN_STORE".equals(command.fulfillmentType())) {
+                String effective = templates.ensureClaimableWindow(
+                        id(command.storeId()), id(command.merchantId()),
+                        command.appointmentStart(), command.appointmentEnd(),
+                        generalWindowId, command.context().requestId(),
+                        command.context().traceId(), materializeAt);
+                if (effective != null) generalWindowId = effective;
+            } else {
+                String effectivePickup = templates.ensureClaimableWindow(
+                        id(command.storeId()), id(command.merchantId()),
+                        command.pickupStart(), null, pickupWindowId,
+                        command.context().requestId(), command.context().traceId(),
+                        materializeAt);
+                if (effectivePickup != null) pickupWindowId = effectivePickup;
+                String effectiveReturn = templates.ensureClaimableWindow(
+                        id(command.storeId()), id(command.merchantId()),
+                        command.returnStart(), null, returnWindowId,
+                        command.context().requestId(), command.context().traceId(),
+                        materializeAt);
+                if (effectiveReturn != null) returnWindowId = effectiveReturn;
+            }
             HoldProofPlan plan = proof.prepareForHold(new CapacityProofQuery(
                     command.storeId(), command.serviceId(), command.fulfillmentType(),
                     command.appointmentStart(), command.appointmentEnd(),
-                    command.selectedGeneralWindowId(), command.selectedPickupWindowId(),
-                    command.selectedReturnWindowId(), query));
+                    generalWindowId, pickupWindowId, returnWindowId, query));
             for (ProvenClaim claim : plan.claims()) {
                 if (!command.merchantId().equals(claim.merchantId())) {
                     throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
@@ -201,6 +240,27 @@ public final class ReservationHoldApiImpl implements ReservationHoldApi {
                 }
             }
         });
+    }
+
+    /** The store bookable range resolves once per hold; IN_STORE checks the appointment
+     * start, PICKUP_DELIVERY checks both directional starts (38号/46号 share the rule). */
+    private void requireWithinBookableRange(HoldCommand command) {
+        java.util.Map<String, Object> row;
+        try {
+            row = mapper.selectBookingWindow(id(command.storeId()));
+        } catch (RuntimeException unreadable) {
+            throw unavailable("booking window facts are unavailable");
+        }
+        BookingWindowRule.Range range = BookingWindowRule.resolve(
+                row == null ? null : ScheduleSqlRows.nullableNumber(row, "lead_minutes"),
+                row == null ? null : ScheduleSqlRows.nullableNumber(row, "max_days"));
+        Instant now = clock.instant();
+        if ("IN_STORE".equals(command.fulfillmentType())) {
+            BookingWindowRule.requireWithin(command.appointmentStart().toInstant(), now, range);
+        } else {
+            BookingWindowRule.requireWithin(command.pickupStart().toInstant(), now, range);
+            BookingWindowRule.requireWithin(command.returnStart().toInstant(), now, range);
+        }
     }
 
     private static QueryContext validate(HoldCommand command) {

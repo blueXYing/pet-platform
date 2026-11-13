@@ -2,6 +2,7 @@ package com.petplatform.schedule.api.dto;
 
 import com.petplatform.common.CommandContext;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -34,6 +35,20 @@ public final class ScheduleWriteTypes {
     public record BatchCloseCommand(CommandContext context, String merchantId, String storeId,
             LocalDate fromDate, LocalDate toDate, String reason) {}
 
+    /**
+     * CCR-SCH-SLOT-002 batch-generate: 覆盖重建语义 — windows intersecting the generation
+     * span [min(dates)@min(segment starts), max(dates)@max(segment ends)] are closed first
+     * (occupied ones skipped and reported), then ONE minute-level window per (date, segment)
+     * is created. No weekly-template data structure exists: the client pre-slices its draft
+     * (e.g. hourly capsules) and one request carries the whole batch (user ruling 2026-11-13).
+     */
+    public record BatchGenerateCommand(CommandContext context, String merchantId, String storeId,
+            List<LocalDate> dates, List<BatchSegment> segments,
+            int configuredCapacity, String reason) {}
+
+    /** One materialized window per (date, segment); segments must not overlap. */
+    public record BatchSegment(LocalTime start, LocalTime end) {}
+
     public record WindowResult(String windowId, String merchantId, String storeId,
             OffsetDateTime startAt, OffsetDateTime endAt, int configuredCapacity,
             String status, String version) {}
@@ -45,6 +60,78 @@ public final class ScheduleWriteTypes {
         public BatchCloseResult {
             closedWindows = List.copyOf(closedWindows);
             blockedWindows = List.copyOf(blockedWindows);
+        }
+    }
+
+    /** An occupied window the覆盖重建 could not close; reasonCode is OCCUPIED (53号 §3.4). */
+    public record SkippedWindow(WindowResult window, String reasonCode) {}
+
+    public record BatchGenerateResult(String storeId, List<WindowResult> createdWindows,
+            List<WindowResult> closedWindows, List<SkippedWindow> skippedWindows) {
+        public BatchGenerateResult {
+            createdWindows = List.copyOf(createdWindows);
+            closedWindows = List.copyOf(closedWindows);
+            skippedWindows = List.copyOf(skippedWindows);
+        }
+    }
+
+    // ------------------------------------------------------------------ booking window (CCR-SCH-SLOT-002)
+
+    public record BookingWindowQuery(CommandContext context, String merchantId, String storeId) {}
+
+    /** Absent row = defaults leadMinutes 60 / maxDays 7 with logical version "0" and a null
+     * updatedAt (the H5-pinned GET shape carries no storeId). */
+    public record BookingWindowView(int leadMinutes, int maxDays, String version,
+            OffsetDateTime updatedAt) {}
+
+    /** Full replacement; lead 0..1440 minutes, maxDays 1..90 days, no reason (not an
+     * availability reduction). */
+    public record BookingWindowReplaceCommand(CommandContext context, String merchantId,
+            String storeId, int leadMinutes, int maxDays, String expectedVersion) {}
+
+    /** The H5-pinned PUT receipt shape: {leadMinutes, maxDays, version}, no updatedAt. */
+    public record BookingWindowResult(int leadMinutes, int maxDays, String version) {}
+
+    // ------------------------------------------------------------- week template (CCR-SCH-SLOT-003)
+
+    /** One template segment of a weekday: minute-precision [start,end) with its own capacity. */
+    public record WeekTemplateSegment(LocalTime start, LocalTime end, int capacity) {}
+
+    /** One weekday of the cycle; days[0]=Monday .. days[6]=Sunday (ISO order). A disabled
+     * day (or an empty segment list) is closed; segments of a disabled day are kept
+     * verbatim by PUT/GET but never expand on reads. */
+    public record WeekTemplateDay(boolean enabled, List<WeekTemplateSegment> segments) {
+        public WeekTemplateDay {
+            segments = segments == null ? List.of() : List.copyOf(segments);
+        }
+    }
+
+    public record WeekTemplateQuery(CommandContext context, String merchantId,
+            String storeId) {}
+
+    /** Absent row = seven closed days with logical version "0" and a null updatedAt. */
+    public record WeekTemplateView(List<WeekTemplateDay> days, String version,
+            OffsetDateTime updatedAt) {
+        public WeekTemplateView {
+            days = List.copyOf(days);
+        }
+    }
+
+    /** Full replacement of the whole 7-day cycle (53号 §3.6): every day must be listed;
+     * segments per day 0..24 non-overlapping with capacity 1..999 (writer-side 400s);
+     * no reason (editing the template is not an availability reduction — already
+     * materialized windows are never touched). */
+    public record WeekTemplateReplaceCommand(CommandContext context, String merchantId,
+            String storeId, List<WeekTemplateDay> days, String expectedVersion) {
+        public WeekTemplateReplaceCommand {
+            days = List.copyOf(days);
+        }
+    }
+
+    /** PUT receipt: the saved cycle echoed back with its new version. */
+    public record WeekTemplateResult(List<WeekTemplateDay> days, String version) {
+        public WeekTemplateResult {
+            days = List.copyOf(days);
         }
     }
 

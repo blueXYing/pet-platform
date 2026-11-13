@@ -6,6 +6,7 @@ import com.petplatform.common.DecimalPublicIdCodec;
 import com.petplatform.schedule.api.dto.SelectionWindowDTO;
 import com.petplatform.schedule.api.dto.SelectionWindowPageDTO;
 import com.petplatform.schedule.api.query.SelectionWindowQuery;
+import com.petplatform.schedule.biz.infrastructure.persistence.ScheduleSqlRows;
 import com.petplatform.schedule.biz.infrastructure.persistence.SelectionReadStore;
 import com.petplatform.schedule.biz.infrastructure.persistence.SelectionReadStore.ClaimRow;
 import com.petplatform.schedule.biz.infrastructure.persistence.SelectionReadStore.WindowRow;
@@ -82,6 +83,15 @@ public final class SelectionWindowQueryService {
             if (store.hasBrokenClaimLinks(jdbc, id(query.storeId()), from, to)) {
                 unavailable("selection claim links are inconsistent");
             }
+            // CCR-SCH-SLOT-002: the store's bookable range (lead/maxDays, defaults 60/7)
+            // hides every slot starting before now+lead or after now+maxDays — the C-end
+            // selection list never offers an out-of-range slot.
+            Map<String, Object> bookingRow = jdbc.selectBookingWindow(id(query.storeId()));
+            BookingWindowRule.Range range = BookingWindowRule.resolve(
+                    bookingRow == null ? null
+                            : ScheduleSqlRows.nullableNumber(bookingRow, "lead_minutes"),
+                    bookingRow == null ? null
+                            : ScheduleSqlRows.nullableNumber(bookingRow, "max_days"));
             // Unified slots (CCR-SCH-SLOT-001): the whole store timeline is the candidate set.
             List<WindowRow> windows = store.windows(jdbc, id(query.storeId()), from, to);
             List<ClaimRow> claims = store.claims(jdbc, id(query.storeId()), from, to);
@@ -89,6 +99,16 @@ public final class SelectionWindowQueryService {
             List<SelectionWindowDTO> result = new ArrayList<>();
             Set<Long> windowIds = new HashSet<>();
             LocalDateTime priorOpenEnd = null;
+            // CCR-SCH-SLOT-003: every open-derived fetched row holds its open slot (even an
+            // out-of-range one), so a template segment intersecting it is skipped.
+            List<WeekTemplateRule.Expanded> realIntervals = new ArrayList<>(windows.size());
+            for (WindowRow row : windows) {
+                if (openDerived(row.status())) {
+                    realIntervals.add(new WeekTemplateRule.Expanded(
+                            row.start().atOffset(ZoneOffset.UTC),
+                            row.end().atOffset(ZoneOffset.UTC), row.configuredCapacity()));
+                }
+            }
             for (WindowRow row : windows) {
                 validateWindow(row, query, snapshot.merchantId(), windowIds);
                 // SOLD_OUT stays listed as an open-derived slot: remaining=0 keeps it
@@ -102,6 +122,10 @@ public final class SelectionWindowQueryService {
                 if (openDerived(row.status())) priorOpenEnd = row.end();
                 OffsetDateTime start = row.start().atOffset(ZoneOffset.UTC);
                 OffsetDateTime end = row.end().atOffset(ZoneOffset.UTC);
+                if (!BookingWindowRule.within(start.toInstant(), now, range)) {
+                    // Outside the bookable range: hidden from the selectable list entirely.
+                    continue;
+                }
                 int qualified;
                 try {
                     qualified = staff.countQualifiedAvailableStaff(query.storeId(),
@@ -130,6 +154,39 @@ public final class SelectionWindowQueryService {
                     result.add(new SelectionWindowDTO(IDS.toApi(row.id()), "GENERAL", start, end,
                             effective, taken, remaining, available));
                 }
+            }
+            // CCR-SCH-SLOT-003 read-time expansion: items = real slots ∪ template expansion
+            // of the future weekdays, bounded by now+maxDays. A virtual segment carries a
+            // deterministic virtual windowId (the item shape keeps its windowId field; the
+            // hold materializes a real window at booking time), effectiveCapacity = segment
+            // capacity and occupied 0; the leg-role projection acts on the merged set.
+            Map<String, Object> templateRow = jdbc.selectWeekTemplate(id(query.storeId()));
+            if (templateRow != null) {
+                String days = ScheduleSqlRows.json(templateRow, "days");
+                if (days == null) unavailable("week template facts are invalid");
+                WeekTemplateRule.Template template = WeekTemplateRule.parse(days);
+                for (WeekTemplateRule.Expanded virtual : WeekTemplateRule.expand(
+                        template, query.startDate(), query.endDate(), now, range,
+                        realIntervals, AvailabilityQueryService.BUSINESS_ZONE)) {
+                    String virtualId = Long.toString(
+                            WeekTemplateRule.virtualWindowId(virtual.start(), virtual.end()));
+                    boolean available = virtual.start().toInstant().isAfter(now);
+                    if (pickupDelivery) {
+                        result.add(new SelectionWindowDTO(virtualId, "PICKUP", virtual.start(),
+                                virtual.end(), virtual.capacity(), 0, virtual.capacity(),
+                                available));
+                        result.add(new SelectionWindowDTO(virtualId, "RETURN", virtual.start(),
+                                virtual.end(), virtual.capacity(), 0, virtual.capacity(),
+                                available));
+                    } else {
+                        result.add(new SelectionWindowDTO(virtualId, "GENERAL", virtual.start(),
+                                virtual.end(), virtual.capacity(), 0, virtual.capacity(),
+                                available));
+                    }
+                }
+                result.sort(java.util.Comparator.comparing(SelectionWindowDTO::start)
+                        .thenComparing(SelectionWindowDTO::kind)
+                        .thenComparing(SelectionWindowDTO::end));
             }
             return List.copyOf(result);
         });

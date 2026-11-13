@@ -5,7 +5,9 @@ import com.petplatform.common.*;
 import com.petplatform.schedule.api.command.ReservationSwapApi;
 import com.petplatform.schedule.api.dto.ScheduleProtectionTypes.*;
 import com.petplatform.schedule.api.protection.*;
+import com.petplatform.schedule.biz.application.BookingWindowRule;
 import com.petplatform.schedule.biz.infrastructure.persistence.ScheduleMybatis;
+import com.petplatform.schedule.biz.infrastructure.persistence.ScheduleSqlRows;
 import com.petplatform.schedule.biz.infrastructure.persistence.mapper.ScheduleSwapMapper;
 import com.petplatform.order.api.query.OrderProtectionFactsApi;
 import java.time.*;
@@ -22,16 +24,22 @@ public final class ReservationSwapApiImpl implements ReservationSwapApi {
  private final ScheduleCapacityProofApiImpl proof; private final OrderProtectionFactsApi orders;
  private final ScheduleSwapMapper mapper;
  private final com.petplatform.order.api.query.OrderRescheduleCommitApi commit;
+ private final WeekTemplateMaterializer templates;
  public ReservationSwapApiImpl(DataSource source,SnowflakeIdGenerator ids,ScheduleCapacityGuardApi guard,
    ScheduleProtectionFactsApi facts,ScheduleCapacityProofApiImpl proof,OrderProtectionFactsApi orders,com.petplatform.order.api.query.OrderRescheduleCommitApi commit){
   this.source=Objects.requireNonNull(source);this.ids=Objects.requireNonNull(ids);this.guard=Objects.requireNonNull(guard);
   this.facts=Objects.requireNonNull(facts);this.proof=Objects.requireNonNull(proof);this.orders=Objects.requireNonNull(orders);this.commit=Objects.requireNonNull(commit);
   mapper=ScheduleMybatis.template(source).getMapper(ScheduleSwapMapper.class);
   commandMapper=ScheduleMybatis.template(source).getMapper(com.petplatform.schedule.biz.infrastructure.persistence.mapper.ScheduleCommandMapper.class);
+  templates=new WeekTemplateMaterializer(source,ids);
  }
  private final com.petplatform.schedule.biz.infrastructure.persistence.mapper.ScheduleCommandMapper commandMapper;
  public Result swap(Command c){
   if(c==null||c.context()==null||c.context().operatorType()!=OperatorType.USER||!Objects.equals(c.userId(),c.context().operatorId()))throw error(CommonApiCodes.FORBIDDEN);
+  // CCR-SCH-SLOT-002 (46号 reschedule): the exchanged-to times are new reservation times and
+  // must sit inside the store bookable range (absent row = defaults 60/7); out of range is a
+  // 400 COMMON_INVALID_ARGUMENT naming the range, before any proof or write.
+  requireWithinBookableRange(c);
   guard.requireHeld(c.storeId(),source);
   try{
    var q=new QueryContext(c.context().traceId(),OperatorType.SYSTEM,null);
@@ -47,8 +55,28 @@ public final class ReservationSwapApiImpl implements ReservationSwapApi {
     if(selected.size()==2&&original.size()==2&&selected.stream().allMatch(w->original.stream().anyMatch(o->o.startAt().isEqual(w.startAt())&&o.endAt().isEqual(w.endAt())))
       &&Objects.equals(old.pickupStartAt(),c.pickupStart())&&Objects.equals(old.returnStartAt(),c.returnStart()))throw error(CommonApiCodes.CONFLICT);
    }
+   // CCR-SCH-SLOT-003 order-time materialization shared with the 38号 hold: an exchanged-to
+   // time with no real window but a weekly-template segment hit becomes a real minute-level
+   // window in this same transaction before the swap proof/claims run; a selected windowId
+   // naming an existing row keeps the original logic (46号 external error surface unchanged).
+   java.time.Instant swapNow=c.rescheduledAt()==null?null:c.rescheduledAt().toInstant();
+   String generalWindowId=c.selectedGeneralWindowId(),pickupWindowId=c.selectedPickupWindowId(),returnWindowId=c.selectedReturnWindowId();
+   if(swapNow!=null){
+    if("IN_STORE".equals(c.fulfillmentType())){
+     var effective=templates.ensureClaimableWindow(apiId(c.storeId()),apiId(c.merchantId()),c.appointmentStart(),c.appointmentEnd(),
+      generalWindowId,c.context().requestId(),c.context().traceId(),swapNow);
+     if(effective!=null)generalWindowId=effective;
+    }else{
+     var effectivePickup=templates.ensureClaimableWindow(apiId(c.storeId()),apiId(c.merchantId()),c.pickupStart(),null,
+      pickupWindowId,c.context().requestId(),c.context().traceId(),swapNow);
+     if(effectivePickup!=null)pickupWindowId=effectivePickup;
+     var effectiveReturn=templates.ensureClaimableWindow(apiId(c.storeId()),apiId(c.merchantId()),c.returnStart(),null,
+      returnWindowId,c.context().requestId(),c.context().traceId(),swapNow);
+     if(effectiveReturn!=null)returnWindowId=effectiveReturn;
+    }
+   }
    var plan=proof.prepareForSwap(new CapacityProofQuery(c.storeId(),c.serviceId(),c.fulfillmentType(),c.appointmentStart(),c.appointmentEnd(),
-    c.selectedGeneralWindowId(),c.selectedPickupWindowId(),c.selectedReturnWindowId(),q),c.reservationId());
+    generalWindowId,pickupWindowId,returnWindowId,q),c.reservationId());
    if(plan.claims().size()!=original.size())throw bad();
    for(var claim:plan.claims())if(!c.merchantId().equals(claim.merchantId()))throw bad();
    var start=plan.claims().stream().map(x->x.startAt()).min(Comparator.naturalOrder()).orElseThrow();
@@ -102,6 +130,27 @@ public final class ReservationSwapApiImpl implements ReservationSwapApi {
    if(TransactionSynchronizationManager.getResource(source) instanceof ConnectionHolder h)h.setRollbackOnly();
    if(failure instanceof ApiException known)throw known;throw bad();
   }
+ }
+ /** 46号 shares the 38号 hold rule at the same admission point: IN_STORE checks the new
+   * appointment start, PICKUP_DELIVERY both directional starts; "now" is the caller's
+   * authoritative reschedule instant. */
+ private void requireWithinBookableRange(Command c){
+  Map<String,Object> row;
+  try{row=commandMapper.selectBookingWindow(apiId(c.storeId()));}
+  catch(RuntimeException unreadable){throw bad();}
+  var range=BookingWindowRule.resolve(row==null?null:ScheduleSqlRows.nullableNumber(row,"lead_minutes"),
+   row==null?null:ScheduleSqlRows.nullableNumber(row,"max_days"));
+  java.time.Instant now=c.rescheduledAt()==null?null:c.rescheduledAt().toInstant();
+  if("IN_STORE".equals(c.fulfillmentType())&&c.appointmentStart()!=null&&now!=null){
+   BookingWindowRule.requireWithin(c.appointmentStart().toInstant(),now,range);
+  }else if("PICKUP_DELIVERY".equals(c.fulfillmentType())&&now!=null){
+   if(c.pickupStart()!=null)BookingWindowRule.requireWithin(c.pickupStart().toInstant(),now,range);
+   if(c.returnStart()!=null)BookingWindowRule.requireWithin(c.returnStart().toInstant(),now,range);
+  }
+ }
+ private static long apiId(String value){
+  try{long id=IDS.fromApi(value);if(id<=0)throw new IllegalArgumentException("nonpositive");return id;}
+  catch(RuntimeException malformed){throw bad();}
  }
  private static LocalDateTime utc(OffsetDateTime t){return t==null?null:t.withOffsetSameInstant(ZoneOffset.UTC).toLocalDateTime();}
  private static Map<String,Object> values(Object...pairs){var m=new LinkedHashMap<String,Object>();for(int i=0;i<pairs.length;i+=2)m.put((String)pairs[i],pairs[i+1]);return m;}

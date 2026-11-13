@@ -102,6 +102,70 @@
         ORDER BY start_at, id
     </select>
 
+    <!-- CCR-SCH-SLOT-002 store-level bookable range: absent row = defaults 60/7, version 0 -->
+    <select id="selectBookingWindowForUpdate" resultType="map">
+        SELECT store_id, lead_minutes, max_days, version, updated_at
+        FROM merchant_schedule_booking_window
+        WHERE store_id = #{storeId}
+        FOR UPDATE
+    </select>
+    <insert id="insertBookingWindow">
+        INSERT INTO merchant_schedule_booking_window(store_id, lead_minutes, max_days,
+            version, created_at, updated_at)
+        VALUES(#{storeId}, #{leadMinutes}, #{maxDays}, #{version}, #{now}, #{now})
+    </insert>
+    <update id="casBookingWindow">
+        UPDATE merchant_schedule_booking_window
+        SET lead_minutes = #{leadMinutes}, max_days = #{maxDays},
+            version = #{nextVersion}, updated_at = #{now}
+        WHERE store_id = #{storeId} AND version = #{expectedVersion}
+    </update>
+
+    <!-- CCR-SCH-SLOT-003 weekly cycling template: absent row = seven closed days, version 0 -->
+    <select id="selectWeekTemplateForUpdate" resultType="map">
+        SELECT store_id, days, version, updated_at
+        FROM merchant_schedule_week_template
+        WHERE store_id = #{storeId}
+        FOR UPDATE
+    </select>
+    <insert id="insertWeekTemplate">
+        INSERT INTO merchant_schedule_week_template(store_id, days, version,
+            created_at, updated_at)
+        VALUES(#{storeId}, #{days}, #{version}, #{now}, #{now})
+    </insert>
+    <update id="casWeekTemplate">
+        UPDATE merchant_schedule_week_template
+        SET days = #{days}, version = #{nextVersion}, updated_at = #{now}
+        WHERE store_id = #{storeId} AND version = #{expectedVersion}
+    </update>
+
+    <!-- Materializer lookups (hold/swap transactions): store-wide open windows never
+         overlap, so the covering match is unique; the half-open overlap probe guards the
+         insert against creating a second open window over an existing one. -->
+    <select id="selectCoveringOpenWindow" resultType="map">
+        SELECT id, merchant_id, store_id, start_at, end_at,
+               configured_capacity, status, version
+        FROM schedule_availability_window
+        WHERE store_id = #{storeId}
+          AND status IN ('OPEN', 'SOLD_OUT')
+          AND start_at &lt;= #{startAt}
+          <if test="endAt != null">AND end_at &gt;= #{endAt}</if>
+          <if test="endAt == null">AND end_at &gt; #{startAt}</if>
+        ORDER BY start_at, id
+        LIMIT 1
+    </select>
+    <select id="selectOpenWindowOverlapping" resultType="map">
+        SELECT id, merchant_id, store_id, start_at, end_at,
+               configured_capacity, status, version
+        FROM schedule_availability_window
+        WHERE store_id = #{storeId}
+          AND status IN ('OPEN', 'SOLD_OUT')
+          AND start_at &lt; #{endAt}
+          AND end_at &gt; #{startAt}
+        ORDER BY start_at, id
+        LIMIT 1
+    </select>
+
     <!-- capability set header (34号 storage §3, SCHC-2): one BIGINT version per staff -->
     <select id="selectCapabilitySetForUpdate" resultType="map">
         SELECT staff_id, store_id, version, updated_at
