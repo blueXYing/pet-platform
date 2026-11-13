@@ -4,12 +4,15 @@
 // OFF). Decoders stay strict exact-key (fail closed); the real repository is the single swap
 // point and the preview repository is a contract mock, never a real integration claim.
 //
-// Contract anchors:
-// - Service windows: identity storeId+serviceId+windowKind fixed at create; minute-precision
+// Contract anchors (CCR-SCH-SLOT-001, 2026-11-13 approved: unified store-shared slots):
+// - Store windows: identity storeId+时间区间 (all services share one slot wall; NO
+//   serviceId/windowKind on the window any more); minute-precision
 //   half-open [startAt,endAt) with NO fixed 60-minute slot (SSOT §12.1); statuses
-//   OPEN/CLOSED/SOLD_OUT where SOLD_OUT is a system-derived state (occupied >= capacity) the
+//   OPEN/CLOSED/SOLD_OUT where SOLD_OUT is a system-derived state (occupied >= capacity,
+//   occupied = whole-store effective claims across ALL services sharing the pool) the
 //   merchant can never set by hand and can lift only by raising capacity (same-transaction
-//   re-judge). Occupied windows block close/time-change/capacity-decrease (409), allow
+//   re-judge). Overlap discipline is same-store (not per service/kind). Occupied windows
+//   block close/time-change/capacity-decrease (409), allow
 //   capacity-raise. No DELETE; weekly templates (dayOfWeek/repeatWeekly/copyNextWeek) are
 //   explicitly not introduced. batch-close: single request capped at 200 intersecting
 //   entries (400 COMMON_INVALID_ARGUMENT beyond), partial success allowed with blockedWindows
@@ -26,11 +29,6 @@
 //   201, replays and other commands 200 — the page treats any 2xx envelope as success.
 import { ApiError } from '../../shared/request'
 
-export type WindowKind = 'GENERAL' | 'PICKUP' | 'RETURN'
-export const windowKinds: readonly WindowKind[] = ['GENERAL', 'PICKUP', 'RETURN']
-export const windowKindText: Record<WindowKind, string> = {
-  GENERAL: '通用（到店）', PICKUP: '上门接', RETURN: '返程送回',
-}
 export type WindowStatus = 'OPEN' | 'CLOSED' | 'SOLD_OUT'
 export const windowStatuses: readonly WindowStatus[] = ['OPEN', 'CLOSED', 'SOLD_OUT']
 export const windowStatusText: Record<WindowStatus, string> = {
@@ -42,16 +40,18 @@ export const staffWindowStatusText: Record<StaffWindowStatus, string> = {
   AVAILABLE: '可约', CLOSED: '已关闭',
 }
 
-/** GET /merchant/stores/{storeId}/availability-windows item (read projection carries updatedAt). */
+/** GET /merchant/stores/{storeId}/availability-windows item (read projection carries
+ *  updatedAt). Unified slot: no serviceId/windowKind — the window is the whole store's
+ *  shared time interval (CCR-SCH-SLOT-001 §2). */
 export type ScheduleWindowItem = Readonly<{
-  windowId: string; merchantId: string; storeId: string; serviceId: string
-  windowKind: WindowKind; startAt: string; endAt: string; configuredCapacity: number
+  windowId: string; merchantId: string; storeId: string
+  startAt: string; endAt: string; configuredCapacity: number
   status: WindowStatus; version: string; updatedAt: string
 }>
 /** POST/PUT/close/open success data: the window receipt has no updatedAt on the wire. */
 export type ScheduleWindowReceipt = Readonly<{
-  windowId: string; merchantId: string; storeId: string; serviceId: string
-  windowKind: WindowKind; startAt: string; endAt: string; configuredCapacity: number
+  windowId: string; merchantId: string; storeId: string
+  startAt: string; endAt: string; configuredCapacity: number
   status: WindowStatus; version: string
 }>
 /** GET …/availability-windows paged envelope (§3.3, #122): the pages always send page/
@@ -99,16 +99,14 @@ const capacity = (value: any): number => {
   if (!Number.isSafeInteger(value) || value < 1 || value > 2147483647) invalid()
   return value
 }
-const kindOf = (value: any): WindowKind =>
-  windowKinds.includes(value) ? value as WindowKind : invalid()
 const statusOf = (value: any): WindowStatus =>
   windowStatuses.includes(value) ? value as WindowStatus : invalid()
 const staffStatusOf = (value: any): StaffWindowStatus =>
   staffWindowStatuses.includes(value) ? value as StaffWindowStatus : invalid()
 
-const windowItemKeys = ['windowId', 'merchantId', 'storeId', 'serviceId', 'windowKind', 'startAt',
+const windowItemKeys = ['windowId', 'merchantId', 'storeId', 'startAt',
   'endAt', 'configuredCapacity', 'status', 'version', 'updatedAt'] as const
-const windowReceiptKeys = ['windowId', 'merchantId', 'storeId', 'serviceId', 'windowKind', 'startAt',
+const windowReceiptKeys = ['windowId', 'merchantId', 'storeId', 'startAt',
   'endAt', 'configuredCapacity', 'status', 'version'] as const
 const staffItemKeys = ['windowId', 'merchantId', 'storeId', 'staffId', 'startAt', 'endAt',
   'status', 'version', 'updatedAt'] as const
@@ -132,8 +130,7 @@ export function decodeWindowItem(value: unknown): ScheduleWindowItem {
     windowId: isId(v.windowId) ? v.windowId : invalid(),
     merchantId: isId(v.merchantId) ? v.merchantId : invalid(),
     storeId: isId(v.storeId) ? v.storeId : invalid(),
-    serviceId: isId(v.serviceId) ? v.serviceId : invalid(),
-    windowKind: kindOf(v.windowKind), startAt: timestamp(v.startAt), endAt: timestamp(v.endAt),
+    startAt: timestamp(v.startAt), endAt: timestamp(v.endAt),
     configuredCapacity: capacity(v.configuredCapacity), status: statusOf(v.status),
     version: isVersion(v.version) ? v.version : invalid(), updatedAt: timestamp(v.updatedAt),
   }
@@ -144,8 +141,7 @@ export function decodeWindowReceipt(value: unknown): ScheduleWindowReceipt {
     windowId: isId(v.windowId) ? v.windowId : invalid(),
     merchantId: isId(v.merchantId) ? v.merchantId : invalid(),
     storeId: isId(v.storeId) ? v.storeId : invalid(),
-    serviceId: isId(v.serviceId) ? v.serviceId : invalid(),
-    windowKind: kindOf(v.windowKind), startAt: timestamp(v.startAt), endAt: timestamp(v.endAt),
+    startAt: timestamp(v.startAt), endAt: timestamp(v.endAt),
     configuredCapacity: capacity(v.configuredCapacity), status: statusOf(v.status),
     version: isVersion(v.version) ? v.version : invalid(),
   }
@@ -313,9 +309,10 @@ export function batchRangeDays(fromDate: string, toDate: string): number {
 // Form models + client-side pre-validation (the server re-validates everything; the page
 // mirrors the same answers so a well-formed draft never 400s on the wire).
 // ---------------------------------------------------------------------------
+/** Unified-slot form: the merchant picks ONLY the shared interval + capacity — no service
+ *  and no kind step (CCR-SCH-SLOT-001 §8.1: opening windows must not scale with service
+ *  count; one slot wall serves the whole store). */
 export type WindowFormInput = Readonly<{
-  serviceId: string
-  windowKind: WindowKind
   startDate: string; startTime: string
   endDate: string; endTime: string
   configuredCapacity: number | null
@@ -324,15 +321,14 @@ export type StaffWindowFormInput = Readonly<{
   startDate: string; startTime: string; endDate: string; endTime: string
 }>
 export function emptyWindowForm(today: string, now: string): WindowFormInput {
-  return { serviceId: '', windowKind: 'GENERAL', startDate: today, startTime: now, endDate: today, endTime: now, configuredCapacity: null }
+  return { startDate: today, startTime: now, endDate: today, endTime: now, configuredCapacity: null }
 }
 export function emptyStaffWindowForm(today: string, now: string): StaffWindowFormInput {
   return { startDate: today, startTime: now, endDate: today, endTime: now }
 }
 export function windowFormFromItem(item: ScheduleWindowItem): WindowFormInput {
   const start = splitBeijingParts(item.startAt), end = splitBeijingParts(item.endAt)
-  return { serviceId: item.serviceId, windowKind: item.windowKind,
-    startDate: start.date, startTime: start.time, endDate: end.date, endTime: end.time,
+  return { startDate: start.date, startTime: start.time, endDate: end.date, endTime: end.time,
     configuredCapacity: item.configuredCapacity }
 }
 export function staffWindowFormFromItem(item: StaffWindowItem): StaffWindowFormInput {
@@ -347,7 +343,6 @@ function startMinute(startDate: string, startTime: string): number {
 }
 export function windowFormProblems(form: WindowFormInput): string[] {
   const problems: string[] = []
-  if (!isId(form.serviceId)) problems.push('服务不能为空')
   if (form.configuredCapacity === null || !Number.isSafeInteger(form.configuredCapacity) || form.configuredCapacity < 1) {
     problems.push('容量需为不小于1的整数')
   } else if (form.configuredCapacity > 2147483647) problems.push('容量超出上限')
@@ -368,13 +363,6 @@ export function staffWindowFormProblems(form: StaffWindowFormInput): string[] {
     problems.push('单个时段不能超过一年')
   }
   return problems
-}
-/** PRD29 页面引导：IN_STORE services open GENERAL windows only, PICKUP_DELIVERY services
- *  open PICKUP/RETURN only; the server 400s on illegal pairs — the picker narrows choices. */
-export function kindsForFulfillment(fulfillmentType: 'IN_STORE' | 'PICKUP_DELIVERY' | null): readonly WindowKind[] {
-  if (fulfillmentType === 'IN_STORE') return ['GENERAL']
-  if (fulfillmentType === 'PICKUP_DELIVERY') return ['PICKUP', 'RETURN']
-  return windowKinds
 }
 /** reason（1..500）mandatory on close / batch-close / availability reductions; the page
  *  mirrors the server answer (400) before sending. */
@@ -442,11 +430,12 @@ export function scheduleClosedReason(error: unknown): string {
 // X-Request-Id; definitive 409s retire the slot inside the real repository).
 // ---------------------------------------------------------------------------
 /** Store-windows list query (§3.3): page/pageSize are always explicit — the pages never
- *  fall back to the legacy unpaginated mode — and serviceId/kind/status are the optional
- *  server-side filters (status feeds both the list chips and the summary count queries). */
+ *  fall back to the legacy unpaginated mode — and status is the optional server-side filter
+ *  (status feeds both the list chips and the summary count queries). No serviceId/kind
+ *  filters: the unified slot has neither dimension (CCR-SCH-SLOT-001 §2). */
 export type WindowPageQuery = Readonly<{
   page: number; pageSize: number
-  serviceId?: string; kind?: WindowKind | ''; status?: WindowStatus | ''
+  status?: WindowStatus | ''
 }>
 /** Both schedule pages page the windows list at 20 rows like the other M-side lists
  *  (services/aftersale); the summary count queries fetch a single row — only the
@@ -550,13 +539,13 @@ export class PreviewScheduleRepository implements ScheduleDeps {
     if (!found) throw new ScheduleMockError('COMMON_NOT_FOUND', 404)
     return found
   }
-  /** Overlap against OPEN/SOLD_OUT peers of the same store+service+kind (SOLD_OUT counts as
-   *  an open slot for overlap, contract §3.1); adjacent half-open intervals are legal. */
-  private assertNoWindowOverlap(candidate: { windowId?: string; serviceId: string; windowKind: WindowKind; startAt: string; endAt: string }): void {
+  /** Overlap against OPEN/SOLD_OUT peers of the SAME STORE (SOLD_OUT counts as an open
+   *  slot for overlap, contract §3.1; unified slot: no service/kind dimension any more,
+   *  CCR-SCH-SLOT-001 §2 — 同店不重叠); adjacent half-open intervals are legal. */
+  private assertNoWindowOverlap(candidate: { windowId?: string; startAt: string; endAt: string }): void {
     const overlap = this.store.some(entry => {
       const window = entry.window
       if (window.windowId === candidate.windowId) return false
-      if (window.serviceId !== candidate.serviceId || window.windowKind !== candidate.windowKind) return false
       if (this.statusFor(entry) === 'CLOSED') return false
       return candidate.startAt < window.endAt && window.startAt < candidate.endAt
     })
@@ -587,8 +576,6 @@ export class PreviewScheduleRepository implements ScheduleDeps {
       throw new ScheduleMockError('COMMON_INVALID_ARGUMENT', 400)
     }
     const matched = this.store
-      .filter(entry => (query.serviceId ? entry.window.serviceId === query.serviceId : true))
-      .filter(entry => (query.kind ? entry.window.windowKind === query.kind : true))
       .filter(entry => (query.status ? this.statusFor(entry) === query.status : true))
       .map(entry => this.view(entry))
       // §3.3 wire order — start_at ascending with id ascending tiebreak — so the preview
@@ -607,10 +594,10 @@ export class PreviewScheduleRepository implements ScheduleDeps {
     return this.command(slot, JSON.stringify(['create', input]), () => {
       const startAt = composeTimestamp(input.startDate, input.startTime)
       const endAt = composeTimestamp(input.endDate, input.endTime)
-      this.assertNoWindowOverlap({ serviceId: input.serviceId, windowKind: input.windowKind, startAt, endAt })
+      this.assertNoWindowOverlap({ startAt, endAt })
       const window: ScheduleWindowReceipt = {
         windowId: String(this.nextId++), merchantId: fixtureMerchantId, storeId: fixtureStoreId,
-        serviceId: input.serviceId, windowKind: input.windowKind, startAt, endAt,
+        startAt, endAt,
         configuredCapacity: input.configuredCapacity!, status: 'OPEN', version: this.bump(),
       }
       this.store.push({ window, updatedAt: this.now(), occupied: 0 })
@@ -628,7 +615,7 @@ export class PreviewScheduleRepository implements ScheduleDeps {
       const startAt = composeTimestamp(input.startDate, input.startTime)
       const endAt = composeTimestamp(input.endDate, input.endTime)
       this.assertNotOccupiedFor(entry, { startAt, endAt, configuredCapacity: input.configuredCapacity! })
-      this.assertNoWindowOverlap({ windowId, serviceId: input.serviceId, windowKind: input.windowKind, startAt, endAt })
+      this.assertNoWindowOverlap({ windowId, startAt, endAt })
       return this.storeWindow(entry, { startAt, endAt, configuredCapacity: input.configuredCapacity! })
     })
   }
@@ -651,8 +638,7 @@ export class PreviewScheduleRepository implements ScheduleDeps {
     return this.command(slot, JSON.stringify(['open', windowId, expectedVersion]), () => {
       const entry = this.findWindow(windowId)
       if (entry.window.version !== expectedVersion) throw new ScheduleMockError('COMMON_CONFLICT', 409)
-      this.assertNoWindowOverlap({ windowId, serviceId: entry.window.serviceId,
-        windowKind: entry.window.windowKind, startAt: entry.window.startAt, endAt: entry.window.endAt })
+      this.assertNoWindowOverlap({ windowId, startAt: entry.window.startAt, endAt: entry.window.endAt })
       // Reopen re-judges by occupancy: the system may answer SOLD_OUT directly (§3.1).
       entry.window = { ...entry.window, status: 'OPEN', version: this.bump() }
       entry.updatedAt = this.now()
@@ -804,27 +790,29 @@ export const fixtureStoreId = '958002'
 export const fixtureStaffId = '958003'
 export const fixtureServiceGrooming = '30001'
 export const fixtureServiceDelivery = '30007'
-/** 2026-10-07 is a Wednesday; windows sit inside one Beijing day (2026-10-07 09:00-12:00). */
+/** 2026-10-07 is a Wednesday; unified store-shared slots sit inside one Beijing day
+ *  (2026-10-07) without overlapping each other (同店不重叠，CCR-SCH-SLOT-001 §2). The
+ *  service fixtures below remain only for the capability head (授权按服务不变). */
 const dayAt = (time: string): string => `2026-10-07T${time}:00.000+08:00`
 export function fixtureWindows(): MockWindow[] {
   return [
     { window: { windowId: '61001', merchantId: fixtureMerchantId, storeId: fixtureStoreId,
-        serviceId: fixtureServiceGrooming, windowKind: 'GENERAL', startAt: dayAt('09:00'), endAt: dayAt('12:00'),
+        startAt: dayAt('09:00'), endAt: dayAt('12:00'),
         configuredCapacity: 2, status: 'OPEN', version: '4' }, updatedAt: '2026-10-06T02:00:00.000Z', occupied: 0 },
     { window: { windowId: '61002', merchantId: fixtureMerchantId, storeId: fixtureStoreId,
-        serviceId: fixtureServiceGrooming, windowKind: 'GENERAL', startAt: dayAt('13:00'), endAt: dayAt('15:00'),
+        startAt: dayAt('15:00'), endAt: dayAt('17:00'),
         configuredCapacity: 2, status: 'OPEN', version: '2' }, updatedAt: '2026-10-06T02:05:00.000Z', occupied: 1 },
     { window: { windowId: '61003', merchantId: fixtureMerchantId, storeId: fixtureStoreId,
-        serviceId: fixtureServiceGrooming, windowKind: 'GENERAL', startAt: dayAt('16:00'), endAt: dayAt('18:00'),
+        startAt: dayAt('19:30'), endAt: dayAt('21:00'),
         configuredCapacity: 1, status: 'OPEN', version: '3' }, updatedAt: '2026-10-06T02:10:00.000Z', occupied: 1 },
     { window: { windowId: '61004', merchantId: fixtureMerchantId, storeId: fixtureStoreId,
-        serviceId: fixtureServiceDelivery, windowKind: 'PICKUP', startAt: dayAt('09:30'), endAt: dayAt('11:30'),
+        startAt: dayAt('13:00'), endAt: dayAt('14:30'),
         configuredCapacity: 3, status: 'OPEN', version: '1' }, updatedAt: '2026-10-06T02:15:00.000Z', occupied: 0 },
     { window: { windowId: '61005', merchantId: fixtureMerchantId, storeId: fixtureStoreId,
-        serviceId: fixtureServiceDelivery, windowKind: 'RETURN', startAt: dayAt('14:00'), endAt: dayAt('16:00'),
+        startAt: dayAt('17:30'), endAt: dayAt('19:00'),
         configuredCapacity: 2, status: 'OPEN', version: '1' }, updatedAt: '2026-10-06T02:20:00.000Z', occupied: 0 },
     { window: { windowId: '61006', merchantId: fixtureMerchantId, storeId: fixtureStoreId,
-        serviceId: fixtureServiceGrooming, windowKind: 'GENERAL', startAt: dayAt('19:00'), endAt: dayAt('20:00'),
+        startAt: dayAt('21:30'), endAt: dayAt('22:30'),
         configuredCapacity: 1, status: 'CLOSED', version: '5' }, updatedAt: '2026-10-06T02:25:00.000Z', occupied: 0 },
   ]
 }

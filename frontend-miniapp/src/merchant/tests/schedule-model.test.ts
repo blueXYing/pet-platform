@@ -5,7 +5,7 @@ import {
   addBeijingDays, batchRangeDays, beijingToday, capabilityProblems, chipClass, composeTimestamp,
   decodeBatchCloseResult, decodeCapabilityView, decodeStaffWindowPage, decodeStaffWindowReceipt,
   decodeWindowItem, decodeWindowPage, decodeWindowReceipt, formatWindowInterval, fixtureCapability,
-  fixtureStaffWindows, fixtureWindows, isVersion, kindsForFulfillment, reasonProblem,
+  fixtureStaffWindows, fixtureWindows, isVersion, reasonProblem,
   scheduleAvailability, scheduleClosedReason, scheduleMessage, splitBeijingParts,
   staffStatusTagClass, staffWindowFormProblems, windowFormFromItem, windowFormProblems,
   windowStatusTagClass,
@@ -14,16 +14,16 @@ import {
 const wire = (value: unknown): Record<string, unknown> => JSON.parse(JSON.stringify(value))
 const withoutUpdatedAt = (): Record<string, any> => {
   const value: any = wire({
-    windowId: '61001', merchantId: '958001', storeId: '958002', serviceId: '30001',
-    windowKind: 'GENERAL', startAt: '2026-10-07T01:00:00.000Z', endAt: '2026-10-07T04:00:00.000Z',
+    windowId: '61001', merchantId: '958001', storeId: '958002',
+    startAt: '2026-10-07T01:00:00.000Z', endAt: '2026-10-07T04:00:00.000Z',
     configuredCapacity: 2, status: 'OPEN', version: '4', updatedAt: '2026-10-06T02:00:00.000Z',
   })
   delete value.updatedAt
   return value
 }
 const baseWindowItem = () => wire({
-  windowId: '61001', merchantId: '958001', storeId: '958002', serviceId: '30001',
-  windowKind: 'GENERAL', startAt: '2026-10-07T01:00:00.000Z', endAt: '2026-10-07T04:00:00.000Z',
+  windowId: '61001', merchantId: '958001', storeId: '958002',
+  startAt: '2026-10-07T01:00:00.000Z', endAt: '2026-10-07T04:00:00.000Z',
   configuredCapacity: 2, status: 'OPEN', version: '4', updatedAt: '2026-10-06T02:00:00.000Z',
 })
 
@@ -37,7 +37,10 @@ test('window decoders are exact-key and fail closed', () => {
     (v: Record<string, any>) => { v.version = '01' },
     (v: Record<string, any>) => { v.status = 'PAUSED' },
     (v: Record<string, any>) => { v.status = 'sold_out' },
-    (v: Record<string, any>) => { v.windowKind = 'WEEKLY' },
+    // CCR-SCH-SLOT-001: the legacy per-service/kind fields are now UNKNOWN keys — a server
+    // still answering the old shape must fail closed, never silently drop the dimension.
+    (v: Record<string, any>) => { v.serviceId = '30001' },
+    (v: Record<string, any>) => { v.windowKind = 'GENERAL' },
     (v: Record<string, any>) => { v.configuredCapacity = 0 },
     (v: Record<string, any>) => { v.configuredCapacity = 1.5 },
     (v: Record<string, any>) => { v.startAt = '2026-10-07T01:00:00Z' },
@@ -152,21 +155,19 @@ test('Beijing time helpers compose minute-precision offsets and split back', () 
 
 test('form pre-validation mirrors the server answers', () => {
   const good = windowFormFromItem({
-    windowId: '61001', merchantId: '958001', storeId: '958002', serviceId: '30001',
-    windowKind: 'GENERAL', startAt: '2026-10-07T01:00:00.000Z', endAt: '2026-10-07T04:00:00.000Z',
+    windowId: '61001', merchantId: '958001', storeId: '958002',
+    startAt: '2026-10-07T01:00:00.000Z', endAt: '2026-10-07T04:00:00.000Z',
     configuredCapacity: 2, status: 'OPEN', version: '4', updatedAt: '2026-10-06T02:00:00.000Z',
   })
   assert.deepEqual(windowFormProblems(good), [])
-  assert.ok(windowFormProblems({ ...good, serviceId: '' }).some(problem => problem.includes('服务')))
+  // Unified slot: the form carries ONLY interval + capacity (no serviceId/windowKind fields
+  // even exist to validate — CCR-SCH-SLOT-001 §8.1「开窗从三步变直接选时间+容量」).
+  assert.deepEqual(Object.keys(good).sort(), ['configuredCapacity', 'endDate', 'endTime', 'startDate', 'startTime'])
   assert.ok(windowFormProblems({ ...good, configuredCapacity: 0 }).some(problem => problem.includes('容量')))
   assert.ok(windowFormProblems({ ...good, endTime: '09:00' }).some(problem => problem.includes('结束时间')))
   const staffGood = { startDate: '2026-10-07', startTime: '09:00', endDate: '2026-10-07', endTime: '12:00' }
   assert.deepEqual(staffWindowFormProblems(staffGood), [])
   assert.ok(staffWindowFormProblems({ ...staffGood, endTime: '09:00' }).length > 0)
-  // PRD29 页面引导: IN_STORE→GENERAL only, PICKUP_DELIVERY→PICKUP/RETURN, unknown→all.
-  assert.deepEqual(kindsForFulfillment('IN_STORE'), ['GENERAL'])
-  assert.deepEqual(kindsForFulfillment('PICKUP_DELIVERY'), ['PICKUP', 'RETURN'])
-  assert.equal(kindsForFulfillment(null).length, 3)
   assert.ok(reasonProblem('', true))
   assert.equal(reasonProblem('装修', true), null)
   assert.ok(reasonProblem('x'.repeat(501), true))
@@ -200,4 +201,13 @@ test('fixtures cover the open/partial/full/closed state space for preview', () =
   assert.ok(windows.some(entry => entry.window.status === 'CLOSED'))
   assert.ok(fixtureStaffWindows().some(entry => entry.window.status === 'CLOSED'))
   assert.equal(fixtureCapability().version, '2')
+  // CCR-SCH-SLOT-001 §2 同店不重叠：fixture 态本身必须服从统一槽不变量（CLOSED 不参与）。
+  for (const entry of windows) {
+    if (entry.window.status === 'CLOSED') continue
+    for (const peer of windows) {
+      if (peer === entry || peer.window.status === 'CLOSED') continue
+      const overlaps = entry.window.startAt < peer.window.endAt && peer.window.startAt < entry.window.endAt
+      assert.equal(overlaps, false, `${entry.window.windowId} overlaps ${peer.window.windowId}`)
+    }
+  }
 })

@@ -3,14 +3,12 @@ import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
 import { consumerApi, consumerSession } from '../../../shared/consumer-runtime'
-import {
-  loadServiceOptions, RealScheduleRepository,
-} from '../../schedule/repository'
+import { RealScheduleRepository } from '../../schedule/repository'
 import {
   isScheduleScenario, PreviewScheduleRepository, scheduleAvailability,
-  scheduleClosedReason, scheduleMessage, windowCountPageSize, windowKindText, windowListPageSize,
+  scheduleClosedReason, scheduleMessage, windowCountPageSize, windowListPageSize,
   windowStatusTagClass, windowStatusText, windowStatuses, type ScheduleDeps,
-  type ScheduleWindowItem, type StaffWindowItem, type WindowKind, type WindowStatus,
+  type ScheduleWindowItem, type StaffWindowItem, type WindowStatus,
 } from '../../schedule/model'
 import {
   capsuleTimeText, dayGroupLabel, durationMinutesText, groupWindowsByDate,
@@ -23,16 +21,17 @@ import gridVerify from '../workspace/assets/grid-verify.svg'
 import './page.css'
 
 // M-002 排期工作台（读） — 商家工作台读（Contract 53号 §3 GET availability-windows +
-// §4 GET staff availability-windows 的呈现）。设计源见 registry §4：无契约语义兼容原稿，
-// 沿 M 端现行页面规范实现；SOLD_OUT 为系统派生态，只读呈现为「已约满」。
-// #122/§3.3 后列表切服务端分页：类型/状态 chips 走服务端过滤（每次选择重拉第 1 页），
+// §4 GET staff availability-windows 的呈现）。CCR-SCH-SLOT-001（2026-11-13 裁决）后窗口 =
+// 全店共享时间槽：无服务/类型维度，筛选只留状态；SOLD_OUT 为系统派生态（全店单池占满），
+// 只读呈现为「已约满」。
+// #122/§3.3 后列表切服务端分页：状态 chips 走服务端过滤（每次选择重拉第 1 页），
 // 摘要三态计数用三个单行 status 过滤请求的信封 total（过滤后匹配总数），不再全量拉取。
 // P-11a（2026-11-11）视觉层对齐 Figma 12:6214：只取呈现 token（时段胶囊/日期分组/三态数字
 // 卡/入口宫格，schedule/view.ts），分组维度是窗口 startAt 的北京历日——数据仍是分钟级窗口
 // （SSOT §12.1 无固定 60 分钟槽），帧内「一键生成/周模板编辑/1 小时间隔」属 P-11b CCR 红线，
 // 一律不做。页面结构、导航与数据链路不变。
 type StaffQuery = 'idle' | 'loading' | 'ready' | 'error'
-type WindowListQuery = { page: number; pageSize: number; kind?: WindowKind; status?: WindowStatus }
+type WindowListQuery = { page: number; pageSize: number; status?: WindowStatus }
 
 export default function ScheduleWorkbenchPage() {
   const route = useRouter()
@@ -49,8 +48,6 @@ export default function ScheduleWorkbenchPage() {
   const [page, setPage] = useState(1)
   const [loadingMore, setLoadingMore] = useState(false)
   const [summary, setSummary] = useState<Readonly<Record<WindowStatus, number>>>({ OPEN: 0, SOLD_OUT: 0, CLOSED: 0 })
-  const [names, setNames] = useState<Map<string, string>>(new Map())
-  const [kind, setKind] = useState<WindowKind | ''>('')
   const [status, setStatus] = useState<WindowStatus | ''>('')
   const [staffId, setStaffId] = useState('')
   const [staffPhase, setStaffPhase] = useState<StaffQuery>('idle')
@@ -59,14 +56,13 @@ export default function ScheduleWorkbenchPage() {
   const loadSequence = useRef(0)
   // Server-side chips: load() reads the CURRENT selection through this ref so useDidShow and
   // chip handlers share one query builder without stale-closure risk.
-  const filterRef = useRef<{ kind: WindowKind | ''; status: WindowStatus | '' }>({ kind: '', status: '' })
+  const filterRef = useRef<{ status: WindowStatus | '' }>({ status: '' })
 
-  const listQuery = (target: { page: number; kind?: WindowKind | ''; status?: WindowStatus | '' }): WindowListQuery => {
+  const listQuery = (target: { page: number; status?: WindowStatus | '' }): WindowListQuery => {
     const current = filterRef.current
-    const chosenKind = target.kind !== undefined ? target.kind : current.kind
     const chosenStatus = target.status !== undefined ? target.status : current.status
     return { page: target.page, pageSize: windowListPageSize,
-      ...(chosenKind ? { kind: chosenKind } : {}), ...(chosenStatus ? { status: chosenStatus } : {}) }
+      ...(chosenStatus ? { status: chosenStatus } : {}) }
   }
 
   const load = useCallback(async () => {
@@ -93,13 +89,6 @@ export default function ScheduleWorkbenchPage() {
       setLoadingMore(false)
       setSummary({ OPEN: openCount.total, SOLD_OUT: soldOutCount.total, CLOSED: closedCount.total })
       setPhase('ready')
-      const coords = scope.current
-      if (coords?.merchantId && coords.storeId) {
-        const options = await loadServiceOptions(consumerApi, coords.merchantId, coords.storeId)
-        if (mounted.current && sequence === loadSequence.current && options.length) {
-          setNames(new Map(options.map(option => [option.serviceId, option.serviceName])))
-        }
-      }
     } catch (error) {
       if (!mounted.current || sequence !== loadSequence.current) return
       if (scheduleAvailability(error) === 'closed') { setClosedReason(scheduleClosedReason(error)); setPhase('closed'); return }
@@ -135,11 +124,6 @@ export default function ScheduleWorkbenchPage() {
   }
   /** Server-side chips: a selection changes the query, so it re-fetches page 1 of the new
    *  filter (a client-side filter over one page would lie about later pages). */
-  function selectKind(target: WindowKind | '') {
-    setKind(target)
-    filterRef.current = { ...filterRef.current, kind: target }
-    void load()
-  }
   function selectStatus(target: WindowStatus | '') {
     setStatus(target)
     filterRef.current = { ...filterRef.current, status: target }
@@ -177,7 +161,6 @@ export default function ScheduleWorkbenchPage() {
     }
   }
 
-  const serviceName = (serviceId: string) => names.get(serviceId) || `服务 ${serviceId}`
   const dayGroups = groupWindowsByDate(windows)
   return <ScheduleShell title='排期工作台' style={style} phase={phase} notice={notice} closedReason={closedReason}
     onRetry={() => void load()} onBack={() => void back()} preview={preview}>
@@ -212,11 +195,6 @@ export default function ScheduleWorkbenchPage() {
       </View>
       <Text className='sch-v-stats-hint'>「已约满」由系统按占用自动置位，释放后自动回位；商家不可手工置满或强制可约。</Text>
       <View className='sch-chip-row'>
-        <Chip selected={kind === ''} onClick={() => selectKind('')}>全部类型</Chip>
-        {(['GENERAL', 'PICKUP', 'RETURN'] as const).map(target =>
-          <Chip key={target} selected={kind === target} onClick={() => selectKind(target)}>{windowKindText[target]}</Chip>)}
-      </View>
-      <View className='sch-chip-row'>
         <Chip selected={status === ''} onClick={() => selectStatus('')}>全部状态</Chip>
         {windowStatuses.map(target =>
           <Chip key={target} selected={status === target} onClick={() => selectStatus(target)}>{windowStatusText[target]}</Chip>)}
@@ -224,7 +202,7 @@ export default function ScheduleWorkbenchPage() {
       <View className='sch-v-section'>
         <View className='sch-v-head'>
           <Text className='sch-v-h2'>服务时段</Text>
-          <Text className='sch-v-head-hint'>分钟级窗口 · 按日期分组</Text>
+          <Text className='sch-v-head-hint'>全店共享时间槽 · 分钟级 · 按日期分组</Text>
         </View>
         {windows.length === 0 && <View className='sch-empty'><Text>当前筛选下没有服务时段；可到「服务时段管理」新建。</Text></View>}
         {dayGroups.map((group, index) => <View key={group.date} className={index === 0 ? 'sch-v-day' : 'sch-v-day sch-v-day-sep'}>
@@ -243,8 +221,7 @@ export default function ScheduleWorkbenchPage() {
                 </View>
                 <Text className={windowStatusTagClass(item.status)}>{windowStatusText[item.status]}</Text>
               </View>
-              <Text className='sch-v-win-name'>{serviceName(item.serviceId)} · {windowKindText[item.windowKind]}</Text>
-              <Text className='sch-v-win-meta'>容量 {item.configuredCapacity} · 版本 {item.version}</Text>
+              <Text className='sch-v-win-meta'>全店共享 · 容量 {item.configuredCapacity} · 版本 {item.version}</Text>
               {item.status === 'SOLD_OUT' && <Text className='sch-card-hint'>已约满：占用达容量自动置位，释放或提高容量后自动回位。</Text>}
             </View>
           })}

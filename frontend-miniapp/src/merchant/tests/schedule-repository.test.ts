@@ -13,8 +13,8 @@ import { RealScheduleRepository } from '../schedule/repository'
 async function rejects(call: () => Promise<unknown> | unknown): Promise<unknown> {
   try { await call(); return new Error('NO_THROW') } catch (error) { return error }
 }
-const formFor = (serviceId: string, kind: 'GENERAL' | 'PICKUP' | 'RETURN', start: string, end: string, capacity: number) =>
-  ({ serviceId, windowKind: kind, startDate: start.slice(0, 10), startTime: start.slice(11, 16),
+const formFor = (start: string, end: string, capacity: number) =>
+  ({ startDate: start.slice(0, 10), startTime: start.slice(11, 16),
     endDate: end.slice(0, 10), endTime: end.slice(11, 16), configuredCapacity: capacity })
 const staffForm = (start: string, end: string) =>
   ({ startDate: start.slice(0, 10), startTime: start.slice(11, 16), endDate: end.slice(0, 10), endTime: end.slice(11, 16) })
@@ -29,18 +29,13 @@ test('preview workbench read decodes fixtures and derives SOLD_OUT', async () =>
   const partial = page.items.find(item => item.windowId === '61002')!
   assert.equal(partial.status, 'OPEN', 'occupied < capacity stays OPEN')
   assert.ok(page.items.some(item => item.status === 'CLOSED'))
-  const filtered = await repository.windows({ page: 1, pageSize: 20, kind: 'PICKUP' })
-  assert.equal(filtered.items.length, 1)
-  assert.equal(filtered.total, 1)
-  const byService = await repository.windows({ page: 1, pageSize: 20, serviceId: '30007' })
-  assert.equal(byService.items.length, 2)
-  assert.equal(byService.total, 2)
+  // CCR-SCH-SLOT-001：统一槽无服务/类型维度，列表只剩 status 过滤（下个用例覆盖）。
 })
 
 test('preview windows paginate §3.3-style: wire order, slices, filter-matched totals, 400 bounds', async () => {
   const repository = new PreviewScheduleRepository()
   // Wire order is start_at ascending with id ascending tiebreak (§3.3), so page 1 of 2
-  // carries the earliest two windows of 2026-10-07: 61001 09:00 then 61004 09:30.
+  // carries the earliest two windows of 2026-10-07: 61001 09:00 then 61004 13:00.
   const all = await repository.windows({ page: 1, pageSize: 20 })
   assert.deepEqual(all.items.map(item => item.windowId), ['61001', '61004', '61002', '61005', '61003', '61006'])
   const page1 = await repository.windows({ page: 1, pageSize: 2 })
@@ -59,9 +54,6 @@ test('preview windows paginate §3.3-style: wire order, slices, filter-matched t
   assert.equal((await repository.windows({ page: 1, pageSize: 1, status: 'SOLD_OUT' })).total, 1)
   assert.equal((await repository.windows({ page: 1, pageSize: 1, status: 'CLOSED' })).total, 1)
   assert.equal(4 + 1 + 1, all.total, 'three-state totals partition the unfiltered total')
-  // kind × status compose into one WHERE (filter first, then count and slice).
-  const pickupOpen = await repository.windows({ page: 1, pageSize: 20, kind: 'PICKUP', status: 'OPEN' })
-  assert.equal(pickupOpen.total, 1)
   // Illegal paging values mirror the server's generic 400 before anything is read.
   for (const bad of [
     { page: 0, pageSize: 20 }, { page: 10001, pageSize: 20 }, { page: 1.5, pageSize: 20 },
@@ -92,21 +84,22 @@ test('preview enforces occupied-window guards and the capacity-raise re-judge', 
 
 test('preview enforces overlap discipline and the CLOSED edit guard', async () => {
   const repository = new PreviewScheduleRepository()
-  // Same service+kind overlap → 409; adjacent half-open → legal.
+  // Same-store overlap → 409 (CCR-SCH-SLOT-001 §2 同店不重叠); adjacent half-open → legal.
   const overlap = await rejects(() => repository.createWindow('a1',
-    formFor('30001', 'GENERAL', '2026-10-07 10:00', '2026-10-07 11:00', 1)))
+    formFor('2026-10-07 10:00', '2026-10-07 11:00', 1)))
   assert.equal((overlap as ScheduleMockError).code, 'SCHEDULE_WINDOW_OVERLAP')
   const adjacent = await repository.createWindow('a2',
-    formFor('30001', 'GENERAL', '2026-10-07 12:00', '2026-10-07 13:00', 1))
+    formFor('2026-10-07 12:00', '2026-10-07 13:00', 1))
   assert.equal(adjacent.status, 'OPEN')
-  // Different kind may share the wall clock.
-  const other = await repository.createWindow('a3',
-    formFor('30001', 'RETURN', '2026-10-07 10:00', '2026-10-07 11:00', 1))
-  assert.equal(other.windowKind, 'RETURN')
+  // The old per-service/per-kind wall-clock sharing is GONE: an interval intersecting ANY
+  // open store slot 409s — 13:30-14:00 crosses 61004 (13:00-14:30), a pair that used to be
+  // different services/kinds and legally coexisted.
+  const shared = await rejects(() => repository.createWindow('a3',
+    formFor('2026-10-07 13:30', '2026-10-07 14:00', 1)))
+  assert.equal((shared as ScheduleMockError).code, 'SCHEDULE_WINDOW_OVERLAP')
   // CLOSED windows are not editable; reopen first (and reopen re-judges by occupancy).
   const closed = await rejects(() => repository.updateWindow('a4', '61006', '5',
-    { serviceId: '30001', windowKind: 'GENERAL', startDate: '2026-10-07', startTime: '19:00',
-      endDate: '2026-10-07', endTime: '20:00', configuredCapacity: 1 }))
+    formFor('2026-10-07 19:00', '2026-10-07 20:00', 1)))
   assert.equal((closed as ScheduleMockError).code, 'SCHEDULE_WINDOW_STATE_NOT_ALLOWED')
   const reopened = await repository.openWindow('a5', '61006', '5')
   assert.equal(reopened.status, 'OPEN')
@@ -129,7 +122,6 @@ test('preview batch close: partial success names blocked windows; >200 entries r
   // >200 intersecting candidates → 400 before any close (§3.2).
   const crowd = Array.from({ length: 201 }, (_, index) => ({
     window: { windowId: String(70000 + index), merchantId: '958001', storeId: '958002',
-      serviceId: '30001', windowKind: 'GENERAL' as const,
       startAt: `2026-10-10T0${index % 10}:0${index % 10}:00.000+08:00`,
       endAt: `2026-10-10T1${index % 10}:0${index % 10}:00.000+08:00`,
       configuredCapacity: 1, status: 'OPEN' as const, version: '1' },
@@ -243,8 +235,8 @@ async function wiredApi(handlers: (call: Call) => { statusCode: number; data: un
 
 test('real repository wires the contract routes with workspace coordinates', async () => {
   const windowReceipt: ScheduleWindowReceipt = {
-    windowId: '61009', merchantId: '958001', storeId: '958002', serviceId: '30001',
-    windowKind: 'GENERAL', startAt: '2026-10-07T01:00:00.000Z', endAt: '2026-10-07T04:00:00.000Z',
+    windowId: '61009', merchantId: '958001', storeId: '958002',
+    startAt: '2026-10-07T01:00:00.000Z', endAt: '2026-10-07T04:00:00.000Z',
     configuredCapacity: 2, status: 'OPEN', version: '0',
   }
   const { repository, seen } = await wiredApi(call => {
@@ -266,30 +258,36 @@ test('real repository wires the contract routes with workspace coordinates', asy
     }
     return undefined
   })
-  const page = await repository.windows({ page: 2, pageSize: 20, kind: 'GENERAL', status: 'OPEN' })
+  const page = await repository.windows({ page: 2, pageSize: 20, status: 'OPEN' })
   assert.equal(page.items.length, 0)
   assert.equal(page.total, 41)
   const listCall = seen.find(item => item.method === 'GET' && item.path === '/api/v1/merchant/stores/958002/availability-windows')!
   assert.equal(listCall.data?.merchantId, '958001')
   // §3.3 paged mode is explicit on every query: page/pageSize ride the wire alongside the
-  // optional server-side filters (status feeds the summary count queries).
+  // optional server-side status filter (status feeds the summary count queries). The legacy
+  // serviceId/kind filters are gone with the unified slot (CCR-SCH-SLOT-001 §2).
   assert.equal(listCall.data?.page, 2)
   assert.equal(listCall.data?.pageSize, 20)
-  assert.equal(listCall.data?.kind, 'GENERAL')
   assert.equal(listCall.data?.status, 'OPEN')
-  // The count queries send no kind/status-less variant: a plain query carries only the paging.
+  assert.equal(listCall.data?.kind, undefined)
+  assert.equal(listCall.data?.serviceId, undefined)
+  // A plain query carries only the paging.
   await repository.windows({ page: 1, pageSize: 20 })
   const plainCall = seen.filter(item => item.method === 'GET' && item.path === '/api/v1/merchant/stores/958002/availability-windows').pop()!
   assert.equal(plainCall.data?.kind, undefined)
   assert.equal(plainCall.data?.status, undefined)
   assert.equal(plainCall.data?.serviceId, undefined)
-  const created = await repository.createWindow('r1', formFor('30001', 'GENERAL', '2026-10-07 09:00', '2026-10-07 12:00', 2))
+  const created = await repository.createWindow('r1', formFor('2026-10-07 09:00', '2026-10-07 12:00', 2))
   assert.equal(created.windowId, '61009')
   const createCall = seen.find(item => item.method === 'POST' && item.path === '/api/v1/merchant/stores/958002/availability-windows')!
   // Minute-precision Beijing offsets on the wire (no fixed 60-minute slots implied).
   assert.equal(createCall.data?.startAt, '2026-10-07T09:00:00.000+08:00')
   assert.equal(createCall.data?.endAt, '2026-10-07T12:00:00.000+08:00')
-  assert.equal(createCall.data?.windowKind, 'GENERAL')
+  // CCR-SCH-SLOT-001 钉子：创建请求体不含 serviceId/windowKind —— 载荷只有共享时间区间+容量。
+  assert.equal(createCall.data?.serviceId, undefined)
+  assert.equal(createCall.data?.windowKind, undefined)
+  assert.deepEqual(Object.keys(createCall.data ?? {}).sort(),
+    ['configuredCapacity', 'endAt', 'merchantId', 'startAt'])
   assert.equal(createCall.data?.configuredCapacity, 2)
   assert.match(String(createCall.requestId), /^[0-9a-f-]{36}$/)
   await repository.closeWindow('r2', '61009', '0', '  员工不足  ')
@@ -337,8 +335,8 @@ test('real repository: staff and capability commands address staffId in the path
 
 test('real repository: definitive 409 retires the slot; 503 keeps it and replays the requestId', async () => {
   const windowReceipt: ScheduleWindowReceipt = {
-    windowId: '61009', merchantId: '958001', storeId: '958002', serviceId: '30001',
-    windowKind: 'GENERAL', startAt: '2026-10-07T01:00:00.000Z', endAt: '2026-10-07T04:00:00.000Z',
+    windowId: '61009', merchantId: '958001', storeId: '958002',
+    startAt: '2026-10-07T01:00:00.000Z', endAt: '2026-10-07T04:00:00.000Z',
     configuredCapacity: 2, status: 'OPEN', version: '7',
   }
   let mode: 'conflict' | 'unavailable' | 'ok' = 'conflict'
@@ -347,7 +345,7 @@ test('real repository: definitive 409 retires the slot; 503 keeps it and replays
     if (mode === 'unavailable') return failure('COMMON_DEPENDENCY_UNAVAILABLE', 503)
     return ok(windowReceipt)
   })
-  const form = formFor('30001', 'GENERAL', '2026-10-07 09:00', '2026-10-07 12:00', 2)
+  const form = formFor('2026-10-07 09:00', '2026-10-07 12:00', 2)
   // Definitive per-payload rejection → the slot is retired…
   const overlap = await rejects(() => repository.createWindow('slot-a', form))
   assert.ok(overlap instanceof ApiError)
@@ -361,7 +359,7 @@ test('real repository: definitive 409 retires the slot; 503 keeps it and replays
   // Unknown outcome → the command stays journaled; an explicit retry replays the SAME
   // requestId with the same payload (23号 idempotent replay), and a changed payload locks.
   mode = 'unavailable'
-  const slotBForm = formFor('30001', 'GENERAL', '2026-10-11 09:00', '2026-10-11 12:00', 2)
+  const slotBForm = formFor('2026-10-11 09:00', '2026-10-11 12:00', 2)
   await assert.rejects(() => repository.createWindow('slot-b', slotBForm))
   await assert.rejects(() => repository.createWindow('slot-b', { ...slotBForm, configuredCapacity: 3 }), /PENDING_WRITE_CHANGED/)
   mode = 'ok'
@@ -377,8 +375,9 @@ test('real repository fails closed on consumer coordinates and validates forms b
   api.scope.replace({ userId: '101', workspace: 'consumer', merchantId: null, storeId: null })
   await assert.rejects(() => repository.windows({ page: 1, pageSize: 20 }), /WORKSPACE_PATH_MISMATCH/)
   api.scope.replace({ userId: '101', workspace: 'merchant', merchantId: '958001', storeId: '958002' })
-  // Client-side pre-validation mirrors the server answers; nothing reaches the wire.
-  const badForm = { ...emptyWindowForm('2026-10-07', '09:00'), serviceId: '' }
+  // Client-side pre-validation mirrors the server answers; nothing reaches the wire. A fresh
+  // empty form (capacity null) fails before the wire just like an illegal interval would.
+  const badForm = emptyWindowForm('2026-10-07', '09:00')
   await assert.rejects(() => repository.createWindow('slot-c', badForm), /WORKSPACE_FORM_INVALID/)
   await assert.rejects(() => repository.closeWindow('slot-d', '61009', '0', '   '), /WORKSPACE_FORM_INVALID/)
 })

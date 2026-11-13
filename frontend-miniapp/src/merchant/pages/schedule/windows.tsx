@@ -3,20 +3,21 @@ import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
 import { consumerApi, consumerSession } from '../../../shared/consumer-runtime'
-import { loadServiceOptions, RealScheduleRepository, type ScheduleServiceOption } from '../../schedule/repository'
-import { fixtureManagedServices } from '../../services/model'
+import { RealScheduleRepository } from '../../schedule/repository'
 import {
-  beijingToday, emptyWindowForm, isScheduleScenario, kindsForFulfillment, PreviewScheduleRepository,
+  beijingToday, emptyWindowForm, isScheduleScenario, PreviewScheduleRepository,
   reasonProblem, scheduleAvailability, scheduleClosedReason, scheduleMessage, windowListPageSize,
-  windowFormFromItem, windowFormProblems, windowKindText, windowStatusTagClass, windowStatusText,
-  type ScheduleDeps, type ScheduleWindowItem, type WindowFormInput, type WindowKind,
+  windowFormFromItem, windowFormProblems, windowStatusTagClass, windowStatusText,
+  type ScheduleDeps, type ScheduleWindowItem, type WindowFormInput,
 } from '../../schedule/model'
-import { Chip, Field, IntervalFields, intervalText, ScheduleShell, useScheduleStyle, type PagePhase } from './parts'
+import { Field, IntervalFields, intervalText, ScheduleShell, useScheduleStyle, type PagePhase } from './parts'
 import './page.css'
 
-// M-002 服务时段管理（Contract 53号 §3/§3.1/§3.2）。设计源见 registry §4（无契约语义兼容
-// 原稿，沿 M 端现行页面规范实现）。SOLD_OUT 为系统派生态：只读呈现「已约满」，不设手工
-// 置满/强制可约入口；占用窗禁止关闭/改期/降容量（409 呈现），升容量放行并自动回位。
+// M-002 服务时段管理（Contract 53号 §3/§3.1/§3.2，CCR-SCH-SLOT-001 统一槽改造）。设计源见
+// registry §4（无契约语义兼容原稿，沿 M 端现行页面规范实现）。窗口 = 全店共享时间槽：一套
+// 统一槽对所有服务开放（无按服务/按类型开窗步骤），容量为全店单池，任何服务的预约共同消耗，
+// 占满即「已约满」；SOLD_OUT 为系统派生态，只读呈现，不设手工置满/强制可约入口；占用窗禁止
+// 关闭/改期/降容量（409 呈现），升容量放行并自动回位。重叠校验同店不重叠（相邻半开可衔接）。
 // 批量关闭按日历日范围提交，单次相交条目 >200 时整笔拒绝（400 呈现），部分成功明示受阻窗。
 // #122/§3.3 后列表切服务端分页：首屏拉第 1 页（20 条），「加载更多」按 total 追加，
 // 计数行用信封 total；每次写操作后整表重拉回第 1 页（与此前全量刷新语义一致）。
@@ -36,7 +37,6 @@ export default function ScheduleWindowsPage() {
   const [listTotal, setListTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [loadingMore, setLoadingMore] = useState(false)
-  const [options, setOptions] = useState<readonly ScheduleServiceOption[]>([])
   const [panel, setPanel] = useState<Panel>('none')
   const [create, setCreate] = useState<WindowFormInput>(() => emptyWindowForm(beijingToday(), '09:00'))
   const [editing, setEditing] = useState<{ item: ScheduleWindowItem; form: WindowFormInput } | null>(null)
@@ -64,11 +64,6 @@ export default function ScheduleWindowsPage() {
       setPage(1)
       setLoadingMore(false)
       setPhase('ready')
-      const coords = scope.current
-      if (coords?.merchantId && coords.storeId) {
-        const loaded = preview ? previewOptions() : await loadServiceOptions(consumerApi, coords.merchantId, coords.storeId)
-        if (mounted.current && sequence === loadSequence.current) setOptions(loaded)
-      }
     } catch (error) {
       if (!mounted.current || sequence !== loadSequence.current) return
       if (scheduleAvailability(error) === 'closed') { setClosedReason(scheduleClosedReason(error)); setPhase('closed'); return }
@@ -115,7 +110,6 @@ export default function ScheduleWindowsPage() {
       if (mounted.current) setLoadingMore(false)
     }
   }
-  const serviceName = (serviceId: string) => options.find(option => option.serviceId === serviceId)?.serviceName || `服务 ${serviceId}`
 
   async function submitCreate() {
     if (busy) return
@@ -180,7 +174,6 @@ export default function ScheduleWindowsPage() {
     } catch (error) { setNotice(scheduleMessage(error)) } finally { if (mounted.current) setBusy(false) }
   }
 
-  const createKinds = kindsForFulfillment(options.find(option => option.serviceId === create.serviceId)?.fulfillmentType ?? null)
   return <ScheduleShell title='服务时段管理' style={style} phase={phase} notice={notice} closedReason={closedReason}
     onRetry={() => void load()} onBack={() => void back()} preview={preview}>
     <ScrollView className='sch-body' scrollY enhanced showScrollbar={false}>
@@ -191,30 +184,16 @@ export default function ScheduleWindowsPage() {
         </Button>
       </View>
       <View className='sch-count-row'>
-        <Text className='sch-hint'>分钟级排期，不固定1小时槽；相邻半开时段可衔接。</Text>
+        <Text className='sch-hint'>全店共享时间槽：分钟级排期，不固定1小时槽；相邻半开时段可衔接。</Text>
         <Button id='sch-batch-toggle' className='sch-count-action' onClick={() => { setPanel(panel === 'batch' ? 'none' : 'batch'); setEditing(null); setBatchResult('') }}>
           {panel === 'batch' ? '收起批量' : '批量关闭'}
         </Button>
       </View>
       {panel === 'create' && <View className='sch-form'>
-        <Field label='服务' required hint={options.length ? '按服务履约方式收敛可选时段类型；服务类型由创建时的身份固定。' : '服务列表暂不可用，可直接输入服务编号。'}>
-          {options.length > 0
-            ? <View className='sch-chip-row'>
-                {options.map(option => <Chip key={option.serviceId} selected={create.serviceId === option.serviceId}
-                  onClick={() => setCreate(current => ({ ...current, serviceId: option.serviceId }))}>{option.serviceName}</Chip>)}
-              </View>
-            : <Input className='sch-input' value={create.serviceId} type='number' placeholder='服务编号（Snowflake 数字）'
-                onInput={event => setCreate(current => ({ ...current, serviceId: event.detail.value }))} />}
-        </Field>
-        <Field label='时段类型' required hint='到店型仅通用时段；上门接送型分「上门接」与「返程送回」。'>
-          <View className='sch-chip-row'>
-            {createKinds.map(target => <Chip key={target} selected={create.windowKind === target}
-              onClick={() => setCreate(current => ({ ...current, windowKind: target }))}>{windowKindText[target]}</Chip>)}
-          </View>
-        </Field>
+        <Text className='sch-banner-text'>全店共享时间槽：无需选服务、无需选类型，直接定时间与容量；所有服务共用这一时段承接预约。</Text>
         <IntervalFields startDate={create.startDate} startTime={create.startTime} endDate={create.endDate} endTime={create.endTime}
           onChange={next => setCreate(current => ({ ...current, ...next }))} />
-        <Field label='容量' required hint='同一时段可承接的预约数。'>
+        <Field label='容量' required hint='该时段全店可承接的预约总数（所有服务共用一个容量池，占满即「已约满」）。'>
           <Input className='sch-input' value={create.configuredCapacity === null ? '' : String(create.configuredCapacity)} type='number'
             placeholder='如 2' onInput={event => setCreate(current => ({ ...current,
               configuredCapacity: event.detail.value === '' ? null : Math.trunc(Number(event.detail.value)) }))} />
@@ -235,8 +214,8 @@ export default function ScheduleWindowsPage() {
         {batchResult && <View role='status'><Text className='sch-banner-text'>{batchResult}</Text></View>}
       </View>}
       {editing && <View className='sch-form'>
-        <Text className='sch-form-title'>编辑时段（服务与类型固定，换目标=关闭后新建）</Text>
-        <Text className='sch-banner-text'>{serviceName(editing.item.serviceId)} · {windowKindText[editing.item.windowKind]}</Text>
+        <Text className='sch-form-title'>编辑时段</Text>
+        <Text className='sch-banner-text'>全店共享时间槽 · {intervalText(editing.item.startAt, editing.item.endAt)}</Text>
         <IntervalFields startDate={editing.form.startDate} startTime={editing.form.startTime}
           endDate={editing.form.endDate} endTime={editing.form.endTime}
           onChange={next => setEditing(current => current ? { ...current, form: { ...current.form, ...next } } : current)} />
@@ -252,7 +231,7 @@ export default function ScheduleWindowsPage() {
       </View>}
       {closeTarget && <View className='sch-form'>
         <Text className='sch-form-title'>关闭时段</Text>
-        <Text className='sch-banner-text'>{serviceName(closeTarget.serviceId)} · {intervalText(closeTarget.startAt, closeTarget.endAt)}；关闭保留历史，可再次开放。</Text>
+        <Text className='sch-banner-text'>全店共享时间槽 · {intervalText(closeTarget.startAt, closeTarget.endAt)}；关闭保留历史，可再次开放。</Text>
         <Field label='操作原因' required hint='关闭原因必填（1-500字），记入操作审计。'>
           <Textarea className='sch-textarea' value={closeReason} maxlength={500} placeholder='如：该时段员工不足'
             onInput={event => setCloseReason(event.detail.value)} />
@@ -262,13 +241,13 @@ export default function ScheduleWindowsPage() {
           <Button className='sch-secondary' disabled={busy} onClick={() => { setCloseTarget(null); setCloseReason('') }}>取消</Button>
         </View>
       </View>}
-      {windows.length === 0 && <View className='sch-empty'><Text>还没有服务时段，点击「+ 新建时段」创建第一个。</Text></View>}
+      {windows.length === 0 && <View className='sch-empty'><Text>还没有时间槽，点击「+ 新建时段」创建第一个（全店共享）。</Text></View>}
       {windows.map(item => <View key={item.windowId} className='sch-card'>
         <View className='sch-card-head'>
-          <Text className='sch-card-name'>{serviceName(item.serviceId)}</Text>
+          <Text className='sch-card-name'>{intervalText(item.startAt, item.endAt)}</Text>
           <Text className={windowStatusTagClass(item.status)}>{windowStatusText[item.status]}</Text>
         </View>
-        <Text className='sch-card-line'>{windowKindText[item.windowKind]} · {intervalText(item.startAt, item.endAt)} · 容量 {item.configuredCapacity}</Text>
+        <Text className='sch-card-line'>全店共享 · 容量 {item.configuredCapacity}</Text>
         {item.status === 'SOLD_OUT' && <Text className='sch-card-hint'>已约满：占用达容量由系统自动置位，释放或提高容量后自动回位；不可手工置位或强制可约。</Text>}
         {item.status === 'CLOSED'
           ? <View className='sch-action-row'>
@@ -288,10 +267,6 @@ export default function ScheduleWindowsPage() {
   </ScheduleShell>
 }
 
-function previewOptions(): readonly ScheduleServiceOption[] {
-  return fixtureManagedServices.map(service => ({ serviceId: service.serviceId,
-    serviceName: service.serviceName || `服务 ${service.serviceId}`, fulfillmentType: service.fulfillmentType }))
-}
 function realRepository(): ScheduleDeps {
   return new RealScheduleRepository(consumerApi,
     () => consumerApi.scope.current?.merchantId || '',
