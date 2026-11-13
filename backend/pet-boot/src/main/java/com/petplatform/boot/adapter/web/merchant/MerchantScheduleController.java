@@ -463,15 +463,20 @@ public final class MerchantScheduleController {
         return out;
     }
 
+    /** Nested {window, reasonCode} per the OpenAPI ScheduleBlockedWindow schema — the flat
+     *  spread below never matched the shipped decoder (acceptance round caught it on
+     *  batch-generate skippedWindows; batch-close blockedWindows carried the same bug). */
     private static Map<String, Object> blocked(BlockedWindow b) {
-        Map<String, Object> out = window(b.window());
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("window", window(b.window()));
         out.put("reasonCode", b.reasonCode());
         return out;
     }
 
-    /** Same flat shape as batch-close blockedWindows (CCR-SCH-SLOT-002 skippedWindows). */
+    /** Same nested shape as blockedWindows (CCR-SCH-SLOT-002 §1 wire contract). */
     private static Map<String, Object> skipped(SkippedWindow s) {
-        Map<String, Object> out = window(s.window());
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("window", window(s.window()));
         out.put("reasonCode", s.reasonCode());
         return out;
     }

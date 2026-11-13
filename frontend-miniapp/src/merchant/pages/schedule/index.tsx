@@ -13,6 +13,7 @@ import {
   windowListPageSize, windowStatusTagClass, windowStatusText, windowStatuses,
   type BatchGenerateInput, type BookingWindowForm, type GenerateFormInput, type GenerateOutcome,
   type ScheduleDeps, type ScheduleWindowItem, type StaffWindowItem, type WeekDraft,
+  type WeekSegmentDraft,
   type WindowStatus,
 } from '../../schedule/model'
 import {
@@ -280,38 +281,23 @@ export default function ScheduleTemplatePage() {
       reasonCode: skipped.reasonCode,
     }))
 
-  /** 区块 A：一键生成全部日期——今天起 7 天，1 小时间隔，覆盖现有配置（CCR §1）。 */
-  async function quickGenerate() {
-    if (busy) return
+  /** 区块 A：一键填充——按门店时间以 1 小时为间隔预填周一~周日的时段草稿（用户 2026-11-13
+   *  口径：先填充、保存前可自主调整，物化统一走下方「保存并生效」）。 */
+  function fillWeekFromStoreHours() {
     const problems = generateFormProblems(generate)
     if (problems.length) { setNotice(`请检查：${problems.join('；')}`); return }
-    setNotice(''); setBusy(true)
-    try {
-      const today = beijingToday()
-      const input: BatchGenerateInput = {
-        fromDate: today, toDate: addBeijingDays(today, 6),
-        dailyStart: generate.dailyStart, dailyEnd: generate.dailyEnd,
-        intervalMinutes: generateIntervalMinutes,
-        configuredCapacity: generate.configuredCapacity!, reason: '一键生成',
-      }
-      const result = await repository.batchGenerate('schedule-generate:quick', input)
-      setOutcome({
-        title: '一键生成结果',
-        result: {
-          created: result.createdWindows.length, closed: result.closedWindows.length,
-          skipped: skippedOf(result), failed: [],
-        },
-        notes: [`范围 ${input.fromDate} 至 ${input.toDate}，1 小时间隔，每时段容量 ${input.configuredCapacity}。`],
-      })
-      if (listOpen && listLoadedOnce.current) await loadList()
-    } catch (error) {
-      // TEMP-DIAG(2026-11-13): surface the raw error shape — the fallback message hid the
-      // real client-side rejection; remove once the acceptance round pinpoints it.
-      const raw = error instanceof Error ? `${error.name}:${error.message}` : String(error)
-      setNotice(`${scheduleMessage(error)}［诊断:${raw.slice(0, 120)}］`)
-    } finally {
-      if (mounted.current) setBusy(false)
+    const toMinutes = (clock: string) => Number(clock.slice(0, 2)) * 60 + Number(clock.slice(3, 5))
+    const toClock = (minutes: number) =>
+      `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
+    const segments: WeekSegmentDraft[] = []
+    const startMinutes = toMinutes(generate.dailyStart)
+    const endMinutes = toMinutes(generate.dailyEnd)
+    for (let at = startMinutes; at + generateIntervalMinutes <= endMinutes; at += generateIntervalMinutes) {
+      segments.push({ start: toClock(at), end: toClock(at + generateIntervalMinutes) })
     }
+    if (segments.length === 0) { setNotice('门店时间不足以按当前间隔切出时段，请调整。'); return }
+    setWeek(weekdayLabels.map(() => ({ enabled: true, segments: segments.map(seg => ({ ...seg })) })))
+    setNotice(`已按 ${generate.dailyStart}-${generate.dailyEnd}、每时段 ${generateIntervalMinutes} 分钟填充一周（共 ${segments.length} 段/天）；可在下方调整，点「保存并生效」创建时段。`)
   }
 
   /** 底栏「保存并生效」：B 区启用日逐日逐段 batch-generate（每次一天一段，≤200 候选安全）→
@@ -476,11 +462,11 @@ export default function ScheduleTemplatePage() {
               configuredCapacity: event.detail.value === '' ? null : Math.trunc(Number(event.detail.value)) }))} />
           <Text className='sch-t-mid'>人</Text>
         </View>
-        <Button id='sch-t-generate' className='sch-t-generate' disabled={busy} onClick={() => void quickGenerate()}>
+        <Button id='sch-t-generate' className='sch-t-generate' disabled={busy} onClick={fillWeekFromStoreHours}>
           <Image className='sch-t-generate-icon' src={tSpark} mode='aspectFit' />
-          <Text className='sch-t-generate-text'>一键生成全部日期</Text>
+          <Text className='sch-t-generate-text'>按门店时间填充一周</Text>
         </Button>
-        <Text className='sch-t-note'>以 1 小时为间隔，生成 7 天的时段，覆盖现有配置</Text>
+        <Text className='sch-t-note'>以 1 小时为间隔填充周一~周日的时段草稿，可在下方调整后「保存并生效」（覆盖现有配置）</Text>
       </View>
       {/* 区块 B 时间设置（SECTION-46）：周一~周日草稿态 */}
       <View className='sch-t-card'>
