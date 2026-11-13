@@ -69,7 +69,7 @@ class PrivateAssetContractRegressions(unittest.TestCase):
         # 206 = 205 + 1 contract-65 v0.3 §4.4 void route (user ruling 2026-10-16 doc 36
         # minimal authorization, CCR-CPN-VOID-001; kernel switch pet.coupon.void.enabled
         # stays default off).
-        self.assertEqual(result['operations'], 239)  # 238 + 1 merchant verification-record read (CCR-M-VERIFY-RECORD-001, 2026-11-12); 238 = 236 + 2 merchant readside CCR reads (2026-11-06); 236 = 206 + 6 wiring batch (68号 records x4 + services/cities)
+        self.assertEqual(result['operations'], 242)  # 239 + 3 CCR-SCH-SLOT-002 schedule routes (batch-generate/booking-window GET+PUT, 2026-11-13); 239 = 238 + 1 merchant verification-record read (CCR-M-VERIFY-RECORD-001, 2026-11-12); 238 = 236 + 2 merchant readside CCR reads (2026-11-06); 236 = 206 + 6 wiring batch (68号 records x4 + services/cities)
         self.assertEqual(result['privateAssetOperations'], 3)
         # abnormalCloseOrder graduated to the contract-63 v0.2 disposal face (2026-10-15).
         self.assertEqual(result['legacyOperations'], 13)
@@ -80,7 +80,7 @@ class PrivateAssetContractRegressions(unittest.TestCase):
         self.assertEqual(result['serviceCatalogOperations'], 2)
         self.assertEqual(result['storeCatalogOperations'], 2)
         self.assertEqual(result['scheduleAvailabilityOperations'], 1)
-        self.assertEqual(result['scheduleWriteOperations'], 13)
+        self.assertEqual(result['scheduleWriteOperations'], 16)  # 13 + 3 CCR-SCH-SLOT-002 (batch-generate/booking-window GET+PUT, 2026-11-13)
         self.assertEqual(result['couponPointsReadOperations'], 4)
         self.assertEqual(result['verificationHttpOperations'], 3)
         self.assertEqual(result['serviceWriteOperations'], 11)

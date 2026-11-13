@@ -51,7 +51,7 @@ class ContractSmokeRegressions(unittest.TestCase):
         # (238 = 236 + 2 merchant readside CCR reads (avatar-url, reviews/summary, 2026-11-06)
         #  236 = 206 + 1 catalog search + 1 city directory + 4 health records;
         #  206 = 163 baseline + 3 encyclopedia + 11 admin trade + 8 governance + 22 ops console).
-        self.assertEqual(result['operations'], 239)
+        self.assertEqual(result['operations'], 242)
         self.assertGreater(result['stringIdProperties'], 0)
         # Contract 58 favorite/footprint face (2026-10-13): seven reviewed operations.
         self.assertEqual(result['favtrackHttpOperations'], 7)

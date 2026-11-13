@@ -272,6 +272,16 @@ SCHEDULE_WRITE_OPERATIONS = {
     'merchantBatchCloseScheduleWindows': (
         'post', '/merchant/stores/{storeId}/availability-windows/batch-close',
         ('200', '400', '401', '403', '409', '503')),
+    # CCR-SCH-SLOT-002 (2026-11-13) coverage-rebuild generation + bookable-range config.
+    'merchantBatchGenerateScheduleWindows': (
+        'post', '/merchant/stores/{storeId}/availability-windows/batch-generate',
+        ('200', '400', '401', '403', '409', '503')),
+    'merchantGetScheduleBookingWindow': (
+        'get', '/merchant/stores/{storeId}/booking-window',
+        ('200', '400', '401', '403', '503')),
+    'merchantReplaceScheduleBookingWindow': (
+        'put', '/merchant/stores/{storeId}/booking-window',
+        ('200', '400', '401', '403', '409', '503')),
     'merchantListStaffAvailabilityWindows': (
         'get', '/merchant/staff/{staffId}/availability-windows',
         ('200', '400', '401', '403', '503')),

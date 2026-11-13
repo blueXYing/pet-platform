@@ -17,8 +17,10 @@
 - 请求体严格 JSON：`{merchantId, fromDate, toDate}`（北京历日，跨度 1..366 天）、
   `dailyStart/dailyEnd`（"HH:mm"，start<end）、`intervalMinutes`（1..1440，默认 60）、
   `configuredCapacity`（1..999）、`reason`（1..500，覆盖动作必填沿 close 纪律）。
-- 语义=**覆盖重建**：范围内既有 OPEN/SOLD_OUT 统一槽先逐个 close（SOLD_OUT 视同开放，
-  沿 batch-close 口径）；**被占用（close 409）的窗跳过**并列入 `skippedWindows`
+- 语义=**覆盖重建**：关闭集=与生成时间区间 [fromDate 当日 dailyStart, toDate 当日 dailyEnd]
+  **相交**的既有 OPEN/SOLD_OUT 统一槽（**区间相交，非整天历日**——前端保存并生效按"一天
+  多段逐段调用"，按历日关闭会误杀同日先前段刚建的窗；实施同步澄清）；SOLD_OUT 视同开放，
+  沿 batch-close 口径；**被占用（close 409）的窗跳过**并列入 `skippedWindows`
   （reasonCode=OCCUPIED 沿 batch-close blocked 命名族），该被跳过窗的时间区间内**不再生成**
   （同店重叠校验自然拦住）；随后按 intervalMinutes 逐段创建分钟级窗口（容量=请求值）。
 - 响应：`{storeId, createdWindows:[…], closedWindows:[…], skippedWindows:[{window,reasonCode}]}`
@@ -36,6 +38,9 @@
   version、created/updated；缺行=默认值，不回填）——门店级配置，非窗口级。
 - M 端：53号增补 `GET/PUT /api/v1/merchant/stores/{storeId}/booking-window`
   （GET 缺省返回默认值；PUT 全替换+expectedVersion 乐观锁+reason 不需要（非减少可用性））。
+  线形状（实施定稿）：GET data=`{leadMinutes,maxDays,version,updatedAt}`（缺行默认 60/7、
+  version "0"、updatedAt null）；PUT 请求 `{merchantId,leadMinutes,maxDays,expectedVersion}`，
+  回执 data=`{leadMinutes,maxDays,version}`。
 - C 端强制：availability 读（含 selection）过滤窗口时间在范围外的时段（available=false 不隐
   藏时段，仅不可选？——**隐藏**：items 不返回范围外时段，最直观）；booking hold 校验
   `startAt` 越界 → 400 COMMON_INVALID_ARGUMENT（message 说明可约范围；不发明新码，最小面）。
