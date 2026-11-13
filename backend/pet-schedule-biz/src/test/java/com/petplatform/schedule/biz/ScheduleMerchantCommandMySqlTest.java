@@ -299,10 +299,14 @@ class ScheduleMerchantCommandMySqlTest {
             assertEquals(5, db.jdbc.queryForObject("SELECT COUNT(*) FROM "
                     + "schedule_availability_window WHERE status='OPEN'", Integer.class));
             // One audit row per closed target and per created window under one requestId.
+            // The WINDOW_CREATE count is scoped to the batch requestId ("970"): the three
+            // fixture windows above were also created through the real API and carry their
+            // own WINDOW_CREATE audit rows (CCR-SCH-SLOT-002 batch-generate).
             assertEquals(2, db.jdbc.queryForObject("SELECT COUNT(*) FROM schedule_write_action"
                     + " WHERE action='WINDOW_BATCH_CLOSE'", Integer.class));
             assertEquals(4, db.jdbc.queryForObject("SELECT COUNT(*) FROM schedule_write_action"
-                    + " WHERE action='WINDOW_CREATE'", Integer.class));
+                    + " WHERE action='WINDOW_CREATE' AND request_id=?",
+                    Integer.class, "970".getBytes(StandardCharsets.UTF_8)));
         }
     }
 

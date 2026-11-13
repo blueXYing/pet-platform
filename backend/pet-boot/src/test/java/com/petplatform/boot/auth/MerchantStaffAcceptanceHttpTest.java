@@ -88,6 +88,9 @@ class MerchantStaffAcceptanceHttpTest {
               "29-Merchant-Application-Schema-v0.1.sql",
               "33-Service-Write-Schema-v0.1.sql",
               "35-Merchant-Staff-Audit-Schema-v0.1.sql",
+              // CCR-SCH-SLOT-001: the availability read counts single-pool occupancy from
+              // schedule_reservation_claim (37号), so the schedule-read step needs 37 loaded.
+              "37-Reservation-Protection-Foundation-Schema-v0.1.sql",
               "53-Schedule-Write-Schema-v0.1.sql")) {
         ScriptUtils.executeSqlScript(
             connection,

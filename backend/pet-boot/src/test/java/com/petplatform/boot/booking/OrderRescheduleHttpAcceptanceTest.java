@@ -151,7 +151,10 @@ class OrderRescheduleHttpAcceptanceTest {
             // CAS: the version does not match the order row.
             assertError(f.send("POST", path, body(Long.toString(Long.parseLong(version) + 5), "2030-01-01T14:30:00Z", "2030-01-01T16:00:00Z", NEW_WINDOW), f.buyerToken), 409, "COMMON_CONFLICT");
             // No substantive interval change: 409 without consuming the only chance (46号).
-            assertError(f.send("POST", path, body(version, "2030-01-01T11:30:00Z", "2030-01-01T13:00:00Z", "710591"), f.buyerToken), 409, "COMMON_CONFLICT");
+            // CCR-SCH-SLOT-001: the unchanged interval is the one paidOrder actually booked
+            // (12:30-14:00 inside the fresh 12:20-14:00 unified slot); the old 11:30-13:00
+            // pin predates the slot move and would be a real (impossible) reschedule.
+            assertError(f.send("POST", path, body(version, "2030-01-01T12:30:00Z", "2030-01-01T14:00:00Z", "710591"), f.buyerToken), 409, "COMMON_CONFLICT");
             assertEquals(0, f.count("SELECT COUNT(*) FROM order_reschedule_record"));
             assertEquals(0, f.count("SELECT COUNT(*) FROM pet_order WHERE reschedule_count=1"));
             // Any refund_order blocks rescheduling (46号 / SSOT hard rule).
@@ -189,7 +192,9 @@ class OrderRescheduleHttpAcceptanceTest {
             assertError(f.send("POST", PATH(order), body(version, "2030-01-01T14:30:00Z", "2030-01-01T16:00:00Z", NEW_WINDOW), f.buyerToken), 409, "SCHEDULE_CAPACITY_EXCEEDED");
             assertEquals(0, f.count("SELECT COUNT(*) FROM schedule_reservation_change"));
             assertEquals(0, f.count("SELECT COUNT(*) FROM pet_order WHERE reschedule_count=1"));
-            assertEquals("2030-01-01 11:30:00.000", f.text("SELECT CAST(appointment_start_at AS CHAR) FROM pet_order WHERE id=" + order));
+            // CCR-SCH-SLOT-001: paidOrder books the fresh 12:20-14:00 unified slot at 12:30Z
+            // (the old fixture booked 11:30Z before the slot moved into the afternoon gap).
+            assertEquals("2030-01-01 12:30:00.000", f.text("SELECT CAST(appointment_start_at AS CHAR) FROM pet_order WHERE id=" + order));
         }
     }
 

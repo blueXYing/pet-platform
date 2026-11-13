@@ -165,12 +165,15 @@ class OrderRescheduleAcceptanceTest {
    // Move the directional slots into the morning/afternoon gaps, book a second (pickup)
    // order on them, then reschedule the in-store order INTO the slot the pickup claim
    // already fills: the single shared pool (capacity 1) refuses the crossing service.
+   // CCR-SCH-SLOT-001: the conflict slot must hold a whole 90-minute in-store appointment
+   // (46号 qualify gates end=start+duration), so the return slot stretches to 12:20-14:00
+   // and the swap targets 12:25-13:55 inside it, under the pickup order's RETURN claim.
    t.f.f.db.jdbc.update("UPDATE schedule_availability_window SET start_at='2030-01-01 08:35:00',end_at='2030-01-01 09:00:00' WHERE id=710501");
-   t.f.f.db.jdbc.update("UPDATE schedule_availability_window SET start_at='2030-01-01 12:20:00',end_at='2030-01-01 12:55:00' WHERE id=710502");
+   t.f.f.db.jdbc.update("UPDATE schedule_availability_window SET start_at='2030-01-01 12:20:00',end_at='2030-01-01 14:00:00' WHERE id=710502");
    t.pickupBook(OffsetDateTime.parse("2030-01-01T08:35Z"),OffsetDateTime.parse("2030-01-01T12:20Z"));
    code("SCHEDULE_CAPACITY_EXCEEDED",()->t.service.reschedule(new Command(context("710100"),o,
-    t.text("SELECT CAST(version AS CHAR) FROM pet_order"),OffsetDateTime.parse("2030-01-01T08:40Z"),
-    OffsetDateTime.parse("2030-01-01T08:50Z"),null,null,"710501",null,null)));
+    t.text("SELECT CAST(version AS CHAR) FROM pet_order WHERE id="+o),OffsetDateTime.parse("2030-01-01T12:25Z"),
+    OffsetDateTime.parse("2030-01-01T13:55Z"),null,null,"710502",null,null)));
    assertEquals(0,t.count("SELECT COUNT(*) FROM schedule_reservation_change"));assertEquals(3,t.count("SELECT COUNT(*) FROM schedule_reservation_claim"));
   }
  }

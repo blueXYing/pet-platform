@@ -192,8 +192,10 @@ class ScheduleSelectionQueryMySqlTest {
     void defaultBookableRangeHidesOutOfRangeSlotsInSelectionAndAvailability() throws Exception {
         try (Database db = new Database()) {
             // Fixed "now" = 2029-12-31T00:00:00Z: +30m hidden, +60m visible (boundary),
-            // +90m visible, +7d visible (boundary), +7d30m hidden.
-            db.window(121, "2029-12-31 00:30:00", "2029-12-31 01:30:00");
+            // +90m visible, +7d visible (boundary), +7d30m hidden. CCR-SCH-SLOT-001: store
+            // slots never overlap, so the hidden +30m slot ends exactly at the +60m slot's
+            // start (adjacency allowed) instead of crossing it.
+            db.window(121, "2029-12-31 00:30:00", "2029-12-31 01:00:00");
             db.window(122, "2029-12-31 01:00:00", "2029-12-31 01:30:00");
             db.window(123, "2029-12-31 01:30:00", "2029-12-31 02:00:00");
             db.window(124, "2030-01-07 00:00:00", "2030-01-07 00:30:00");

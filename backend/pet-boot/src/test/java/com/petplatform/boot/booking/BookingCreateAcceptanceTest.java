@@ -470,10 +470,13 @@ class BookingCreateAcceptanceTest {
                     "SELECT kind FROM schedule_reservation_claim ORDER BY start_at", String.class));
             assertEquals(List.of(PICKUP_WINDOW, RETURN_WINDOW), db.jdbc.queryForList(
                     "SELECT window_id FROM schedule_reservation_claim ORDER BY start_at", Long.class));
-            assertEquals(List.of("2030-01-01 09:00", "2030-01-01 11:30"), db.jdbc.queryForList(
+            // CCR-SCH-SLOT-001: a pickup-delivery booking claims the two COMPLETE store-wide
+            // slots it selected (08:00-08:35 and 11:30-12:20), not the old per-kind windows
+            // at 09:00-09:35 — the claims equal the original slot intervals by design.
+            assertEquals(List.of("2030-01-01 08:00", "2030-01-01 11:30"), db.jdbc.queryForList(
                     "SELECT DATE_FORMAT(start_at,'%Y-%m-%d %H:%i') FROM schedule_reservation_claim "
                     + "ORDER BY start_at", String.class));
-            assertEquals(List.of("2030-01-01 09:35", "2030-01-01 12:20"), db.jdbc.queryForList(
+            assertEquals(List.of("2030-01-01 08:35", "2030-01-01 12:20"), db.jdbc.queryForList(
                     "SELECT DATE_FORMAT(end_at,'%Y-%m-%d %H:%i') FROM schedule_reservation_claim "
                     + "ORDER BY start_at", String.class));
             assertEquals(PICKUP_START.toInstant(), db.jdbc.queryForObject(
