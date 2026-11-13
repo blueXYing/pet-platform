@@ -118,7 +118,24 @@ public final class WeekTemplateRule {
     /** Canonical storage form of a validated cycle (stable key order, "HH:mm" times). */
     public static String write(List<Day> days) {
         try {
-            return JSON.writeValueAsString(days == null ? List.of() : days);
+            // LocalTime must serialize as HH:mm — the reader lexicon rejects the driver's
+            // default "HH:mm:ss" (acceptance round caught the round-trip on CI MySQL).
+            com.fasterxml.jackson.databind.ObjectMapper writer = JSON.copy();
+            com.fasterxml.jackson.databind.module.SimpleModule module =
+                    new com.fasterxml.jackson.databind.module.SimpleModule();
+            module.addSerializer(java.time.LocalTime.class,
+                    new com.fasterxml.jackson.databind.ser.std.StdSerializer<>(java.time.LocalTime.class) {
+                        @Override
+                        public void serialize(java.time.LocalTime value,
+                                com.fasterxml.jackson.core.JsonGenerator generator,
+                                com.fasterxml.jackson.databind.SerializerProvider provider)
+                                throws java.io.IOException {
+                            generator.writeString(value.format(
+                                    java.time.format.DateTimeFormatter.ofPattern("HH:mm")));
+                        }
+                    });
+            writer.registerModule(module);
+            return writer.writeValueAsString(days == null ? List.of() : days);
         } catch (Exception failure) {
             throw unavailableFailure("week template serialization failed", failure);
         }
