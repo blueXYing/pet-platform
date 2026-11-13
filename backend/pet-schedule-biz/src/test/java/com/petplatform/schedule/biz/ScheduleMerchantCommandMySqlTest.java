@@ -512,7 +512,8 @@ class ScheduleMerchantCommandMySqlTest {
     }
 
     /** Legacy-call adapter: slices [dailyStart, dailyEnd) per intervalMinutes into the
-     *  pre-sliced segments the 2026-11-13 wire shape expects (one window per segment). */
+     *  pre-sliced segments the 2026-11-13 wire shape expects (one window per segment).
+     *  A non-positive interval yields an empty list (the kernel 400s it) — never spin on a zero step. */
     private static BatchGenerateCommand generate(String requestId, LocalDate fromDate,
             LocalDate toDate, LocalTime dailyStart, LocalTime dailyEnd, int intervalMinutes,
             int configuredCapacity, String reason) {
@@ -522,7 +523,8 @@ class ScheduleMerchantCommandMySqlTest {
                 new java.util.ArrayList<>();
         int startMinute = dailyStart.getHour() * 60 + dailyStart.getMinute();
         int endMinute = dailyEnd.getHour() * 60 + dailyEnd.getMinute();
-        for (int at = startMinute; at + intervalMinutes <= endMinute; at += intervalMinutes) {
+        int step = Math.max(1, intervalMinutes);
+        for (int at = startMinute; at + step <= endMinute; at += step) {
             segments.add(new com.petplatform.schedule.api.dto.ScheduleWriteTypes.BatchSegment(
                     LocalTime.of(at / 60, at % 60),
                     LocalTime.of((at + intervalMinutes) / 60, (at + intervalMinutes) % 60)));
