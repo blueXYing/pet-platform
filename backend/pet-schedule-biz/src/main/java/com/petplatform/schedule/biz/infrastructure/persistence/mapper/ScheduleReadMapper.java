@@ -18,32 +18,28 @@ public interface ScheduleReadMapper {
             @Param("storeId") long storeId, @Param("staffIds") List<Long> staffIds);
 
     /**
-     * OPEN windows of the store/service overlapping [from, to), start-ascending. Non-OPEN status
-     * values (CLOSED or anything unknown) never surface: the query fails toward "not bookable".
+     * OPEN/SOLD_OUT unified slots of the store overlapping [from, to), start-ascending
+     * (CCR-SCH-SLOT-001: the slot timeline is store-wide; per-service bookability is a
+     * computation, not a filter). Non-open status values (CLOSED or anything unknown) never
+     * surface: the query fails toward "not bookable".
      */
     List<ScheduleAvailabilityWindowEntity> selectOpenWindows(
             @Param("storeId") long storeId,
-            @Param("serviceId") long serviceId,
             @Param("fromAt") LocalDateTime fromAt,
             @Param("toAt") LocalDateTime toAt);
 
-    /** Active (TEMP_LOCKED/CONFIRMED) reservations overlapping the window half-open interval. */
-    long countActiveReservations(
-            @Param("storeId") long storeId,
-            @Param("serviceId") long serviceId,
-            @Param("fromAt") LocalDateTime fromAt,
-            @Param("toAt") LocalDateTime toAt);
+    /** Effective claims (TEMP_LOCKED/CONFIRMED reservations) on one slot — the single-pool
+     * occupancy notion shared with the SOLD_OUT deriver (CCR-SCH-SLOT-001, cross-service). */
+    long countActiveClaimsOnWindow(@Param("windowId") long windowId);
 
-    /** Workbench window list (SCH-004 merchant reads): full states, filters optional. A null
+    /** Workbench slot list (SCH-004 merchant reads): full states, status filter optional. A null
      * limit keeps the legacy full list; paged mode bounds it with LIMIT/OFFSET (53号 §3.3). */
     List<java.util.Map<String, Object>> listWindows(@Param("storeId") long storeId,
-            @Param("serviceId") Long serviceId, @Param("kind") String kind,
             @Param("status") String status, @Param("limit") Integer limit,
             @Param("offset") int offset);
 
-    /** Filter-matched window count for the paged workbench list; same filters as listWindows. */
-    long countWindows(@Param("storeId") long storeId, @Param("serviceId") Long serviceId,
-            @Param("kind") String kind, @Param("status") String status);
+    /** Filter-matched slot count for the paged workbench list; same filters as listWindows. */
+    long countWindows(@Param("storeId") long storeId, @Param("status") String status);
 
     /** Workbench staff availability list for one staff member, all statuses. */
     List<java.util.Map<String, Object>> listStaffWindows(@Param("storeId") long storeId,

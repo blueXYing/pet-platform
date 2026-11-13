@@ -10,8 +10,6 @@ public final class ScheduleAdminViewRows {
         private Long id;
         private Long merchantId;
         private Long storeId;
-        private Long serviceId;
-        private String windowKind;
         private LocalDateTime startAt;
         private LocalDateTime endAt;
         private Integer configuredCapacity;
@@ -27,10 +25,6 @@ public final class ScheduleAdminViewRows {
         public void setMerchantId(Long merchantId) { this.merchantId = merchantId; }
         public Long getStoreId() { return storeId; }
         public void setStoreId(Long storeId) { this.storeId = storeId; }
-        public Long getServiceId() { return serviceId; }
-        public void setServiceId(Long serviceId) { this.serviceId = serviceId; }
-        public String getWindowKind() { return windowKind; }
-        public void setWindowKind(String windowKind) { this.windowKind = windowKind; }
         public LocalDateTime getStartAt() { return startAt; }
         public void setStartAt(LocalDateTime startAt) { this.startAt = startAt; }
         public LocalDateTime getEndAt() { return endAt; }

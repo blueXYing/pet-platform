@@ -12,8 +12,8 @@ import { composeTimestamp, decodeWindowItem, fixtureWindows, type ScheduleWindow
 // model.ts 系既有事实：2026-10-07 是周三；fixtures 六个窗口都在该日。
 
 const item = (overrides: Record<string, unknown>): ScheduleWindowItem => decodeWindowItem({
-  windowId: '61001', merchantId: '958001', storeId: '958002', serviceId: '30001',
-  windowKind: 'GENERAL', startAt: '2026-10-07T01:00:00.000Z', endAt: '2026-10-07T04:00:00.000Z',
+  windowId: '61001', merchantId: '958001', storeId: '958002',
+  startAt: '2026-10-07T01:00:00.000Z', endAt: '2026-10-07T04:00:00.000Z',
   configuredCapacity: 2, status: 'OPEN', version: '4', updatedAt: '2026-10-06T02:00:00.000Z',
   ...overrides,
 })

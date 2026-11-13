@@ -93,7 +93,9 @@ class BookingCreateAcceptanceTest {
     private static final Instant NOW = Instant.parse("2029-12-31T00:00:00Z");
     private static final OffsetDateTime APPOINTMENT = OffsetDateTime.parse("2030-01-01T09:00:00Z");
     private static final OffsetDateTime APPOINTMENT_END = APPOINTMENT.plusMinutes(90);
-    private static final OffsetDateTime PICKUP_START = OffsetDateTime.parse("2030-01-01T09:00:00Z");
+    // CCR-SCH-SLOT-001: one store-wide slot timeline — the pickup slot sits before the
+    // in-store slot instead of overlapping it; 11:30-08:00 still clears the 120-minute rule.
+    private static final OffsetDateTime PICKUP_START = OffsetDateTime.parse("2030-01-01T08:00:00Z");
     private static final OffsetDateTime RETURN_START = OffsetDateTime.parse("2030-01-01T11:30:00Z");
 
     @Test
@@ -995,11 +997,11 @@ class BookingCreateAcceptanceTest {
             jdbc.update("INSERT INTO staff_availability_window(id,store_id,staff_id,start_at,end_at,status,"
                     + "created_at,updated_at) VALUES(?,?,?,'2030-01-01 08:00:00','2030-01-01 14:00:00',"
                     + "'AVAILABLE',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))", id(), STORE, STAFF);
-            seedWindow(GENERAL_WINDOW, IN_STORE_SERVICE, "GENERAL",
+            seedWindow(GENERAL_WINDOW,
                     "2030-01-01 09:00:00", "2030-01-01 11:00:00");
-            seedWindow(PICKUP_WINDOW, PICKUP_SERVICE, "PICKUP",
-                    "2030-01-01 09:00:00", "2030-01-01 09:35:00");
-            seedWindow(RETURN_WINDOW, PICKUP_SERVICE, "RETURN",
+            seedWindow(PICKUP_WINDOW,
+                    "2030-01-01 08:00:00", "2030-01-01 08:35:00");
+            seedWindow(RETURN_WINDOW,
                     "2030-01-01 11:30:00", "2030-01-01 12:20:00");
         }
 
@@ -1018,11 +1020,12 @@ class BookingCreateAcceptanceTest {
                     id(), serviceId, ("service-approve-" + serviceId).getBytes(StandardCharsets.UTF_8));
         }
 
-        private void seedWindow(long windowId, long serviceId, String kind, String start, String end) {
-            jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,service_id,"
-                    + "start_at,end_at,configured_capacity,status,window_kind,created_at,updated_at)"
-                    + " VALUES(?,?,?,?,?,?,1,'OPEN',?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
-                    windowId, MERCHANT, STORE, serviceId, start, end, kind);
+        /** CCR-SCH-SLOT-001: store-wide unified slots (no service_id/window_kind columns). */
+        private void seedWindow(long windowId, String start, String end) {
+            jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,"
+                    + "start_at,end_at,configured_capacity,status,created_at,updated_at)"
+                    + " VALUES(?,?,?,?,?,1,'OPEN',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+                    windowId, MERCHANT, STORE, start, end);
         }
 
         private void seedApprovedApplicationAndAgreement() {

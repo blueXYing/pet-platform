@@ -263,55 +263,66 @@ class ScheduleAvailabilityHttpTest {
             token, store, String.valueOf(categoryId), "PICKUP_DELIVERY", 120);
     seedStaffFacts(merchantId, storeId, grooming); // pickup has no capability: qualified count 0
 
-    // SCH-D3: no schedule writer exists, windows and reservations are SQL-seeded. Stored as UTC
+    // SCH-D3: no schedule writer exists, slots and reservations are SQL-seeded. Stored as UTC
     // DATETIME(3) (supplement 23 §2); the HTTP projection renders Asia/Shanghai +08:00.
-    seedWindow(merchantId, storeId, grooming, D1 + " 01:15:00", D1 + " 10:10:00", 5, "OPEN");
-    seedWindow(merchantId, storeId, grooming, D2 + " 02:00:00", D2 + " 03:00:00", 1, "OPEN");
-    seedWindow(merchantId, storeId, grooming, D2 + " 06:00:00", D2 + " 07:00:00", 2, "CLOSED");
-    // Cross-day boarding window crossing the query-range upper boundary: returned whole.
-    seedWindow(merchantId, storeId, grooming, D2 + " 14:00:00", D2 + " 22:00:00", 4, "OPEN");
-    // Occupancy reads the schedule_reservation authority: TEMP_LOCKED counts, RELEASED does not.
-    seedReservation(storeId, grooming, D1 + " 02:00:00", D1 + " 03:00:00", "TEMP_LOCKED");
-    seedReservation(storeId, grooming, D1 + " 02:30:00", D1 + " 03:30:00", "RELEASED");
+    // CCR-SCH-SLOT-001: one store-wide slot list shared by every service of the store.
+    long wide = seedWindow(merchantId, storeId, D1 + " 01:15:00", D1 + " 10:10:00", 5, "OPEN");
+    seedWindow(merchantId, storeId, D2 + " 02:00:00", D2 + " 03:00:00", 1, "OPEN");
+    seedWindow(merchantId, storeId, D2 + " 06:00:00", D2 + " 07:00:00", 2, "CLOSED");
+    // Cross-day boarding slot crossing the query-range upper boundary: returned whole.
+    seedWindow(merchantId, storeId, D2 + " 14:00:00", D2 + " 22:00:00", 4, "OPEN");
+    // Occupancy reads the effective-claim authority on the shared slot: TEMP_LOCKED counts,
+    // RELEASED does not.
+    seedReservation(storeId, grooming, wide, D1 + " 02:00:00", D1 + " 03:00:00", "TEMP_LOCKED");
+    seedReservation(storeId, grooming, wide, D1 + " 02:30:00", D1 + " 03:30:00", "RELEASED");
     // Timezone boundary: 20:00-23:30 +08:00 on 2030-01-15 = 12:00-15:30 UTC the same day.
-    seedWindow(merchantId, storeId, grooming, "2030-01-15 12:00:00", "2030-01-15 15:30:00", 5, "OPEN");
-    // Pickup windows: a "return" candidate starting only 30 minutes after the pickup window -
-    // the 120-minute rule is NOT applied on the query side (SCH-D4, SCH-003 owns the check).
-    seedWindow(merchantId, storeId, pickup, D1 + " 01:00:00", D1 + " 02:30:00", 5, "OPEN");
-    seedWindow(merchantId, storeId, pickup, D1 + " 01:30:00", D1 + " 03:00:00", 5, "OPEN");
-    // Now-relative windows for the time-boundary assertions.
+    seedWindow(merchantId, storeId, "2030-01-15 12:00:00", "2030-01-15 15:30:00", 5, "OPEN");
+    // Directional slot pair for the pickup service: the "return" slot starts only 90 minutes
+    // after the pickup slot - the 120-minute rule is NOT applied on the query side (SCH-D4,
+    // SCH-003 owns the check); the two slots stay adjacent, never overlapping.
+    seedWindow(merchantId, storeId, D1 + " 11:00:00", D1 + " 12:30:00", 5, "OPEN");
+    seedWindow(merchantId, storeId, D1 + " 12:30:00", D1 + " 13:30:00", 5, "OPEN");
+    // Now-relative slots for the time-boundary assertions.
     seedWindow(
-        merchantId, storeId, grooming, utcMinusMinutes(90), utcPlusMinutes(90), 5, "OPEN");
-    seedWindow(merchantId, storeId, grooming, utcMinusMinutes(240), utcMinusMinutes(180), 5, "OPEN");
+        merchantId, storeId, utcMinusMinutes(90), utcPlusMinutes(90), 5, "OPEN");
+    seedWindow(merchantId, storeId, utcMinusMinutes(240), utcMinusMinutes(180), 5, "OPEN");
 
     String availability = "/api/v1/c/services/" + grooming + "/availability";
 
     // ---- W2-SCH-001/006: aggregation over real MER/SCH SQL facts (three qualified staff).
+    // The grooming view lists the whole store timeline: its own three OPEN slots plus the two
+    // directional slots of the pickup service (bookability per slot is a staff-coverage
+    // computation, not an ownership filter).
     Reply october =
         send("GET", availability + "?storeId=" + store + "&startDate=" + D1 + "&endDate=" + D2, null, bearer(token));
     assertEquals(200, october.status(), october.redacted());
     List<Map<String, Object>> items = list(october.data().get("items"));
-    assertEquals(3, items.size(), "OPEN windows only: CLOSED excluded; cross-day whole");
+    assertEquals(5, items.size(), "OPEN slots only: CLOSED excluded; cross-day whole");
     Map<String, Object> first = items.get(0);
     assertEquals(D1 + "T09:15:00+08:00", first.get("start"), "minute level, business zone");
     assertEquals(D1 + "T18:10:00+08:00", first.get("end"));
     assertEquals(3, ((Number) first.get("effectiveCapacity")).intValue(), "min(5, staff 3)");
-    assertEquals(1, ((Number) first.get("occupiedCount")).intValue(), "TEMP_LOCKED overlap only");
+    assertEquals(1, ((Number) first.get("occupiedCount")).intValue(), "TEMP_LOCKED claim only");
     assertEquals(2, ((Number) first.get("remainingCapacity")).intValue());
     assertEquals(true, first.get("available"));
     assertEquals(WINDOW_KEYS, first.keySet(), "no windowId/version/status/configured/staff keys");
-    Map<String, Object> second = items.get(1);
+    Map<String, Object> directional = items.get(1);
+    assertEquals(D1 + "T19:00:00+08:00", directional.get("start"),
+        "the pickup service's slot joins the shared timeline");
+    Map<String, Object> second = items.get(3);
     assertEquals(D2 + "T10:00:00+08:00", second.get("start"));
     assertEquals(1, ((Number) second.get("effectiveCapacity")).intValue(), "min(1, staff 3)");
-    Map<String, Object> crossDay = items.get(2);
+    Map<String, Object> crossDay = items.get(4);
     assertEquals(D2 + "T22:00:00+08:00", crossDay.get("start"), "starts inside the range");
     assertEquals(D2P + "T06:00:00+08:00", crossDay.get("end"), "ends outside, still whole");
     assertTrue(
         String.valueOf(items.get(0).get("start")).compareTo(String.valueOf(items.get(1).get("start"))) < 0
-            && String.valueOf(items.get(1).get("start")).compareTo(String.valueOf(items.get(2).get("start"))) < 0,
+            && String.valueOf(items.get(3).get("start")).compareTo(String.valueOf(items.get(4).get("start"))) < 0,
         "start-ascending");
 
     // ---- W2-SCH-004: pickup projection - no window kind, no 120-minute filtering here.
+    // The pickup service sees the same shared slots; without qualified staff every slot is
+    // listed but not bookable.
     Reply pickupReply =
         send(
             "GET",
@@ -321,7 +332,8 @@ class ScheduleAvailabilityHttpTest {
             bearer(token));
     assertEquals(200, pickupReply.status(), pickupReply.redacted());
     List<Map<String, Object>> pickupItems = list(pickupReply.data().get("items"));
-    assertEquals(2, pickupItems.size(), "both windows return, 120min rule is not query-side");
+    assertEquals(3, pickupItems.size(),
+        "both directional slots and the grooming slot return; 120min rule is not query-side");
     assertEquals(WINDOW_KEYS, pickupItems.get(0).keySet());
     assertEquals(
         0, ((Number) pickupItems.get(0).get("effectiveCapacity")).intValue(), "min(5, staff 0)");
@@ -576,10 +588,10 @@ class ScheduleAvailabilityHttpTest {
         db.ids.nextId(), storeId, staffId, startUtc, endUtc);
   }
 
+  /** CCR-SCH-SLOT-001: slots are store-wide; the serviceId argument only documents intent. */
   private long seedWindow(
       long merchantId,
       long storeId,
-      String serviceId,
       String startUtc,
       String endUtc,
       int capacity,
@@ -587,22 +599,25 @@ class ScheduleAvailabilityHttpTest {
     long id = db.ids.nextId();
     db.jdbc.update(
         "INSERT INTO"
-            + " schedule_availability_window(id,merchant_id,store_id,service_id,start_at,end_at,"
+            + " schedule_availability_window(id,merchant_id,store_id,start_at,end_at,"
             + " configured_capacity,status,version,created_at,updated_at)"
-            + " VALUES(?,?,?,?,?,?,?,?,0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
-        id, merchantId, storeId, Long.parseLong(serviceId), startUtc, endUtc, capacity, status);
+            + " VALUES(?,?,?,?,?,?,?,0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+        id, merchantId, storeId, startUtc, endUtc, capacity, status);
     return id;
   }
 
+  /** One reservation of the service with one GENERAL claim bound to the named shared slot. */
   private void seedReservation(
-      long storeId, String serviceId, String startUtc, String endUtc, String status) {
+      long storeId, String serviceId, long windowId, String startUtc, String endUtc,
+      String status) {
+    long reservationId = db.ids.nextId();
     db.jdbc.update(
         "INSERT INTO schedule_reservation(id,order_id,merchant_id,store_id,service_id,"
             + " fulfillment_type,start_at,end_at,status,capacity_snapshot,"
             + " qualified_staff_count_snapshot,version,created_at,updated_at)"
             + " VALUES(?,?,(SELECT merchant_id FROM merchant_store WHERE id=?),?,?,?,?,?,?,?,?,0,"
             + " UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
-        db.ids.nextId(),
+        reservationId,
         db.ids.nextId(),
         storeId,
         storeId,
@@ -613,6 +628,11 @@ class ScheduleAvailabilityHttpTest {
         status,
         5,
         3);
+    db.jdbc.update(
+        "INSERT INTO schedule_reservation_claim(id,reservation_id,window_id,store_id,service_id,"
+            + " kind,start_at,end_at) VALUES(?,?,?,?,?,'GENERAL',?,?)",
+        db.ids.nextId(), reservationId, windowId, storeId, Long.parseLong(serviceId),
+        startUtc, endUtc);
   }
 
   private static String utcMinusMinutes(long minutes) {

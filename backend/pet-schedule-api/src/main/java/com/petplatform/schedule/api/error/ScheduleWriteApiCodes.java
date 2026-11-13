@@ -8,9 +8,9 @@ package com.petplatform.schedule.api.error;
 public final class ScheduleWriteApiCodes {
     private ScheduleWriteApiCodes() {}
 
-    /** A create/reopen would overlap an existing OPEN window of the same store, service and
-     * window_kind, or an OPEN availability window of the same staff; adjacent half-open
-     * intervals are allowed (SCHW-D3). */
+    /** A create/reopen would overlap an existing OPEN unified slot of the same store
+     * (CCR-SCH-SLOT-001: slots are store-wide, no service/kind split), or an OPEN availability
+     * window of the same staff; adjacent half-open intervals are allowed (SCHW-D3). */
     public static final String SCHEDULE_WINDOW_OVERLAP = "SCHEDULE_WINDOW_OVERLAP";
 
     /** A protected window/availability/capability change is blocked by already-held occupancy

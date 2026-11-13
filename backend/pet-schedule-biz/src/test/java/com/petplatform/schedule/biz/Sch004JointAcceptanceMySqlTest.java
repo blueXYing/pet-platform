@@ -113,13 +113,14 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * SCH-004 specialised acceptance (issue acceptance walk-through on real MySQL, Contract53).
- * One harness drives the full maintenance chain end to end: merchant writes (service windows,
- * staff availability, capability sets) drive the C-side minute-granularity bookability facts
- * (API07 6.1/6.3 + the original-window selection projection), the system-derived SOLD_OUT state
- * reacts to occupancy and releases, staff schedule/capability edits move the effective capacity,
- * and the validation chain (kind x fulfillment matrix, pickup+120, overlap, half-open
- * boundaries, requestId idempotency) holds on both the write and the hold path.
+ * SCH-004 specialised acceptance (issue acceptance walk-through on real MySQL, Contract53;
+ * CCR-SCH-SLOT-001 unified store-wide slots). One harness drives the full maintenance chain
+ * end to end: merchant writes (store-wide slot windows, staff availability, capability sets)
+ * drive the C-side minute-granularity bookability facts (API07 6.1/6.3 + the slot selection
+ * projection with the historical kind role shape), the system-derived SOLD_OUT state reacts
+ * to occupancy and releases, staff schedule/capability edits move the effective capacity, and
+ * the validation chain (pickup+120, store-wide overlap, half-open boundaries, requestId
+ * idempotency) holds on both the write and the hold path.
  *
  * <p>Unlike the sibling contract tests, the schedule rows are not SQL-seeded: every window,
  * staff window and capability row in these scenarios is created through the merchant write
@@ -151,17 +152,15 @@ class Sch004JointAcceptanceMySqlTest {
             throws Exception {
         try (Database db = new Database()) {
             App app = new App(db);
-            // Merchant maintains an odd-minute window pair: 10:07-10:43 and the directly
+            // Merchant maintains an odd-minute slot pair: 10:07-10:43 and the directly
             // adjacent 10:43-11:00 (half-open adjacency is legal, no fixed 60-minute slots).
-            WindowResult first = app.createWindow(SERVICE, "GENERAL", minute(10, 7),
-                    minute(10, 43), 1);
-            WindowResult second = app.createWindow(SERVICE, "GENERAL", minute(10, 43),
-                    AT_1100, 1);
+            WindowResult first = app.createWindow(minute(10, 7), minute(10, 43), 1);
+            WindowResult second = app.createWindow(minute(10, 43), AT_1100, 1);
             assertEquals("OPEN", first.status());
             assertEquals("0", first.version());
-            // An intersecting third window is rejected while the adjacent one was accepted.
+            // An intersecting third slot is rejected while the adjacent one was accepted.
             ApiException overlap = assertThrows(ApiException.class,
-                    () -> app.createWindow(SERVICE, "GENERAL", AT_1030, AT_1130, 1));
+                    () -> app.createWindow(AT_1030, AT_1130, 1));
             assertEquals(ScheduleWriteApiCodes.SCHEDULE_WINDOW_OVERLAP, overlap.code());
             // C-side reads the exact minute boundaries back, but no staff is scheduled yet:
             // the effective capacity stays 0 and nothing is bookable.
@@ -208,7 +207,7 @@ class Sch004JointAcceptanceMySqlTest {
     void soldOutDerivationAndCapacityEditsReflectForConsumers() throws Exception {
         try (Database db = new Database()) {
             App app = new App(db);
-            app.createWindow(SERVICE, "GENERAL", AT_1000, AT_1100, 2);
+            app.createWindow(AT_1000, AT_1100, 2);
             String windowId = app.workbenchWindows(null).get(0).windowId();
             app.createStaffWindow("401", AT_1000, AT_1100);
             app.createStaffWindow("402", AT_1000, AT_1100);
@@ -222,7 +221,7 @@ class Sch004JointAcceptanceMySqlTest {
             AvailabilityPageDTO page = app.availability(SERVICE, DAY, DAY);
             assertEquals(0, page.items().get(0).remainingCapacity());
             assertFalse(page.items().get(0).available());
-            SelectionWindowPageDTO selection = app.selection(SERVICE, DAY, DAY, "GENERAL");
+            SelectionWindowPageDTO selection = app.selection(SERVICE, DAY, DAY);
             assertEquals(1, selection.items().size());
             assertEquals(0, selection.items().get(0).remainingCapacity());
             assertFalse(selection.items().get(0).available());
@@ -248,21 +247,21 @@ class Sch004JointAcceptanceMySqlTest {
             app.release(second);
             assertEquals("OPEN", app.workbenchWindow(windowId).status());
             assertEquals(2, app.availability(SERVICE, DAY, DAY).items().get(0).remainingCapacity());
-            // A capacity-1 window goes SOLD_OUT with one claim and still blocks overlapping
-            // creations: SOLD_OUT keeps the open slot exactly like an OPEN window (§3.1).
-            WindowResult tight = app.createWindow(SERVICE, "GENERAL", AT_1130, AT_1200, 1);
+            // A capacity-1 slot goes SOLD_OUT with one claim and still blocks overlapping
+            // creations: SOLD_OUT keeps the open slot exactly like an OPEN one (§3.1).
+            WindowResult tight = app.createWindow(AT_1130, AT_1200, 1);
             app.createStaffWindow("401", AT_1130, AT_1200);
             app.createStaffWindow("402", AT_1130, AT_1200);
             HoldResult third = app.hold("513", tight.windowId(), AT_1130, AT_1200);
             assertEquals("SOLD_OUT", app.workbenchWindow(tight.windowId()).status());
             ApiException blocked = assertThrows(ApiException.class,
-                    () -> app.createWindow(SERVICE, "GENERAL", AT_1140, AT_1230, 1));
+                    () -> app.createWindow(AT_1140, AT_1230, 1));
             assertEquals(ScheduleWriteApiCodes.SCHEDULE_WINDOW_OVERLAP, blocked.code());
             // After the release the window is OPEN again and the overlapping creation is
             // still rejected: the half-open overlap rule is state independent.
             app.expire(third);
             ApiException stillBlocked = assertThrows(ApiException.class,
-                    () -> app.createWindow(SERVICE, "GENERAL", AT_1140, AT_1230, 1));
+                    () -> app.createWindow(AT_1140, AT_1230, 1));
             assertEquals(ScheduleWriteApiCodes.SCHEDULE_WINDOW_OVERLAP, stillBlocked.code());
         }
     }
@@ -272,7 +271,7 @@ class Sch004JointAcceptanceMySqlTest {
             throws Exception {
         try (Database db = new Database()) {
             App app = new App(db);
-            app.createWindow(SERVICE, "GENERAL", AT_1000, AT_1100, 2);
+            app.createWindow(AT_1000, AT_1100, 2);
             String windowId = app.workbenchWindows(null).get(0).windowId();
             String staffWindow401 = app.createStaffWindow("401", AT_1000, AT_1100).windowId();
             String staffWindow402 = app.createStaffWindow("402", AT_1000, AT_1100).windowId();
@@ -313,25 +312,20 @@ class Sch004JointAcceptanceMySqlTest {
     }
 
     @Test
-    void validationChainFulfillmentKindPickupReturnBoundsAndIdempotency() throws Exception {
+    void validationChainPickupReturnBoundsAndIdempotency() throws Exception {
         try (Database db = new Database()) {
             App app = new App(db);
-            // Kind x fulfillment matrix (SCHW-D2): IN_STORE maintains GENERAL only,
-            // PICKUP_DELIVERY maintains PICKUP/RETURN only.
-            assertEquals(CommonApiCodes.INVALID_ARGUMENT, app.createFailure(SERVICE, "PICKUP"));
-            assertEquals(CommonApiCodes.INVALID_ARGUMENT,
-                    app.createFailure(PICKUP_SERVICE, "GENERAL"));
-            // Minute precision and non-degenerate intervals are enforced on the write path.
+            // CCR-SCH-SLOT-001 removed the fulfillment×kind write matrix: a slot is
+            // store-wide and serves every fulfillment; only minute precision and
+            // non-degenerate intervals remain enforced on the write path.
             assertEquals(CommonApiCodes.INVALID_ARGUMENT, app.createFailure(
-                    SERVICE, "GENERAL", OffsetDateTime.parse("2030-01-01T10:00:30Z"), AT_1100));
+                    OffsetDateTime.parse("2030-01-01T10:00:30Z"), AT_1100));
             assertEquals(CommonApiCodes.INVALID_ARGUMENT,
-                    app.createFailure(SERVICE, "GENERAL", AT_1100, AT_1000));
-            // Pickup/return windows for the delivery service; the return window starts at
-            // pickup start + 120 minutes exactly (the legal boundary).
-            String pickup = app.createWindow(PICKUP_SERVICE, "PICKUP", AT_1200, AT_1230, 1)
-                    .windowId();
-            String returning = app.createWindow(PICKUP_SERVICE, "RETURN", AT_1400, AT_1500, 1)
-                    .windowId();
+                    app.createFailure(AT_1100, AT_1000));
+            // Two unified slots carry the pickup/return time points; the return slot starts
+            // at pickup start + 120 minutes exactly (the legal boundary).
+            String pickup = app.createWindow(AT_1200, AT_1230, 1).windowId();
+            String returning = app.createWindow(AT_1400, AT_1500, 1).windowId();
             // Staff readiness for the delivery service: both employees scheduled over both
             // claim intervals and authorised on the service, so the holds can prove capacity.
             app.createStaffWindow("401", AT_1200, AT_1400);
@@ -361,19 +355,19 @@ class Sch004JointAcceptanceMySqlTest {
             assertTrue(app.commands.createWindowOutcome(new CreateWindowCommand(
                     new CommandContext(requestId, "sch004-acc", OperatorType.USER, "601",
                             "test"),
-                    MERCHANT, STORE, SERVICE, "GENERAL", AT_1000, AT_1100, 4), created));
+                    MERCHANT, STORE, AT_1000, AT_1100, 4), created));
             assertEquals("OPEN", created[0].status());
-            assertEquals(1, db.countServiceWindows(SERVICE));
+            assertEquals(1, db.countWindows());
             WindowResult[] replay = new WindowResult[1];
             assertFalse(app.commands.createWindowOutcome(new CreateWindowCommand(
                     new CommandContext(requestId, "sch004-acc", OperatorType.USER, "601",
                             "test"),
-                    MERCHANT, STORE, SERVICE, "GENERAL", AT_1000, AT_1100, 4), replay));
+                    MERCHANT, STORE, AT_1000, AT_1100, 4), replay));
             assertEquals(created[0].windowId(), replay[0].windowId());
-            assertEquals(1, db.countServiceWindows(SERVICE));
+            assertEquals(1, db.countWindows());
             assertEquals(CommonApiCodes.IDEMPOTENCY_KEY_CONFLICT,
                     app.createFailureWithKey(requestId, AT_1030, AT_1100));
-            assertEquals(1, db.countServiceWindows(SERVICE));
+            assertEquals(1, db.countWindows());
         }
     }
 
@@ -502,22 +496,18 @@ class Sch004JointAcceptanceMySqlTest {
 
         // writes
 
-        private WindowResult createWindow(String service, String kind, OffsetDateTime start,
-                OffsetDateTime end, int capacity) {
+        /** CCR-SCH-SLOT-001: windows are store-wide unified slots — no service/kind binding. */
+        private WindowResult createWindow(OffsetDateTime start, OffsetDateTime end,
+                int capacity) {
             WindowResult[] out = new WindowResult[1];
             assertTrue(commands.createWindowOutcome(new CreateWindowCommand(ctx(), MERCHANT,
-                    STORE, service, kind, start, end, capacity), out));
+                    STORE, start, end, capacity), out));
             return out[0];
         }
 
-        private String createFailure(String service, String kind) {
-            return createFailure(service, kind, AT_1000, AT_1100);
-        }
-
-        private String createFailure(String service, String kind, OffsetDateTime start,
-                OffsetDateTime end) {
+        private String createFailure(OffsetDateTime start, OffsetDateTime end) {
             ApiException failure = assertThrows(ApiException.class,
-                    () -> createWindow(service, kind, start, end, 1));
+                    () -> createWindow(start, end, 1));
             return failure.code();
         }
 
@@ -527,7 +517,7 @@ class Sch004JointAcceptanceMySqlTest {
                     () -> commands.createWindowOutcome(new CreateWindowCommand(
                             new CommandContext(requestId, "sch004-acc", OperatorType.USER,
                                     "601", "test"),
-                            MERCHANT, STORE, SERVICE, "GENERAL", start, end, 4),
+                            MERCHANT, STORE, start, end, 4),
                             new WindowResult[1]));
             return failure.code();
         }
@@ -600,7 +590,7 @@ class Sch004JointAcceptanceMySqlTest {
         // reads
 
         private List<WindowItem> workbenchWindows(String status) {
-            return workbench.listWindows(new WorkbenchWindowQuery(MERCHANT, STORE, null, null,
+            return workbench.listWindows(new WorkbenchWindowQuery(MERCHANT, STORE,
                     status, null, null, query())).items();
         }
 
@@ -616,10 +606,9 @@ class Sch004JointAcceptanceMySqlTest {
                     from, to, query()));
         }
 
-        private SelectionWindowPageDTO selection(String service, LocalDate from, LocalDate to,
-                String kind) {
+        private SelectionWindowPageDTO selection(String service, LocalDate from, LocalDate to) {
             return selectionApi.querySelectableWindows(new SelectionWindowQuery(service, STORE,
-                    from, to, kind, query()));
+                    from, to, query()));
         }
 
         private List<StaffWindowItem> staffWindows() {
@@ -920,10 +909,9 @@ class Sch004JointAcceptanceMySqlTest {
             }
         }
 
-        private int countServiceWindows(String serviceId) {
+        private int countWindows() {
             return jdbc.queryForObject(
-                    "SELECT COUNT(*) FROM schedule_availability_window WHERE service_id=?",
-                    Integer.class, Long.parseLong(serviceId));
+                    "SELECT COUNT(*) FROM schedule_availability_window", Integer.class);
         }
 
         private String windowVersion(String windowId) {

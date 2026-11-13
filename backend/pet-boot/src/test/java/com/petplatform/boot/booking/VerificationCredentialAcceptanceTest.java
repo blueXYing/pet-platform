@@ -161,9 +161,9 @@ class VerificationCredentialAcceptanceTest {
  }}
  @Test void pickupCredentialFollowsBothWholeWindowsAcrossReschedule()throws Exception{try(var t=new T()){
   String o=t.r.pickupPaid();t.r.assign(o);t.confirm(o,0);var old=t.issue(o,"INITIAL");assertEquals("VALID",t.check(o,old.code()).resultCode());
-  t.r.window(710503,"PICKUP","2030-01-01 09:40:00","2030-01-01 10:15:00");t.r.window(710504,"RETURN","2030-01-01 12:30:00","2030-01-01 13:20:00");
+  t.r.window(710503, "2030-01-01 08:35:00","2030-01-01 09:00:00");t.r.window(710504, "2030-01-01 12:30:00","2030-01-01 13:20:00");
   t.r.service.reschedule(new com.petplatform.order.api.command.OrderRescheduleApi.Command(ctx("710100"),o,t.text("SELECT CAST(version AS CHAR) FROM pet_order"),null,null,
-   OffsetDateTime.parse("2030-01-01T09:40Z"),OffsetDateTime.parse("2030-01-01T12:30Z"),null,"710503","710504"));
+   OffsetDateTime.parse("2030-01-01T08:35Z"),OffsetDateTime.parse("2030-01-01T12:30Z"),null,"710503","710504"));
   t.confirm(o,1);assertEquals("VERIFICATION_CODE_INVALID",t.check(o,old.code()).resultCode());assertEquals("VALID",t.check(o,t.issue(o,"INITIAL").code()).resultCode());
  }}
  static QueryContext q(){return new QueryContext("credential-qa",OperatorType.USER,"710100");}

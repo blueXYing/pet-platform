@@ -195,7 +195,12 @@ public final class ScheduleCapacityProofApiImpl implements ScheduleCapacityProof
             }
             List<ProvenClaim> proven = candidateClaims.stream().map(claim -> {
                 WindowFact window = windows.get(claim.windowId());
-                return new ProvenClaim(window.windowId(), window.merchantId(), window.kind(),
+                // CCR-SCH-SLOT-001: slots carry no kind; the claim kind is the selection role
+                // (GENERAL appointment, or PICKUP/RETURN by the chosen direction).
+                String kind = "IN_STORE".equals(query.fulfillmentType()) ? "GENERAL"
+                        : claim.windowId().equals(query.selectedPickupWindowId())
+                                ? "PICKUP" : "RETURN";
+                return new ProvenClaim(window.windowId(), window.merchantId(), kind,
                         java.time.OffsetDateTime.ofInstant(claim.interval().start(), java.time.ZoneOffset.UTC),
                         java.time.OffsetDateTime.ofInstant(claim.interval().end(), java.time.ZoneOffset.UTC));
             }).toList();
@@ -268,15 +273,15 @@ public final class ScheduleCapacityProofApiImpl implements ScheduleCapacityProof
 
     private List<Claim> candidate(CapacityProofQuery query, Map<String, WindowFact> windows) {
         if ("IN_STORE".equals(query.fulfillmentType())) {
+            // CCR-SCH-SLOT-001: candidate slots are the store's open slots covering the whole
+            // appointment; store-wide slots cannot overlap, so at most one qualifies.
             List<WindowFact> eligible = windows.values().stream()
                     .filter(window -> openDerived(window.status())
-                            && "GENERAL".equals(window.kind())
                             && query.storeId().equals(window.storeId())
-                            && query.serviceId().equals(window.serviceId())
                             && !window.startAt().isAfter(query.appointmentStart())
                             && !window.endAt().isBefore(query.appointmentEnd()))
                     .toList();
-            if (eligible.size() != 1) conflict("GENERAL appointment needs one original open window");
+            if (eligible.size() != 1) conflict("GENERAL appointment needs one open store slot");
             WindowFact window = eligible.getFirst();
             if (query.selectedGeneralWindowId() != null
                     && !query.selectedGeneralWindowId().equals(window.windowId())) {
@@ -287,28 +292,29 @@ public final class ScheduleCapacityProofApiImpl implements ScheduleCapacityProof
         }
         WindowFact pickup = windows.get(query.selectedPickupWindowId());
         WindowFact returning = windows.get(query.selectedReturnWindowId());
-        if (!selected(query, pickup, "PICKUP") || !selected(query, returning, "RETURN")) {
+        if (!selected(query, pickup) || !selected(query, returning)) {
             conflict("selected pickup or return window is not available");
         }
         if (returning.startAt().isBefore(pickup.startAt().plusMinutes(120))) {
             conflict("return window starts too early");
         }
-        // The two complete original windows are two claims of one future reservation.
+        // The two complete original slots are two claims of one future reservation.
         return List.of(new Claim(pickup.windowId(), interval(pickup.startAt(), pickup.endAt())),
                 new Claim(returning.windowId(), interval(returning.startAt(), returning.endAt())));
     }
 
-    /** OPEN and its derived SOLD_OUT sub-state are both original windows; the solver, not the
-     * status, rejects net-new occupancy on a filled window (a swap re-proofs after removing its
-     * own reservation, so rescheduling inside a sold-out original window stays possible). */
+    /** OPEN and its derived SOLD_OUT sub-state are both open slots; the solver, not the
+     * status, rejects net-new occupancy on a filled slot (a swap re-proofs after removing its
+     * own reservation, so rescheduling inside a sold-out slot stays possible). */
     private static boolean openDerived(String status) {
         return "OPEN".equals(status) || "SOLD_OUT".equals(status);
     }
 
-    private boolean selected(CapacityProofQuery query, WindowFact window, String kind) {
-        return window != null && openDerived(window.status()) && kind.equals(window.kind())
-                && query.storeId().equals(window.storeId())
-                && query.serviceId().equals(window.serviceId());
+    /** A selected unified slot only needs to be an open slot of this store (CCR-SCH-SLOT-001:
+     * no service/kind dimension; the pickup vs return role comes from the selection field). */
+    private static boolean selected(CapacityProofQuery query, WindowFact window) {
+        return window != null && openDerived(window.status())
+                && query.storeId().equals(window.storeId());
     }
 
     private static Map<String, CurrentStaffFact> people(CurrentStoreStaffFacts employees) {

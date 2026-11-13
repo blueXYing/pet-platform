@@ -183,22 +183,22 @@ class OrderCreateHttpAcceptanceTest {
             assertCode("COMMON_INVALID_ARGUMENT", () -> fixture.create(UUID.randomUUID().toString(),
                     body(Map.of("storeId", STORE, "serviceId", "710402", "petId", "710200",
                             "fulfillmentType", "PICKUP_DELIVERY",
-                            "pickupStart", "2030-01-01T09:00:00Z",
+                            "pickupStart", "2030-01-01T08:00:00Z",
                             "returnStart", "2030-01-01T11:30:00Z",
                             "selectedReturnWindowId", "710502",
                             "serviceAddress", PICKUP_ADDRESS)), USER_A));
             // Interval below 120 minutes: the kernel's own 400 (38号 接送预约字段不合法).
             assertCode("COMMON_INVALID_ARGUMENT", () -> fixture.create(UUID.randomUUID().toString(),
-                    pickupBody("2030-01-01T09:00:00Z", "2030-01-01T10:59:00Z",
+                    pickupBody("2030-01-01T08:00:00Z", "2030-01-01T09:59:00Z",
                             "710501", "710502"), USER_A));
             // Both directions on the same original window: kernel 400 (36号 ROC-2).
             assertCode("COMMON_INVALID_ARGUMENT", () -> fixture.create(UUID.randomUUID().toString(),
-                    pickupBody("2030-01-01T09:00:00Z", "2030-01-01T11:30:00Z",
+                    pickupBody("2030-01-01T08:00:00Z", "2030-01-01T11:30:00Z",
                             "710501", "710501"), USER_A));
             // pickupStart disagreeing with the selected window's own start: the SCH hold face
             // rejects the drift as 409 COMMON_CONFLICT (36号 ROC-2 start equality, lock-side).
             assertCode("COMMON_CONFLICT", () -> fixture.create(UUID.randomUUID().toString(),
-                    pickupBody("2030-01-01T09:15:00Z", "2030-01-01T11:30:00Z",
+                    pickupBody("2030-01-01T08:15:00Z", "2030-01-01T11:30:00Z",
                             "710501", "710502"), USER_A));
             // Cross-branch leakage is a plain 400: pickup carrying the appointment pair...
             Map<String, Object> mixedFields = new LinkedHashMap<>();
@@ -208,7 +208,7 @@ class OrderCreateHttpAcceptanceTest {
             mixedFields.put("fulfillmentType", "PICKUP_DELIVERY");
             mixedFields.put("appointmentStart", "2030-01-01T09:00:00Z");
             mixedFields.put("appointmentEnd", "2030-01-01T10:30:00Z");
-            mixedFields.put("pickupStart", "2030-01-01T09:00:00Z");
+            mixedFields.put("pickupStart", "2030-01-01T08:00:00Z");
             mixedFields.put("returnStart", "2030-01-01T11:30:00Z");
             mixedFields.put("selectedPickupWindowId", "710501");
             mixedFields.put("selectedReturnWindowId", "710502");
@@ -400,7 +400,7 @@ class OrderCreateHttpAcceptanceTest {
         return inStoreBody("2030-01-01T09:00:00Z", "2030-01-01T10:30:00Z");
     }
 
-    /** The seeded PICKUP window 710501 (09:00-09:35) and RETURN window 710502 (11:30-12:20). */
+    /** The seeded PICKUP slot 710501 (08:00-08:35) and RETURN slot 710502 (11:30-12:20). */
     private static final String PICKUP_ADDRESS = "四川省成都市锦江区测试路1号";
 
     private static String pickupBody() {
@@ -408,7 +408,7 @@ class OrderCreateHttpAcceptanceTest {
     }
 
     private static String pickupBody(String address) {
-        return pickupBody("2030-01-01T09:00:00Z", "2030-01-01T11:30:00Z",
+        return pickupBody("2030-01-01T08:00:00Z", "2030-01-01T11:30:00Z",
                 "710501", "710502", address);
     }
 
@@ -505,14 +505,14 @@ class OrderCreateHttpAcceptanceTest {
                                 + " (id,user_id,identity_type,app_id,open_id,created_at,updated_at)"
                                 + " VALUES (?,?,?,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
                         8_810_100L, Long.parseLong(USER_A), "WECHAT_MINI", SUB_APP, OPEN_ID);
-                // The seeded GENERAL window holds one slot only; a second same-day order needs
-                // its own OPEN window (adjacent half-open, staff covers the whole 08:00-14:00 day).
+                // The seeded GENERAL slot holds one slot only; a second same-day order needs
+                // its own OPEN slot (store-wide slots never overlap; staff covers 08:00-14:00).
                 db().jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,"
-                                + "service_id,start_at,end_at,configured_capacity,status,window_kind,"
-                                + "created_at,updated_at) VALUES(?,?,?,?,?,?,1,'OPEN','GENERAL',"
+                                + "start_at,end_at,configured_capacity,status,"
+                                + "created_at,updated_at) VALUES(?,?,?,?,?,1,'OPEN',"
                                 + "UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
-                        8_810_500L, 710301L, 710302L, 710401L,
-                        "2030-01-01 11:00:00", "2030-01-01 14:00:00");
+                        8_810_500L, 710301L, 710302L,
+                        "2030-01-01 12:20:00", "2030-01-01 14:00:00");
                 var source = foundation.db.source;
                 byte[] rawKey = new byte[32];
                 new SecureRandom().nextBytes(rawKey);
@@ -560,10 +560,10 @@ class OrderCreateHttpAcceptanceTest {
                     .get("orderId").toString();
         }
 
-        /** A second order on the same day uses the 12:00 slot of the extra seeded window. */
+        /** A second order on the same day uses the 12:30 slot of the extra seeded window. */
         String createSecondOrder() {
             return create(UUID.randomUUID().toString(),
-                    inStoreBody("2030-01-01T12:00:00Z", "2030-01-01T13:30:00Z"), USER_A).getBody()
+                    inStoreBody("2030-01-01T12:30:00Z", "2030-01-01T14:00:00Z"), USER_A).getBody()
                     .data().get("orderId").toString();
         }
 

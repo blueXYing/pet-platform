@@ -64,8 +64,7 @@ public class AdminGovernanceQueryController {
     "keyword", "createdFrom", "createdTo"
   };
   private static final String[] WINDOW_LIST_PARAMS = {
-    "page", "pageSize", "merchantId", "storeId", "serviceId", "windowKind", "status",
-    "startFrom", "startTo"
+    "page", "pageSize", "merchantId", "storeId", "status", "startFrom", "startTo"
   };
   private static final String[] STAFF_WINDOW_LIST_PARAMS = {
     "page", "pageSize", "storeId", "staffId", "status", "startFrom", "startTo"
@@ -183,8 +182,6 @@ public class AdminGovernanceQueryController {
             new AdminWindowListQuery(
                 optionalId(params.get("merchantId")),
                 optionalId(params.get("storeId")),
-                optionalId(params.get("serviceId")),
-                params.get("windowKind"),
                 params.get("status"),
                 range[0],
                 range[1],
@@ -205,8 +202,6 @@ public class AdminGovernanceQueryController {
                   row.put("windowId", window.windowId());
                   row.put("merchantId", window.merchantId());
                   row.put("storeId", window.storeId());
-                  row.put("serviceId", window.serviceId());
-                  row.put("windowKind", window.windowKind());
                   row.put("startAt", time(window.startAt()));
                   row.put("endAt", time(window.endAt()));
                   row.put("configuredCapacity", window.configuredCapacity());

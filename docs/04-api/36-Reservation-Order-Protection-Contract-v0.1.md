@@ -1,13 +1,13 @@
 # SCH-003 / ORDER 预约与人员保护联合契约 v0.1
 
-状态：**ACCEPTED_CONTRACT_NOT_IMPLEMENTED**，2026-09-24。批准来源：[ROC-1～6 六项回执](../../planning/ccr/CCR-W2-API-001/reservation-order-protection-decisions.md)；业务裁决进入 [SSOT §31](../00-ssot/01-SSOT-宠物平台V1.0-最终业务基线.md)。本文件冻结逻辑合同，不宣称当前 06 Schema、07 内部 API、10 HTTP、11 OpenAPI 或后端已经同步；没有 DDL、真实迁移、通过的并发测试或生产启用。适用已批 [34 号共同 guard/双 claim/旧窗隔离](34-Schedule-Protection-Contract-v0.1.md)；34 号尚未实现部分继续保持关闭。
+状态：**ACCEPTED_CONTRACT_NOT_IMPLEMENTED**，2026-09-24。2026-11-13 注记（[CCR-SCH-SLOT-001](../../planning/ccr/CCR-SCH-SLOT-001.md)）：本契约所述「窗口」自该裁决起为全店共享统一槽（`storeId+时间区间`，无服务/kind 维度），窗口归属语义随之简化——hold/swap/expiry 引用窗口的方式、claim 结构与全部守卫、事务边界不变；§1/§3/§7 已按统一槽口径收口（2026-11-13 同批），claim 腿型（GENERAL/PICKUP/RETURN claim）为预约侧结构、非窗口分类，保持不变。批准来源：[ROC-1～6 六项回执](../../planning/ccr/CCR-W2-API-001/reservation-order-protection-decisions.md)；业务裁决进入 [SSOT §31](../00-ssot/01-SSOT-宠物平台V1.0-最终业务基线.md)。本文件冻结逻辑合同，不宣称当前 06 Schema、07 内部 API、10 HTTP、11 OpenAPI 或后端已经同步；没有 DDL、真实迁移、通过的并发测试或生产启用。适用已批 [34 号共同 guard/双 claim/旧窗隔离](34-Schedule-Protection-Contract-v0.1.md)；34 号尚未实现部分继续保持关闭。
 
 ## 1. 不变量和事实所有权
 
 - 单次到店/接送都必须预约，商家自定义分钟级半开区间 `[start,end)`，不设全平台固定 60 分钟槽；接送 `returnStart >= pickupStart + 120 分钟`。到店实际预约区间继续由既有服务时长和校验规则确定，本合同只增加原 GENERAL 窗关联，不重算或改变区间。
 - SCH 是窗口、排班、具体服务能力、预约和 claim 的事实 Owner；ORDER 是 `pet_order.service_staff_id` 与 `order_staff_assignment.is_current` 当前最终指派的唯一 Owner；MER 是员工归属、在职/在岗与版本事实 Owner。跨域仅经各自 `api`，不跨模块访问 Repository/Mapper/DO/Entity。
 - 每次增加/改变有效预约，或减少服务能力、排班、员工资格、原窗容量的写，都参加已批每店稳定 guard。幂等 Admission/执行锁和授权重验按 [23 号](23-公共接口与幂等契约补充-v0.1.md)及 34 号；随后按数值 storeId 顺序拿 SCH guard，再作同一主库 DataSource、同一顶层本地事务的权威**当前读**和写入，持锁至提交/回滚。独立只读 `REQUIRES_NEW`、RR 旧快照、缓存或远程事实不能替代锁内当前读。
-- `TEMP_LOCKED/CONFIRMED` 是有效占用；`lock_expire_at` 已过而 EXPIRED 尚未提交仍保护。只有已提交 `RELEASED/EXPIRED` 才解除 claim 占用。退款申请、退款单创建、退款处理中不提前释放；正式退款仅在退款最终成功的既有路径释放。旧接送 GENERAL 的盘点/隔离继续按 34 号，不借本合同复制为两个方向窗。
+- `TEMP_LOCKED/CONFIRMED` 是有效占用；`lock_expire_at` 已过而 EXPIRED 尚未提交仍保护。只有已提交 `RELEASED/EXPIRED` 才解除 claim 占用。退款申请、退款单创建、退款处理中不提前释放；正式退款仅在退款最终成功的既有路径释放。旧接送 GENERAL 的盘点/隔离继续按 34 号，不借本合同复制为两个方向窗（2026-11-13 注：CCR-SCH-SLOT-001 统一槽后无 kind 窗分类，该按方向盘点的对象随统一槽废止；34 号 SCHC-4 盘点范围改按「全店槽」口径，V1 未上线、无生产存量）。
 
 ## 2. ROC-1：跨服务完整人员与配置容量证明
 
@@ -23,13 +23,13 @@
 
 ## 3. ROC-2：接送同一最终人员覆盖两完整窗
 
-接送仍按 34 号分别选择一个 OPEN PICKUP 和一个 OPEN RETURN 原窗；两个 `selectedPickupWindowId/selectedReturnWindowId` 与开始值、店/服务/kind 在 guard 内复核。两条 claim 及父预约同事务变化，各 claim 保存原 `windowId,kind,startAt,endAt`，按**完整** `[window.startAt,window.endAt)` 占用；返程开始服务端仍强校验 `>= pickupStart+120 分钟`。不能从单一预约主区间、固定 60 分钟或 service duration 推两个方向结束值。
+接送的上/返程两个时间点各自命中一条同店开放统一槽（2026-11-13 CCR-SCH-SLOT-001：窗口无 PICKUP/RETURN 类型与服务归属，原「分别选择一个 OPEN PICKUP 和一个 OPEN RETURN 原窗」口径废止）；两个 `selectedPickupWindowId/selectedReturnWindowId` 与开始值、店归属在 guard 内复核。两条 claim 及父预约同事务变化，各 claim 保存原 `windowId,kind,startAt,endAt`（kind 为 claim 腿型、非窗口分类），按**完整** `[window.startAt,window.endAt)` 占用；返程开始服务端仍强校验 `>= pickupStart+120 分钟`。不能从单一预约主区间、固定 60 分钟或 service duration 推两个方向结束值。
 
 一笔接送订单只允许一名 ORDER 当前最终服务人员，该人须分别完整覆盖 PICKUP 和 RETURN，两个方向之间可无班。甲只覆盖上门、乙只覆盖送回时没有可行同人，hold/指派失败；另有丙覆盖两段且不与其他预约冲突才可能成功。不能把两名内部技术候选写成两个商家指派或在 C 端提供选人。
 
 ## 4. ROC-3：到店单 GENERAL 原窗
 
-已批准的新增产品选择：**一笔新到店预约须由一条同店同服务 OPEN GENERAL 原窗完整容纳实际 `[appointmentStart,appointmentEnd)`**，只生成一条带原 `windowId` 和实际区间的 GENERAL claim；不能跨相邻 GENERAL 窗拼接。旧请求只有 `appointmentStart/appointmentEnd` 时，仅可在 guard 内**唯一一条**原窗完整包容区间且无歧义时关联；不得按开始点命中、取第一条、默认造窗或借选窗逻辑改写服务时长决定的结束时间。后续 C 可约每项需提供原 `windowId/kind`，新创建/改期建议带 `selectedGeneralWindowId` 十进制 String，服务端仍复查原窗归属、OPEN、区间包含、服务时长与容量。该字段和当前路由尚未在 07/10/11 实现，不把六字段旧响应冒充选窗 ID 来源。
+已批准的新增产品选择：**一笔新到店预约须由一条同店开放统一槽完整容纳实际 `[appointmentStart,appointmentEnd)`**（2026-11-13 CCR-SCH-SLOT-001：统一槽无服务/kind 归属，原「同店同服务 OPEN GENERAL 原窗」口径废止），只生成一条带原 `windowId` 和实际区间的到店 claim；不能跨相邻统一槽拼接。旧请求只有 `appointmentStart/appointmentEnd` 时，仅可在 guard 内**唯一一条**开放槽完整包容区间且无歧义时关联；不得按开始点命中、取第一条、默认造窗或借选窗逻辑改写服务时长决定的结束时间。后续 C 可约每项需提供原 `windowId`（`kind` 增列随统一槽取消），新创建/改期建议带 `selectedGeneralWindowId` 十进制 String（字段名保留，语义=顾客所选时间点命中的全店统一槽 ID），服务端仍复查原窗归属（同店）、OPEN、区间包含、服务时长与容量。该字段和当前路由尚未在 07/10/11 实现，不把六字段旧响应冒充选窗 ID 来源。
 
 跨窗、无唯一完整包容窗或历史重叠窗歧义的新单失败关闭，提示重选；这项限制来自本轮批准，不倒称旧 PRD 已禁止。存量跨窗订单继续原履约并保留证据，不硬关联其中一窗、不自动取消、不当空位；迁移必须逐单盘点、可证明才回填，异常门店/服务隔离相关发布和减员。若未来要允许跨窗，须另行批准选窗数量、多 GENERAL claim 基数及逐窗容量扣减的合同。新事实的 claim 基数为 IN_STORE 恰好一条 GENERAL，PICKUP_DELIVERY 恰好一条 PICKUP 加一条 RETURN；缺段或多段都不提交。
 
@@ -65,7 +65,7 @@ REFUND 状态如需参与一致性判定，只能经 REFUND 公共 API 取正式
 
 ## 7. ROC-6：改期保留当前指派，失败保留旧事实
 
-改期仍每单最多一次，仅预约开始前、同商家同服务，先锁新时段成功后才释放旧时段，成功后重新待确认并重算 30 分钟。已有 ORDER 当前商家指派时，交换将该员工固定到**新** GENERAL 或两条完整接送 claim 做 ROC-1 证明；他不能完整覆盖或新容量不够，则 `409 SCHEDULE_SWAP_FAILED`，原预约、原 claim、当前指派、改期次数与确认周期保持不变。不能先写新窗、自动清空当前人或暗中改派到技术匹配的另一人。尚未指派的订单按内部完整求解保护，但不写自动人员。此行为是本轮明确批准的新产品选择，不倒称旧 PRD 已规定；退款、核销及已支付快照其他规则不变。
+改期仍每单最多一次，仅预约开始前、同商家同服务，先锁新时段成功后才释放旧时段，成功后重新待确认并重算 30 分钟。已有 ORDER 当前商家指派时，交换将该员工固定到**新**到店原窗（统一槽）或两条完整接送 claim 做 ROC-1 证明；他不能完整覆盖或新容量不够，则 `409 SCHEDULE_SWAP_FAILED`，原预约、原 claim、当前指派、改期次数与确认周期保持不变。不能先写新窗、自动清空当前人或暗中改派到技术匹配的另一人。尚未指派的订单按内部完整求解保护，但不写自动人员。此行为是本轮明确批准的新产品选择，不倒称旧 PRD 已规定；退款、核销及已支付快照其他规则不变。
 
 ## 8. 交付与失败关闭
 

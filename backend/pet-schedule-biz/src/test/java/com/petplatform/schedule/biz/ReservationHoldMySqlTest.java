@@ -301,22 +301,24 @@ class ReservationHoldMySqlTest {
         }
 
         private void seedGeneral() {
+            // CCR-SCH-SLOT-001: store-wide unified slot (no service_id/window_kind columns).
             jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,"
-                    + "service_id,start_at,end_at,configured_capacity,status,version,created_at,"
-                    + "updated_at,window_kind) VALUES(101,10,201,301,'2030-01-01 01:00:00',"
-                    + "'2030-01-01 02:00:00',2,'OPEN',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),"
-                    + "'GENERAL')");
+                    + "start_at,end_at,configured_capacity,status,version,created_at,"
+                    + "updated_at) VALUES(101,10,201,'2030-01-01 01:00:00',"
+                    + "'2030-01-01 02:00:00',2,'OPEN',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
             staff("2030-01-01 01:00:00", "2030-01-01 02:00:00");
         }
 
+        /** Unified slots: 102 carries the pickup time point, 103 the return time point (the
+         * PICKUP/RETURN roles come from the hold selection, not from window columns). */
         private void seedPickup() {
             jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,"
-                    + "service_id,start_at,end_at,configured_capacity,status,version,created_at,"
-                    + "updated_at,window_kind) VALUES"
-                    + "(102,10,201,301,'2030-01-01 01:00:00','2030-01-01 02:00:00',2,"
-                    + "'OPEN',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),'PICKUP'),"
-                    + "(103,10,201,301,'2030-01-01 03:00:00','2030-01-01 04:00:00',2,"
-                    + "'OPEN',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),'RETURN')");
+                    + "start_at,end_at,configured_capacity,status,version,created_at,"
+                    + "updated_at) VALUES"
+                    + "(102,10,201,'2030-01-01 01:00:00','2030-01-01 02:00:00',2,"
+                    + "'OPEN',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3)),"
+                    + "(103,10,201,'2030-01-01 03:00:00','2030-01-01 04:00:00',2,"
+                    + "'OPEN',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
             staff("2030-01-01 01:00:00", "2030-01-01 02:00:00");
             jdbc.update("INSERT INTO staff_availability_window(id,store_id,staff_id,start_at,"
                     + "end_at,status,version,created_at,updated_at) VALUES(403,201,401,"

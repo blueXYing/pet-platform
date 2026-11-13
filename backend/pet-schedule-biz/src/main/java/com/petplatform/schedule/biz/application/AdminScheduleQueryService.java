@@ -42,7 +42,6 @@ public final class AdminScheduleQueryService {
     static final int DEFAULT_PAGE_SIZE = 20;
     static final int MAX_PAGE_SIZE = 100;
     static final int MAX_RANGE_DAYS = 92;
-    private static final Set<String> WINDOW_KINDS = Set.of("GENERAL", "PICKUP", "RETURN");
     private static final Set<String> WINDOW_STATUSES = Set.of("OPEN", "CLOSED", "SOLD_OUT");
     private static final Set<String> STAFF_WINDOW_STATUSES = Set.of("AVAILABLE", "CLOSED");
     private static final Set<String> RESERVATION_STATUSES =
@@ -74,20 +73,18 @@ public final class AdminScheduleQueryService {
         authorizeCollection(auth, context, "schedule.read", "SCHEDULE_WINDOW_READ");
         Long merchantId = optionalId(query.merchantId(), "merchantId");
         Long storeId = optionalId(query.storeId(), "storeId");
-        Long serviceId = optionalId(query.serviceId(), "serviceId");
-        String windowKind = vocabulary(query.windowKind(), WINDOW_KINDS, "windowKind");
         String status = vocabulary(query.status(), WINDOW_STATUSES, "status");
         java.time.LocalDateTime[] range = range(query.startFrom(), query.startTo());
         int page = page(query.page());
         int pageSize = pageSize(query.pageSize());
         long total = store.read(mapper -> mapper.countWindows(
-                merchantId, storeId, serviceId, windowKind, status, range[0], range[1]));
+                merchantId, storeId, status, range[0], range[1]));
         if (total == 0) {
             return new PageResult<>(List.of(), total, page, pageSize);
         }
         LocalDateTime now = utcNow();
         List<AdminScheduleWindow> items = store.read(mapper -> mapper.selectWindowPage(
-                        merchantId, storeId, serviceId, windowKind, status, range[0], range[1],
+                        merchantId, storeId, status, range[0], range[1],
                         now, pageSize, (long) (page - 1) * pageSize)).stream()
                 .map(AdminScheduleQueryService::window)
                 .toList();
@@ -165,7 +162,6 @@ public final class AdminScheduleQueryService {
     private static AdminScheduleWindow window(AdminWindowRow row) {
         return new AdminScheduleWindow(
                 IDS.toApi(row.getId()), IDS.toApi(row.getMerchantId()), IDS.toApi(row.getStoreId()),
-                IDS.toApi(row.getServiceId()), row.getWindowKind(),
                 instant(row.getStartAt()), instant(row.getEndAt()),
                 row.getConfiguredCapacity() == null ? 0 : row.getConfiguredCapacity(),
                 row.getStatus(),

@@ -13,7 +13,7 @@ import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
-/** A single read-only RR view of SCH windows and original reservation claims for display. */
+/** A single read-only RR view of SCH unified slots and original reservation claims for display. */
 public final class SelectionReadStore {
     private final SqlSessionTemplate template;
     private final TransactionTemplate transaction;
@@ -40,20 +40,22 @@ public final class SelectionReadStore {
         }
     }
 
-    public List<WindowRow> windows(ScheduleSelectionMapper connection, long storeId, long serviceId,
+    /** Store-wide unified slots (CCR-SCH-SLOT-001): no service/kind filter on the window table. */
+    public List<WindowRow> windows(ScheduleSelectionMapper connection, long storeId,
             LocalDateTime from, LocalDateTime to) {
-        return connection.windows(storeId, serviceId, from, to).stream().map(row -> new WindowRow(
+        return connection.windows(storeId, from, to).stream().map(row -> new WindowRow(
                 ScheduleSqlRows.number(row, "id"), ScheduleSqlRows.number(row, "merchant_id"),
-                ScheduleSqlRows.number(row, "store_id"), ScheduleSqlRows.number(row, "service_id"),
-                ScheduleSqlRows.text(row, "window_kind"), ScheduleSqlRows.dateTime(row, "start_at"),
+                ScheduleSqlRows.number(row, "store_id"),
+                ScheduleSqlRows.dateTime(row, "start_at"),
                 ScheduleSqlRows.dateTime(row, "end_at"),
                 (int) ScheduleSqlRows.number(row, "configured_capacity"),
                 ScheduleSqlRows.text(row, "status"), ScheduleSqlRows.number(row, "version"))).toList();
     }
 
-    public List<ClaimRow> claims(ScheduleSelectionMapper connection, long storeId, long serviceId,
+    /** All reservation claims touching the store's slots in range — single-pool occupancy facts. */
+    public List<ClaimRow> claims(ScheduleSelectionMapper connection, long storeId,
             LocalDateTime from, LocalDateTime to) {
-        return connection.claims(storeId, serviceId, from, to).stream().map(row -> new ClaimRow(
+        return connection.claims(storeId, from, to).stream().map(row -> new ClaimRow(
                 ScheduleSqlRows.number(row, "reservation_id"), ScheduleSqlRows.number(row, "merchant_id"),
                 ScheduleSqlRows.number(row, "store_id"), ScheduleSqlRows.number(row, "service_id"),
                 ScheduleSqlRows.text(row, "fulfillment_type"), ScheduleSqlRows.dateTime(row, "start_at"),
@@ -65,20 +67,19 @@ public final class SelectionReadStore {
                 ScheduleSqlRows.dateTime(row, "claim_start_at"), ScheduleSqlRows.dateTime(row, "claim_end_at"),
                 ScheduleSqlRows.nullableNumber(row, "original_merchant_id"),
                 ScheduleSqlRows.nullableNumber(row, "original_store_id"),
-                ScheduleSqlRows.nullableNumber(row, "original_service_id"),
-                ScheduleSqlRows.text(row, "original_kind"), ScheduleSqlRows.dateTime(row, "original_start_at"),
+                ScheduleSqlRows.dateTime(row, "original_start_at"),
                 ScheduleSqlRows.dateTime(row, "original_end_at"),
                 ScheduleSqlRows.text(row, "original_status"))).toList();
     }
 
-    /** Claims naming this service or one of its windows must have an intact parent and owner. */
-    public boolean hasBrokenClaimLinks(ScheduleSelectionMapper connection, long storeId, long serviceId,
+    /** Claims of this store's slots must have an intact parent and owner. */
+    public boolean hasBrokenClaimLinks(ScheduleSelectionMapper connection, long storeId,
             LocalDateTime from, LocalDateTime to) {
-        Integer broken = connection.brokenClaimLinks(storeId, serviceId, from, to);
+        Integer broken = connection.brokenClaimLinks(storeId, from, to);
         return broken == null || broken > 0;
     }
 
-    public record WindowRow(long id, long merchantId, long storeId, long serviceId, String kind,
+    public record WindowRow(long id, long merchantId, long storeId,
             LocalDateTime start, LocalDateTime end, int configuredCapacity, String status,
             long version) {}
 
@@ -87,6 +88,6 @@ public final class SelectionReadStore {
             LocalDateTime pickupStart, LocalDateTime returnStart, String status,
             Long claimId, Long windowId, Long claimStoreId, Long claimServiceId, String claimKind,
             LocalDateTime claimStart, LocalDateTime claimEnd, Long originalMerchantId,
-            Long originalStoreId, Long originalServiceId, String originalKind,
+            Long originalStoreId,
             LocalDateTime originalStart, LocalDateTime originalEnd, String originalStatus) {}
 }

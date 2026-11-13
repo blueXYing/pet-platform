@@ -486,13 +486,14 @@ class MerchantStaffAcceptanceHttpTest {
     String service = createActiveService(token, merchantId, storeId, String.valueOf(category));
     LocalDate day = LocalDate.now(ZoneId.of("Asia/Shanghai")).plusDays(10);
     String start = utc(day, 9, 0), end = utc(day, 10, 0);
+    // CCR-SCH-SLOT-001: the slot is store-wide; the service's bookability comes from staff
+    // capability + schedule coverage, which the steps below add progressively.
     db.jdbc.update(
-        "INSERT INTO schedule_availability_window(id,merchant_id,store_id,service_id,start_at,end_at,configured_capacity,status,version,created_at,updated_at)"
-            + " VALUES(?,?,?,?,?, ?,2,'OPEN',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+        "INSERT INTO schedule_availability_window(id,merchant_id,store_id,start_at,end_at,configured_capacity,status,version,created_at,updated_at)"
+            + " VALUES(?,?,?,?,?,2,'OPEN',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
         db.ids.nextId(),
         Long.parseLong(merchantId),
         Long.parseLong(storeId),
-        Long.parseLong(service),
         start,
         end);
     String path =

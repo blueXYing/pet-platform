@@ -7,9 +7,10 @@ import java.util.List;
 
 /**
  * Schedule merchant write-side shapes (34号 Schedule-Protection-Contract §2~§4, write-proposal
- * v0.2 §2 approved direction). IDs are Snowflake decimal Strings, versions are non-negative
- * decimal Strings, times are minute-precision instants; the store/service/kind identity of a
- * window is fixed at creation and never transferable through an update.
+ * v0.2 §2 approved direction; CCR-SCH-SLOT-001 unified store-wide slots). IDs are Snowflake
+ * decimal Strings, versions are non-negative decimal Strings, times are minute-precision
+ * instants; a window is a store-wide slot — the store identity of a window is fixed at creation
+ * and never transferable through an update.
  */
 public final class ScheduleWriteTypes {
     private ScheduleWriteTypes() {}
@@ -17,8 +18,7 @@ public final class ScheduleWriteTypes {
     // ------------------------------------------------------------------ service windows
 
     public record CreateWindowCommand(CommandContext context, String merchantId, String storeId,
-            String serviceId, String windowKind, OffsetDateTime startAt, OffsetDateTime endAt,
-            int configuredCapacity) {}
+            OffsetDateTime startAt, OffsetDateTime endAt, int configuredCapacity) {}
 
     public record UpdateWindowCommand(CommandContext context, String windowId, String merchantId,
             String storeId, OffsetDateTime startAt, OffsetDateTime endAt,
@@ -34,8 +34,8 @@ public final class ScheduleWriteTypes {
     public record BatchCloseCommand(CommandContext context, String merchantId, String storeId,
             LocalDate fromDate, LocalDate toDate, String reason) {}
 
-    public record WindowResult(String windowId, String merchantId, String storeId, String serviceId,
-            String windowKind, OffsetDateTime startAt, OffsetDateTime endAt, int configuredCapacity,
+    public record WindowResult(String windowId, String merchantId, String storeId,
+            OffsetDateTime startAt, OffsetDateTime endAt, int configuredCapacity,
             String status, String version) {}
 
     public record BlockedWindow(WindowResult window, String reasonCode) {}

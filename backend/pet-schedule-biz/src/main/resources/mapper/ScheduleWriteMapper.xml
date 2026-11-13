@@ -25,20 +25,21 @@
         WHERE request_key = #{requestKey} AND status = 'RESERVED'
     </update>
 
-    <!-- service windows (06号 §2; window_kind added by 37号, identity fixed after creation) -->
+    <!-- store-wide unified slots (06号 §2 as amended by CCR-SCH-SLOT-001; store identity fixed
+         after creation, no service/window_kind dimensions) -->
     <select id="selectWindowByIdForUpdate" resultType="map">
-        SELECT id, merchant_id, store_id, service_id, window_kind, start_at, end_at,
+        SELECT id, merchant_id, store_id, start_at, end_at,
                configured_capacity, status, version
         FROM schedule_availability_window
         WHERE id = #{windowId}
         FOR UPDATE
     </select>
     <insert id="insertWindow">
-        INSERT INTO schedule_availability_window(id, merchant_id, store_id, service_id,
-            window_kind, start_at, end_at, configured_capacity, status, version,
+        INSERT INTO schedule_availability_window(id, merchant_id, store_id,
+            start_at, end_at, configured_capacity, status, version,
             created_at, updated_at)
-        VALUES(#{row.id}, #{row.merchantId}, #{row.storeId}, #{row.serviceId},
-            #{row.windowKind}, #{row.startAt}, #{row.endAt}, #{row.configuredCapacity},
+        VALUES(#{row.id}, #{row.merchantId}, #{row.storeId},
+            #{row.startAt}, #{row.endAt}, #{row.configuredCapacity},
             'OPEN', 0, #{row.now}, #{row.now})
     </insert>
     <update id="updateWindow">

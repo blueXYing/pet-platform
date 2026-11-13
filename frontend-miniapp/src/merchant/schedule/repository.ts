@@ -52,11 +52,10 @@ export class RealScheduleRepository implements ScheduleDeps {
 
   private windowsParams(query: WindowPageQuery, merchantId: string): Record<string, unknown> {
     const data: Record<string, unknown> = { merchantId, page: query.page, pageSize: query.pageSize }
-    if (query.serviceId) data.serviceId = query.serviceId
-    if (query.kind) data.kind = query.kind
     // §3.1/§3.3: the controller accepts OPEN/CLOSED/SOLD_OUT as the server-side filter;
     // the workbench status chips and the summary count queries ride it (total is the
-    // filter-matched count).
+    // filter-matched count). Unified slot carries no serviceId/kind filter any more
+    // (CCR-SCH-SLOT-001 §2: window identity is storeId+时间区间).
     if (query.status) data.status = query.status
     return data
   }
@@ -70,8 +69,10 @@ export class RealScheduleRepository implements ScheduleDeps {
   async createWindow(slot: string, input: WindowFormInput): Promise<ScheduleWindowReceipt> {
     const { merchantId, storeId } = this.target()
     if (windowFormProblems(input).length) throw new Error('WORKSPACE_FORM_INVALID')
+    // Unified slot (CCR-SCH-SLOT-001 §2): the create body carries NO serviceId/windowKind —
+    // the store-wide shared interval + capacity is the whole payload.
     return this.write(slot, `/api/v1/merchant/stores/${storeId}/availability-windows`, 'POST', {
-      merchantId, serviceId: input.serviceId, windowKind: input.windowKind,
+      merchantId,
       startAt: composeTimestamp(input.startDate, input.startTime),
       endAt: composeTimestamp(input.endDate, input.endTime),
       configuredCapacity: input.configuredCapacity,
@@ -204,9 +205,10 @@ export class RealScheduleRepository implements ScheduleDeps {
 }
 
 /** Best-effort service options from the existing service-management list (first 100 rows):
- *  id, display name and fulfillmentType (the page narrows window kinds per PRD29 guidance).
- *  The schedule contract carries serviceId only; when the service module is not reachable
- *  the pages fall back to raw ids — enrichment failure never blocks a page. */
+ *  id, display name and fulfillmentType. Used by the capabilities page (SCHC-2 service
+ *  authorization is unchanged by CCR-SCH-SLOT-001); the store-slot pages no longer consume
+ *  it. When the service module is not reachable the page falls back to raw ids —
+ *  enrichment failure never blocks a page. */
 export type ScheduleServiceOption = Readonly<{
   serviceId: string; serviceName: string; fulfillmentType: 'IN_STORE' | 'PICKUP_DELIVERY' | null
 }>

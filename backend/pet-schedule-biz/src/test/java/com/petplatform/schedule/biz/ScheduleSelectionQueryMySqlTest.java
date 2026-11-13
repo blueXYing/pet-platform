@@ -39,18 +39,20 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.init.ScriptUtils;
 
+/** Unified-slot selection reads (CCR-SCH-SLOT-001): store-wide slots, per-service capability
+ * projection and the historical windowId/kind item shape kept for the C-end consumers. */
 class ScheduleSelectionQueryMySqlTest {
     private static final LocalDate DATE = LocalDate.of(2030, 1, 1);
     private static final QueryContext CONTEXT =
             new QueryContext("selection-test", OperatorType.USER, "601");
 
     @Test
-    void pickupAndReturnCountOriginalClaimsWithoutChargingGapOrLegacyGeneralWindow()
+    void pickupDeliverySeesEverySlotInBothDirectionsAndCountsOnlyClaimedSlots()
             throws Exception {
         try (Database db = new Database()) {
-            db.window(101, "PICKUP", "2030-01-01 01:00:00", "2030-01-01 01:45:00");
-            db.window(102, "GENERAL", "2030-01-01 02:00:00", "2030-01-01 04:00:00");
-            db.window(103, "RETURN", "2030-01-01 04:00:00", "2030-01-01 05:30:00");
+            db.window(101, "2030-01-01 01:00:00", "2030-01-01 01:45:00");
+            db.window(102, "2030-01-01 02:00:00", "2030-01-01 04:00:00");
+            db.window(103, "2030-01-01 04:00:00", "2030-01-01 05:30:00");
             db.reservation(201, "PICKUP_DELIVERY", "2030-01-01 01:00:00",
                     "2030-01-01 05:30:00", "2030-01-01 01:00:00",
                     "2030-01-01 04:00:00");
@@ -62,73 +64,91 @@ class ScheduleSelectionQueryMySqlTest {
                     + "lock_expire_at='2029-01-01 00:00:00' WHERE id=201");
 
             SelectionWindowQueryService service = service(db, FulfillmentType.PICKUP_DELIVERY);
-            SelectionWindowPageDTO page = service.page(query(null));
-            assertEquals(List.of("101", "103"), page.items().stream()
+            SelectionWindowPageDTO page = service.page(query());
+            // Every unified slot is projected in both directions (PICKUP then RETURN), in
+            // start order — the C-end splits the pickup/return candidates by the role kind.
+            assertEquals(List.of("101", "101", "102", "102", "103", "103"), page.items().stream()
                     .map(item -> item.windowId()).toList());
-            assertEquals(List.of("PICKUP", "RETURN"), page.items().stream()
-                    .map(item -> item.kind()).toList());
-            assertEquals(List.of(1, 1), page.items().stream()
+            assertEquals(List.of("PICKUP", "RETURN", "PICKUP", "RETURN", "PICKUP", "RETURN"),
+                    page.items().stream().map(item -> item.kind()).toList());
+            // Single pool: only the slots carrying claims count occupancy; the untouched
+            // middle slot stays fully free for this service.
+            assertEquals(List.of(1, 1, 0, 0, 1, 1), page.items().stream()
                     .map(item -> item.occupiedCount()).toList());
-            assertEquals(List.of(1, 1), page.items().stream()
+            assertEquals(List.of(1, 1, 2, 2, 1, 1), page.items().stream()
                     .map(item -> item.remainingCapacity()).toList());
             assertEquals("2030-01-01T01:00Z", page.items().getFirst().start().toString());
             assertEquals("2030-01-01T05:30Z", page.items().getLast().end().toString());
-            assertEquals(List.of("103"), service.page(query("RETURN")).items().stream()
-                    .map(item -> item.windowId()).toList());
-            assertEquals(CommonApiCodes.INVALID_ARGUMENT,
-                    assertThrows(ApiException.class, () -> service.page(query("GENERAL"))).code());
         }
     }
 
     @Test
-    void inStoreUsesGeneralClaimAndRejectsIncompleteOrUnknownFacts() throws Exception {
+    void crossServiceClaimOfAnotherServiceConsumesTheSharedPool() throws Exception {
         try (Database db = new Database()) {
-            db.window(101, "GENERAL", "2030-01-01 01:00:00", "2030-01-01 03:00:00");
-            db.window(102, "GENERAL", "2030-01-01 03:00:00", "2030-01-01 05:00:00");
+            // CCR-SCH-SLOT-001: a service-302 claim on the shared slot reduces the
+            // remaining capacity the queried service-301 view reports.
+            db.window(101, "2030-01-01 01:00:00", "2030-01-01 03:00:00");
+            db.reservation(201, "IN_STORE", "2030-01-01 01:30:00",
+                    "2030-01-01 02:30:00", null, null);
+            db.jdbc.update("UPDATE schedule_reservation SET service_id=302 WHERE id=201");
+            db.claim(301, 201, 101, "GENERAL", "2030-01-01 01:30:00",
+                    "2030-01-01 02:30:00");
+            db.jdbc.update("UPDATE schedule_reservation_claim SET service_id=302 WHERE id=301");
+            SelectionWindowPageDTO page =
+                    service(db, FulfillmentType.IN_STORE).page(query());
+            assertEquals(1, page.items().size());
+            assertEquals(1, page.items().getFirst().occupiedCount());
+            assertEquals(1, page.items().getFirst().remainingCapacity());
+        }
+    }
+
+    @Test
+    void inStoreUsesGeneralRoleAndRejectsIncompleteOrUnknownFacts() throws Exception {
+        try (Database db = new Database()) {
+            db.window(101, "2030-01-01 01:00:00", "2030-01-01 03:00:00");
+            db.window(102, "2030-01-01 03:00:00", "2030-01-01 05:00:00");
             db.reservation(201, "IN_STORE", "2030-01-01 01:30:00",
                     "2030-01-01 02:30:00", null, null);
             db.claim(301, 201, 101, "GENERAL", "2030-01-01 01:30:00",
                     "2030-01-01 02:30:00");
             SelectionWindowQueryService service = service(db, FulfillmentType.IN_STORE);
-            assertEquals(List.of(1, 0), service.page(query(null)).items().stream()
+            assertEquals(List.of(1, 0), service.page(query()).items().stream()
                     .map(item -> item.occupiedCount()).toList());
-            assertEquals(CommonApiCodes.INVALID_ARGUMENT,
-                    assertThrows(ApiException.class, () -> service.page(query("PICKUP"))).code());
             db.jdbc.update("DELETE FROM schedule_reservation_claim WHERE id=301");
             assertEquals(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
-                    assertThrows(ApiException.class, () -> service.page(query(null))).code());
-            db.jdbc.update("UPDATE schedule_availability_window SET window_kind='BROKEN' "
+                    assertThrows(ApiException.class, () -> service.page(query())).code());
+            db.jdbc.update("INSERT INTO schedule_reservation_claim(id,reservation_id,window_id,"
+                    + "store_id,service_id,kind,start_at,end_at) VALUES(301,201,101,201,301,"
+                    + "'GENERAL','2030-01-01 01:30:00','2030-01-01 02:30:00')");
+            db.jdbc.update("UPDATE schedule_availability_window SET status='BROKEN' "
                     + "WHERE id=102");
             assertEquals(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
-                    assertThrows(ApiException.class, () -> service.page(query(null))).code());
+                    assertThrows(ApiException.class, () -> service.page(query())).code());
         }
     }
 
     @Test
-    void pickupLegacyGeneralReservationCannotBeInventedAsTwoDirectionalClaims()
-            throws Exception {
+    void pickupReservationWithoutClaimsFailsClosed() throws Exception {
         try (Database db = new Database()) {
-            db.window(101, "GENERAL", "2030-01-01 01:00:00", "2030-01-01 05:00:00");
-            db.window(102, "PICKUP", "2030-01-01 01:00:00", "2030-01-01 02:00:00");
-            db.window(103, "RETURN", "2030-01-01 04:00:00", "2030-01-01 05:00:00");
+            db.window(101, "2030-01-01 01:00:00", "2030-01-01 05:00:00");
             db.reservation(201, "PICKUP_DELIVERY", "2030-01-01 01:00:00",
                     "2030-01-01 05:00:00", "2030-01-01 01:00:00",
                     "2030-01-01 04:00:00");
             SelectionWindowQueryService service = service(db, FulfillmentType.PICKUP_DELIVERY);
             assertEquals(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
-                    assertThrows(ApiException.class, () -> service.page(query(null))).code());
+                    assertThrows(ApiException.class, () -> service.page(query())).code());
         }
     }
 
     @Test
     void orphanClaimAgainstAVisibleWindowFailsClosed() throws Exception {
         try (Database db = new Database()) {
-            db.window(101, "GENERAL", "2030-01-01 01:00:00", "2030-01-01 03:00:00");
+            db.window(101, "2030-01-01 01:00:00", "2030-01-01 03:00:00");
             db.claim(301, 999, 101, "GENERAL", "2030-01-01 01:30:00",
                     "2030-01-01 02:30:00");
             SelectionWindowQueryService service = service(db, FulfillmentType.IN_STORE);
             assertEquals(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
-                    assertThrows(ApiException.class, () -> service.page(query(null))).code());
+                    assertThrows(ApiException.class, () -> service.page(query())).code());
         }
     }
 
@@ -138,7 +158,7 @@ class ScheduleSelectionQueryMySqlTest {
             // Contract53 §3 (2026-10-05 ruling): SOLD_OUT is an open-derived state, so the
             // selection read keeps listing it with remaining=0/available=false instead of
             // dropping the slot the C-end page previously showed as an at-capacity window.
-            db.window(101, "GENERAL", "2030-01-01 01:00:00", "2030-01-01 03:00:00");
+            db.window(101, "2030-01-01 01:00:00", "2030-01-01 03:00:00");
             db.jdbc.update("UPDATE schedule_availability_window SET status='SOLD_OUT', "
                     + "configured_capacity=1 WHERE id=101");
             db.reservation(201, "IN_STORE", "2030-01-01 01:30:00", "2030-01-01 02:30:00",
@@ -146,7 +166,7 @@ class ScheduleSelectionQueryMySqlTest {
             db.claim(301, 201, 101, "GENERAL", "2030-01-01 01:30:00",
                     "2030-01-01 02:30:00");
             SelectionWindowPageDTO page =
-                    service(db, FulfillmentType.IN_STORE).page(query(null));
+                    service(db, FulfillmentType.IN_STORE).page(query());
             assertEquals(1, page.items().size());
             var soldOut = page.items().getFirst();
             assertEquals("101", soldOut.windowId());
@@ -157,8 +177,8 @@ class ScheduleSelectionQueryMySqlTest {
         }
     }
 
-    private static SelectionWindowQuery query(String kind) {
-        return new SelectionWindowQuery("301", "201", DATE, DATE, kind, CONTEXT);
+    private static SelectionWindowQuery query() {
+        return new SelectionWindowQuery("301", "201", DATE, DATE, CONTEXT);
     }
 
     private static SelectionWindowQueryService service(Database db, FulfillmentType type) {
@@ -212,11 +232,12 @@ class ScheduleSelectionQueryMySqlTest {
             }
         }
 
-        void window(long id, String kind, String start, String end) {
+        void window(long id, String start, String end) {
+            // CCR-SCH-SLOT-001: store-wide unified slot rows (no service_id/window_kind).
             jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,"
-                    + "service_id,start_at,end_at,configured_capacity,status,version,"
-                    + "created_at,updated_at,window_kind) VALUES(?,10,201,301,?,?,2,'OPEN',0,"
-                    + "UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),?)", id, start, end, kind);
+                    + "start_at,end_at,configured_capacity,status,version,"
+                    + "created_at,updated_at) VALUES(?,10,201,?,?,2,'OPEN',0,"
+                    + "UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))", id, start, end);
         }
 
         void reservation(long id, String type, String start, String end,

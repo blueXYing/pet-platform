@@ -69,8 +69,7 @@ public final class ScheduleProtectionFactsApiImpl implements ScheduleProtectionF
 
     private static WindowFact window(Map<String, Object> row) {
         return new WindowFact(ScheduleSqlRows.id(row, "id"), ScheduleSqlRows.id(row, "merchant_id"),
-                ScheduleSqlRows.id(row, "store_id"), ScheduleSqlRows.id(row, "service_id"),
-                ScheduleSqlRows.text(row, "window_kind"), ScheduleSqlRows.at(row, "start_at"),
+                ScheduleSqlRows.id(row, "store_id"), ScheduleSqlRows.at(row, "start_at"),
                 ScheduleSqlRows.at(row, "end_at"), (int) ScheduleSqlRows.number(row, "configured_capacity"),
                 ScheduleSqlRows.text(row, "status"), ScheduleSqlRows.version(row, "version"));
     }
@@ -105,28 +104,26 @@ public final class ScheduleProtectionFactsApiImpl implements ScheduleProtectionF
 
     private static void validate(StoreScheduleFacts facts) {
         Map<String, WindowFact> byWindow = new HashMap<>();
-        Map<String, List<WindowFact>> openGroups = new HashMap<>();
+        // CCR-SCH-SLOT-001: slots are store-wide, so the overlap invariant is one single group.
+        List<WindowFact> openWindows = new ArrayList<>();
         for (WindowFact window : facts.windows()) {
-            if (!facts.storeId().equals(window.storeId()) || !validKind(window.kind())
+            if (!facts.storeId().equals(window.storeId())
                     || !validInterval(window.startAt(), window.endAt())
                     || window.configuredCapacity() < 0
                     || !validStatus(window.status())
                     || byWindow.putIfAbsent(window.windowId(), window) != null) {
                 bad("invalid schedule window facts");
             }
-            // SOLD_OUT is a derived sub-state of an open window (Contract53 §3): it occupies the
-            // same single-open-window slot and joins the overlap invariant.
+            // SOLD_OUT is a derived sub-state of an open slot (Contract53 §3): it occupies the
+            // same single-open-slot position and joins the store-wide overlap invariant.
             if (openDerived(window.status())) {
-                openGroups.computeIfAbsent(window.serviceId() + ":" + window.kind(),
-                        ignored -> new ArrayList<>()).add(window);
+                openWindows.add(window);
             }
         }
-        for (List<WindowFact> group : openGroups.values()) {
-            group.sort(Comparator.comparing(WindowFact::startAt).thenComparing(WindowFact::windowId));
-            for (int index = 1; index < group.size(); index++) {
-                if (group.get(index - 1).endAt().isAfter(group.get(index).startAt())) {
-                    bad("overlapping OPEN windows of one service and kind");
-                }
+        openWindows.sort(Comparator.comparing(WindowFact::startAt).thenComparing(WindowFact::windowId));
+        for (int index = 1; index < openWindows.size(); index++) {
+            if (openWindows.get(index - 1).endAt().isAfter(openWindows.get(index).startAt())) {
+                bad("overlapping OPEN windows of one store");
             }
         }
         Map<String, ReservationFact> byReservation = new HashMap<>();
@@ -148,13 +145,14 @@ public final class ScheduleProtectionFactsApiImpl implements ScheduleProtectionF
         for (ClaimFact claim : facts.claims()) {
             ReservationFact parent = byReservation.get(claim.reservationId());
             WindowFact window = byWindow.get(claim.windowId());
+            // CCR-SCH-SLOT-001: windows are store-wide slots, so a claim only keeps its store and
+            // merchant linkage to the window; its service/kind belong to the reservation role.
             if (parent == null || window == null || !claimIds.add(claim.claimId())
                     || !facts.storeId().equals(claim.storeId())
                     || !parent.storeId().equals(claim.storeId())
                     || !parent.serviceId().equals(claim.serviceId())
-                    || !window.serviceId().equals(claim.serviceId())
                     || !window.merchantId().equals(parent.merchantId())
-                    || !window.kind().equals(claim.kind())
+                    || !validKind(claim.kind())
                     || !validInterval(claim.startAt(), claim.endAt())) {
                 bad("invalid schedule claim relationship");
             }

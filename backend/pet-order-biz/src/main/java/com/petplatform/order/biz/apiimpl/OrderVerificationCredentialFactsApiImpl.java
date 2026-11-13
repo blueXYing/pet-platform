@@ -52,7 +52,9 @@ public final class OrderVerificationCredentialFactsApiImpl implements OrderVerif
   for(var c:claims){
    if(!store.equals(c.storeId())||!str(r.serviceId).equals(c.serviceId())||!c.endAt().isAfter(c.startAt()))throw bad();
    var windows=facts.windows().stream().filter(w->c.windowId().equals(w.windowId())).toList();if(windows.size()!=1)throw bad();var w=windows.getFirst();
-   if(!c.kind().equals(w.kind())||c.startAt().isBefore(w.startAt())||c.endAt().isAfter(w.endAt()))throw bad();
+   // CCR-SCH-SLOT-001: windows are store-shared unified slots (no kind); the claim keeps its
+   // fulfillment-leg kind — only containment is re-proven against the window here.
+   if(c.startAt().isBefore(w.startAt())||c.endAt().isAfter(w.endAt()))throw bad();
    if(kinds.size()==1){Integer duration=new OrderRescheduleStore(source).mapper().duration(r.id);
     if(duration==null||duration<=0||!c.startAt().isEqual(res.startAt())||!c.endAt().isEqual(res.endAt())||!c.startAt().plusMinutes(duration).isEqual(c.endAt()))throw bad();
    }else if(!c.startAt().isEqual(w.startAt())||!c.endAt().isEqual(w.endAt())

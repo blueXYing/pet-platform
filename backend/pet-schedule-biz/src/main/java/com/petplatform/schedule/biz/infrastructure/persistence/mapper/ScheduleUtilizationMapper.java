@@ -11,8 +11,8 @@ import org.apache.ibatis.annotations.Param;
  */
 public interface ScheduleUtilizationMapper {
 
-    /** Σ OPEN window capacity minutes overlapping [from,to); store prefix of
-     *  idx_schedule_service_time keeps this an index range scan. */
+    /** Σ OPEN slot capacity minutes overlapping [from,to); store prefix of
+     *  idx_schedule_store_time (CCR-SCH-SLOT-001) keeps this an index range scan. */
     long availableMinutes(@Param("merchantId") long merchantId, @Param("storeId") long storeId,
             @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 

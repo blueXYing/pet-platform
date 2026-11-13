@@ -17,8 +17,6 @@ public interface ScheduleAdminViewMapper {
     long countWindows(
             @Param("merchantId") Long merchantId,
             @Param("storeId") Long storeId,
-            @Param("serviceId") Long serviceId,
-            @Param("windowKind") String windowKind,
             @Param("status") String status,
             @Param("startFrom") LocalDateTime startFrom,
             @Param("startTo") LocalDateTime startTo);
@@ -26,8 +24,6 @@ public interface ScheduleAdminViewMapper {
     List<AdminWindowRow> selectWindowPage(
             @Param("merchantId") Long merchantId,
             @Param("storeId") Long storeId,
-            @Param("serviceId") Long serviceId,
-            @Param("windowKind") String windowKind,
             @Param("status") String status,
             @Param("startFrom") LocalDateTime startFrom,
             @Param("startTo") LocalDateTime startTo,

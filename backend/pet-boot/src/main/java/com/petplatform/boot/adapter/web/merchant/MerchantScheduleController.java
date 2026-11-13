@@ -72,9 +72,9 @@ public final class MerchantScheduleController {
 
     private static final ObjectReader STRICT =
             com.petplatform.boot.config.MerchantJsonReaderFactory.strictReader();
-    private static final Set<String> KINDS = Set.of("GENERAL", "PICKUP", "RETURN");
     // 53号 §3.1: status ∈ OPEN/CLOSED/SOLD_OUT (SOLD_OUT is the system-derived full state,
-    // filterable per contract; the biz layer already accepts all three).
+    // filterable per contract; the biz layer already accepts all three). CCR-SCH-SLOT-001:
+    // windows are store-wide unified slots — no serviceId/windowKind fields or filters remain.
     private static final Set<String> WINDOW_STATUSES = Set.of("OPEN", "CLOSED", "SOLD_OUT");
 
     private final ScheduleMerchantCommandApiImpl commands;
@@ -97,15 +97,12 @@ public final class MerchantScheduleController {
     Map<String, Object> listWindows(
             @PathVariable String storeId,
             @RequestParam String merchantId,
-            @RequestParam(required = false) String serviceId,
-            @RequestParam(required = false) String kind,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String page,
             @RequestParam(required = false) String pageSize,
             HttpServletRequest req) {
-        onlyParameters(req, "merchantId", "serviceId", "kind", "status", "page", "pageSize");
-        if ((kind != null && !KINDS.contains(kind))
-                || (status != null && !WINDOW_STATUSES.contains(status))) throw invalid();
+        onlyParameters(req, "merchantId", "status", "page", "pageSize");
+        if (status != null && !WINDOW_STATUSES.contains(status)) throw invalid();
         // 53号 §3.3 (2026-10-07): pagination is opt-in. Neither parameter present keeps the
         // legacy unpaginated full list byte-for-byte; either one switches to paged mode with
         // the notification-list baseline (page 1..10000 default 1, pageSize 1..50 default 20).
@@ -114,8 +111,7 @@ public final class MerchantScheduleController {
         Integer size = paged ? paging(pageSize, 20, 50) : null;
         var session = mini(req);
         WindowPage value = workbench.listWindows(new WorkbenchWindowQuery(
-                id(merchantId), id(storeId), serviceId == null ? null : id(serviceId), kind,
-                status, pageNumber, size,
+                id(merchantId), id(storeId), status, pageNumber, size,
                 new QueryContext(trace(req), OperatorType.USER, session.userId())));
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("storeId", value.storeId());
@@ -136,12 +132,11 @@ public final class MerchantScheduleController {
         onlyParameters(req);
         mini(req);
         JsonNode root = readObject(json);
+        // CCR-SCH-SLOT-001: a window create binds only the store-wide slot interval+capacity.
         CreateWindowCommand command = new CreateWindowCommand(
                 userCommand(req),
                 id(text(root, "merchantId")),
                 id(storeId),
-                id(text(root, "serviceId")),
-                enumValue(root, "windowKind", KINDS),
                 timestamp(text(root, "startAt")),
                 timestamp(text(root, "endAt")),
                 positiveInt(root, "configuredCapacity"));
@@ -361,8 +356,6 @@ public final class MerchantScheduleController {
         out.put("windowId", r.windowId());
         out.put("merchantId", r.merchantId());
         out.put("storeId", r.storeId());
-        out.put("serviceId", r.serviceId());
-        out.put("windowKind", r.windowKind());
         out.put("startAt", time(r.startAt()));
         out.put("endAt", time(r.endAt()));
         out.put("configuredCapacity", r.configuredCapacity());
@@ -376,8 +369,6 @@ public final class MerchantScheduleController {
         out.put("windowId", i.windowId());
         out.put("merchantId", i.merchantId());
         out.put("storeId", i.storeId());
-        out.put("serviceId", i.serviceId());
-        out.put("windowKind", i.windowKind());
         out.put("startAt", time(i.startAt()));
         out.put("endAt", time(i.endAt()));
         out.put("configuredCapacity", i.configuredCapacity());
@@ -452,12 +443,6 @@ public final class MerchantScheduleController {
     private static String requireText(JsonNode value, String field) {
         if (value == null || !value.isString() || value.asString().isBlank()) throw invalid();
         return value.asString();
-    }
-
-    private static String enumValue(JsonNode root, String field, Set<String> values) {
-        JsonNode node = root.get(field);
-        if (node == null || !node.isString() || !values.contains(node.asString())) throw invalid();
-        return node.asString();
     }
 
     private static Integer optionalInt(JsonNode root, String field) {

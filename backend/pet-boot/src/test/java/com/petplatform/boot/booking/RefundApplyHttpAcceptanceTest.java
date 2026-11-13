@@ -24,15 +24,17 @@ import org.springframework.context.ConfigurableApplicationContext;
 class RefundApplyHttpAcceptanceTest {
     private static final String PATH(String order) { return "/c/orders/" + order + "/refund-applications"; }
 
-    /** Extra capacity window + one paid+confirmed order with a future appointment start (11:30Z),
-     * because the seeded 710500 window books 09:00Z — already at/past the fixture's parked clock. */
+    /** Extra capacity slot + one paid+confirmed order with a future appointment start (12:30Z),
+     * because the seeded 710500 slot books 09:00Z — already at/past the fixture's parked clock.
+     * CCR-SCH-SLOT-001: the fresh slot sits in the afternoon gap (12:20-14:00) of the shared
+     * store timeline; the booking takes 12:30-14:00 inside it. */
     private static String readyFutureOrder(AfterSaleHttpFixture f, long windowId) throws Exception {
         var fx = f.ordinary.t.r.f.f;
-        fx.db.jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,service_id,start_at,end_at,configured_capacity,status,window_kind,created_at,updated_at)"
-                + " VALUES(?,710301,710302,710401,'2030-01-01 11:00:00','2030-01-01 13:30:00',1,'OPEN','GENERAL',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))", windowId);
+        fx.db.jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,start_at,end_at,configured_capacity,status,created_at,updated_at)"
+                + " VALUES(?,710301,710302,'2030-01-01 12:20:00','2030-01-01 14:00:00',1,'OPEN',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))", windowId);
         String order = fx.book(new CreateOrderCommand(new CommandContext(UUID.randomUUID().toString(), "refund-qa-http",
                 OperatorType.USER, BUYER, "MINIAPP"), STORE, "710401", "710200", "IN_STORE",
-                OffsetDateTime.parse("2030-01-01T11:30:00Z"), OffsetDateTime.parse("2030-01-01T13:00:00Z"),
+                OffsetDateTime.parse("2030-01-01T12:30:00Z"), OffsetDateTime.parse("2030-01-01T14:00:00Z"),
                 null, null, Long.toString(windowId), null, null, null, null, null)).orderId();
         var prepared = fx.prepare(order, UUID.randomUUID().toString());
         var notice = fx.notice(prepared, "SUCCESS", "MERCHANT_QA_HTTP_REFUND_" + windowId, prepared.amount(), prepared.amount());

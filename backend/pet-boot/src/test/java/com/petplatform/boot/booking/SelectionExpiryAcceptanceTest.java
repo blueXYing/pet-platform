@@ -418,9 +418,9 @@ class SelectionExpiryAcceptanceTest {
       jdbc.update("INSERT INTO merchant_store(id,merchant_id,store_name,address,status,created_at,updated_at)"
           + " VALUES(?,?,?,'Test address','ACTIVE',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
           STORE, MERCHANT, "Expiry store");
-      window(PICKUP, p, pEnd, "PICKUP");
-      window(GAP_PICKUP, gap, gapEnd, "PICKUP");
-      window(RETURN, r, rEnd, "RETURN");
+      window(PICKUP, p, pEnd);
+      window(GAP_PICKUP, gap, gapEnd);
+      window(RETURN, r, rEnd);
       jdbc.update("INSERT INTO schedule_reservation(id,order_id,merchant_id,store_id,service_id,user_id,"
               + "fulfillment_type,start_at,end_at,pickup_start_at,return_start_at,status,lock_expire_at,"
               + "capacity_snapshot,qualified_staff_count_snapshot,version,created_at,updated_at)"
@@ -438,11 +438,12 @@ class SelectionExpiryAcceptanceTest {
       return seed;
     }
 
-    private void window(long id, LocalDateTime start, LocalDateTime end, String kind) {
-      jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,service_id,"
-              + "start_at,end_at,configured_capacity,status,window_kind,version,created_at,updated_at)"
-              + " VALUES(?,?,?,?,?,?,1,'OPEN',?,0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
-          id, MERCHANT, STORE, SERVICE, start, end, kind);
+    /** CCR-SCH-SLOT-001: store-wide unified slots (no service_id/window_kind columns). */
+    private void window(long id, LocalDateTime start, LocalDateTime end) {
+      jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,"
+              + "start_at,end_at,configured_capacity,status,version,created_at,updated_at)"
+              + " VALUES(?,?,?,?,?,1,'OPEN',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+          id, MERCHANT, STORE, start, end);
     }
 
     private void claim(long window, String kind, LocalDateTime start, LocalDateTime end) {

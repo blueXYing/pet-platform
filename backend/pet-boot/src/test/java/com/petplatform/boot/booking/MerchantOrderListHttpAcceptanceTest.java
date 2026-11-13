@@ -59,22 +59,23 @@ class MerchantOrderListHttpAcceptanceTest {
             return order;
         }
 
-        /** Three PENDING_CONFIRM orders: default window plus two fresh single-capacity windows. */
+        /** Three PENDING_CONFIRM orders: default slot plus two fresh single-capacity slots. */
         List<String> threePendingOrders() throws Exception {
             // Pull the pinned DB clock near the real wall clock BEFORE any booking: each order's
             // auto-confirm task is eligible when DB time passes paidAt+30min, and with the
             // constructor's 2030 pin the assembled worker would confirm them mid-setup.
             f.at(java.time.Instant.now().minusSeconds(300));
-            f.sql("INSERT INTO schedule_availability_window(id,merchant_id,store_id,service_id,start_at,end_at,configured_capacity,status,window_kind,created_at,updated_at)"
-                    + " VALUES(710591,710301,710302,710401,'2030-01-01 11:00:00','2030-01-01 13:30:00',1,'OPEN','GENERAL',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
-            f.sql("INSERT INTO schedule_availability_window(id,merchant_id,store_id,service_id,start_at,end_at,configured_capacity,status,window_kind,created_at,updated_at)"
-                    + " VALUES(710592,710301,710302,710401,'2030-01-01 14:00:00','2030-01-01 16:30:00',1,'OPEN','GENERAL',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
+            // CCR-SCH-SLOT-001: fresh slots fill the afternoon gaps of the shared timeline.
+            f.sql("INSERT INTO schedule_availability_window(id,merchant_id,store_id,start_at,end_at,configured_capacity,status,created_at,updated_at)"
+                    + " VALUES(710591,710301,710302,'2030-01-01 12:20:00','2030-01-01 14:00:00',1,'OPEN',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
+            f.sql("INSERT INTO schedule_availability_window(id,merchant_id,store_id,start_at,end_at,configured_capacity,status,created_at,updated_at)"
+                    + " VALUES(710592,710301,710302,'2030-01-01 14:00:00','2030-01-01 16:30:00',1,'OPEN',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
             // The seeded staff availability ends at 14:00; extend the same staff so the third
             // booking (14:30-16:00) keeps its staff coverage through the capacity proof.
             f.sql("INSERT INTO staff_availability_window(id,store_id,staff_id,start_at,end_at,status,created_at,updated_at)"
                     + " VALUES(710595,710302,710303,'2030-01-01 14:00:00','2030-01-01 18:00:00','AVAILABLE',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
             String first = orders.paid();
-            String second = paidOnWindow(710591, "2030-01-01T11:30:00Z");
+            String second = paidOnWindow(710591, "2030-01-01T12:30:00Z");
             String third = paidOnWindow(710592, "2030-01-01T14:30:00Z");
             return List.of(first, second, third);
         }

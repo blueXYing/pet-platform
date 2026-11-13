@@ -76,10 +76,12 @@ public final class AvailabilityQueryService {
         List<AvailabilityWindowDTO> items =
                 store.read(
                         mapper -> {
+                            // CCR-SCH-SLOT-001: candidate slots are the store's whole open slot
+                            // timeline; this service's bookability is decided per slot by the
+                            // qualified-staff coverage below, not by a window ownership filter.
                             List<ScheduleAvailabilityWindowEntity> rows =
                                     mapper.selectOpenWindows(
                                             targetId(query.storeId()),
-                                            targetId(query.serviceId()),
                                             utc(from),
                                             utc(to));
                             List<AvailabilityWindowDTO> result = new ArrayList<>(rows.size());
@@ -100,7 +102,7 @@ public final class AvailabilityQueryService {
             ScheduleReadMapper mapper,
             Instant now) {
         if (row.getStoreId() == null
-                || row.getServiceId() == null
+                || row.getId() == null
                 || row.getStartAt() == null
                 || row.getEndAt() == null
                 || row.getConfiguredCapacity() == null
@@ -121,9 +123,9 @@ public final class AvailabilityQueryService {
             throw unavailableReturn("qualified staff facts provider is unavailable");
         }
         if (staffCount < 0) unavailable("qualified staff facts are invalid");
-        long occupied =
-                mapper.countActiveReservations(
-                        row.getStoreId(), row.getServiceId(), row.getStartAt(), row.getEndAt());
+        // Single pool (CCR-SCH-SLOT-001): occupancy is the effective-claim count on the slot
+        // across every service of the store — the same notion the SOLD_OUT deriver uses.
+        long occupied = mapper.countActiveClaimsOnWindow(row.getId());
         int effective = Math.min(row.getConfiguredCapacity(), staffCount);
         int remaining = (int) Math.max(effective - occupied, 0);
         boolean notYetStarted = start.toInstant().isAfter(now);

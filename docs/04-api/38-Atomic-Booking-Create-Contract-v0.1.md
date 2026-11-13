@@ -1,6 +1,6 @@
 # 预约占位与订单原子创建内核 v0.1
 
-状态：IMPLEMENTED_INTERNAL_DEFAULT_OFF，最终集成门禁以对应实现PR的CI为准。2026-09-27。依据已批[36号](36-Reservation-Order-Protection-Contract-v0.1.md)、[37号](37-Reservation-Protection-Foundation-Contract-v0.1.md)、[23号](23-公共接口与幂等契约补充-v0.1.md)及用户“合并完成之后按照顺序推进”。本轮只交真实内部写入内核，默认`pet.order.creation.enabled=false`；不开放C创建路由、不改变现有六字段可约GET，不宣称完整结算已上线。
+状态：IMPLEMENTED_INTERNAL_DEFAULT_OFF，最终集成门禁以对应实现PR的CI为准。2026-09-27。2026-11-13 注记（[CCR-SCH-SLOT-001](../../planning/ccr/CCR-SCH-SLOT-001.md)）：本契约引用的「原窗/窗口」自该裁决起为全店共享统一槽（`storeId+时间区间`，无服务/kind 维度）；选窗、占用与 120 分钟校验的窗口命中语义随统一槽简化（接送两时间点各自命中开放槽），容量守卫与事务边界不变；§2 已按统一槽口径收口（2026-11-13 同批）：`selectedGeneralWindowId` 字段名保留（语义=顾客所选时间点命中的全店统一槽 ID），重叠坏事实口径改同店。依据已批[36号](36-Reservation-Order-Protection-Contract-v0.1.md)、[37号](37-Reservation-Protection-Foundation-Contract-v0.1.md)、[23号](23-公共接口与幂等契约补充-v0.1.md)及用户“合并完成之后按照顺序推进”。本轮只交真实内部写入内核，默认`pet.order.creation.enabled=false`；不开放C创建路由、不改变现有六字段可约GET，不宣称完整结算已上线。
 
 ## 1. 原始PRD缺口及阶段边界
 
@@ -14,7 +14,7 @@ C端最终PRD §5.1.15/16要求：接送必填省市区和详细服务地址，�
 
 Java骨架为`OrderCreationApi.create(CreateOrderCommand)`及`ReservationHoldApi.hold(HoldCommand)`；跨域字段见各自DTO。所有ID为正Long十进制String，USER来自可信CommandContext而非body。创建只接受USER；检查requestId的既有512 UTF-8字节规则，后续HTTP另强制UUID。traceId最多128 UTF-8字节，不参与幂等。
 
-IN_STORE：实际分钟区间、可选selectedGeneralWindowId，禁止接送两开始值/方向ID和服务地址；区间长度严格等于SERVICE当前服务时长。PICKUP_DELIVERY：两个不同方向原ID及用户选择的pickupStart/returnStart，禁止到店appointmentStart/end和GENERAL ID；两开始值必须等于原窗且满足120分钟。服务履约类型由SERVICE确定，客户端不得改变。到店无ID只能唯一原窗完整容纳；显式ID仍不能绕过同kind OPEN窗重叠坏事实。
+IN_STORE：实际分钟区间、可选selectedGeneralWindowId（2026-11-13 注：字段名保留不改名，语义=顾客所选时间点命中的全店统一槽 ID，CCR-SCH-SLOT-001），禁止接送两开始值/方向ID和服务地址；区间长度严格等于SERVICE当前服务时长。PICKUP_DELIVERY：两个不同方向所选统一槽原ID及用户选择的pickupStart/returnStart，禁止到店appointmentStart/end和GENERAL ID；两开始值必须等于原窗且满足120分钟（上/返程两个时间点各自命中同店开放统一槽）。服务履约类型由SERVICE确定，客户端不得改变。到店无ID只能唯一开放统一槽完整容纳；显式ID仍不能绕过同店 OPEN 窗重叠坏事实。
 
 接送主区间用于订单/预约主字段展示：`[pickup.start,max(pickup.end,return.end))`。实际容量只占两条完整claim，不占两个方向之间空档，也不新增双窗不得重叠的限制。
 

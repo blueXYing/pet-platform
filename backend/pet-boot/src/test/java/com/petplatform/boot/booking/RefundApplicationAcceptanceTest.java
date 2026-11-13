@@ -130,10 +130,11 @@ class RefundApplicationAcceptanceTest {
         String a=f.t.ready();var ra=f.apps.apply(f.applyCommand(a));f.apps.createApproved(f.create(ra));
         assertEquals(1,f.count("SELECT COUNT(*) FROM refund_order WHERE source_type='PRESTART_AUTO'"));
         assertEquals(1,f.count("SELECT COUNT(*) FROM refund_execution WHERE source_type='PRESTART_AUTO'"));
-        // 第二笔订单使用独立窗口 710590（默认窗口 710500 容量仅 1），并核销为 VERIFIED 走商家路径，不改写共享时间。
+        // 第二笔订单使用独立槽 710590（默认槽 710500 容量仅 1；统一槽模型下新槽落在下午空档
+        // 12:20-14:00，不与共享时间轴重叠），并核销为 VERIFIED 走商家路径，不改写共享时间。
         var fx=f.t.r.f.f;
-        fx.db.jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,service_id,start_at,end_at,configured_capacity,status,window_kind,created_at,updated_at) VALUES(710590,710301,710302,710401,'2030-01-01 11:00:00','2030-01-01 13:30:00',1,'OPEN','GENERAL',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
-        OffsetDateTime start=OffsetDateTime.parse("2030-01-01T11:30:00Z");
+        fx.db.jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,start_at,end_at,configured_capacity,status,created_at,updated_at) VALUES(710590,710301,710302,'2030-01-01 12:20:00','2030-01-01 14:00:00',1,'OPEN',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
+        OffsetDateTime start=OffsetDateTime.parse("2030-01-01T12:30:00Z");
         String b=fx.book(new com.petplatform.order.api.dto.OrderCreationTypes.CreateOrderCommand(new CommandContext(UUID.randomUUID().toString(),"pay-qa-create",OperatorType.USER,"710100","MINIAPP"),"710302","710401","710200","IN_STORE",start,start.plusMinutes(90),null,null,"710590",null,null,null,null,null)).orderId();
         var p=fx.prepare(b,UUID.randomUUID().toString());
         var n=fx.notice(p,"SUCCESS","MERCHANT_"+IDS.incrementAndGet(),p.amount(),p.amount());

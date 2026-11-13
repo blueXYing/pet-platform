@@ -350,7 +350,7 @@ class ReservationProtectionFoundationAcceptanceTest {
             db.staff(Long.parseLong(STAFF_A), Long.parseLong(STORE), "ACTIVE", 1);
             db.staff(Long.parseLong(STAFF_B), Long.parseLong(STORE), "ACTIVE", 1);
             db.service(SERVICE_A, Long.parseLong(STORE), "IN_STORE");
-            db.window(700030, Long.parseLong(STORE), SERVICE_A, "GENERAL", NINE, NOON, 3);
+            db.window(700030, Long.parseLong(STORE), NINE, NOON, 3);
             db.generalOrder(701000, 701100, 702000, 700001, SERVICE_A, 700030,
                     NINE, TEN, "CONFIRMED", "PENDING_SERVICE", "UNVERIFIED", Long.parseLong(STAFF_A));
             db.generalOrder(701001, 701101, 702001, 700001, SERVICE_A, 700030,
@@ -390,7 +390,7 @@ class ReservationProtectionFoundationAcceptanceTest {
             db.store(Long.parseLong(STORE));
             db.staff(Long.parseLong(STAFF_A), Long.parseLong(STORE), "ACTIVE", 1);
             db.service(SERVICE_A, Long.parseLong(STORE), "IN_STORE");
-            db.window(700030, 700001, SERVICE_A, "GENERAL", NINE, NOON, 2);
+            db.window(700030, 700001, NINE, NOON, 2);
             db.generalOrder(701000, 701100, 702000, 700001, SERVICE_A, 700030,
                     NINE, TEN, "CONFIRMED", "PENDING_SERVICE", "UNVERIFIED", Long.parseLong(STAFF_A));
             var apis = new ProtectionApis(db.source);
@@ -433,7 +433,7 @@ class ReservationProtectionFoundationAcceptanceTest {
             db.store(700001);
             db.staff(Long.parseLong(STAFF_A), 700001, "ACTIVE", 1);
             db.service(SERVICE_A, 700001, "IN_STORE");
-            db.window(700030, 700001, SERVICE_A, "GENERAL", NINE, NOON, 1);
+            db.window(700030, 700001, NINE, NOON, 1);
             db.generalOrder(701000, 701100, 702000, 700001, SERVICE_A, 700030,
                     NINE, TEN, "CONFIRMED", "PENDING_SERVICE", "UNVERIFIED", Long.parseLong(STAFF_A));
             var apis = new ProtectionApis(db.source);
@@ -462,8 +462,8 @@ class ReservationProtectionFoundationAcceptanceTest {
                 db.staff(Long.parseLong(STAFF_B), Long.parseLong(OTHER_STORE), "ACTIVE", 1);
                 db.service(SERVICE_A, Long.parseLong(STORE), "IN_STORE");
                 db.service(SERVICE_B, Long.parseLong(OTHER_STORE), "IN_STORE");
-                db.window(700030, 700001, SERVICE_A, "GENERAL", NINE, NOON, 1);
-                db.window(700031, 700002, SERVICE_B, "GENERAL", NINE, NOON, 1);
+                db.window(700030, 700001, NINE, NOON, 1);
+                db.window(700031, 700002, NINE, NOON, 1);
                 db.generalOrder(701000, 701100, 702000, 700001, SERVICE_A, 700030,
                         NINE, TEN, "CONFIRMED", "PENDING_SERVICE", "UNVERIFIED", Long.parseLong(STAFF_A));
                 db.generalOrder(701001, 701101, 702001, 700002, SERVICE_B, 700031,
@@ -506,8 +506,9 @@ class ReservationProtectionFoundationAcceptanceTest {
             db.staff(Long.parseLong(STAFF_B), 700001, "ACTIVE", 1);
             db.service(SERVICE_A, 700001, "IN_STORE");
             db.service(SERVICE_B, 700001, "IN_STORE");
-            db.window(700030, 700001, SERVICE_A, "GENERAL", NINE, NOON, 1);
-            db.window(700031, 700001, SERVICE_B, "GENERAL", NINE, NOON, 1);
+            // CCR-SCH-SLOT-001: one shared capacity-2 slot serves both services, so the
+            // greedy escape stays a pure staff-matching question (claim occupancy 2<=2).
+            db.window(700030, 700001, NINE, NOON, 2);
             db.capability(700040, Long.parseLong(STAFF_A), SERVICE_A);
             db.capability(700041, Long.parseLong(STAFF_A), SERVICE_B);
             db.capability(700042, Long.parseLong(STAFF_B), SERVICE_A);
@@ -518,7 +519,7 @@ class ReservationProtectionFoundationAcceptanceTest {
             var apis = new ProtectionApis(db.source);
             db.inTransaction(() -> {
                 apis.guard.acquire(List.of(STORE), CTX);
-                var result = apis.proof.checkNewReservation(inStore(SERVICE_B, 700031, TEN, ELEVEN));
+                var result = apis.proof.checkNewReservation(inStore(SERVICE_B, 700030, TEN, ELEVEN));
                 assertTrue(result.feasible(), "X can use B so Y can use its only candidate A");
                 assertTrue(result.evaluatedReservations() >= 2);
                 return null;
@@ -539,8 +540,9 @@ class ReservationProtectionFoundationAcceptanceTest {
             db.staff(Long.parseLong(STAFF_A), 700001, "ACTIVE", 1);
             db.service(SERVICE_A, 700001, "IN_STORE");
             db.service(SERVICE_B, 700001, "IN_STORE");
-            db.window(700030, 700001, SERVICE_A, "GENERAL", NINE, NOON, 1);
-            db.window(700031, 700001, SERVICE_B, "GENERAL", NINE, NOON, 1);
+            // One shared capacity-2 slot (CCR-SCH-SLOT-001): the refusals below stay staff
+            // driven — the only B-capable employee is fixed to X's protected assignment.
+            db.window(700030, 700001, NINE, NOON, 2);
             db.capability(700040, Long.parseLong(STAFF_A), SERVICE_A);
             db.capability(700041, Long.parseLong(STAFF_A), SERVICE_B);
             db.availability(700050, 700001, Long.parseLong(STAFF_A), NINE, NOON);
@@ -549,7 +551,7 @@ class ReservationProtectionFoundationAcceptanceTest {
             var apis = new ProtectionApis(db.source);
             assertCode("SCHEDULE_CAPACITY_EXCEEDED", () -> db.inTransaction(() -> {
                 apis.guard.acquire(List.of(STORE), CTX);
-                apis.proof.checkNewReservation(inStore(SERVICE_B, 700031, TEN, ELEVEN));
+                apis.proof.checkNewReservation(inStore(SERVICE_B, 700030, TEN, ELEVEN));
                 return null;
             }));
             db.staff(Long.parseLong(STAFF_B), 700001, "ACTIVE", 1);
@@ -557,7 +559,7 @@ class ReservationProtectionFoundationAcceptanceTest {
             db.availability(700051, 700001, Long.parseLong(STAFF_B), NINE, NOON);
             assertCode("SCHEDULE_CAPACITY_EXCEEDED", () -> db.inTransaction(() -> {
                 apis.guard.acquire(List.of(STORE), CTX);
-                apis.proof.checkNewReservation(inStore(SERVICE_B, 700031, TEN, ELEVEN));
+                apis.proof.checkNewReservation(inStore(SERVICE_B, 700030, TEN, ELEVEN));
                 return null;
             }), "existing X is fixed to A; solver cannot silently rematch it to B");
             assertEquals(Long.parseLong(STAFF_A), db.jdbc.queryForObject(
@@ -572,7 +574,7 @@ class ReservationProtectionFoundationAcceptanceTest {
             db.staff(Long.parseLong(STAFF_A), 700001, "ACTIVE", 1);
             db.staff(Long.parseLong(STAFF_B), 700001, "ACTIVE", 1);
             db.service(SERVICE_A, 700001, "IN_STORE");
-            db.window(700030, 700001, SERVICE_A, "GENERAL", NINE, NOON, 1);
+            db.window(700030, 700001, NINE, NOON, 1);
             db.capability(700040, Long.parseLong(STAFF_A), SERVICE_A);
             db.capability(700041, Long.parseLong(STAFF_B), SERVICE_A);
             db.availability(700050, 700001, Long.parseLong(STAFF_A), NINE, NOON);
@@ -599,8 +601,8 @@ class ReservationProtectionFoundationAcceptanceTest {
             db.store(700001);
             db.staff(Long.parseLong(STAFF_A), 700001, "ACTIVE", 1);
             db.service(SERVICE_A, 700001, "IN_STORE");
-            db.window(700029, 700001, SERVICE_A, "GENERAL", NINE, TEN, 1);
-            db.window(700030, 700001, SERVICE_A, "GENERAL", NOON, ONE_PM, 1);
+            db.window(700029, 700001, NINE, TEN, 1);
+            db.window(700030, 700001, NOON, ONE_PM, 1);
             db.capability(700040, Long.parseLong(STAFF_A), SERVICE_A);
             db.availability(700050, 700001, Long.parseLong(STAFF_A), NOON, ONE_PM);
             db.generalOrder(701000, 701100, 702000, 700001, SERVICE_A, 700029,
@@ -623,8 +625,8 @@ class ReservationProtectionFoundationAcceptanceTest {
             db.staff(Long.parseLong(STAFF_A), 700001, "ACTIVE", 1);
             db.staff(Long.parseLong(STAFF_B), 700001, "ACTIVE", 1);
             db.service(SERVICE_A, 700001, "PICKUP_DELIVERY");
-            db.window(700030, 700001, SERVICE_A, "PICKUP", TEN, ELEVEN, 1);
-            db.window(700031, 700001, SERVICE_A, "RETURN", NOON, ONE_PM, 1);
+            db.window(700030, 700001, TEN, ELEVEN, 1);
+            db.window(700031, 700001, NOON, ONE_PM, 1);
             db.capability(700040, Long.parseLong(STAFF_A), SERVICE_A);
             db.capability(700041, Long.parseLong(STAFF_B), SERVICE_A);
             db.availability(700050, 700001, Long.parseLong(STAFF_A), TEN, ELEVEN);
@@ -657,8 +659,8 @@ class ReservationProtectionFoundationAcceptanceTest {
             db.service(SERVICE_B, 700001, "IN_STORE");
             String oldStart = "2020-01-01 10:00:00";
             String oldEnd = "2020-01-01 11:00:00";
-            db.window(700029, 700001, SERVICE_B, "GENERAL", oldStart, oldEnd, 1);
-            db.window(700030, 700001, SERVICE_A, "GENERAL", NINE, NOON, 1);
+            db.window(700029, 700001, oldStart, oldEnd, 1);
+            db.window(700030, 700001, NINE, NOON, 1);
             db.generalOrder(701000, 701100, 702000, 700001, SERVICE_B, 700029,
                     oldStart, oldEnd, "CONFIRMED", "COMPLETED", "VERIFIED", Long.parseLong(STAFF_A));
             db.capability(700040, Long.parseLong(STAFF_B), SERVICE_A);
@@ -670,6 +672,10 @@ class ReservationProtectionFoundationAcceptanceTest {
                 assertTrue(apis.proof.checkNewReservation(inStore(SERVICE_A, 700030, TEN, ELEVEN)).feasible());
                 return null;
             });
+            // Tampering the past claim into the future also drags its slot onto the shared
+            // timeline (700029 now overlaps 700030): under CCR-SCH-SLOT-001 the guarded facts
+            // read rejects the corrupted store fail-closed — the future-active claim is never
+            // silently concealed behind the COMPLETED + VERIFIED order.
             db.jdbc.update("UPDATE schedule_availability_window SET start_at=?,end_at=? WHERE id=700029", TEN, ELEVEN);
             db.jdbc.update("UPDATE schedule_reservation SET start_at=?,end_at=? WHERE id=701100", TEN, ELEVEN);
             db.jdbc.update("UPDATE schedule_reservation_claim SET start_at=?,end_at=? WHERE reservation_id=701100", TEN, ELEVEN);
@@ -724,7 +730,7 @@ class ReservationProtectionFoundationAcceptanceTest {
             db.store(700001);
             db.staff(Long.parseLong(STAFF_A), 700001, "ACTIVE", 1);
             db.service(SERVICE_A, 700001, "IN_STORE");
-            db.window(700030, 700001, SERVICE_A, "GENERAL", NINE, NOON, 1);
+            db.window(700030, 700001, NINE, NOON, 1);
             db.capability(700040, Long.parseLong(STAFF_A), SERVICE_A);
             db.availability(700050, 700001, Long.parseLong(STAFF_A), NINE, NOON);
             var apis = new ProtectionApis(db.source);
@@ -908,12 +914,13 @@ class ReservationProtectionFoundationAcceptanceTest {
                     id, storeId, fulfillment);
         }
 
-        void window(long id, long storeId, long serviceId, String kind,
+        /** CCR-SCH-SLOT-001: store-wide unified slots (no service_id/window_kind columns). */
+        void window(long id, long storeId,
                 String start, String end, int configuredCapacity) {
             jdbc.update("INSERT INTO schedule_availability_window"
-                    + "(id,merchant_id,store_id,service_id,start_at,end_at,configured_capacity,status,window_kind,created_at,updated_at)"
-                    + " VALUES(?,700000,?,?,?,?,?,'OPEN',?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
-                    id, storeId, serviceId, start, end, configuredCapacity, kind);
+                    + "(id,merchant_id,store_id,start_at,end_at,configured_capacity,status,created_at,updated_at)"
+                    + " VALUES(?,700000,?,?,?,?,?,'OPEN',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+                    id, storeId, start, end, configuredCapacity);
         }
 
         void capability(long id, long staffId, long serviceId) {

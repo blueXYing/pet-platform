@@ -166,10 +166,12 @@ final class AfterSaleFixture implements AutoCloseable {
     String verifiedOrder(){String order=unverifiedOrder();at(now().plusSeconds(20).toInstant());assertEquals("VERIFIED",verify(verificationCommand(order)).resultCode());return order;}
     String secondVerifiedOrder() throws Exception {
         var foundation=ordinary.t.r.f.f;
-        // Extend only static availability; the second order/payment/confirmation/verification
-        // still traverse real APIs in this same schema, with a non-overlapping reservation.
-        foundation.db.jdbc.update("UPDATE schedule_availability_window SET end_at='2030-01-01 13:00:00' WHERE id=710500");
-        var start=OffsetDateTime.parse("2030-01-01T11:00:00Z");
+        // Static availability extension for the second order/payment/confirmation/verification
+        // chain in this same schema. CCR-SCH-SLOT-001: unified slots never overlap, so the
+        // second order books a fresh afternoon slot instead of stretching the shared slot.
+        var secondWindow=IDS.incrementAndGet();
+        foundation.db.jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,start_at,end_at,configured_capacity,status,created_at,updated_at) VALUES(?,710301,710302,'2030-01-01 12:20:00','2030-01-01 14:00:00',1,'OPEN',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",secondWindow);
+        var start=OffsetDateTime.parse("2030-01-01T12:30:00Z");
         var previousEnd=foundation.db.jdbc.queryForObject("SELECT MAX(end_at) FROM schedule_reservation",
                 LocalDateTime.class).atOffset(ZoneOffset.UTC);
         at(previousEnd.plusSeconds(1).toInstant());
@@ -188,7 +190,7 @@ final class AfterSaleFixture implements AutoCloseable {
                 new BookingServiceFactsApiImpl(source,guard),guard,hold,new BookingCreateAcceptanceTest.InputProtector(),null,clock);
         String order=booking.create(new com.petplatform.order.api.dto.OrderCreationTypes.CreateOrderCommand(
                 user(BUYER),STORE,"710401","710200","IN_STORE",start,start.plusMinutes(90),
-                null,null,"710500",null,null,null,null,null)).orderId();
+                null,null,Long.toString(secondWindow),null,null,null,null,null)).orderId();
         var payment=foundation.prepare(order,UUID.randomUUID().toString());
         var notice=foundation.notice(payment,"SUCCESS","QA_AFS_SECOND_"+IDS.incrementAndGet(),payment.amount(),payment.amount());
         foundation.notification.receive(notice.headers(),notice.body());

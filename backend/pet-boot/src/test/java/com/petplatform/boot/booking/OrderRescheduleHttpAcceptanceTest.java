@@ -32,14 +32,16 @@ class OrderRescheduleHttpAcceptanceTest {
                 "pet.verification.credential.http.enabled", true);
     }
 
-    /** A paid and merchant-confirmed PENDING_SERVICE order (original appointment 11:30Z, future). */
+    /** A paid and merchant-confirmed PENDING_SERVICE order (original appointment 12:30Z, future). */
     private static String paidOrder(AfterSaleHttpFixture f, long windowId) throws Exception {
         var fx = f.ordinary.t.r.f.f;
-        fx.db.jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,service_id,start_at,end_at,configured_capacity,status,window_kind,created_at,updated_at)"
-                + " VALUES(?,710301,710302,710401,'2030-01-01 11:00:00','2030-01-01 13:30:00',1,'OPEN','GENERAL',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))", windowId);
+        // Unified-slot fixture: the fresh slot sits in the afternoon gap (12:20-14:00) of the
+        // store's shared timeline; the booking takes 12:30-14:00 inside it.
+        fx.db.jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,start_at,end_at,configured_capacity,status,created_at,updated_at)"
+                + " VALUES(?,710301,710302,'2030-01-01 12:20:00','2030-01-01 14:00:00',1,'OPEN',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))", windowId);
         String order = fx.book(new CreateOrderCommand(new CommandContext(UUID.randomUUID().toString(), "reschedule-qa-http",
                 OperatorType.USER, BUYER, "MINIAPP"), STORE, "710401", "710200", "IN_STORE",
-                OffsetDateTime.parse("2030-01-01T11:30:00Z"), OffsetDateTime.parse("2030-01-01T13:00:00Z"),
+                OffsetDateTime.parse("2030-01-01T12:30:00Z"), OffsetDateTime.parse("2030-01-01T14:00:00Z"),
                 null, null, Long.toString(windowId), null, null, null, null, null)).orderId();
         var prepared = fx.prepare(order, UUID.randomUUID().toString());
         // Channel trade_no is bounded at 32 chars (Lakala protocol); keep the QA tag short.
@@ -201,11 +203,11 @@ class OrderRescheduleHttpAcceptanceTest {
         }
     }
 
-    /** The one non-original window every success case reschedules into (14:00–16:30, capacity 1);
+    /** The one non-original slot every success case reschedules into (14:00–16:30, capacity 1);
      * the seeded staff window ends 14:00, so it is stretched to cover the new interval too. */
     private static void fxWindow(AfterSaleHttpFixture f) {
-        f.sql("INSERT INTO schedule_availability_window(id,merchant_id,store_id,service_id,start_at,end_at,configured_capacity,status,window_kind,created_at,updated_at)"
-                + " VALUES(" + NEW_WINDOW + ",710301,710302,710401,'2030-01-01 14:00:00','2030-01-01 16:30:00',1,'OPEN','GENERAL',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
+        f.sql("INSERT INTO schedule_availability_window(id,merchant_id,store_id,start_at,end_at,configured_capacity,status,created_at,updated_at)"
+                + " VALUES(" + NEW_WINDOW + ",710301,710302,'2030-01-01 14:00:00','2030-01-01 16:30:00',1,'OPEN',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
         f.sql("UPDATE staff_availability_window SET end_at='2030-01-01 18:00:00'");
     }
 
