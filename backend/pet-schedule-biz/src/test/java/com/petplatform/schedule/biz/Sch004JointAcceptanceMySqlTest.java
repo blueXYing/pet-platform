@@ -357,17 +357,19 @@ class Sch004JointAcceptanceMySqlTest {
                             "test"),
                     MERCHANT, STORE, AT_1000, AT_1100, 4), created));
             assertEquals("OPEN", created[0].status());
-            assertEquals(1, db.countWindows());
+            // CCR-SCH-SLOT-001: the two prologue slots (12:00/14:00, non-overlapping) are
+            // legal store-wide slots now, so this idempotency block counts three windows.
+            assertEquals(3, db.countWindows());
             WindowResult[] replay = new WindowResult[1];
             assertFalse(app.commands.createWindowOutcome(new CreateWindowCommand(
                     new CommandContext(requestId, "sch004-acc", OperatorType.USER, "601",
                             "test"),
                     MERCHANT, STORE, AT_1000, AT_1100, 4), replay));
             assertEquals(created[0].windowId(), replay[0].windowId());
-            assertEquals(1, db.countWindows());
+            assertEquals(3, db.countWindows());
             assertEquals(CommonApiCodes.IDEMPOTENCY_KEY_CONFLICT,
                     app.createFailureWithKey(requestId, AT_1030, AT_1100));
-            assertEquals(1, db.countWindows());
+            assertEquals(3, db.countWindows());
         }
     }
 

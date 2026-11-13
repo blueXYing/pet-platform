@@ -169,7 +169,10 @@ class ScheduleSoldOutLinkMySqlTest {
             assertEquals("SCHEDULE_CAPACITY_EXCEEDED", assertThrows(ApiException.class,
                     () -> app.checkBooking("302", S,
                             OffsetDateTime.parse("2030-01-01T01:30:00Z"))).code());
-            // Freeing the service-302 occupancy returns the slot to the shared pool.
+            // Freeing the service-302 occupancy returns the slot to the shared pool. The
+            // refund-release path only serves CONFIRMED reservations, so confirm first —
+            // the cross-service claim still holds SOLD_OUT until the release rederives.
+            app.confirm(serviceB);
             app.release(serviceB, "701");
             assertEquals("OPEN", db.windowStatus(101));
         }
