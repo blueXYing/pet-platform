@@ -551,7 +551,12 @@ export function weekdayIndexOf(date: string): number {
 }
 /** 模板物化窗口：今天起 7 个北京历日（含今日，同一键生成口径），各带周几索引。 */
 export function nextSevenDays(today: string): readonly { date: string; weekday: number }[] {
-  return Array.from({ length: 7 }, (_, index) => {
+  return nextNDays(today, 7)
+}
+/** 模板物化窗口（2026-11-13 用户口径）：周模板按选择的生效天数一次铺满——默认全年
+ *  365 天（含今日），7/30/90/365 可选；纯物化快捷方式，无周期数据结构。 */
+export function nextNDays(today: string, days: number): readonly { date: string; weekday: number }[] {
+  return Array.from({ length: days }, (_, index) => {
     const date = addBeijingDays(today, index)
     return { date, weekday: weekdayIndexOf(date) }
   })

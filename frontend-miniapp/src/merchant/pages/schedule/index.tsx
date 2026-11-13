@@ -7,7 +7,7 @@ import { RealScheduleRepository } from '../../schedule/repository'
 import {
   addBeijingDays, beijingToday, bookingLeadMinutesDefault, bookingMaxDaysDefault,
   bookingWindowFormProblems, defaultWeekDraft, formatWindowInterval, generateCapacityDefault,
-  generateFormProblems, generateIntervalMinutes, isScheduleScenario, nextSevenDays,
+  generateFormProblems, generateIntervalMinutes, isScheduleScenario, nextNDays, nextSevenDays,
   PreviewScheduleRepository, scheduleAvailability, scheduleClosedReason, scheduleMessage,
   timeMinutes, weekDraftProblems, weekdayIndexOf, weekdayLabels, windowCountPageSize,
   windowListPageSize, windowStatusTagClass, windowStatusText, windowStatuses,
@@ -71,8 +71,11 @@ export default function ScheduleTemplatePage() {
   const [bookingBase, setBookingBase] = useState<{ leadMinutes: number; maxDays: number; version: string } | null>(null)
   // 区块 A：门店时间 + 容量（容量同时驱动一键生成与 B 区模板保存）。
   const [generate, setGenerate] = useState<GenerateFormInput>({ dailyStart: '09:00', dailyEnd: '19:00', configuredCapacity: generateCapacityDefault })
-  // 区块 B：周模板草稿（纯前端，不落库）。
+  // 区块 B：周模板草稿（纯前端，不落库）+ 生效天数（2026-11-13 用户口径：铺满全年，
+  //  不必每周重生成；纯物化，跨年后需再铺一次）。
   const [week, setWeek] = useState<WeekDraft>(defaultWeekDraft)
+  const [applyDays, setApplyDays] = useState(365)
+  const applyDaysOptions = [7, 30, 90, 365] as const
   const [segEditor, setSegEditor] = useState<SegmentEditor | null>(null)
   const [copying, setCopying] = useState<CopyEditor | null>(null)
   // 区块 C：可预约范围草稿（文本输入态）+ 不可约日期本地清单。
@@ -300,24 +303,25 @@ export default function ScheduleTemplatePage() {
     setNotice(`已按 ${generate.dailyStart}-${generate.dailyEnd}、每时段 ${generateIntervalMinutes} 分钟填充一周（共 ${segments.length} 段/天）；可在下方调整，点「保存并生效」创建时段。`)
   }
 
-  /** 底栏「保存并生效」：B 区启用日逐日逐段 batch-generate（每次一天一段，≤200 候选安全）→
-   *  C 区 booking-window PUT（有改动时）→ 不可约日期逐日 batch-close；全部结果如实聚合。 */
+  /** 底栏「保存并生效」：B 区周模板按生效天数铺满（默认 365，2026-11-13 用户口径）——
+   *  同形状天合一单、超 200 候选自动分批 → C 区 booking-window PUT（有改动时）→ 不可约
+   *  日期逐日 batch-close；全部结果如实聚合。 */
   async function saveAll() {
     if (busy) return
     const booking = bookingForm()
     const problems = [...generateFormProblems(generate), ...weekDraftProblems(week), ...bookingWindowFormProblems(booking)]
     if (problems.length) { setNotice(`请检查：${problems.join('；')}`); return }
-    setNotice(''); setBusy(true)
+    setNotice(applyDays > 7 ? `正在铺排未来 ${applyDays} 天的时段，请稍候…` : ''); setBusy(true)
     // 聚合器（可变本地，收尾冻结为只读结果）。
     const acc: { created: number; closed: number; skipped: { interval: string; reasonCode: string }[]; failed: { label: string; message: string }[] } = { created: 0, closed: 0, skipped: [], failed: [] }
     const notes: string[] = []
     try {
       const capacity = generate.configuredCapacity!
       // One request per segment SHAPE, not per segment (user ruling 2026-11-13): days
-      // sharing the same segment list ride the same batch-generate call — the common
-      // filled week is a single request carrying 7 dates × N segments.
+      // sharing the same segment list ride the same batch-generate call; the 200-entry
+      // candidate cap chunks long ranges automatically (365 days × 10 segments ≈ 19 calls).
       const groups = new Map<string, { dates: string[]; segments: WeekSegmentDraft[] }>()
-      for (const { date, weekday } of nextSevenDays(beijingToday())) {
+      for (const { date, weekday } of nextNDays(beijingToday(), applyDays)) {
         const day = week[weekday]!
         if (!day.enabled || day.segments.length === 0) continue
         const key = day.segments.map(seg => `${seg.start}-${seg.end}`).join('|')
@@ -327,19 +331,23 @@ export default function ScheduleTemplatePage() {
       }
       let shapeIndex = 0
       for (const group of groups.values()) {
-        const input: BatchGenerateInput = {
-          dates: group.dates, segments: group.segments,
-          configuredCapacity: capacity, reason: '排期模板保存生效',
-        }
-        try {
-          const result = await repository.batchGenerate(`schedule-generate:shape:${shapeIndex}`, input)
-          acc.created += result.createdWindows.length
-          acc.closed += result.closedWindows.length
-          for (const skipped of skippedOf(result)) {
-            if (!acc.skipped.some(item => item.interval === skipped.interval)) acc.skipped.push(skipped)
+        const perRequest = Math.max(1, Math.floor(200 / group.segments.length))
+        for (let chunkStart = 0; chunkStart < group.dates.length; chunkStart += perRequest) {
+          const chunk = group.dates.slice(chunkStart, chunkStart + perRequest)
+          const input: BatchGenerateInput = {
+            dates: chunk, segments: group.segments,
+            configuredCapacity: capacity, reason: '排期模板保存生效',
           }
-        } catch (error) {
-          acc.failed.push({ label: `${group.dates[0]}… ×${group.segments.length} 段/天`, message: scheduleMessage(error) })
+          try {
+            const result = await repository.batchGenerate(`schedule-generate:shape:${shapeIndex}:${chunkStart}`, input)
+            acc.created += result.createdWindows.length
+            acc.closed += result.closedWindows.length
+            for (const skipped of skippedOf(result)) {
+              if (!acc.skipped.some(item => item.interval === skipped.interval)) acc.skipped.push(skipped)
+            }
+          } catch (error) {
+            acc.failed.push({ label: `${chunk[0]}… ×${group.segments.length} 段/天`, message: scheduleMessage(error) })
+          }
         }
         shapeIndex++
       }
@@ -660,11 +668,15 @@ export default function ScheduleTemplatePage() {
       {notice && <Text id='sch-notice' className='sch-notice'>{notice}</Text>}
       {preview && <View className='sch-tail'><Text>页面数据：契约 Mock（preview=1，不联调）</Text></View>}
     </ScrollView>
-    {/* 底栏（DIV-302）：取消=重置草稿；保存并生效=物化模板+配置 */}
+    {/* 底栏（DIV-302）：生效天数（默认铺满全年，2026-11-13 用户口径）+ 取消 + 保存并生效 */}
     <View className='sch-t-bar'>
+      <Picker mode='selector' range={applyDaysOptions.map(days => `生效 ${days} 天`)}
+        onChange={event => setApplyDays(applyDaysOptions[Number(event.detail.value)] ?? 365)}>
+        <View className='sch-t-bar-range'><Text>生效 {applyDays} 天</Text></View>
+      </Picker>
       <Button id='sch-t-cancel' className='sch-t-bar-cancel' disabled={busy} onClick={resetDraft}>取消</Button>
       <Button id='sch-t-save' className='sch-t-bar-save' disabled={busy} onClick={() => void saveAll()}>
-        {busy ? '正在保存…' : '保存并生效'}
+        {busy ? '正在铺排…' : '保存并生效'}
       </Button>
     </View>
     {/* 结果弹层：如实展示 created/closed/skipped，被占用跳过的时段明确列出 */}
