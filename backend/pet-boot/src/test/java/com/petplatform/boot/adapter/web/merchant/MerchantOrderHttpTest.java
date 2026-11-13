@@ -30,10 +30,13 @@ class MerchantOrderHttpTest {
         ObjectProvider<UserAuthService> provider=mock(ObjectProvider.class);when(provider.getIfAvailable()).thenReturn(auth);
         MerchantOrderCommandApi api=c->{seen.set(c);if(error!=null)throw new ApiException(error,"refresh");
             return new MerchantOrderCommandApi.Receipt(c.orderId(),"9007199254740993",0,c.action(),"PENDING_SERVICE","2026-09-29T00:00:00Z",null);};
-        MerchantOrderQueryApi queries=q->{listed.set(q);
-            return new PageResult<>(List.of(new MerchantOrderQueryApi.Summary("9007199254740994","2001","PENDING_CONFIRM",
-                new BigDecimal("128.00"),OffsetDateTime.parse("2030-01-01T02:00:00Z"),OffsetDateTime.parse("2030-01-01T03:30:00Z"),OffsetDateTime.parse("2030-01-01T01:00:00Z"),
-                "E2E体验用户",null,"E2E到店精细洗护","豆豆","DOG","柯基")),1,q.page(),q.pageSize());};
+        MerchantOrderQueryApi queries=new MerchantOrderQueryApi(){
+            @Override public PageResult<MerchantOrderQueryApi.Summary> listStoreOrders(MerchantOrderQueryApi.StoreOrderListQuery q){listed.set(q);
+                return new PageResult<>(List.of(new MerchantOrderQueryApi.Summary("9007199254740994","2001","PENDING_CONFIRM",
+                    new BigDecimal("128.00"),OffsetDateTime.parse("2030-01-01T02:00:00Z"),OffsetDateTime.parse("2030-01-01T03:30:00Z"),OffsetDateTime.parse("2030-01-01T01:00:00Z"),
+                    "E2E体验用户",null,"E2E到店精细洗护","豆豆","DOG","柯基")),1,q.page(),q.pageSize());}
+            @Override public Map<String,MerchantOrderQueryApi.Summary> storeOrderSummariesByIds(String merchantId,String storeId,
+                    java.util.Collection<String> orderIds,QueryContext context){return Map.of();}};
         return MockMvcBuilders.standaloneSetup(new MerchantOrderController(api,queries)).setControllerAdvice(new MerchantStaffExceptionHandler())
             .addFilters(new CBearerSessionFilter(provider)).build();
     }

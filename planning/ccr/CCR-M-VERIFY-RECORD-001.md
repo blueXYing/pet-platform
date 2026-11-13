@@ -1,6 +1,6 @@
 # CCR-M-VERIFY-RECORD-001 商家端核销记录读侧（P-13 方案 B）
 
-- 状态：PENDING（2026-11-11 起草，待用户裁决）
+- 状态：APPROVED（2026-11-12 用户按推荐项批准；裁决记录见 §9）
 - 日期：2026-11-11
 - 提出方：商家端待修清单修复轮（P-13，用户已拍板方案 B：核销执行挪员工工作台、
   staff-verify 改纯核销记录列表）
@@ -43,8 +43,9 @@ VER 只读自身所有权表（verification_record）；订单摘要由 boot 装
 
 新增 `GET /api/v1/merchant/verifications`（记录列表，PageResult 信封）：
 
-- 开关 `pet.verification.merchant-read.http.enabled` 默认 false（家族惯例，开启前置
-  completion 内核）。
+- 开关 `pet.verification.merchant-read.http.enabled` 默认 false（家族惯例；实施取
+  开启前置 `pet.order.merchant.enabled`——复用 10号 §4.1 订单读侧 guard/authority/卡片
+  装配链，实施同步修订）。
 - 鉴权：MINIAPP 会话 + 商家工作台坐标（merchantId+storeId）门店 guard + OWNER
   重验，与 `GET /api/v1/merchant/orders` 同款；跨店行不可见。
 - 过滤器（全部可选）：`orderId` 精确、`verifiedFrom`/`verifiedTo`（UTC，跨度 ≤366 天）；
@@ -101,3 +102,12 @@ VER 只读自身所有权表（verification_record）；订单摘要由 boot 装
 2. 客户块沿 CCR-M-ORDER-CARD-001 口径（昵称+头像、无手机号）直接沿用（推荐）。
 3. 记录列表可见范围：仅商家 OWNER（推荐，员工工作台只做核销执行）；或员工
    （有 verify 动作 grant）也可看本店记录。
+
+## 9. 裁决记录（2026-11-12，用户"按推荐继续"）
+
+1. 核销人显示：**STAFF=成员真名、OWNER=「店长」固定标签**（推荐项 1）。
+2. 客户块：**沿 CCR-M-ORDER-CARD-001 口径**——昵称+头像、无手机号（推荐项 2）。
+3. 可见范围：**仅商家 OWNER**；员工工作台只保留核销执行入口（推荐项 3）。
+
+实施随 P-13 方案 B：staff-verify 重写为记录列表、核销执行表单迁入员工工作台；
+本 CCR 的路由/开关/字段按 §3 执行。

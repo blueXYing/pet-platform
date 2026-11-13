@@ -15,6 +15,8 @@
     <dependencies>
         <dependency><groupId>com.petplatform</groupId><artifactId>pet-aftersale-api</artifactId></dependency>
         <dependency><groupId>com.petplatform</groupId><artifactId>pet-schedule-api</artifactId></dependency>
+        <!-- CCR-M-VERIFY-RECORD-001: OWNER store guard (requireOwnerRead) + staff naming face. -->
+        <dependency><groupId>com.petplatform</groupId><artifactId>pet-merchant-api</artifactId></dependency>
         <dependency><groupId>com.fasterxml.jackson.core</groupId><artifactId>jackson-databind</artifactId></dependency>
         <dependency>
             <groupId>com.petplatform</groupId>

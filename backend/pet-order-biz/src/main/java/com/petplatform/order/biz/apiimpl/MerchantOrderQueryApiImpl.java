@@ -9,6 +9,8 @@ import com.petplatform.order.biz.application.MerchantOrderQueryService;
 import com.petplatform.order.biz.infrastructure.persistence.OrderQueryStore;
 import com.petplatform.schedule.api.protection.ScheduleCapacityGuardApi;
 import com.petplatform.user.api.query.UserQueryApi;
+import java.util.Collection;
+import java.util.Map;
 import java.util.Objects;
 import javax.sql.DataSource;
 
@@ -34,5 +36,11 @@ public final class MerchantOrderQueryApiImpl implements MerchantOrderQueryApi {
     @Override
     public PageResult<Summary> listStoreOrders(StoreOrderListQuery query) {
         return service.listStoreOrders(query);
+    }
+
+    @Override
+    public Map<String, Summary> storeOrderSummariesByIds(String merchantId, String storeId,
+            Collection<String> orderIds, com.petplatform.common.QueryContext context) {
+        return service.storeOrderSummariesByIds(merchantId, storeId, orderIds, context);
     }
 }

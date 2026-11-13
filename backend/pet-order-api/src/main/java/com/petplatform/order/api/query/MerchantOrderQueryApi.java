@@ -4,6 +4,8 @@ import com.petplatform.common.PageResult;
 import com.petplatform.common.QueryContext;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.Collection;
+import java.util.Map;
 
 /**
  * Read-only merchant order list surface (HTTP contract 10 §4.1 supplement, the slice after
@@ -22,6 +24,17 @@ public interface MerchantOrderQueryApi {
      * DisplayOrderStatus values or null (no filter); page starts at 1, pageSize 1..100.
      */
     PageResult<Summary> listStoreOrders(StoreOrderListQuery query);
+
+    /**
+     * Batch order-card summaries keyed by the store's own order ids (CCR-M-VERIFY-RECORD-001,
+     * approved 2026-11-12): the same OWNER store guard as {@link #listStoreOrders} runs first,
+     * then the read stays double-key scoped (merchantId+storeId) on the id IN list, so a
+     * cross-store or absent id simply does not appear (anti-enumeration). An empty
+     * {@code orderIds} collection answers an empty map. The Summary carries the same
+     * CCR-M-ORDER-CARD-001 card fields as the list face.
+     */
+    Map<String, Summary> storeOrderSummariesByIds(String merchantId, String storeId,
+            Collection<String> orderIds, QueryContext context);
 
     /**
      * Minimal merchant-operations summary; ids/amounts/instants render as wire strings per

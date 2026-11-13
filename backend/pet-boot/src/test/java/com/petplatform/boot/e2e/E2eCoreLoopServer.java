@@ -529,6 +529,9 @@ public final class E2eCoreLoopServer {
                   "--pet.verification.credential.lookup-key=" + base64(23),
                   "--pet.verification.completion.enabled=true",
                   "--pet.verification.completion.http.enabled=true",
+                  // CCR-M-VERIFY-RECORD-001 (approved 2026-11-12): merchant verification-record
+                  // list read face for future e2e demo rounds (pet.order.merchant rides above).
+                  "--pet.verification.merchant-read.http.enabled=true",
                   "--pet.refund.application.enabled=true",
                   "--pet.refund.application.http.enabled=true",
                   // Round 3: the application worker runs so an approved application becomes a

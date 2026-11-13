@@ -152,14 +152,9 @@ export default function MerchantOrderListPage() {
     Taro.navigateTo({ url: '/merchant/pages/refund/index' }).catch(() => setNotice('页面跳转失败，请重试'))
   }
   function openMessages() {
-    const pages = Taro.getCurrentPages()
-    const index = pages.findIndex(page => page.route === 'merchant/pages/messages/index')
-    if (index >= 0) {
-      const delta = pages.length - 1 - index
-      if (delta > 0) Taro.navigateBack({ delta }).catch(() => setNotice('返回失败，请重试'))
-      return
-    }
-    Taro.navigateTo({ url: '/merchant/pages/messages/index' }).catch(() => setNotice('页面跳转失败，请重试'))
+    // P-03 追缉（2026-11-12）：放弃「栈上回跳露出」优化（被隐藏页树可能已被 dispose）；
+    // 统一 reLaunch 消息页取新实例。
+    Taro.reLaunch({ url: '/merchant/pages/messages/index' }).catch(() => setNotice('页面跳转失败，请重试'))
   }
   function choose(tab: TabKey) {
     if (tab === 'REFUND') { openRefund(); return }

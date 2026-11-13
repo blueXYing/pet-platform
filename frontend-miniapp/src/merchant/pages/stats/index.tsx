@@ -50,10 +50,9 @@ function useStats(preview = false) {
 
 async function backToWorkbench() {
   try {
-    // 栈上有上一页时优先返回；否则 reLaunch 重建工作台（P-03：redirectTo 进工作台会残留
-    // 已被 dispose 的旧工作台实例，返回即 stale placeholder 白屏）。
-    if (Taro.getCurrentPages().length > 1) await Taro.navigateBack()
-    else await Taro.reLaunch({ url: '/merchant/pages/workspace/index' })
+    // P-03 追缉（2026-11-12 用户实测卡死）：navigateBack 落到被 dispose 旧树的工作台=死页
+    // （本页即用户复现路径），一律 reLaunch 重建。
+    await Taro.reLaunch({ url: '/merchant/pages/workspace/index' })
   } catch { await Taro.showToast({ title: '返回失败，请重试', icon: 'none' }) }
 }
 

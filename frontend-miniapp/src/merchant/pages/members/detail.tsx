@@ -115,11 +115,10 @@ export default function MerchantMemberDetailPage() {
   }, [revision, scope, controller])
 
   async function back() {
-    // Plain subpage direction: the member list sits right below in the stack and reloads on
-    // did-show. (The reLaunch convention is reserved for returning to the workbench itself.)
+    // P-03 追缉（2026-11-12）：商家域返回不用 navigateBack——隐藏页树可能已被 dispose，
+    // 回落是死页；reLaunch 到成员列表（列表 back 再 reLaunch 工作台）。
     try {
-      if (Taro.getCurrentPages().length > 1) await Taro.navigateBack()
-      else await Taro.redirectTo({ url: '/merchant/pages/members/index' })
+      await Taro.reLaunch({ url: '/merchant/pages/members/index' })
     } catch { setNotice('返回失败，请重试') }
   }
 

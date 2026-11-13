@@ -250,14 +250,9 @@ export default function MerchantWorkbenchPage() {
   }
   function openMessages() {
     controller.handoffToMerchantPage()
-    const pages = Taro.getCurrentPages()
-    const index = pages.findIndex(page => page.route === 'merchant/pages/messages/index')
-    if (index >= 0) {
-      const delta = pages.length - 1 - index
-      if (delta > 0) Taro.navigateBack({ delta }).catch(() => controller.handoffCancelled())
-      return
-    }
-    Taro.navigateTo({ url: '/merchant/pages/messages/index' }).catch(() => controller.handoffCancelled())
+    // P-03 追缉（2026-11-12）：放弃「栈上已有消息页则 navigateBack 回跳露出」的优化——被
+    // 隐藏过的页面树可能已被 dispose，露出的是死页；统一 reLaunch 取新实例。
+    Taro.reLaunch({ url: '/merchant/pages/messages/index' }).catch(() => controller.handoffCancelled())
   }
 
   const storeName = dash.storeName ?? (owner ? '商家工作台' : staff ? '员工工作台' : '商家工作台')
@@ -421,7 +416,9 @@ export default function MerchantWorkbenchPage() {
         <Text className='mwb-card-title'>员工账号</Text>
         <Text className='mwb-hint'>当前为员工身份；员工工作台与订单核销按服务端权限放行。</Text>
         <Button id='workbench-staff-workspace' className='mwb-primary' onClick={openStaffWorkbench}>进入员工工作台</Button>
-        <Button id='workbench-verify' className='mwb-secondary' onClick={openVerify}>订单核销</Button>
+        {/* P-13 方案 B：核销执行表单随员工工作台常驻；员工态的「订单核销」直达执行面板，
+            staff-verify 已改为 OWNER 专属的核销记录列表（CCR-M-VERIFY-RECORD-001 §9.3）。 */}
+        <Button id='workbench-verify' className='mwb-secondary' onClick={openStaffWorkbench}>订单核销</Button>
       </View>
       {view && view.reasonCodes.length > 0 && <View className='mwb-card'>
         {view.reasonCodes.map(code => <Text key={code}>· {reasonText[code] || code}</Text>)}

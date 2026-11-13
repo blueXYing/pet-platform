@@ -26,6 +26,16 @@ namespace=verification.complete，二进制五元组(namespace,operatorType,oper
 - **expectedCredentialVersion 服务端解析（本修订新增内部只读 API `VerificationCredentialApi.currentVersion(orderId)`，SYSTEM 作用域、无 guard、不证明资格或授权）**：扫码语义下商家设备不掌握版本号，适配层在命令组装时读取当前 VER 系列 version 传入；命令事务内仍按本契约原样复核（刷新竞态导致不一致时 409 `COMMON_CONFLICT`，商家重扫即可），码哈希校验独立保证只认当前活码。
 - 回执：200 + `orderId/attemptId/resultCode/verificationId/verifiedAt/orderVersion`；`resultCode=VERIFIED` 携带后三字段，无效码/过期码/风险锁为已提交业务结果（200、后三字段 null）。错误：400 参数、401 未登录、403 无权/门拒绝/依赖失败关闭、404 K1 防枚举（未确认/撤权等按不存在处理）、409 `VERIFICATION_BLOCKED_BY_REFUND`/`VERIFICATION_ALREADY_DONE`/`VERIFICATION_NOT_ALLOWED`/`COMMON_CONFLICT`/`IDEMPOTENCY_KEY_CONFLICT`、503 依赖不可用；一律 `Cache-Control: no-store`（12号 §7 状态映射同步增补）。
 
+### K3 商家端核销记录读侧（v0.4 修订，2026-11-12 CCR-M-VERIFY-RECORD-001）
+
+`GET /api/v1/merchant/verifications`（新路由；`MerchantVerificationReadController`，随 `pet.verification.merchant-read.http.enabled` 装配、默认关闭，开启前置 `pet.order.merchant.enabled`——本切片复用 10号 §4.1 订单读侧的 guard/authority/卡片装配运行链）：
+
+- **仅商家 OWNER**：merchantId+storeId 坐标经 `MerchantOrderAuthorityApi.requireOwnerRead` 在读前重验（与 10号 §4.1 订单读侧同款门店 guard）；非本店坐标/非 OWNER/不存在门店一律同一 403（防枚举）。员工工作台不做记录查询（CCR §9.3 裁决）。
+- 查询参数：`merchantId`/`storeId`（必填，雪花 String）；可选 `orderId`（精确）、`verifiedFrom`/`verifiedTo`（UTC，跨度 ≤366 天、单边也须成对合法，非法 400）；`page` 1..10000 默认 1、`pageSize` 1..100 默认 20；未知参数 400（沿 63号纪律）。固定排序 `verified_at DESC, id DESC`；PageResult 信封 `{items,page,pageSize,total}`。
+- item 字段：`verificationId/orderId/serviceName/payAmount/customerNickname/customerAvatarUrl/verifiedAt/operatorKind/operatorName`。订单摘要四键由 ORDER 既有读侧按 merchantId+storeId+orderId 集合装配（沿 CCR-M-ORDER-CARD-001 口径，缺事实=null 不伪造）；`operatorKind` 为 `OWNER|STAFF`（由落库 membershipKind 投影）；`operatorName`：STAFF=52号 merchant_staff 真名（同店行）、OWNER=固定文案「店长」。
+- 隐私红线（CCR §4）：不返回凭证密文/lookup/code、客户手机号（含脱敏）、operatorId 真实 userId、地址/健康/宠物字段；真实登录用户经 48号既有命令链追溯，本面只出展示名。
+- 错误映射：400 `COMMON_INVALID_ARGUMENT`、401 `COMMON_UNAUTHORIZED`、403 `COMMON_FORBIDDEN`、503 `COMMON_DEPENDENCY_UNAVAILABLE`；未识别一律 500 不泄内核。GET 不绑 X-Request-Id；一律 `Cache-Control: no-store`。
+
 ## 同事务提交协议
 
 顶层 VER 事务为同 DataSource、可写 READ_COMMITTED，命令行锁→共享门店 guard→ORDER 原始资格/VERIFY token→退款当前事实→VER 当前码/版本/风险→AFS 当前工单。公共 check 不得嵌套；仅复用 VER 包内校验内核。

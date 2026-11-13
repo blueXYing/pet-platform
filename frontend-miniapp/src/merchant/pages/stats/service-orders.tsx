@@ -47,8 +47,8 @@ function useServiceOrders() {
 
 async function backToStats() {
   try {
-    if (Taro.getCurrentPages().length > 1) await Taro.navigateBack()
-    else await Taro.redirectTo({ url: '/merchant/pages/stats/index' })
+    // P-03 追缉（2026-11-12）：商家域返回不用 navigateBack（隐藏页树可能已被 dispose）。
+    await Taro.reLaunch({ url: '/merchant/pages/stats/index' })
   } catch { await Taro.showToast({ title: '返回失败，请重试', icon: 'none' }) }
 }
 

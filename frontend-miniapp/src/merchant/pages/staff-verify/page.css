@@ -1,51 +1,52 @@
-/* 订单核销页（48 号 K2 v0.3 真交互）——原稿帧 23:18830/23:19210 为第三方平台聚合核销语义，
-   登记表 §4.2 已登记不作为还原依据；沿 M 端现行规范（members 页 12:6591 measures/tokens）
-   实现。状态样式只用 className 变体，不用 data-*（Taro 4.1.5 会丢弃动态 data-*）。 */
-.msv-page { --msv-status-top: 0px; min-height: 100vh; background: #f0fbff; color: #1d0d07; font-family: Roboto, 'Noto Sans SC', sans-serif; display: flex; flex-direction: column; }
-.msv-page view, .msv-page scroll-view, .msv-page button, .msv-page image, .msv-page text, .msv-page input { box-sizing: border-box; }
-.msv-page button { margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; }
-.msv-page button::after { border: 0; }
-.msv-status-area { height: var(--msv-status-top); flex: none; }
-.msv-header { position: relative; flex: none; height: calc(var(--msv-unit) * 86); background: #fff6e5; display: flex; align-items: center; }
-.msv-back { margin-left: calc(var(--msv-unit) * 8); width: calc(var(--msv-unit) * 25); height: calc(var(--msv-unit) * 42); display: flex; align-items: center; justify-content: center; }
-.msv-back image { width: calc(var(--msv-unit) * 8.9); height: calc(var(--msv-unit) * 14.5); }
-.msv-title { position: absolute; left: 0; right: 0; text-align: center; font-size: calc(var(--msv-unit) * 16); line-height: calc(var(--msv-unit) * 24); font-weight: 700; color: #3c3c3c; font-family: Outfit, Roboto, 'Noto Sans SC', sans-serif; pointer-events: none; }
-.msv-body { flex: 1; height: auto; width: 100%; box-sizing: border-box; padding: calc(var(--msv-unit) * 12) calc(var(--msv-unit) * 17) calc(var(--msv-unit) * 24); }
-.msv-state { padding: calc(var(--msv-unit) * 48) 0 calc(var(--msv-unit) * 24); font-size: calc(var(--msv-unit) * 14); line-height: calc(var(--msv-unit) * 24); color: #577683; display: flex; flex-direction: column; gap: calc(var(--msv-unit) * 14); }
-.msv-page .msv-state-action { align-self: flex-start; color: #167fab; font-size: calc(var(--msv-unit) * 14); }
-.msv-panel { padding: calc(var(--msv-unit) * 18) calc(var(--msv-unit) * 16); background: #fff; border: calc(var(--msv-unit) * 1.5) solid #c0ecff; border-radius: calc(var(--msv-unit) * 17); display: flex; flex-direction: column; gap: calc(var(--msv-unit) * 10); }
-.msv-panel-closed { border-color: #f3d6c2; background: #fff8f1; }
-.msv-panel-info { border-color: #bfe6cf; background: #f4fcf7; }
-.msv-panel-title { font-size: calc(var(--msv-unit) * 16); line-height: calc(var(--msv-unit) * 24); font-weight: 700; color: #7a4a1d; }
-.msv-panel-closed .msv-panel-title { color: #a3541e; }
-.msv-panel-info .msv-panel-title { color: #1f7a4d; }
-.msv-panel-line { font-size: calc(var(--msv-unit) * 12.5); line-height: calc(var(--msv-unit) * 19); color: #577683; }
-/* Action buttons compound with .msv-page against the (0,1,1) button reset (same family bug
-   as order-confirm): the submit otherwise renders white-on-white. */
-.msv-page .msv-back-workbench { margin-top: calc(var(--msv-unit) * 6); height: calc(var(--msv-unit) * 38); border-radius: calc(var(--msv-unit) * 10); border: calc(var(--msv-unit) * 1.5) solid #5baae8; font-size: calc(var(--msv-unit) * 14); font-weight: 600; color: #167fab; display: flex; align-items: center; justify-content: center; }
-.msv-pending { margin-bottom: calc(var(--msv-unit) * 12); padding: calc(var(--msv-unit) * 14) calc(var(--msv-unit) * 14); background: #fffbea; border: calc(var(--msv-unit) * 1.5) solid #f0dfa8; border-radius: calc(var(--msv-unit) * 12); display: flex; flex-direction: column; gap: calc(var(--msv-unit) * 6); }
-.msv-pending-title { font-size: calc(var(--msv-unit) * 13.5); font-weight: 700; color: #7a4a1d; }
-.msv-form { padding: calc(var(--msv-unit) * 18) calc(var(--msv-unit) * 16) calc(var(--msv-unit) * 16); background: #fff; border: calc(var(--msv-unit) * 1.5) solid #c0ecff; border-radius: calc(var(--msv-unit) * 17); display: flex; flex-direction: column; gap: calc(var(--msv-unit) * 12); }
-.msv-form-title { font-size: calc(var(--msv-unit) * 16); line-height: calc(var(--msv-unit) * 24); font-weight: 700; color: #7a4a1d; }
-.msv-field { display: flex; flex-direction: column; gap: calc(var(--msv-unit) * 6); }
-.msv-field-label { font-size: calc(var(--msv-unit) * 12.5); color: #577683; }
-.msv-field-input { height: calc(var(--msv-unit) * 44); padding: 0 calc(var(--msv-unit) * 12); background: #f4fbff; border: calc(var(--msv-unit) * 1.5) solid #bfe3f5; border-radius: calc(var(--msv-unit) * 10); font-size: calc(var(--msv-unit) * 14); color: #1d0d07; }
-.msv-field-hint { font-size: calc(var(--msv-unit) * 11); line-height: calc(var(--msv-unit) * 16); color: #9ca3af; }
-.msv-page .msv-submit { height: calc(var(--msv-unit) * 44); border-radius: calc(var(--msv-unit) * 12); background: #167fab; font-size: calc(var(--msv-unit) * 15); font-weight: 600; color: #fff; display: flex; align-items: center; justify-content: center; }
-.msv-page .msv-submit[disabled] { background: #a8d5ec; color: #f0faff; }
-.msv-form-note { font-size: calc(var(--msv-unit) * 11); line-height: calc(var(--msv-unit) * 16); color: #9ca3af; }
-.msv-receipt { padding: calc(var(--msv-unit) * 18) calc(var(--msv-unit) * 16); background: #fff; border: calc(var(--msv-unit) * 1.5) solid #bfe6cf; border-radius: calc(var(--msv-unit) * 17); display: flex; flex-direction: column; gap: calc(var(--msv-unit) * 10); }
-.msv-receipt-verified { border-color: #9fdcb9; background: #f2fbf6; }
-.msv-receipt-rejected { border-color: #f3d6c2; background: #fff8f1; }
-.msv-receipt-title { font-size: calc(var(--msv-unit) * 17); line-height: calc(var(--msv-unit) * 25); font-weight: 700; }
-.msv-receipt-verified .msv-receipt-title { color: #1f7a4d; }
-.msv-receipt-rejected .msv-receipt-title { color: #a3541e; }
-.msv-row { display: flex; justify-content: space-between; align-items: flex-start; gap: calc(var(--msv-unit) * 10); padding: calc(var(--msv-unit) * 5) 0; border-bottom: calc(var(--msv-unit) * 0.5) solid #e7f4fb; }
-.msv-row:last-of-type { border-bottom: 0; }
-.msv-row-label { flex: none; font-size: calc(var(--msv-unit) * 12.5); color: #577683; }
-.msv-row-value { font-size: calc(var(--msv-unit) * 12.5); color: #1d0d07; text-align: right; word-break: break-all; }
-.msv-receipt-hint { font-size: calc(var(--msv-unit) * 11.5); line-height: calc(var(--msv-unit) * 17); color: #577683; }
-.msv-notice { display: block; margin: calc(var(--msv-unit) * 8) 0 0; font-size: calc(var(--msv-unit) * 12); line-height: calc(var(--msv-unit) * 18); color: #7a4a1d; }
-.msv-tail { padding: calc(var(--msv-unit) * 18) 0; text-align: center; font-size: calc(var(--msv-unit) * 11); color: #9ca3af; }
+/* 核销记录页（P-13 方案 B，CCR-M-VERIFY-RECORD-001）：视觉沿 Figma 12:7426 卡语言（402 稿，
+   精确取值走 Figma REST 节点数据）：头带 86 #fff6e5、底 #f0fbff、白卡 #c0ecff 描边 1 圆角
+   15.39 内距 15.39、卡距 11.54、胶囊 7.69/1.92 全圆角。原稿帧内筛选 tab 与第三方渠道标签
+   为聚合核销语义，不还原。状态样式只用 className 变体，不用 data-*（Taro 4.1.5 前科）；
+   页面前缀类压制 button 原生样式（家族坑）。 */
+.msvr-page { --msvr-status-top: 0px; min-height: 100vh; background: #f0fbff; color: #1d0d07; font-family: Roboto, 'Noto Sans SC', sans-serif; display: flex; flex-direction: column; }
+.msvr-page view, .msvr-page scroll-view, .msvr-page button, .msvr-page image, .msvr-page text, .msvr-page input { box-sizing: border-box; }
+.msvr-page button { margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; }
+.msvr-page button::after { border: 0; }
+.msvr-status-area { height: var(--msvr-status-top); flex: none; }
+.msvr-header { position: relative; flex: none; height: calc(var(--msvr-unit) * 86); background: #fff6e5; display: flex; align-items: center; }
+.msvr-back { margin-left: calc(var(--msvr-unit) * 8); width: calc(var(--msvr-unit) * 25); height: calc(var(--msvr-unit) * 42); display: flex; align-items: center; justify-content: center; }
+.msvr-back image { width: calc(var(--msvr-unit) * 8.9); height: calc(var(--msvr-unit) * 14.5); }
+.msvr-title { position: absolute; left: 0; right: 0; text-align: center; font-size: calc(var(--msvr-unit) * 16); line-height: calc(var(--msvr-unit) * 24); font-weight: 700; color: #3c3c3c; font-family: Outfit, Roboto, 'Noto Sans SC', sans-serif; pointer-events: none; }
+/* scroll-view padding must be inside the stretched width (same fix as schedule/members). */
+.msvr-body { flex: 1; height: auto; width: 100%; box-sizing: border-box; padding: calc(var(--msvr-unit) * 11.54) calc(var(--msvr-unit) * 15.39) calc(var(--msvr-unit) * 24); }
 
-.msv-tab-space { height: calc(var(--msv-unit) * 96); flex: none; }
+/* 整页状态（家族 state/panel 语言）。 */
+.msvr-state { padding: calc(var(--msvr-unit) * 48) 0 calc(var(--msvr-unit) * 24); font-size: calc(var(--msvr-unit) * 14); line-height: calc(var(--msvr-unit) * 24); color: #577683; display: flex; flex-direction: column; gap: calc(var(--msvr-unit) * 14); }
+.msvr-page .msvr-state-action { align-self: flex-start; color: #167fab; font-size: calc(var(--msvr-unit) * 14); }
+.msvr-panel { padding: calc(var(--msvr-unit) * 18) calc(var(--msvr-unit) * 16); background: #fff; border: calc(var(--msvr-unit) * 1.5) solid #c0ecff; border-radius: calc(var(--msvr-unit) * 17); display: flex; flex-direction: column; gap: calc(var(--msvr-unit) * 10); }
+.msvr-panel-closed { border-color: #f3d6c2; background: #fff8f1; }
+.msvr-panel-title { font-size: calc(var(--msvr-unit) * 16); line-height: calc(var(--msvr-unit) * 24); font-weight: 700; color: #a3541e; }
+.msvr-panel-line { font-size: calc(var(--msvr-unit) * 12.5); line-height: calc(var(--msvr-unit) * 19); color: #577683; }
+.msvr-notice { display: block; margin: calc(var(--msvr-unit) * 8) 0 0; font-size: calc(var(--msvr-unit) * 12); line-height: calc(var(--msvr-unit) * 18); color: #7a4a1d; }
+
+/* 记录卡（Figma 12:7426 DIV-25）：白卡 #c0ecff 描边 1、圆角 15.39、内距 15.39，卡距 11.54。 */
+.msvr-card { margin-top: calc(var(--msvr-unit) * 11.54); padding: calc(var(--msvr-unit) * 15.39); background: #fff; border: calc(var(--msvr-unit) * 1) solid #c0ecff; border-radius: calc(var(--msvr-unit) * 15.39); display: flex; flex-direction: column; }
+/* 行距按节点 margin-wrap 实测：行1 下距 7.69，行2 下距 3.85，行4 上距 7.69。 */
+.msvr-card-head { display: flex; align-items: center; justify-content: space-between; gap: calc(var(--msvr-unit) * 7.69); margin-bottom: calc(var(--msvr-unit) * 7.69); }
+.msvr-card-no { font-family: 'Roboto Mono', Roboto, monospace; font-size: calc(var(--msvr-unit) * 13.46); line-height: calc(var(--msvr-unit) * 19.23); font-weight: 700; color: #111827; }
+.msvr-card-service { font-size: calc(var(--msvr-unit) * 13.46); line-height: calc(var(--msvr-unit) * 19.23); color: #6b7280; margin-bottom: calc(var(--msvr-unit) * 3.85); }
+.msvr-card-mid { display: flex; align-items: center; justify-content: space-between; gap: calc(var(--msvr-unit) * 8); }
+.msvr-customer { display: flex; align-items: center; gap: calc(var(--msvr-unit) * 7.69); min-width: 0; }
+/* 客户块（CCR-M-ORDER-CARD-001）：头像圆沿 order-list 语言缩至本卡节奏。 */
+.msvr-avatar { width: calc(var(--msvr-unit) * 30); height: calc(var(--msvr-unit) * 30); border-radius: 50%; background: #e5f6fd; display: flex; align-items: center; justify-content: center; flex: none; }
+.msvr-avatar text { font-size: calc(var(--msvr-unit) * 11); line-height: calc(var(--msvr-unit) * 15); font-weight: 600; color: #5baae8; }
+.msvr-page .msvr-avatar-image { display: block; overflow: hidden; }
+.msvr-card-name { font-size: calc(var(--msvr-unit) * 11.54); line-height: calc(var(--msvr-unit) * 15.39); color: #9ca3af; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 金额右置（Figma 帧无金额槽位——沿 order-list 卡金额语言：17/24 700 橙）。 */
+.msvr-card-amount { flex: none; font-size: calc(var(--msvr-unit) * 17); line-height: calc(var(--msvr-unit) * 24); font-weight: 700; color: #ff7a00; white-space: nowrap; }
+.msvr-card-time { margin-top: calc(var(--msvr-unit) * 7.69); font-size: calc(var(--msvr-unit) * 11.54); line-height: calc(var(--msvr-unit) * 15.39); color: #9ca3af; }
+/* 核销人胶囊（Figma 12:7426 胶囊配方 7.69/1.92 全圆角；CCR §9.1 两类身份配色区分）：
+   STAFF=绿字浅蓝底（已核销绿 #16a34a/#c0ecff）、OWNER=琥珀字奶油底（待核销琥珀 #d97706/#fffbeb）。 */
+.msvr-op { flex: none; padding: calc(var(--msvr-unit) * 1.92) calc(var(--msvr-unit) * 7.69); border-radius: 999px; font-size: calc(var(--msvr-unit) * 11.54); line-height: calc(var(--msvr-unit) * 15.39); font-weight: 500; }
+.msvr-op-staff { background: #c0ecff; color: #16a34a; }
+.msvr-op-owner { background: #fffbeb; color: #d97706; }
+
+/* 触底加载提示行（onScrollToLower 驱动，无按钮）。 */
+.msvr-more-hint { display: block; margin-top: calc(var(--msvr-unit) * 15.39); text-align: center; font-size: calc(var(--msvr-unit) * 11.54); line-height: calc(var(--msvr-unit) * 17); color: #9ca3af; }
+
+.msvr-tab-space { height: calc(var(--msvr-unit) * 96); flex: none; }

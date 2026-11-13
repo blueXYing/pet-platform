@@ -105,6 +105,9 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
         // enforced for the pending list, the detail read and both OWNER decisions.
         || path.equals("/api/v1/merchant/refund-applications")
         || path.startsWith("/api/v1/merchant/refund-applications/")
+        // Merchant verification-record list (CCR-M-VERIFY-RECORD-001): MINIAPP Bearer enforced;
+        // the read kernel re-proves the store guard + OWNER coordinate on every call.
+        || path.equals("/api/v1/merchant/verifications")
         // Storefront read/write slices (contracts 27 §6.4/69/70, IMPLEMENTED_DEFAULT_OFF):
         // the filter must resolve the MINIAPP session so the service's OWNER guard can see it;
         // the HTTP switch still gates assembly and the security chain's permit rules. The
@@ -222,6 +225,8 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
         || path.startsWith("/api/v1/merchant/agreement")
         || path.equals("/api/v1/merchant/orders")
         || path.startsWith("/api/v1/merchant/orders/")
+        // CCR-M-VERIFY-RECORD-001: the verification-record list answers the merchant envelope.
+        || path.equals("/api/v1/merchant/verifications")
         || path.equals("/api/v1/merchant/store-profile")
         || path.equals("/api/v1/merchant/store-profile/avatar-url")
         || path.startsWith("/api/v1/merchant/stats/")

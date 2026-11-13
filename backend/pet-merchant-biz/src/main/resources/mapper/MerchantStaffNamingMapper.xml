@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.merchant.biz.infrastructure.persistence.mapper.MerchantStaffNamingMapper">
+    <!--
+      CCR-M-VERIFY-RECORD-001 (approved 2026-11-12): display-name batch read for the merchant
+      verification-record list's STAFF rows. Read-only over the module-owned merchant_staff
+      table (schema 52); strictly store-scoped so a cross-store or absent id never resolves a
+      name (it is simply missing from the result). Only id/staff_name are selected — no phone,
+      no profile column. All parameters bind with #{}, no string substitution; the caller's
+      page size (≤100) caps the IN list.
+    -->
+    <select id="selectStaffNames" resultType="com.petplatform.merchant.biz.infrastructure.persistence.mapper.MerchantStaffNamingMapper$StaffNameRow">
+        SELECT id AS staff_id, staff_name
+        FROM merchant_staff
+        WHERE store_id = #{storeId}
+          AND id IN
+        <foreach collection="staffIds" item="staffId" open="(" separator="," close=")">#{staffId}</foreach>
+        ORDER BY id ASC
+    </select>
+</mapper>

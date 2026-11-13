@@ -59,6 +59,8 @@ public class CSessionSecurityConfiguration {
           boolean merchantRefundHttpEnabled,
       @Value("${pet.order.reschedule.http.enabled:false}")
           boolean orderRescheduleHttpEnabled,
+      @Value("${pet.verification.merchant-read.http.enabled:false}")
+          boolean merchantVerificationReadHttpEnabled,
       @Value("${pet.review.http.enabled:false}")
           boolean reviewHttpEnabled,
       @Value("${pet.review.appeal.http.enabled:false}")
@@ -326,11 +328,19 @@ public class CSessionSecurityConfiguration {
                   .permitAll();
             }
             if (orderRescheduleHttpEnabled) {
-              // C reschedule (contract 10 §3.8 / 46号 slice): MINIAPP Bearer is enforced by the
-              // filter's protectedPath regex, not by permitAll itself.
+              // C reschedule (contract 10 §3.8 / 46号 slice): MINIAPP Bearer is enforced
+              // by the filter's protectedPath regex, not by permitAll itself.
               a.requestMatchers(HttpMethod.POST,
                       "/api/v1/c/orders/*/reschedule")
                   .permitAll();
+            }
+            if (merchantVerificationReadHttpEnabled) {
+              // Merchant verification-record list (CCR-M-VERIFY-RECORD-001, approved
+              // 2026-11-12): the MINIAPP Bearer is enforced by the filter's exact path rule
+              // and the read kernel re-proves the store guard + OWNER coordinate (OWNER-only
+              // per the CCR §9 ruling) in every store-guarded read; the chain only opens the
+              // transport, like the other merchant read families.
+              a.requestMatchers(HttpMethod.GET, "/api/v1/merchant/verifications").permitAll();
             }
             if (reviewHttpEnabled) {
               // C review face (contract 10 §3.14 / REV-001 slice): MINIAPP Bearer is enforced
