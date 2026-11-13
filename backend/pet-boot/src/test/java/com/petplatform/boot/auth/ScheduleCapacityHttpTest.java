@@ -93,6 +93,8 @@ class ScheduleCapacityHttpTest {
               "28-Merchant-Agreement-Schema-v0.1.sql",
               "29-Merchant-Application-Schema-v0.1.sql",
               "33-Service-Write-Schema-v0.1.sql",
+              // CCR-SCH-SLOT-001: the claim JOIN needs the 37号 claim table.
+              "37-Reservation-Protection-Foundation-Schema-v0.1.sql",
               "53-Schedule-Write-Schema-v0.1.sql")) {
         ScriptUtils.executeSqlScript(
             connection,

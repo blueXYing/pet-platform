@@ -107,6 +107,9 @@ class ScheduleAvailabilityHttpTest {
               "28-Merchant-Agreement-Schema-v0.1.sql",
               "29-Merchant-Application-Schema-v0.1.sql",
               "33-Service-Write-Schema-v0.1.sql",
+              // CCR-SCH-SLOT-001: the claim JOIN (availability occupied-count read) needs
+              // the 37号 claim table — the acceptance round caught the missing fixture.
+              "37-Reservation-Protection-Foundation-Schema-v0.1.sql",
               "53-Schedule-Write-Schema-v0.1.sql")) {
         ScriptUtils.executeSqlScript(
             connection,
