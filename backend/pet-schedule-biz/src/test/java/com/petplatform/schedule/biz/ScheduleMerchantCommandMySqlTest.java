@@ -604,10 +604,10 @@ class ScheduleMerchantCommandMySqlTest {
             for (List<WeekTemplateDay> invalid : bad) {
                 assertEquals(CommonApiCodes.INVALID_ARGUMENT, assertThrows(ApiException.class,
                         () -> app.commands.replaceWeekTemplate(
-                                replaceWeekTemplate("2", invalid))).code());
+                                replaceWeekTemplate("1", invalid))).code());
             }
             assertEquals(1, db.count("merchant_schedule_week_template"));
-            assertEquals(3, db.jdbc.queryForObject(
+            assertEquals(1, db.jdbc.queryForObject(
                     "SELECT version FROM merchant_schedule_week_template", Integer.class));
         }
     }
