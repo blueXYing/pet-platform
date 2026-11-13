@@ -313,28 +313,35 @@ export default function ScheduleTemplatePage() {
     const notes: string[] = []
     try {
       const capacity = generate.configuredCapacity!
+      // One request per segment SHAPE, not per segment (user ruling 2026-11-13): days
+      // sharing the same segment list ride the same batch-generate call — the common
+      // filled week is a single request carrying 7 dates × N segments.
+      const groups = new Map<string, { dates: string[]; segments: WeekSegmentDraft[] }>()
       for (const { date, weekday } of nextSevenDays(beijingToday())) {
         const day = week[weekday]!
         if (!day.enabled || day.segments.length === 0) continue
-        for (let segIndex = 0; segIndex < day.segments.length; segIndex++) {
-          const segment = day.segments[segIndex]!
-          const input: BatchGenerateInput = {
-            fromDate: date, toDate: date,
-            dailyStart: segment.start, dailyEnd: segment.end,
-            intervalMinutes: generateIntervalMinutes,
-            configuredCapacity: capacity, reason: '排期模板保存生效',
-          }
-          try {
-            const result = await repository.batchGenerate(`schedule-generate:${date}:${segIndex}`, input)
-            acc.created += result.createdWindows.length
-            acc.closed += result.closedWindows.length
-            for (const skipped of skippedOf(result)) {
-              if (!acc.skipped.some(item => item.interval === skipped.interval)) acc.skipped.push(skipped)
-            }
-          } catch (error) {
-            acc.failed.push({ label: `${date} ${weekdayLabels[weekday]} ${segment.start}-${segment.end}`, message: scheduleMessage(error) })
-          }
+        const key = day.segments.map(seg => `${seg.start}-${seg.end}`).join('|')
+        const group = groups.get(key) ?? { dates: [], segments: day.segments.map(seg => ({ ...seg })) }
+        group.dates.push(date)
+        groups.set(key, group)
+      }
+      let shapeIndex = 0
+      for (const group of groups.values()) {
+        const input: BatchGenerateInput = {
+          dates: group.dates, segments: group.segments,
+          configuredCapacity: capacity, reason: '排期模板保存生效',
         }
+        try {
+          const result = await repository.batchGenerate(`schedule-generate:shape:${shapeIndex}`, input)
+          acc.created += result.createdWindows.length
+          acc.closed += result.closedWindows.length
+          for (const skipped of skippedOf(result)) {
+            if (!acc.skipped.some(item => item.interval === skipped.interval)) acc.skipped.push(skipped)
+          }
+        } catch (error) {
+          acc.failed.push({ label: `${group.dates[0]}… ×${group.segments.length} 段/天`, message: scheduleMessage(error) })
+        }
+        shapeIndex++
       }
       if (bookingBase && (bookingBase.leadMinutes !== booking.leadMinutes || bookingBase.maxDays !== booking.maxDays)) {
         try {

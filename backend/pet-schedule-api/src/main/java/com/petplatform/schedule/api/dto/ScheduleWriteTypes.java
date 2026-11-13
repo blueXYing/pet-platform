@@ -36,14 +36,18 @@ public final class ScheduleWriteTypes {
             LocalDate fromDate, LocalDate toDate, String reason) {}
 
     /**
-     * CCR-SCH-SLOT-002 batch-generate:覆盖重建语义 — the calendar-day range is closed first
-     * (occupied windows are skipped and reported), then minute-level windows are created over
-     * [dailyStart, dailyEnd) per day stepping {@code intervalMinutes}. No weekly-template data
-     * structure exists: the range is materialized into real unified slots once.
+     * CCR-SCH-SLOT-002 batch-generate: 覆盖重建语义 — windows intersecting the generation
+     * span [min(dates)@min(segment starts), max(dates)@max(segment ends)] are closed first
+     * (occupied ones skipped and reported), then ONE minute-level window per (date, segment)
+     * is created. No weekly-template data structure exists: the client pre-slices its draft
+     * (e.g. hourly capsules) and one request carries the whole batch (user ruling 2026-11-13).
      */
     public record BatchGenerateCommand(CommandContext context, String merchantId, String storeId,
-            LocalDate fromDate, LocalDate toDate, LocalTime dailyStart, LocalTime dailyEnd,
-            int intervalMinutes, int configuredCapacity, String reason) {}
+            List<LocalDate> dates, List<BatchSegment> segments,
+            int configuredCapacity, String reason) {}
+
+    /** One materialized window per (date, segment); segments must not overlap. */
+    public record BatchSegment(LocalTime start, LocalTime end) {}
 
     public record WindowResult(String windowId, String merchantId, String storeId,
             OffsetDateTime startAt, OffsetDateTime endAt, int configuredCapacity,

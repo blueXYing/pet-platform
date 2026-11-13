@@ -140,11 +140,19 @@ test('preview batch close: partial success names blocked windows; >200 entries r
 
 test('preview batch generate: coverage rebuild closes intersecting windows, skips occupied, 200 cap', async () => {
   // Fixture day 2026-10-07: 61001 09:00-12:00 OPEN, 61002 15:00-17:00 OPEN occupied=1,
-  // 61004 13:00-14:30 OPEN, 61006 CLOSED. Overlap rebuild (CCR-SCH-SLOT-002 §1):
+  // 61004 13:00-14:30 OPEN, 61006 CLOSED. One request per segment SHAPE (2026-11-13
+  // ruling): the client pre-slices hourly capsules; a window per (date, segment).
   const repository = new PreviewScheduleRepository()
+  const hourly = (from: string, to: string) => {
+    const segs: { start: string; end: string }[] = []
+    for (let h = Number(from.slice(0, 2)); h < Number(to.slice(0, 2)); h++) {
+      segs.push({ start: `${String(h).padStart(2, '0')}:00`, end: `${String(h + 1).padStart(2, '0')}:00` })
+    }
+    return segs
+  }
   const clean = await repository.batchGenerate('g1', {
-    fromDate: '2026-10-07', toDate: '2026-10-07', dailyStart: '09:00', dailyEnd: '12:00',
-    intervalMinutes: 60, configuredCapacity: 6, reason: '一键生成',
+    dates: ['2026-10-07'], segments: hourly('09:00', '12:00'),
+    configuredCapacity: 6, reason: '一键生成',
   })
   assert.equal(clean.closedWindows.length, 1, '61001 was rebuilt-over (closed first)')
   assert.equal(clean.closedWindows[0]!.windowId, '61001')
@@ -156,8 +164,8 @@ test('preview batch generate: coverage rebuild closes intersecting windows, skip
   }
   // Occupied window: skipped with OCCUPIED, and NO slot is generated inside its interval.
   const blocked = await repository.batchGenerate('g2', {
-    fromDate: '2026-10-07', toDate: '2026-10-07', dailyStart: '15:00', dailyEnd: '17:00',
-    intervalMinutes: 60, configuredCapacity: 6, reason: '一键生成',
+    dates: ['2026-10-07'], segments: [{ start: '15:00', end: '17:00' }],
+    configuredCapacity: 6, reason: '一键生成',
   })
   assert.equal(blocked.createdWindows.length, 0)
   assert.equal(blocked.closedWindows.length, 0)
@@ -166,8 +174,8 @@ test('preview batch generate: coverage rebuild closes intersecting windows, skip
   assert.equal(blocked.skippedWindows[0]!.window.windowId, '61002')
   // Mixed day: closes 61001/61004, skips 61002, suppresses the slot crossing 15:00.
   const mixed = await new PreviewScheduleRepository().batchGenerate('g3', {
-    fromDate: '2026-10-07', toDate: '2026-10-07', dailyStart: '09:00', dailyEnd: '16:00',
-    intervalMinutes: 60, configuredCapacity: 6, reason: '一键生成',
+    dates: ['2026-10-07'], segments: hourly('09:00', '16:00'),
+    configuredCapacity: 6, reason: '一键生成',
   })
   assert.equal(mixed.closedWindows.length, 2)
   assert.equal(mixed.skippedWindows.length, 1)
@@ -179,8 +187,8 @@ test('preview batch generate: coverage rebuild closes intersecting windows, skip
   }
   // Same slot replays the journaled receipt (idempotent).
   const replay = await repository.batchGenerate('g1', {
-    fromDate: '2026-10-07', toDate: '2026-10-07', dailyStart: '09:00', dailyEnd: '12:00',
-    intervalMinutes: 60, configuredCapacity: 6, reason: '一键生成',
+    dates: ['2026-10-07'], segments: hourly('09:00', '12:00'),
+    configuredCapacity: 6, reason: '一键生成',
   })
   assert.deepEqual(replay.createdWindows.map(item => item.windowId), clean.createdWindows.map(item => item.windowId))
 })
@@ -188,19 +196,22 @@ test('preview batch generate: coverage rebuild closes intersecting windows, skip
 test('preview batch generate rejects invalid ranges and the >200 candidate cap', async () => {
   const repository = new PreviewScheduleRepository()
   const good = (over: Record<string, unknown> = {}) => ({
-    fromDate: '2026-11-13', toDate: '2026-11-13', dailyStart: '09:00', dailyEnd: '19:00',
-    intervalMinutes: 60, configuredCapacity: 6, reason: '一键生成', ...over,
+    dates: ['2026-11-13'], segments: [{ start: '09:00', end: '10:00' }],
+    configuredCapacity: 6, reason: '一键生成', ...over,
   })
   await assert.rejects(() => repository.batchGenerate('v1', good({ configuredCapacity: 0 })), rejects400)
-  await assert.rejects(() => repository.batchGenerate('v2', good({ dailyStart: '19:00', dailyEnd: '09:00' })), rejects400)
-  await assert.rejects(() => repository.batchGenerate('v3', good({ intervalMinutes: 1441 })), rejects400)
+  await assert.rejects(() => repository.batchGenerate('v2', good({ segments: [{ start: '19:00', end: '09:00' }] })), rejects400)
+  await assert.rejects(() => repository.batchGenerate('v3', good({ segments: [{ start: '09:00', end: '10:00' }, { start: '09:30', end: '10:30' }] })), rejects400)
   await assert.rejects(() => repository.batchGenerate('v4', good({ reason: ' ' })), rejects400)
-  await assert.rejects(() => repository.batchGenerate('v5', good({ toDate: '2027-12-31' })), rejects400)
-  // 23 hourly slots/day on empty days: 8 days=184 fits, 9 days=207 exceeds the §1 cap.
-  const wide = (fromDate: string, toDate: string) => good({ fromDate, toDate, dailyStart: '00:00', dailyEnd: '23:00' })
-  const fits = await repository.batchGenerate('v6', wide('2026-11-13', '2026-11-20'))
+  await assert.rejects(() => repository.batchGenerate('v5', good({ dates: ['2026-11-13', '2026-11-13'] })), rejects400)
+  // 23 hourly segments/day on empty days: 8 days=184 fits, 9 days=207 exceeds the §1 cap.
+  const wide = (dates: string[]) => good({
+    dates, segments: Array.from({ length: 23 }, (_, h) =>
+      ({ start: `${String(h).padStart(2, '0')}:00`, end: `${String(h + 1).padStart(2, '0')}:00` })),
+  })
+  const fits = await repository.batchGenerate('v6', wide(['2026-11-13', '2026-11-14', '2026-11-15', '2026-11-16', '2026-11-17', '2026-11-18', '2026-11-19', '2026-11-20']))
   assert.equal(fits.createdWindows.length, 8 * 23)
-  await assert.rejects(() => repository.batchGenerate('v7', wide('2026-11-13', '2026-11-21')), rejects400)
+  await assert.rejects(() => repository.batchGenerate('v7', wide(['2026-11-13', '2026-11-14', '2026-11-15', '2026-11-16', '2026-11-17', '2026-11-18', '2026-11-19', '2026-11-20', '2026-11-21'])), rejects400)
 })
 
 test('preview booking-window: GET answers defaults, PUT replaces under CAS', async () => {
@@ -502,20 +513,19 @@ test('real repository wires batch-generate and booking-window (CCR-SCH-SLOT-002)
     return undefined
   })
   const generated = await repository.batchGenerate('w1', {
-    fromDate: '2026-11-13', toDate: '2026-11-19', dailyStart: '09:00', dailyEnd: '19:00',
-    intervalMinutes: 60, configuredCapacity: 6, reason: ' 一键生成 ',
+    dates: ['2026-11-13', '2026-11-19'],
+    segments: [{ start: '09:00', end: '10:00' }, { start: '10:00', end: '11:00' }],
+    configuredCapacity: 6, reason: ' 一键生成 ',
   })
   assert.equal(generated.createdWindows.length, 1)
   assert.equal(generated.skippedWindows[0]!.reasonCode, 'OCCUPIED')
   const generateCall = seen.find(item => item.method === 'POST' && item.path === '/api/v1/merchant/stores/958002/availability-windows/batch-generate')!
-  // §1 strict-JSON body: exactly the eight contract fields; reason is trimmed.
+  // §1 strict-JSON body (2026-11-13 shape): exactly the five contract fields; reason trimmed.
   assert.deepEqual(Object.keys(generateCall.data ?? {}).sort(),
-    ['configuredCapacity', 'dailyEnd', 'dailyStart', 'fromDate', 'intervalMinutes', 'merchantId', 'reason', 'toDate'])
-  assert.equal(generateCall.data?.fromDate, '2026-11-13')
-  assert.equal(generateCall.data?.toDate, '2026-11-19')
-  assert.equal(generateCall.data?.dailyStart, '09:00')
-  assert.equal(generateCall.data?.dailyEnd, '19:00')
-  assert.equal(generateCall.data?.intervalMinutes, 60)
+    ['configuredCapacity', 'dates', 'merchantId', 'reason', 'segments'])
+  assert.deepEqual(generateCall.data?.dates, ['2026-11-13', '2026-11-19'])
+  assert.deepEqual(generateCall.data?.segments,
+    [{ start: '09:00', end: '10:00' }, { start: '10:00', end: '11:00' }])
   assert.equal(generateCall.data?.configuredCapacity, 6)
   assert.equal(generateCall.data?.reason, '一键生成')
   assert.match(String(generateCall.requestId), /^[0-9a-f-]{36}$/)
@@ -537,12 +547,12 @@ test('real repository wires batch-generate and booking-window (CCR-SCH-SLOT-002)
 test('real repository pre-validates batch-generate / booking-window before the wire', async () => {
   const { repository, seen } = await wiredApi(() => undefined)
   await assert.rejects(() => repository.batchGenerate('w3', {
-    fromDate: '2026-11-13', toDate: '2026-11-19', dailyStart: '19:00', dailyEnd: '09:00',
-    intervalMinutes: 60, configuredCapacity: 6, reason: '一键生成',
+    dates: ['2026-11-13'], segments: [{ start: '19:00', end: '09:00' }],
+    configuredCapacity: 6, reason: '一键生成',
   }), /WORKSPACE_FORM_INVALID/)
   await assert.rejects(() => repository.batchGenerate('w4', {
-    fromDate: '2026-11-13', toDate: '2026-11-19', dailyStart: '09:00', dailyEnd: '19:00',
-    intervalMinutes: 60, configuredCapacity: 0, reason: '一键生成',
+    dates: ['2026-11-13'], segments: [{ start: '09:00', end: '10:00' }],
+    configuredCapacity: 0, reason: '一键生成',
   }), /WORKSPACE_FORM_INVALID/)
   await assert.rejects(() => repository.saveBookingWindow('w5', { leadMinutes: 1441, maxDays: 7 }, '0'), /WORKSPACE_FORM_INVALID/)
   assert.equal(seen.length, 0, 'nothing reaches the wire on a mirrored 400')

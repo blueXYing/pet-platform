@@ -140,9 +140,8 @@ export class RealScheduleRepository implements ScheduleDeps {
     if (batchGenerateProblems(input).length) throw new Error('WORKSPACE_FORM_INVALID')
     return this.write(slot, `/api/v1/merchant/stores/${storeId}/availability-windows/batch-generate`, 'POST', {
       merchantId,
-      fromDate: input.fromDate, toDate: input.toDate,
-      dailyStart: input.dailyStart, dailyEnd: input.dailyEnd,
-      intervalMinutes: input.intervalMinutes,
+      dates: [...input.dates],
+      segments: input.segments.map(seg => ({ start: seg.start, end: seg.end })),
       configuredCapacity: input.configuredCapacity,
       reason: input.reason.trim(),
     }, decodeBatchGenerateResult)

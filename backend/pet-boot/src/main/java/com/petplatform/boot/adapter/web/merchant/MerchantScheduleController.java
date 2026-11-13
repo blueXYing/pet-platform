@@ -223,7 +223,8 @@ public final class MerchantScheduleController {
     }
 
     /** CCR-SCH-SLOT-002 覆盖重建 (53号 §3.4): the "weekly template editor" is a pure client
-     * draft — saving materializes real minute-level unified slots through this command. */
+     *  draft — saving materializes real minute-level slots through this command. One request
+     *  carries the whole batch: dates + pre-sliced segments (user ruling 2026-11-13). */
     @PostMapping(value = "/stores/{storeId}/availability-windows/batch-generate",
             consumes = MediaType.APPLICATION_JSON_VALUE)
     Map<String, Object> batchGenerate(
@@ -233,10 +234,7 @@ public final class MerchantScheduleController {
         JsonNode root = readObject(json);
         BatchGenerateResult result = commands.batchGenerate(new BatchGenerateCommand(
                 userCommand(req), id(text(root, "merchantId")), id(storeId),
-                date(text(root, "fromDate")), date(text(root, "toDate")),
-                dailyTime(root, "dailyStart"), dailyTime(root, "dailyEnd"),
-                // intervalMinutes is optional and defaults to 60 (CCR §1).
-                optionalBoundsInt(root, "intervalMinutes", 1, 1440, 60),
+                dateList(root, "dates"), segmentList(root, "segments"),
                 boundedInt(root, "configuredCapacity", 1, 999),
                 text(root, "reason")));
         Map<String, Object> data = new LinkedHashMap<>();
@@ -582,12 +580,52 @@ public final class MerchantScheduleController {
         return node.asInt();
     }
 
-    /** Strict "HH:mm" clock time (CCR-SCH-SLOT-002 §1 dailyStart/dailyEnd lexicon). */
+    /** Strict "HH:mm" clock time (CCR-SCH-SLOT-002 §1 segment lexicon). */
     private static java.time.LocalTime dailyTime(JsonNode root, String field) {
         JsonNode node = root.get(field);
         if (node == null || !node.isString()) throw invalid();
         if (!node.asString().matches("([01][0-9]|2[0-3]):[0-5][0-9]")) throw invalid();
         return java.time.LocalTime.parse(node.asString());
+    }
+
+    /** Strict calendar-day list for batch-generate (CCR-SCH-SLOT-002 §1, 2026-11-13 shape):
+     *  non-empty array of YYYY-MM-DD strings, each element exactly two keys-free. */
+    private static java.util.List<LocalDate> dateList(JsonNode root, String field) {
+        JsonNode node = root.get(field);
+        if (node == null || !node.isArray() || node.isEmpty()) throw invalid();
+        java.util.List<LocalDate> dates = new java.util.ArrayList<>();
+        for (JsonNode item : node) {
+            if (!item.isString()) throw invalid();
+            try {
+                dates.add(LocalDate.parse(item.asString()));
+            } catch (DateTimeParseException malformed) {
+                throw invalid();
+            }
+        }
+        return dates;
+    }
+
+    /** Strict segment list: objects with exactly {start, end} in "HH:mm" (user ruling
+     *  2026-11-13 — one request carries the whole pre-sliced batch). */
+    private static java.util.List<com.petplatform.schedule.api.dto.ScheduleWriteTypes.BatchSegment>
+            segmentList(JsonNode root, String field) {
+        JsonNode node = root.get(field);
+        if (node == null || !node.isArray() || node.isEmpty()) throw invalid();
+        java.util.List<com.petplatform.schedule.api.dto.ScheduleWriteTypes.BatchSegment> segments =
+                new java.util.ArrayList<>();
+        for (JsonNode item : node) {
+            if (item == null || !item.isObject() || item.size() != 2
+                    || item.get("start") == null || item.get("end") == null) throw invalid();
+            JsonNode start = item.get("start");
+            JsonNode end = item.get("end");
+            if (!start.isString() || !end.isString()) throw invalid();
+            if (!start.asString().matches("([01][0-9]|2[0-3]):[0-5][0-9]")
+                    || !end.asString().matches("([01][0-9]|2[0-3]):[0-5][0-9]")) throw invalid();
+            segments.add(new com.petplatform.schedule.api.dto.ScheduleWriteTypes.BatchSegment(
+                    java.time.LocalTime.parse(start.asString()),
+                    java.time.LocalTime.parse(end.asString())));
+        }
+        return segments;
     }
 
     private static String optionalReason(JsonNode root, String field) {

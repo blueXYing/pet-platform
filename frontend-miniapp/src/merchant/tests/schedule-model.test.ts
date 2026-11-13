@@ -274,11 +274,13 @@ test('generate / booking draft validation mirrors the CCR §1/§2 bounds', () =>
   assert.ok(generateFormProblems({ dailyStart: '19:00', dailyEnd: '19:00', configuredCapacity: 6 }).some(p => p.includes('结束')))
   assert.ok(generateFormProblems({ dailyStart: '09:00', dailyEnd: '19:00', configuredCapacity: 1000 }).some(p => p.includes('容量')))
   assert.ok(generateFormProblems({ dailyStart: '09:00', dailyEnd: '19:00', configuredCapacity: null }).some(p => p.includes('容量')))
-  const good = { fromDate: '2026-11-13', toDate: '2026-11-19', dailyStart: '09:00', dailyEnd: '19:00',
-    intervalMinutes: 60, configuredCapacity: 6, reason: '一键生成' }
+  const good = { dates: ['2026-11-13', '2026-11-19'],
+    segments: [{ start: '09:00', end: '10:00' }, { start: '10:00', end: '11:00' }],
+    configuredCapacity: 6, reason: '一键生成' }
   assert.deepEqual(batchGenerateProblems(good), [])
-  assert.ok(batchGenerateProblems({ ...good, intervalMinutes: 0 }).some(p => p.includes('间隔')))
-  assert.ok(batchGenerateProblems({ ...good, toDate: '2027-12-31' }).some(p => p.includes('跨度')))
+  assert.ok(batchGenerateProblems({ ...good, segments: [...good.segments, { start: '10:30', end: '11:30' }] }).some(p => p.includes('重叠')))
+  assert.ok(batchGenerateProblems({ ...good, segments: [{ start: '19:00', end: '09:00' }] }).some(p => p.includes('每段')))
+  assert.ok(batchGenerateProblems({ ...good, dates: [...good.dates, '2026-11-13'] }).some(p => p.includes('不重复')))
   assert.ok(batchGenerateProblems({ ...good, reason: ' ' }).some(p => p.includes('原因')))
   assert.deepEqual(bookingWindowFormProblems({ leadMinutes: 0, maxDays: 1 }), [])
   assert.deepEqual(bookingWindowFormProblems({ leadMinutes: 1440, maxDays: 90 }), [])

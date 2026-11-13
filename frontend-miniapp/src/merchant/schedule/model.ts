@@ -471,24 +471,39 @@ export function generateFormProblems(form: GenerateFormInput): string[] {
   }
   return problems
 }
-/** batch-generate 请求模型（Contract 53号增补，CCR §1）：fromDate..toDate 北京历日跨度
- *  1..366 天，dailyStart/dailyEnd "HH:mm" start<end，intervalMinutes 1..1440，
- *  configuredCapacity 1..999，reason 必填 1..500。 */
+/** batch-generate 请求模型（Contract 53号增补，CCR §1；2026-11-13 用户裁决：一次请求带
+ *  全部日期+预切好的时段段——不按段多次调用）：dates 1..366 个不重复北京历日，
+ *  segments 1..24 段不重叠 "HH:mm" start<end，configuredCapacity 1..999，reason 1..500。 */
 export type BatchGenerateInput = Readonly<{
-  fromDate: string; toDate: string
-  dailyStart: string; dailyEnd: string
-  intervalMinutes: number; configuredCapacity: number
+  dates: readonly string[]
+  segments: readonly WeekSegmentDraft[]
+  configuredCapacity: number
   reason: string
 }>
 export function batchGenerateProblems(input: BatchGenerateInput): string[] {
-  const problems = generateFormProblems({
-    dailyStart: input.dailyStart, dailyEnd: input.dailyEnd, configuredCapacity: input.configuredCapacity,
-  })
-  if (!Number.isSafeInteger(input.intervalMinutes) || input.intervalMinutes < 1 || input.intervalMinutes > 1440) {
-    problems.push('间隔需为 1-1440 的整数分钟')
+  const problems: string[] = []
+  if (!Array.isArray(input.dates) || input.dates.length < 1 || input.dates.length > 366
+    || new Set(input.dates).size !== input.dates.length
+    || input.dates.some(d => !/^\d{4}-\d{2}-\d{2}$/.test(d))) {
+    problems.push('日期需为 1-366 个不重复的日历日')
   }
-  const days = batchRangeDays(input.fromDate, input.toDate)
-  if (days < 1 || days > 366) problems.push('日期跨度需在 1-366 天内')
+  if (!Array.isArray(input.segments) || input.segments.length < 1 || input.segments.length > 24) {
+    problems.push('时段段需为 1-24 条')
+  } else {
+    const sorted = [...input.segments].sort((a, b) => a.start < b.start ? -1 : 1)
+    for (const seg of sorted) {
+      if (!/^[0-2]\d:[0-5]\d$/.test(seg.start) || !/^[0-2]\d:[0-5]\d$/.test(seg.end) || seg.start >= seg.end) {
+        problems.push('每段需为开始早于结束的 HH:mm 时间')
+        break
+      }
+    }
+    for (let i = 1; i < sorted.length && !problems.some(p => p.includes('重叠')); i++) {
+      if (sorted[i]!.start < sorted[i - 1]!.end) { problems.push('时段段之间不能重叠'); break }
+    }
+  }
+  if (!Number.isSafeInteger(input.configuredCapacity) || input.configuredCapacity < 1 || input.configuredCapacity > 999) {
+    problems.push('每时段容量需为 1-999 的整数')
+  }
   const reasonIssue = reasonProblem(input.reason, true)
   if (reasonIssue) problems.push(reasonIssue)
   return problems
@@ -881,20 +896,17 @@ export class PreviewScheduleRepository implements ScheduleDeps {
     this.gate(false)
     if (batchGenerateProblems(input).length) throw new ScheduleMockError('COMMON_INVALID_ARGUMENT', 400)
     return this.command(slot, JSON.stringify(['generate', input]), () => {
-      const dayCount = batchRangeDays(input.fromDate, input.toDate)
-      const interval = Math.max(1, input.intervalMinutes)
-      const dailyStart = timeMinutes(input.dailyStart), dailyEnd = timeMinutes(input.dailyEnd)
+      // One window per (date, segment) — the client pre-slices (2026-11-13 ruling).
       const slots: { startAt: string; endAt: string }[] = []
-      for (let dayOffset = 0; dayOffset < dayCount; dayOffset++) {
-        const date = addBeijingDays(input.fromDate, dayOffset)
-        for (let minute = dailyStart; minute < dailyEnd; minute += interval) {
-          const end = Math.min(minute + interval, dailyEnd)
-          const hhmm = (value: number) => `${String(Math.floor(value / 60)).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`
-          slots.push({ startAt: composeTimestamp(date, hhmm(minute)), endAt: composeTimestamp(date, hhmm(end)) })
+      const sortedDates = [...input.dates].sort()
+      const sortedSegments = [...input.segments].sort((a, b) => a.start < b.start ? -1 : 1)
+      for (const date of sortedDates) {
+        for (const seg of sortedSegments) {
+          slots.push({ startAt: composeTimestamp(date, seg.start), endAt: composeTimestamp(date, seg.end) })
         }
       }
-      const rangeStart = composeTimestamp(input.fromDate, input.dailyStart)
-      const rangeEnd = composeTimestamp(input.toDate, input.dailyEnd)
+      const rangeStart = composeTimestamp(sortedDates[0]!, sortedSegments[0]!.start)
+      const rangeEnd = composeTimestamp(sortedDates[sortedDates.length - 1]!, sortedSegments[sortedSegments.length - 1]!.end)
       const intersecting = this.store.filter(entry => {
         if (this.statusFor(entry) === 'CLOSED') return false
         return entry.window.startAt < rangeEnd && rangeStart < entry.window.endAt

@@ -24,6 +24,7 @@ import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BatchCloseCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BatchCloseResult;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BatchGenerateCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BatchGenerateResult;
+import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BatchSegment;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BlockedWindow;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BookingWindowQuery;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BookingWindowReplaceCommand;
@@ -72,6 +73,8 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 import java.util.Objects;
 import java.util.Set;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -415,29 +418,40 @@ public final class ScheduleMerchantCommandService implements ScheduleMerchantCom
         CommandContext ctx = user(c == null ? null : c.context());
         windowId(c.merchantId(), "merchantId");
         windowId(c.storeId(), "storeId");
-        if (c.fromDate() == null || c.toDate() == null || c.toDate().isBefore(c.fromDate())
-                || ChronoUnit.DAYS.between(c.fromDate(), c.toDate()) + 1 > 366) {
-            invalid("batch generate date range must span 1 to 366 calendar days");
+        // dates: 1..366 distinct calendar days; segments: 1..24 non-overlapping, start<end.
+        if (c.dates() == null || c.dates().isEmpty() || c.dates().size() > 366
+                || c.dates().stream().distinct().count() != c.dates().size()
+                || c.dates().stream().anyMatch(java.util.Objects::isNull)) {
+            invalid("batch generate dates must list 1 to 366 distinct calendar days");
         }
-        if (c.dailyStart() == null || c.dailyEnd() == null
-                || !c.dailyEnd().isAfter(c.dailyStart())) {
-            invalid("dailyStart must be before dailyEnd");
+        if (c.segments() == null || c.segments().isEmpty() || c.segments().size() > 24) {
+            invalid("batch generate segments must list 1 to 24 time segments");
         }
-        if (c.intervalMinutes() < 1 || c.intervalMinutes() > 1440) {
-            invalid("intervalMinutes must be between 1 and 1440");
+        List<BatchSegment> ordered = new ArrayList<>(c.segments());
+        ordered.sort(java.util.Comparator.comparing(BatchSegment::start));
+        for (BatchSegment segment : ordered) {
+            if (segment == null || segment.start() == null || segment.end() == null
+                    || !segment.end().isAfter(segment.start())) {
+                invalid("each segment must have start before end");
+            }
+        }
+        for (int i = 1; i < ordered.size(); i++) {
+            if (!ordered.get(i).start().isBefore(ordered.get(i - 1).end())) {
+                invalid("batch generate segments must not overlap");
+            }
         }
         if (c.configuredCapacity() < 1 || c.configuredCapacity() > 999) {
             invalid("configuredCapacity must be between 1 and 999");
         }
         String reason = requiredReason(c.reason());
+        List<LocalDate> sortedDates = new ArrayList<>(new TreeSet<>(c.dates()));
+        List<BatchSegment> segments = List.copyOf(ordered);
         Map<String, Object> p = new LinkedHashMap<>();
         p.put("merchantId", c.merchantId());
         p.put("storeId", c.storeId());
-        p.put("fromDate", c.fromDate().toString());
-        p.put("toDate", c.toDate().toString());
-        p.put("dailyStart", c.dailyStart().toString());
-        p.put("dailyEnd", c.dailyEnd().toString());
-        p.put("intervalMinutes", Integer.toString(c.intervalMinutes()));
+        p.put("dates", sortedDates.stream().map(LocalDate::toString).collect(Collectors.joining(",")));
+        p.put("segments", segments.stream()
+                .map(s -> s.start() + "-" + s.end()).collect(Collectors.joining(",")));
         p.put("configuredCapacity", Integer.toString(c.configuredCapacity()));
         p.put("reason", reason);
         Executed<BatchGenerateResult> executed = command(
@@ -450,14 +464,13 @@ public final class ScheduleMerchantCommandService implements ScheduleMerchantCom
                     admissions.requireOperable(query(ctx), id(c.merchantId()), id(c.storeId()));
                     guard.acquire(List.of(c.storeId()), query(ctx));
                     StoreScheduleFacts snapshot = facts.readStore(c.storeId(), query(ctx));
-                    // Close scope = the generation interval itself (H5 pinned semantics,
-                    // 2026-11-13): [fromDate@dailyStart, toDate@dailyEnd] in the business
-                    // zone, NOT whole calendar days — a later segment call of the same day
-                    // must not close the windows an earlier segment just created.
-                    OffsetDateTime from = c.fromDate().atTime(c.dailyStart())
+                    // Close scope = the generation span itself (pinned semantics,
+                    // 2026-11-13): [min(dates)@first segment start, max(dates)@last segment
+                    // end] in the business zone, NOT whole calendar days.
+                    OffsetDateTime from = sortedDates.getFirst().atTime(segments.getFirst().start())
                             .atZone(AvailabilityQueryService.BUSINESS_ZONE)
                             .toOffsetDateTime();
-                    OffsetDateTime to = c.toDate().atTime(c.dailyEnd())
+                    OffsetDateTime to = sortedDates.getLast().atTime(segments.getLast().end())
                             .atZone(AvailabilityQueryService.BUSINESS_ZONE)
                             .toOffsetDateTime();
                     // Split the interval's open-derived targets the same way batch-close
@@ -490,27 +503,25 @@ public final class ScheduleMerchantCommandService implements ScheduleMerchantCom
                             remainingOpen.add(window);
                         }
                     }
-                    // Materialize the generation plan per calendar day: half-open segments
-                    // [dailyStart + k*interval, +interval) that fit inside [dailyStart,
-                    // dailyEnd). Segments overlapping a remaining open slot are dropped —
-                    // the skipped window's own interval is therefore never regenerated.
+                    // Materialize the plan: ONE window per (date, segment) — the client
+                    // pre-slices its template draft, so there is no server-side interval
+                    // split (user ruling 2026-11-13: one request carries the whole batch).
+                    // Segments overlapping a remaining open slot are dropped — a skipped
+                    // window's own interval is therefore never regenerated.
                     List<OffsetDateTime> planStarts = new ArrayList<>();
                     List<OffsetDateTime> planEnds = new ArrayList<>();
-                    for (LocalDate day = c.fromDate(); !day.isAfter(c.toDate());
-                            day = day.plusDays(1)) {
-                        OffsetDateTime cursor = day.atTime(c.dailyStart())
-                                .atZone(AvailabilityQueryService.BUSINESS_ZONE)
-                                .toOffsetDateTime().withOffsetSameInstant(ZoneOffset.UTC);
-                        OffsetDateTime dayEnd = day.atTime(c.dailyEnd())
-                                .atZone(AvailabilityQueryService.BUSINESS_ZONE)
-                                .toOffsetDateTime().withOffsetSameInstant(ZoneOffset.UTC);
-                        while (!cursor.plusMinutes(c.intervalMinutes()).isAfter(dayEnd)) {
-                            OffsetDateTime end = cursor.plusMinutes(c.intervalMinutes());
-                            if (!overlapsOpenSlot(remainingOpen, cursor, end)) {
-                                planStarts.add(cursor);
+                    for (LocalDate day : sortedDates) {
+                        for (BatchSegment segment : segments) {
+                            OffsetDateTime start = day.atTime(segment.start())
+                                    .atZone(AvailabilityQueryService.BUSINESS_ZONE)
+                                    .toOffsetDateTime().withOffsetSameInstant(ZoneOffset.UTC);
+                            OffsetDateTime end = day.atTime(segment.end())
+                                    .atZone(AvailabilityQueryService.BUSINESS_ZONE)
+                                    .toOffsetDateTime().withOffsetSameInstant(ZoneOffset.UTC);
+                            if (!overlapsOpenSlot(remainingOpen, start, end)) {
+                                planStarts.add(start);
                                 planEnds.add(end);
                             }
-                            cursor = end;
                         }
                     }
                     // 2026-10-05 ruling (blocker 3) family ceiling: one batch command
