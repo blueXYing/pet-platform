@@ -70,7 +70,9 @@ class MerchantVerificationReadHttpAcceptanceTest {
             assertEquals(200, list.status(), list.toString());
             assertEquals("SUCCESS", list.envelope().get("code"));
             assertEquals("no-store", list.headers().firstValue("Cache-Control").orElseThrow());
-            assertEquals(2L, list.data().get("total"));
+            // JSON numbers decode as Integer on this wire — compare int literals (a Long
+            // literal fails on type even when the value matches, as CI round 1 proved).
+            assertEquals(2, list.data().get("total"));
             assertEquals(20, list.data().get("pageSize"));
             var items = items(list);
             assertEquals(2, items.size());
@@ -124,14 +126,14 @@ class MerchantVerificationReadHttpAcceptanceTest {
             // Exact orderId filter isolates the OWNER record.
             var byOrder = f.send("GET", LIST + "&orderId=" + order, null, f.ownerToken);
             assertEquals(200, byOrder.status(), byOrder.toString());
-            assertEquals(1L, byOrder.data().get("total"));
+            assertEquals(1, byOrder.data().get("total"));
             assertEquals("OWNER", items(byOrder).get(0).get("operatorKind"));
 
             // Paired range around the seeded STAFF instant (2030-01-02) isolates it too.
             var ranged = f.send("GET", LIST
                     + "&verifiedFrom=2030-01-02T00:00:00.000Z&verifiedTo=2030-01-02T23:59:59.999Z",
                     null, f.ownerToken);
-            assertEquals(1L, ranged.data().get("total"));
+            assertEquals(1, ranged.data().get("total"));
             assertEquals("STAFF", items(ranged).get(0).get("operatorKind"));
 
             // 63号 discipline: single-sided range, inverted range, span over 366 days.
