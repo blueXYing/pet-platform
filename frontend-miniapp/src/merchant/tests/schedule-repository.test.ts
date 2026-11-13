@@ -4,12 +4,14 @@ import { randomUUID } from 'node:crypto'
 import { ApiError } from '../../shared/request'
 import { ConsumerApi, type LocalStore } from '../../shared/consumer-api'
 import {
-  emptyWindowForm, PreviewScheduleRepository, ScheduleMockError,
-  fixtureStaffWindows, fixtureWindows, scheduleAvailability, windowFormFromItem,
-  type ScheduleWindowReceipt,
+  defaultWeekDraft, emptyWindowForm, PreviewScheduleRepository, ScheduleMockError,
+  fixtureStaffWindows, fixtureWindows, scheduleAvailability, weekTemplateFromDraft,
+  windowFormFromItem, type ScheduleWindowReceipt,
 } from '../schedule/model'
 import { RealScheduleRepository } from '../schedule/repository'
-// CCR-SCH-SLOT-002：batch-generate（覆盖重建）与 booking-window（门店级可预约范围）。
+// CCR-SCH-SLOT-002：batch-generate（覆盖重建，保留为手动批量入口）与 booking-window。
+// CCR-SCH-SLOT-003：week-template（周循环模板，读时展开/下单物化）——「保存并生效」从
+// 002 的逐形状 batch-generate 铺排改为一次 PUT 全替换。
 
 async function rejects(call: () => Promise<unknown> | unknown): Promise<unknown> {
   try { await call(); return new Error('NO_THROW') } catch (error) { return error }
@@ -235,6 +237,61 @@ test('preview booking-window: GET answers defaults, PUT replaces under CAS', asy
   // Switch-off / dependency failure fails the read closed like every other schedule read.
   const closed = new PreviewScheduleRepository(undefined, undefined, undefined, 'closed')
   await assert.rejects(() => closed.bookingWindow())
+})
+
+test('preview week-template: GET answers the all-rest default, PUT replaces under CAS (CCR-SCH-SLOT-003)', async () => {
+  const repository = new PreviewScheduleRepository()
+  const initial = await repository.weekTemplate()
+  assert.equal(initial.version, '0')
+  assert.ok(initial.days.every(day => day.enabled === false && day.segments.length === 0))
+  const form = weekTemplateFromDraft(defaultWeekDraft(), 6)
+  const saved = await repository.saveWeekTemplate('wt1', form, '0')
+  assert.notEqual(saved.version, '0')
+  assert.equal(saved.days[0].segments[0].capacity, 6)
+  const reread = await repository.weekTemplate()
+  assert.equal(reread.version, saved.version)
+  assert.deepEqual(reread.days[0].segments, [{ start: '09:00', end: '19:00', capacity: 6 }])
+  // Stale expectedVersion → COMMON_CONFLICT；非法表单（容量越界）镜像服务端 400。
+  const stale = await rejects(() => repository.saveWeekTemplate('wt2', form, '0'))
+  assert.equal((stale as ScheduleMockError).code, 'COMMON_CONFLICT')
+  const bad = await rejects(() => repository.saveWeekTemplate('wt3', weekTemplateFromDraft(defaultWeekDraft(), 0), saved.version))
+  assert.equal((bad as ScheduleMockError).code, 'COMMON_INVALID_ARGUMENT')
+  // 同槽同载荷重放原回执（幂等）；改模板非减少可用性动作，无 reason 字段面。
+  const replay = await repository.saveWeekTemplate('wt1', form, '0')
+  assert.equal(replay.version, saved.version)
+  // Switch-off / dependency failure fails the read closed like every other schedule read.
+  const closed = new PreviewScheduleRepository(undefined, undefined, undefined, 'closed')
+  await assert.rejects(() => closed.weekTemplate())
+})
+
+test('preview list read unions the saved week-template expansion (§1 读时展开，preview 演示)', async () => {
+  const repository = new PreviewScheduleRepository()
+  // 锚点 2026-10-06（周二），默认 maxDays 7 → 展开 10-07..10-13；10-07 是周三（fixtures 日）。
+  const draft = defaultWeekDraft().map((day, index) => {
+    if (index === 2) return { enabled: true, segments: [{ start: '07:00', end: '08:30' }, { start: '13:30', end: '14:00' }] }
+    if (index === 3) return { enabled: true, segments: [{ start: '07:00', end: '08:30' }] }
+    return { enabled: false, segments: [] }
+  })
+  await repository.saveWeekTemplate('wt-expand', weekTemplateFromDraft(draft, 4), '0')
+  const page = await repository.windows({ page: 1, pageSize: 20 })
+  // 周三 07:00-08:30 虚拟段出现（不与 fixtures 相交，排最前）；13:30-14:00 与 61004
+  // （13:00-14:30）重叠被去重；周四段落在 10-08。总数 6 真实 + 2 虚拟。
+  assert.equal(page.total, 8)
+  assert.equal(page.items[0].windowId, '9000100')
+  assert.equal(page.items[0].startAt, '2026-10-07T07:00:00.000+08:00')
+  assert.equal(page.items[0].configuredCapacity, 4)
+  assert.equal(page.items[0].status, 'OPEN')
+  const thursday = page.items.find(item => item.windowId === '9000200')
+  assert.equal(thursday!.startAt, '2026-10-08T07:00:00.000+08:00')
+  assert.ok(!page.items.some(item => item.startAt === '2026-10-07T13:30:00.000+08:00'), '重叠段去重')
+  // 状态过滤：虚拟段恒 OPEN，并入 OPEN 汇总计数（真实 4 OPEN + 2 虚拟）。
+  assert.equal((await repository.windows({ page: 1, pageSize: 1, status: 'OPEN' })).total, 6)
+  assert.equal((await repository.windows({ page: 1, pageSize: 1, status: 'CLOSED' })).total, 1)
+  // 可约范围收缩到 maxDays=1（展开只剩 10-07）：周四段出界消失（§1 仅展开到 now+maxDays）。
+  await repository.saveBookingWindow('wt-expand-bw', { leadMinutes: 60, maxDays: 1 }, '0')
+  const shrunk = await repository.windows({ page: 1, pageSize: 50 })
+  assert.ok(shrunk.items.some(item => item.windowId === '9000100'))
+  assert.ok(!shrunk.items.some(item => item.windowId === '9000200'))
 })
 
 test('preview staff windows: overlap 409, assignment protection 409, CAS 409', async () => {
@@ -555,5 +612,51 @@ test('real repository pre-validates batch-generate / booking-window before the w
     configuredCapacity: 0, reason: '一键生成',
   }), /WORKSPACE_FORM_INVALID/)
   await assert.rejects(() => repository.saveBookingWindow('w5', { leadMinutes: 1441, maxDays: 7 }, '0'), /WORKSPACE_FORM_INVALID/)
+  assert.equal(seen.length, 0, 'nothing reaches the wire on a mirrored 400')
+})
+
+// ---------------------------------------------------------------------------
+// CCR-SCH-SLOT-003 real wiring：week-template GET/PUT——「保存并生效」的新保存路径
+// （一次 PUT 全替换；002 的逐形状 batch-generate 铺排不再是模板保存路径）。
+// ---------------------------------------------------------------------------
+const templateDays = () => [
+  { enabled: true, segments: [{ start: '09:00', end: '19:00', capacity: 6 }] },
+  ...Array.from({ length: 6 }, () => ({ enabled: false, segments: [] })),
+]
+
+test('real repository wires week-template GET/PUT once per save (CCR-SCH-SLOT-003)', async () => {
+  const { api, repository, seen } = await wiredApi(call => {
+    if (call.method === 'GET' && call.path.endsWith('/week-template')) return ok({ days: templateDays(), version: '2' })
+    if (call.method === 'PUT' && call.path.endsWith('/week-template')) return ok({ days: templateDays(), version: '3' })
+    return undefined
+  })
+  const view = await repository.weekTemplate()
+  assert.equal(view.version, '2')
+  assert.equal(view.days[0].segments[0].capacity, 6)
+  const readCall = seen.find(item => item.method === 'GET' && item.path === '/api/v1/merchant/stores/958002/week-template')!
+  assert.equal(readCall.data?.merchantId, '958001')
+  // 保存路径钉子：单次 PUT 全替换（expectedVersion CAS；无 reason——改模板非减少可用性动作）。
+  const draft = defaultWeekDraft().map((day, index) =>
+    index === 6 ? { enabled: false, segments: [{ start: '09:00', end: '19:00' }] } : day)
+  const saved = await repository.saveWeekTemplate('wt1', weekTemplateFromDraft(draft, 6), '2')
+  assert.equal(saved.version, '3')
+  const putCalls = seen.filter(item => item.method === 'PUT' && item.path === '/api/v1/merchant/stores/958002/week-template')
+  assert.equal(putCalls.length, 1, 'single PUT per save — no more batch-generate 铺排')
+  assert.deepEqual(Object.keys(putCalls[0].data ?? {}).sort(), ['days', 'expectedVersion', 'merchantId'])
+  assert.equal(putCalls[0].data?.reason, undefined)
+  assert.equal(putCalls[0].data?.expectedVersion, '2')
+  const putDays = putCalls[0].data?.days as { enabled: boolean; segments: unknown[] }[]
+  assert.deepEqual(putDays[0], { enabled: true, segments: [{ start: '09:00', end: '19:00', capacity: 6 }] })
+  assert.deepEqual(putDays[6], { enabled: false, segments: [] }, '停用日规范为空段（空=该天休）')
+  assert.match(String(putCalls[0].requestId), /^[0-9a-f-]{36}$/)
+  // 白名单钉子：week-template 只在 GET/PUT 之列——其余方法客户端直接拒绝（INVALID_PATH）。
+  await assert.rejects(() => api.request({ method: 'DELETE',
+    path: '/api/v1/merchant/stores/958002/week-template', data: { merchantId: '958001' } }, () => undefined), /INVALID_PATH/)
+})
+
+test('real repository pre-validates week-template before the wire', async () => {
+  const { repository, seen } = await wiredApi(() => undefined)
+  await assert.rejects(() => repository.saveWeekTemplate('wt2', weekTemplateFromDraft(defaultWeekDraft(), 0), '0'), /WORKSPACE_FORM_INVALID/)
+  await assert.rejects(() => repository.saveWeekTemplate('wt3', weekTemplateFromDraft(defaultWeekDraft(), 1000), '0'), /WORKSPACE_FORM_INVALID/)
   assert.equal(seen.length, 0, 'nothing reaches the wire on a mirrored 400')
 })

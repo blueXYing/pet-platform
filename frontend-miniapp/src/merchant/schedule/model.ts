@@ -13,8 +13,10 @@
 //   merchant can never set by hand and can lift only by raising capacity (same-transaction
 //   re-judge). Overlap discipline is same-store (not per service/kind). Occupied windows
 //   block close/time-change/capacity-decrease (409), allow
-//   capacity-raise. No DELETE; weekly templates (dayOfWeek/repeatWeekly/copyNextWeek) are
-//   explicitly not introduced. batch-close: single request capped at 200 intersecting
+//   capacity-raise. No DELETE; windows never carry periodic fields (dayOfWeek/repeatWeekly/
+//   copyNextWeek stay banned) — the weekly template is a SEPARATE store config face
+//   (CCR-SCH-SLOT-003 week-template: read-time expansion + booking-time materialization),
+//   never a window attribute. batch-close: single request capped at 200 intersecting
 //   entries (400 COMMON_INVALID_ARGUMENT beyond), partial success allowed with blockedWindows
 //   named per window (reasonCode SCHEDULE_WINDOW_STATE_NOT_ALLOWED). The store-windows list
 //   read is paged (§3.3, #122): page 1..10000 / pageSize 1..50, filter-matched total in the
@@ -256,6 +258,43 @@ export function decodeBookingWindowReceipt(value: unknown): BookingWindowReceipt
     version: isVersion(v.version) ? v.version : invalid(),
   }
 }
+// CCR-SCH-SLOT-003（2026-11-13 批准）周循环模板：独立门店配置面（表 merchant_schedule_
+// week_template，store 唯一，读时展开 + 下单物化，持久循环配置永不自动过期），窗口表零周期
+// 字段。GET 缺行=七天全休 version "0"；PUT 全替换 + expectedVersion（改模板非减少可用性
+// 动作——已物化窗口一律不动，reason 不需要）。每段自带容量（§4：1..999，默认 6）；
+// 段为 "HH:mm" start<end 半开不重叠（空段=该天休），每天 0..24 段。
+export type WeekTemplateSegment = Readonly<{ start: string; end: string; capacity: number }>
+export type WeekTemplateDay = Readonly<{ enabled: boolean; segments: readonly WeekTemplateSegment[] }>
+export type WeekTemplateView = Readonly<{ days: readonly WeekTemplateDay[]; version: string }>
+/** PUT receipt：全替换回执即新头——与 view 同一线形态（同 booking-window，回执无 updatedAt）。 */
+export type WeekTemplateReceipt = WeekTemplateView
+/** PUT 请求形态：七天全量（停用日=空段）；expectedVersion 由仓储层随命令体携带。 */
+export type WeekTemplateForm = Readonly<{ days: readonly WeekTemplateDay[] }>
+const weekTemplateCapacityOf = (value: any): number => {
+  if (!Number.isSafeInteger(value) || value < 1 || value > 999) invalid()
+  return value
+}
+const decodeWeekTemplateDay = (value: unknown): WeekTemplateDay => {
+  const v = exact(value, ['enabled', 'segments'])
+  if (typeof v.enabled !== 'boolean') invalid()
+  if (!Array.isArray(v.segments) || v.segments.length > 24) invalid()
+  const segments = v.segments.map((segment: any) => {
+    const s = exact(segment, ['start', 'end', 'capacity'])
+    if (timeMinutes(s.start) >= timeMinutes(s.end)) invalid()
+    return { start: s.start as string, end: s.end as string, capacity: weekTemplateCapacityOf(s.capacity) }
+  })
+  // 不重叠（相邻半开可衔接）：不要求线序，按 start 排序后成对校验；保持线序原样返回。
+  const sorted = [...segments].sort((a, b) => timeMinutes(a.start) - timeMinutes(b.start))
+  for (let index = 1; index < sorted.length; index++) {
+    if (timeMinutes(sorted[index - 1]!.end) > timeMinutes(sorted[index]!.start)) invalid()
+  }
+  return { enabled: v.enabled, segments }
+}
+export function decodeWeekTemplateView(value: unknown): WeekTemplateView {
+  const v = exact(value, ['days', 'version'])
+  if (!Array.isArray(v.days) || v.days.length !== 7) invalid()
+  return { days: v.days.map(decodeWeekTemplateDay), version: isVersion(v.version) ? v.version : invalid() }
+}
 export function decodeStaffWindowItem(value: unknown): StaffWindowItem {
   const v = exact(value, staffItemKeys)
   return {
@@ -444,10 +483,12 @@ export function reasonProblem(reason: string, required: boolean): string | null 
 }
 
 // ---------------------------------------------------------------------------
-// CCR-SCH-SLOT-002（2026-11-13 批准）排期模板编辑草稿态。红线：周一~周日仅是前端编辑态
-// 草稿（dayOfWeek/repeatWeekly/copyNextWeek 三字段永不入库），「保存并生效」把启用日物化为
-// 真实分钟级统一槽窗口（batch-generate 覆盖重建）。容量是全店共享输入（CCR §7 裁决：默认 6，
-// 一处填写，驱动一键生成与模板保存）；间隔固定 60 分钟（原稿说明文案钉死，非用户输入）。
+// CCR-SCH-SLOT-002（2026-11-13 批准）+ CCR-SCH-SLOT-003（2026-11-13 批准，取代 002 的
+// 「生效天数铺排」保存模式）排期模板编辑草稿态。红线：周一~周日仅是前端编辑态草稿
+// （dayOfWeek/repeatWeekly/copyNextWeek 三字段永不进窗口表）；「保存并生效」= 一次 PUT
+// week-template 全替换（服务端持久循环配置：读时展开/下单物化，前端不再铺排窗口）。
+// 容量仍是全店共享输入（002 §7 裁决：默认 6，一处填写，写入模板每段 capacity；
+// batch-generate 手动批量入口保留自己的容量参数）；间隔固定 60 分钟仅用于 A 区填充草稿。
 // ---------------------------------------------------------------------------
 /** HH:mm → 当日分钟数（无时区换算，草稿态纯墙钟）。 */
 export function timeMinutes(time: string): number {
@@ -456,7 +497,7 @@ export function timeMinutes(time: string): number {
 }
 export const generateIntervalMinutes = 60
 export const generateCapacityDefault = 6
-/** 一键生成 / 模板保存共用的容量+门店时间输入。 */
+/** A 区输入：门店时间驱动「按门店时间填充一周」草稿便捷键；容量一处填写，写入模板每段。 */
 export type GenerateFormInput = Readonly<{
   dailyStart: string; dailyEnd: string; configuredCapacity: number | null
 }>
@@ -549,17 +590,58 @@ export function weekdayIndexOf(date: string): number {
   if (Number.isNaN(parsed.getTime())) invalid()
   return (parsed.getUTCDay() + 6) % 7
 }
-/** 模板物化窗口：今天起 7 个北京历日（含今日，同一键生成口径），各带周几索引。 */
-export function nextSevenDays(today: string): readonly { date: string; weekday: number }[] {
-  return nextNDays(today, 7)
+// ---------------------------------------------------------------------------
+// CCR-SCH-SLOT-003 周模板草稿映射（B 区编辑态 ↔ week-template 契约形态）。「保存并生效」=
+// weekTemplateFromDraft(草稿, 容量) 一次 PUT 全替换；GET 回读 = weekTemplateToDraft 进
+// B 区。002 的 nextNDays/nextSevenDays 铺排路径随「生效天数」UI 一并删除（模板是服务端
+// 持久循环配置，365 天/跨年自动生效，前端不再按日期物化）。
+// ---------------------------------------------------------------------------
+/** GET 缺行语义（CCR §3）：七天全休、version "0"（服务端无行时物化该默认，永不由客户端补行）。 */
+export function emptyWeekTemplateView(): WeekTemplateView {
+  return { days: weekdayLabels.map(() => ({ enabled: false, segments: [] })), version: '0' }
 }
-/** 模板物化窗口（2026-11-13 用户口径）：周模板按选择的生效天数一次铺满——默认全年
- *  365 天（含今日），7/30/90/365 可选；纯物化快捷方式，无周期数据结构。 */
-export function nextNDays(today: string, days: number): readonly { date: string; weekday: number }[] {
-  return Array.from({ length: days }, (_, index) => {
-    const date = addBeijingDays(today, index)
-    return { date, weekday: weekdayIndexOf(date) }
+/** 草稿 → PUT 形态：停用日规范为空段（空=该天休，§1）；启用日如实保留（启用但无段
+ *  保留原样交给 weekTemplateFormProblems 拦截——开关开了却没时段是编辑事故，不静默落休）；
+ *  容量一处输入写入每段。 */
+export function weekTemplateFromDraft(week: WeekDraft, capacity: number): WeekTemplateForm {
+  return { days: week.map(day => day.enabled
+    ? { enabled: true, segments: day.segments.map(segment => ({ start: segment.start, end: segment.end, capacity })) }
+    : { enabled: false, segments: [] }) }
+}
+/** GET 回读 → B 区草稿：enabled 且有段才进编辑态启用（空段=该天休）；容量不进草稿。 */
+export function weekTemplateToDraft(view: WeekTemplateView): WeekDraft {
+  return view.days.map(day => ({ enabled: day.enabled && day.segments.length > 0,
+    segments: day.segments.map(segment => ({ start: segment.start, end: segment.end })) }))
+}
+/** PUT 前校验（镜像服务端 400）：七天、启用日至少一段、段 HH:mm start<end 不重叠、每段
+ *  容量 1-999 整数；停用日已被 weekTemplateFromDraft 规范化为空段，无需再校。 */
+export function weekTemplateFormProblems(form: WeekTemplateForm): string[] {
+  const problems: string[] = []
+  if (form.days.length !== 7) { problems.push('周模板需为周一至周日七天'); return problems }
+  form.days.forEach((day, index) => {
+    const label = weekdayLabels[index]!
+    if (day.enabled && day.segments.length === 0) problems.push(`${label}：启用的日期至少保留一个时段`)
+    if (day.segments.length > 24) problems.push(`${label}：时段段最多 24 条`)
+    const sorted = [...day.segments].sort((a, b) => timeMinutes(a.start) - timeMinutes(b.start))
+    for (const segment of sorted) {
+      if (timeMinutes(segment.start) >= timeMinutes(segment.end)) { problems.push(`${label}：时段结束需晚于开始`); break }
+      if (!Number.isSafeInteger(segment.capacity) || segment.capacity < 1 || segment.capacity > 999) {
+        problems.push(`${label}：每段容量需为 1-999 的整数`); break
+      }
+    }
+    for (let at = 1; at < sorted.length; at++) {
+      if (timeMinutes(sorted[at - 1]!.end) > timeMinutes(sorted[at]!.start)) { problems.push(`${label}：同一天时段不能重叠`); break }
+    }
   })
+  return problems
+}
+/** 折叠区顶部模板状态条文案（CCR §5 商家窗口列表页顶提示）：「周模板生效中：周一 2 段 ·
+ *  周二 休 …（版本 N）」；七天全休时如实显示未配置。 */
+export function weekTemplateSummary(view: WeekTemplateView): string {
+  const parts = view.days.map((day, index) =>
+    day.enabled && day.segments.length > 0 ? `${weekdayLabels[index]} ${day.segments.length} 段` : `${weekdayLabels[index]} 休`)
+  const head = view.days.some(day => day.enabled && day.segments.length > 0) ? '周模板生效中' : '周模板未配置（七天全休）'
+  return `${head}：${parts.join(' · ')}（版本 ${view.version}）`
 }
 /** booking-window 配置草稿与校验（lead 0..1440 分钟 / maxDays 1..90 天）。 */
 export type BookingWindowForm = Readonly<{ leadMinutes: number | null; maxDays: number | null }>
@@ -575,12 +657,6 @@ export function bookingWindowFormProblems(form: BookingWindowForm): string[] {
   }
   return problems
 }
-/** 生成结果汇总（一键生成/保存并生效多段调用的聚合，页面如实展示）。 */
-export type GenerateOutcome = Readonly<{
-  created: number; closed: number
-  skipped: readonly { interval: string; reasonCode: string }[]
-  failed: readonly { label: string; message: string }[]
-}>
 /** Capability set replace: duplicates 400; removals require a reason (any one removed item). */
 export function capabilityProblems(selected: readonly string[], current: readonly string[], reason: string): string[] {
   const problems: string[] = []
@@ -607,6 +683,11 @@ export function scheduleAvailability(error: unknown): ScheduleAvailability {
   // Switch off: the boot routes are absent, admission-hidden owners get 404 (防枚举).
   if (error.statusCode === 404) return 'closed'
   return 'ok'
+}
+/** CAS 版本冲突判定（COMMON_CONFLICT 409）：周模板/配置保存冲突需提示重读后再保存
+ *  （CCR-SCH-SLOT-003：PUT 全替换走 expectedVersion 乐观锁，绝不 last-write-wins）。 */
+export function isScheduleConflict(error: unknown): boolean {
+  return apiLike(error) && error.code === 'COMMON_CONFLICT'
 }
 export function scheduleMessage(error: unknown): string {
   if (apiLike(error)) {
@@ -664,6 +745,11 @@ export type ScheduleDeps = {
   /** §2 门店级可预约范围（GET 缺省返回默认值 60/7）。 */
   bookingWindow(): Promise<BookingWindowView>
   saveBookingWindow(slot: string, form: BookingWindowForm, expectedVersion: string): Promise<BookingWindowReceipt>
+  /** CCR-SCH-SLOT-003 §3 门店周循环模板（GET 缺行=七天全休 version 0；读时展开/下单
+   *  物化——保存不再铺排窗口，已物化窗口一律不动）。 */
+  weekTemplate(): Promise<WeekTemplateView>
+  /** PUT 全替换 + expectedVersion CAS（改模板非减少可用性动作，无 reason）。 */
+  saveWeekTemplate(slot: string, form: WeekTemplateForm, expectedVersion: string): Promise<WeekTemplateReceipt>
   staffWindows(staffId: string): Promise<StaffWindowPage>
   createStaffWindow(slot: string, staffId: string, input: StaffWindowFormInput): Promise<StaffWindowReceipt>
   updateStaffWindow(slot: string, staffId: string, windowId: string, expectedVersion: string, input: StaffWindowFormInput): Promise<StaffWindowReceipt>
@@ -698,6 +784,9 @@ export class PreviewScheduleRepository implements ScheduleDeps {
   private failNextRead = false
   /** Store-level booking-window head (CCR-SCH-SLOT-002 §2); version 0 = defaults, never persisted. */
   private bookingHead: { leadMinutes: number; maxDays: number; version: string } | null = null
+  /** CCR-SCH-SLOT-003 week-template head; null = never saved (GET materializes the
+   *  all-rest version-0 default; the template is a persistent loop, never auto-expired). */
+  private weekHead: { days: readonly WeekTemplateDay[]; version: string; updatedAt: string } | null = null
   /** Fixture switch: treat every AVAILABLE staff row as assignment-protected (the real
    *  backend answers 409 via getCurrentAssignments + whole-store feasibility re-check). */
   protectedStaff = false
@@ -795,9 +884,14 @@ export class PreviewScheduleRepository implements ScheduleDeps {
     const matched = this.store
       .filter(entry => (query.status ? this.statusFor(entry) === query.status : true))
       .map(entry => this.view(entry))
-      // §3.3 wire order — start_at ascending with id ascending tiebreak — so the preview
-      // slices the same order the server slices; CLOSED windows stay listed (§3 read).
-      .sort((a, b) => (a.startAt === b.startAt ? Number(a.windowId) - Number(b.windowId) : a.startAt < b.startAt ? -1 : 1))
+    // CCR-SCH-SLOT-003 §1 读侧并集（preview 演示）：已保存周模板按周几展开虚拟段并与真实
+    // 窗口合并（重叠段已在 templateExpansion 去重）；虚拟段恒 OPEN，随状态过滤自然进出。
+    // 真实后端的商家窗口列表仍=真实窗口（§5，页顶模板状态条指向模板编辑）——展开仅是
+    // preview 里让商家看见模板效果的手段，mock 从来不是联调声明。
+    matched.push(...this.templateExpansion().filter(item => (query.status ? item.status === query.status : true)))
+    // §3.3 wire order — start_at ascending with id ascending tiebreak — so the preview
+    // slices the same order the server slices; CLOSED windows stay listed (§3 read).
+    matched.sort((a, b) => (a.startAt === b.startAt ? Number(a.windowId) - Number(b.windowId) : a.startAt < b.startAt ? -1 : 1))
     const start = (query.page - 1) * query.pageSize
     return {
       storeId: fixtureStoreId,
@@ -968,6 +1062,56 @@ export class PreviewScheduleRepository implements ScheduleDeps {
       return { ...next }
     })
   }
+  /** CCR-SCH-SLOT-003 §3 week-template：GET 缺行=七天全休 version 0；PUT 全替换 +
+   *  expectedVersion CAS，无 reason（改模板非减少可用性动作，已物化窗口不动）。 */
+  async weekTemplate(): Promise<WeekTemplateView> {
+    this.gate(true)
+    const head = this.weekHead
+    if (!head) return emptyWeekTemplateView()
+    return {
+      days: head.days.map(day => ({ enabled: day.enabled, segments: day.segments.map(segment => ({ ...segment })) })),
+      version: head.version,
+    }
+  }
+  async saveWeekTemplate(slot: string, form: WeekTemplateForm, expectedVersion: string): Promise<WeekTemplateReceipt> {
+    this.gate(false)
+    if (weekTemplateFormProblems(form).length) throw new ScheduleMockError('COMMON_INVALID_ARGUMENT', 400)
+    return this.command(slot, JSON.stringify(['week-template', form, expectedVersion]), () => {
+      if ((this.weekHead?.version ?? '0') !== expectedVersion) throw new ScheduleMockError('COMMON_CONFLICT', 409)
+      const days = form.days.map(day => ({ enabled: day.enabled, segments: day.segments.map(segment => ({ ...segment })) }))
+      this.weekHead = { days, version: this.bump(), updatedAt: this.now() }
+      return {
+        days: days.map(day => ({ enabled: day.enabled, segments: day.segments.map(segment => ({ ...segment })) })),
+        version: this.weekHead.version,
+      }
+    })
+  }
+  /** 模板展开（§1 读侧并集，preview 演示）：从锚点次日起到锚点+maxDays（booking-window
+   *  口径）的北京历日按周几取段；与任一真实窗口（含 CLOSED——已物化/已关窗事实优先于
+   *  展开）相交的段去重；虚拟段恒 OPEN、无占用、不落 store（读时投影，永不物化）。
+   *  windowId 确定性（9,000,000+偏移×100+段序，远离 mock 自增 id 空间与 fixtures）。 */
+  private templateExpansion(): ScheduleWindowItem[] {
+    const head = this.weekHead
+    if (!head) return []
+    const maxDays = this.bookingHead?.maxDays ?? bookingMaxDaysDefault
+    const items: ScheduleWindowItem[] = []
+    for (let offset = 1; offset <= maxDays; offset++) {
+      const date = addBeijingDays(fixtureScheduleToday, offset)
+      const day = head.days[weekdayIndexOf(date)]
+      if (!day?.enabled || day.segments.length === 0) continue
+      day.segments.forEach((segment, index) => {
+        const startAt = composeTimestamp(date, segment.start)
+        const endAt = composeTimestamp(date, segment.end)
+        const intersects = this.store.some(entry => entry.window.startAt < endAt && startAt < entry.window.endAt)
+        if (intersects) return // 与真实窗口重叠的段去重（§1）
+        items.push({
+          windowId: String(9000000 + offset * 100 + index), merchantId: fixtureMerchantId, storeId: fixtureStoreId,
+          startAt, endAt, configuredCapacity: segment.capacity, status: 'OPEN', version: '0', updatedAt: head.updatedAt,
+        })
+      })
+    }
+    return items
+  }
   async staffWindows(staffId: string): Promise<StaffWindowPage> {
     this.gate(true)
     if (!isId(staffId)) throw new ScheduleMockError('COMMON_INVALID_ARGUMENT', 400)
@@ -1083,6 +1227,9 @@ export class PreviewScheduleRepository implements ScheduleDeps {
 export const fixtureMerchantId = '958001'
 export const fixtureStoreId = '958002'
 export const fixtureStaffId = '958003'
+/** Mock 墙钟锚点（now() 的北京历日 2026-10-06，周二）：周模板展开只面向「未来日期」
+ *  （锚点+1 .. 锚点+maxDays），确定性供 preview/测试。 */
+export const fixtureScheduleToday = '2026-10-06'
 export const fixtureServiceGrooming = '30001'
 export const fixtureServiceDelivery = '30007'
 /** 2026-10-07 is a Wednesday; unified store-shared slots sit inside one Beijing day

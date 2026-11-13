@@ -5,12 +5,13 @@ import {
   addBeijingDays, batchGenerateProblems, batchRangeDays, beijingToday, bookingWindowFormProblems,
   capabilityProblems, chipClass, composeTimestamp, decodeBatchCloseResult, decodeBatchGenerateResult,
   decodeBookingWindowReceipt, decodeBookingWindowView, decodeCapabilityView, decodeStaffWindowPage,
-  decodeStaffWindowReceipt, decodeWindowItem, decodeWindowPage, decodeWindowReceipt,
-  defaultWeekDraft, formatWindowInterval, fixtureCapability, fixtureStaffWindows, fixtureWindows,
-  generateFormProblems, isVersion, nextSevenDays, reasonProblem,
-  scheduleAvailability, scheduleClosedReason, scheduleMessage, splitBeijingParts,
-  staffStatusTagClass, staffWindowFormProblems, weekdayIndexOf, weekdayLabels, weekDraftProblems,
-  windowFormFromItem, windowFormProblems, windowStatusTagClass,
+  decodeStaffWindowReceipt, decodeWeekTemplateView, decodeWindowItem, decodeWindowPage,
+  decodeWindowReceipt, defaultWeekDraft, emptyWeekTemplateView, formatWindowInterval,
+  fixtureCapability, fixtureStaffWindows, fixtureWindows, generateFormProblems, isVersion,
+  reasonProblem, scheduleAvailability, scheduleClosedReason, scheduleMessage, splitBeijingParts,
+  staffStatusTagClass, staffWindowFormProblems, weekdayIndexOf, weekdayLabels,
+  weekDraftProblems, weekTemplateFormProblems, weekTemplateFromDraft, weekTemplateSummary,
+  weekTemplateToDraft, windowFormFromItem, windowFormProblems, windowStatusTagClass,
 } from '../schedule/model'
 
 const wire = (value: unknown): Record<string, unknown> => JSON.parse(JSON.stringify(value))
@@ -310,15 +311,104 @@ test('week draft defaults validate; overlap / empty / inverted segments are name
   assert.ok(weekDraftProblems(inverted).some(problem => problem.startsWith('周一：') && problem.includes('结束')))
 })
 
-test('weekdayIndexOf / nextSevenDays map Beijing dates onto 周一..周日 (2026-11-13 周五锚点)', () => {
+// ---------------------------------------------------------------------------
+// CCR-SCH-SLOT-003（周循环模板：读时展开 + 下单物化；取代 002 的铺排保存模式）。
+// ---------------------------------------------------------------------------
+const restDay = () => ({ enabled: false, segments: [] as { start: string; end: string; capacity: number }[] })
+const templateBase = () => ({
+  days: [{ enabled: true, segments: [{ start: '09:00', end: '19:00', capacity: 6 }] },
+    ...Array.from({ length: 6 }, restDay)],
+  version: '3',
+})
+
+test('week-template decoder is exact-key: 7 days, HH:mm start<end, capacity 1..999, non-overlap', () => {
+  const view = decodeWeekTemplateView(templateBase())
+  assert.equal(view.days.length, 7)
+  assert.equal(view.version, '3')
+  assert.deepEqual(view.days[0], { enabled: true, segments: [{ start: '09:00', end: '19:00', capacity: 6 }] })
+  assert.ok(view.days.slice(1).every(day => day.enabled === false && day.segments.length === 0))
+  // GET 缺行语义：七天全休、version "0"（服务端物化默认，客户端不补行）。
+  const empty = emptyWeekTemplateView()
+  assert.equal(empty.version, '0')
+  assert.ok(empty.days.every(day => day.enabled === false && day.segments.length === 0))
+  for (const mutate of [
+    (v: Record<string, any>) => { v.days = v.days.slice(0, 6) },
+    (v: Record<string, any>) => { v.days.push(restDay()) },
+    (v: Record<string, any>) => { v.extra = 1 },
+    (v: Record<string, any>) => { v.version = '03' },
+    (v: Record<string, any>) => { v.days[0].enabled = 'true' },
+    (v: Record<string, any>) => { delete v.days[0].enabled },
+    (v: Record<string, any>) => { v.days[0].segments = '09:00-19:00' },
+    (v: Record<string, any>) => { v.days[0].segments[0].capacity = 0 },
+    (v: Record<string, any>) => { v.days[0].segments[0].capacity = 1000 },
+    (v: Record<string, any>) => { v.days[0].segments[0].capacity = 1.5 },
+    (v: Record<string, any>) => { v.days[0].segments[0].extra = 1 },
+    (v: Record<string, any>) => { v.days[0].segments[0].start = '9:00' },
+    (v: Record<string, any>) => { v.days[0].segments[0].start = '25:00' },
+    (v: Record<string, any>) => { v.days[0].segments[0].end = '09:00' }, // start == end
+    (v: Record<string, any>) => { v.days[0].segments.push({ start: '11:00', end: '13:00', capacity: 6 }) }, // overlap
+    (v: Record<string, any>) => {
+      v.days[0].segments = Array.from({ length: 25 }, () => ({ start: '00:00', end: '00:01', capacity: 1 }))
+    },
+  ]) {
+    const value = templateBase()
+    mutate(value)
+    assert.throws(() => decodeWeekTemplateView(value), /INVALID_RESPONSE/, JSON.stringify(value))
+  }
+  // 相邻半开可衔接；乱序但非重叠可解码（不要求线序，去重由重叠校验保证）。
+  assert.ok(decodeWeekTemplateView({
+    days: [{ enabled: true, segments: [
+      { start: '12:00', end: '13:00', capacity: 1 }, { start: '09:00', end: '12:00', capacity: 2 },
+    ] }, ...Array.from({ length: 6 }, restDay)], version: '0',
+  }))
+  // 空=该天休：enabled+空段解为休日（toDraft 规范为停用，不误报启用）。
+  const restful = decodeWeekTemplateView({
+    days: [{ enabled: true, segments: [] }, ...Array.from({ length: 6 }, restDay)], version: '0',
+  })
+  assert.equal(weekTemplateToDraft(restful)[0].enabled, false)
+})
+
+test('week-template draft mapping, validation and summary follow CCR-SCH-SLOT-003', () => {
+  const draft = defaultWeekDraft()
+  const form = weekTemplateFromDraft(draft, 6)
+  assert.deepEqual(weekTemplateFormProblems(form), [])
+  assert.deepEqual(form.days[0], { enabled: true, segments: [{ start: '09:00', end: '19:00', capacity: 6 }] })
+  // 停用日规范为空段（空=该天休）；容量 1..999 边界镜像服务端 400。
+  const withDisabled = weekTemplateFromDraft(draft.map((day, index) =>
+    index === 6 ? { enabled: false, segments: [{ start: '09:00', end: '12:00' }] } : day), 6)
+  assert.deepEqual(withDisabled.days[6], { enabled: false, segments: [] })
+  assert.deepEqual(weekTemplateFormProblems(weekTemplateFromDraft(draft, 1)), [])
+  assert.deepEqual(weekTemplateFormProblems(weekTemplateFromDraft(draft, 999)), [])
+  assert.ok(weekTemplateFormProblems(weekTemplateFromDraft(draft, 0)).some(problem => problem.includes('容量')))
+  assert.ok(weekTemplateFormProblems(weekTemplateFromDraft(draft, 1000)).some(problem => problem.includes('容量')))
+  assert.ok(weekTemplateFormProblems(weekTemplateFromDraft(draft, Number.NaN)).some(problem => problem.includes('容量')))
+  // 启用日无段 / 段重叠按星期命名（镜像 weekdayDraftProblems 口径）。
+  const broken = weekTemplateFromDraft(draft.map((day, index) => {
+    if (index === 0) return { enabled: true, segments: [] }
+    if (index === 1) return { enabled: true, segments: [{ start: '09:00', end: '12:00' }, { start: '11:00', end: '13:00' }] }
+    return day
+  }), 6)
+  const problems = weekTemplateFormProblems(broken)
+  assert.ok(problems.some(problem => problem.startsWith('周一：') && problem.includes('至少')))
+  assert.ok(problems.some(problem => problem.startsWith('周二：') && problem.includes('重叠')))
+  // toDraft 丢容量、空段=休；fromDraft→toDraft 与草稿往返一致。
+  const roundTrip = weekTemplateToDraft({ days: form.days, version: '5' })
+  assert.deepEqual(roundTrip, draft)
+  // 折叠区状态条文案：周X N 段 / 周Y 休 + 版本；七天全休如实显示未配置。
+  const summary = weekTemplateSummary({ days: withDisabled.days, version: '5' })
+  assert.ok(summary.startsWith('周模板生效中：周一 1 段 · 周二 1 段'), summary)
+  assert.ok(summary.includes('周日 休'), summary)
+  assert.ok(summary.includes('版本 5'), summary)
+  assert.ok(weekTemplateSummary(emptyWeekTemplateView()).includes('七天全休'))
+})
+
+test('weekdayIndexOf maps Beijing dates onto 周一..周日 (2026-11-13 周五锚点)', () => {
   assert.equal(weekdayIndexOf('2026-11-13'), 4, '2026-11-13 is Friday')
   assert.equal(weekdayIndexOf('2026-11-16'), 0, '2026-11-16 is Monday')
   assert.equal(weekdayIndexOf('2026-11-15'), 6, '2026-11-15 is Sunday')
-  const week = nextSevenDays('2026-11-13')
-  assert.deepEqual(week.map(day => day.date),
-    ['2026-11-13', '2026-11-14', '2026-11-15', '2026-11-16', '2026-11-17', '2026-11-18', '2026-11-19'])
-  assert.deepEqual(week.map(day => weekdayLabels[day.weekday]),
-    ['周五', '周六', '周日', '周一', '周二', '周三', '周四'])
+  // CCR-SCH-SLOT-003：铺排路径（nextNDays/nextSevenDays）已删——模板按周几展开是服务端
+  // 行为，前端不再物化日期；周几索引仍由模板映射/状态条共用。
+  assert.equal(weekdayLabels[weekdayIndexOf('2026-11-13')], '周五')
 })
 
 test('fixtures cover the open/partial/full/closed state space for preview', () => {

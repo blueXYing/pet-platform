@@ -6,14 +6,15 @@ import { consumerApi, consumerSession } from '../../../shared/consumer-runtime'
 import { RealScheduleRepository } from '../../schedule/repository'
 import {
   addBeijingDays, beijingToday, bookingLeadMinutesDefault, bookingMaxDaysDefault,
-  bookingWindowFormProblems, defaultWeekDraft, formatWindowInterval, generateCapacityDefault,
-  generateFormProblems, generateIntervalMinutes, isScheduleScenario, nextNDays, nextSevenDays,
+  bookingWindowFormProblems, defaultWeekDraft, generateCapacityDefault,
+  generateFormProblems, generateIntervalMinutes, isScheduleConflict, isScheduleScenario,
   PreviewScheduleRepository, scheduleAvailability, scheduleClosedReason, scheduleMessage,
-  timeMinutes, weekDraftProblems, weekdayIndexOf, weekdayLabels, windowCountPageSize,
+  timeMinutes, weekdayIndexOf, weekdayLabels, weekTemplateFormProblems,
+  weekTemplateFromDraft, weekTemplateSummary, weekTemplateToDraft, windowCountPageSize,
   windowListPageSize, windowStatusTagClass, windowStatusText, windowStatuses,
-  type BatchGenerateInput, type BookingWindowForm, type GenerateFormInput, type GenerateOutcome,
+  type BookingWindowForm, type GenerateFormInput,
   type ScheduleDeps, type ScheduleWindowItem, type StaffWindowItem, type WeekDraft,
-  type WeekSegmentDraft,
+  type WeekSegmentDraft, type WeekTemplateView,
   type WindowStatus,
 } from '../../schedule/model'
 import {
@@ -31,19 +32,21 @@ import tSpark from './assets/t-spark.svg'
 import tClipboard from './assets/t-clipboard.svg'
 import './page.css'
 
-// M-002 排期管理（模板编辑页，Figma 12:6214「首页-排期管理」整页还原）。CCR-SCH-SLOT-002
-// （2026-11-13 批准，P-11b 随统一槽复活）后本页从列表页重做为模板编辑页：
-// - 区块 A 一键生成：门店时间（默认 09:00/19:00）+ 容量（默认 6，CCR §7 裁决）→ 一次
-//   batch-generate 覆盖今天起 7 天（intervalMinutes 固定 60，说明文案钉死）。
-// - 区块 B 时间设置：周一~周日纯前端草稿态（开关+时段胶囊 ×/＋/📋）——dayOfWeek/
-//   repeatWeekly/copyNextWeek 三字段永不上线，「保存并生效」按启用日把当日时段逐段物化为
-//   真实分钟级统一槽窗口（nextSevenDays 今天起 7 个北京历日）。
+// M-002 排期管理（模板编辑页，Figma 12:6214「首页-排期管理」整页还原）。CCR-SCH-SLOT-003
+// （2026-11-13 批准，取代 002 的「生效天数铺排」保存模式）后本页接服务端周循环模板：
+// - 区块 A 一键生成：门店时间（默认 09:00/19:00）+ 容量（默认 6，002 §7 裁决）→「按门店
+//   时间填充一周」仅预填 B 区草稿（1 小时间隔便捷键，不发请求）。
+// - 区块 B 时间设置：周一~周日草稿态（开关+时段胶囊 ×/＋/📋，GET week-template 回读初始
+//   化）；「保存并生效」把草稿+容量一次 PUT week-template 全替换（expectedVersion CAS）——
+//   模板是持久循环配置（读时展开/下单物化，365 天/跨年自动生效），前端不再铺排窗口；
+//   已物化窗口（有预约的/商家手建的）一律不动。
 // - 区块 C 通用设置：可预约范围（lead/maxDays，PUT booking-window）+ 不可约日期（本地清单，
 //   保存时对该日历日 batch-close（reason 自动生成），不新增黑名单规则）。
-// - 底栏：取消=重置草稿；保存并生效=B 区逐日逐段 batch-generate + C 区配置，结果弹层如实
-//   展示 created/closed/skipped（被占用跳过的时段明确列出），部分失败照列。
-// - P-11a 列表成果（状态筛选/三态计数/日期分组）不丢：收进底部折叠区（懒加载），入口宫格
-//   与员工排班查询保留；windows/staff/capabilities 子页不变。
+// - 底栏：取消=重置草稿（回到 GET 基线）；保存并生效=PUT week-template 一次 + C 区配置，
+//   结果弹层如实展示（成功含版本与模板概要；409 版本冲突提示重读；黑名单受阻照列）。
+// - P-11a 列表成果（状态筛选/三态计数/日期分组）收进底部折叠区（懒加载），顶部模板状态条
+//   显示「周模板生效中：周X N 段 · 周Y 休…（版本 N）」；入口宫格与员工排班查询保留；
+//   windows/staff/capabilities 子页不变。
 // 导航纪律：返回工作台 reLaunch（P-03）；merchant 域禁 navigateBack。
 type StaffQuery = 'idle' | 'loading' | 'ready' | 'error'
 type WindowListQuery = { page: number; pageSize: number; status?: WindowStatus }
@@ -51,7 +54,8 @@ type ListPhase = 'idle' | 'loading' | 'ready' | 'error'
 /** 时段胶囊编辑器：index=null 表示添加新段。 */
 type SegmentEditor = Readonly<{ day: number; index: number | null; start: string; end: string }>
 type CopyEditor = Readonly<{ day: number; targets: readonly number[] }>
-type OutcomePanel = Readonly<{ title: string; result: GenerateOutcome; notes: readonly string[] }>
+/** 结果弹层（CCR-003 保存路径）：模板/可预约范围/黑名单各项结果如实聚合。 */
+type OutcomePanel = Readonly<{ title: string; notes: readonly string[]; failed: readonly { label: string; message: string }[] }>
 
 const hhmm = (minutes: number): string =>
   `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
@@ -69,20 +73,19 @@ export default function ScheduleTemplatePage() {
   const [busy, setBusy] = useState(false)
   // CCR §2 booking-window 基线（GET 缺省=默认值 60/7，version 驱动 PUT 乐观锁）。
   const [bookingBase, setBookingBase] = useState<{ leadMinutes: number; maxDays: number; version: string } | null>(null)
-  // 区块 A：门店时间 + 容量（容量同时驱动一键生成与 B 区模板保存）。
+  // CCR-SCH-SLOT-003 周模板基线（GET 缺行=七天全休 version 0，version 驱动 PUT 乐观锁）。
+  const [templateBase, setTemplateBase] = useState<WeekTemplateView | null>(null)
+  // 区块 A：门店时间（填充草稿便捷键）+ 容量（一处填写，写入模板每段）。
   const [generate, setGenerate] = useState<GenerateFormInput>({ dailyStart: '09:00', dailyEnd: '19:00', configuredCapacity: generateCapacityDefault })
-  // 区块 B：周模板草稿（纯前端，不落库）+ 生效天数（2026-11-13 用户口径：铺满全年，
-  //  不必每周重生成；纯物化，跨年后需再铺一次）。
+  // 区块 B：周模板草稿（GET 回读初始化；「保存并生效」一次 PUT week-template 全替换）。
   const [week, setWeek] = useState<WeekDraft>(defaultWeekDraft)
-  const [applyDays, setApplyDays] = useState(365)
-  const applyDaysOptions = [7, 30, 90, 365] as const
   const [segEditor, setSegEditor] = useState<SegmentEditor | null>(null)
   const [copying, setCopying] = useState<CopyEditor | null>(null)
   // 区块 C：可预约范围草稿（文本输入态）+ 不可约日期本地清单。
   const [bookingLeadText, setBookingLeadText] = useState(String(bookingLeadMinutesDefault))
   const [bookingDaysText, setBookingDaysText] = useState(String(bookingMaxDaysDefault))
   const [blackoutDates, setBlackoutDates] = useState<readonly string[]>([])
-  // 结果弹层（一键生成 / 保存并生效共用，如实展示 created/closed/skipped）。
+  // 结果弹层（「保存并生效」聚合模板/可预约范围/黑名单各项结果，如实展示）。
   const [outcome, setOutcome] = useState<OutcomePanel | null>(null)
   // P-11a 折叠区：状态筛选 + 三态计数 + 日期分组列表（懒加载）+ 员工排班查询。
   const [listOpen, setListOpen] = useState(false)
@@ -120,11 +123,15 @@ export default function ScheduleTemplatePage() {
     }
     setPhase('loading')
     try {
-      const view = await repository.bookingWindow()
+      const [view, template] = await Promise.all([repository.bookingWindow(), repository.weekTemplate()])
       if (!mounted.current || sequence !== loadSequence.current) return
       setBookingBase({ leadMinutes: view.leadMinutes, maxDays: view.maxDays, version: view.version })
       setBookingLeadText(String(view.leadMinutes))
       setBookingDaysText(String(view.maxDays))
+      // CCR-SCH-SLOT-003：B 区草稿从模板回读初始化（缺行=七天全休）；A 区容量对齐首段。
+      setTemplateBase(template)
+      setWeek(weekTemplateToDraft(template))
+      setGenerate(current => ({ ...current, configuredCapacity: templateCapacityOf(template) }))
       setPhase('ready')
     } catch (error) {
       if (!mounted.current || sequence !== loadSequence.current) return
@@ -191,7 +198,8 @@ export default function ScheduleTemplatePage() {
   }
 
   // ---------------------------------------------------------------------------
-  // 草稿态操作（区块 A/B/C，纯本地；写操作只在「一键生成」和「保存并生效」）。
+  // 草稿态操作（区块 A/B/C，纯本地；A 区「按门店时间填充一周」只预填草稿，唯一写路径是
+  // 底栏「保存并生效」）。
   // ---------------------------------------------------------------------------
   function bookingForm(): BookingWindowForm {
     const lead = bookingLeadText.trim()
@@ -266,10 +274,11 @@ export default function ScheduleTemplatePage() {
   function removeBlackout(date: string) {
     setBlackoutDates(current => current.filter(item => item !== date))
   }
-  /** 取消=重置草稿：回到基线（booking-window 上次读取值 + 默认模板），不动已生效数据。 */
+  /** 取消=重置草稿：回到 GET 基线（周模板/booking-window 上次读取值），不动已生效数据。 */
   function resetDraft() {
-    setGenerate({ dailyStart: '09:00', dailyEnd: '19:00', configuredCapacity: generateCapacityDefault })
-    setWeek(defaultWeekDraft())
+    setGenerate({ dailyStart: '09:00', dailyEnd: '19:00',
+      configuredCapacity: templateBase ? templateCapacityOf(templateBase) : generateCapacityDefault })
+    setWeek(templateBase ? weekTemplateToDraft(templateBase) : defaultWeekDraft())
     setBookingLeadText(String(bookingBase?.leadMinutes ?? bookingLeadMinutesDefault))
     setBookingDaysText(String(bookingBase?.maxDays ?? bookingMaxDaysDefault))
     setBlackoutDates([])
@@ -278,14 +287,8 @@ export default function ScheduleTemplatePage() {
     setNotice('')
   }
 
-  const skippedOf = (result: { skippedWindows: readonly { window: { startAt: string; endAt: string }; reasonCode: string }[] }) =>
-    result.skippedWindows.map(skipped => ({
-      interval: formatWindowInterval(skipped.window.startAt, skipped.window.endAt),
-      reasonCode: skipped.reasonCode,
-    }))
-
-  /** 区块 A：一键填充——按门店时间以 1 小时为间隔预填周一~周日的时段草稿（用户 2026-11-13
-   *  口径：先填充、保存前可自主调整，物化统一走下方「保存并生效」）。 */
+  /** 区块 A：一键填充——按门店时间以 1 小时为间隔预填周一~周日的时段草稿（纯本地便捷键，
+   *  语义不变；保存统一走下方「保存并生效」= 一次 PUT week-template）。 */
   function fillWeekFromStoreHours() {
     const problems = generateFormProblems(generate)
     if (problems.length) { setNotice(`请检查：${problems.join('；')}`); return }
@@ -300,63 +303,38 @@ export default function ScheduleTemplatePage() {
     }
     if (segments.length === 0) { setNotice('门店时间不足以按当前间隔切出时段，请调整。'); return }
     setWeek(weekdayLabels.map(() => ({ enabled: true, segments: segments.map(seg => ({ ...seg })) })))
-    setNotice(`已按 ${generate.dailyStart}-${generate.dailyEnd}、每时段 ${generateIntervalMinutes} 分钟填充一周（共 ${segments.length} 段/天）；可在下方调整，点「保存并生效」创建时段。`)
+    setNotice(`已按 ${generate.dailyStart}-${generate.dailyEnd}、每时段 ${generateIntervalMinutes} 分钟填充一周（共 ${segments.length} 段/天）；可在下方调整，点「保存并生效」保存为周模板。`)
   }
 
-  /** 底栏「保存并生效」：B 区周模板按生效天数铺满（默认 365，2026-11-13 用户口径）——
-   *  同形状天合一单、超 200 候选自动分批 → C 区 booking-window PUT（有改动时）→ 不可约
-   *  日期逐日 batch-close；全部结果如实聚合。 */
+  /** 底栏「保存并生效」（CCR-SCH-SLOT-003）：B 区周草稿 + A 区容量 → 一次 PUT
+   *  week-template 全替换（expectedVersion CAS；不再 batch-generate 铺排窗口——模板由
+   *  服务端读时展开/下单物化）→ C 区 booking-window PUT（有改动时）→ 不可约日期逐日
+   *  batch-close；全部结果如实聚合，409 版本冲突提示重读。 */
   async function saveAll() {
     if (busy) return
+    if (!templateBase) { setNotice('周模板状态尚未加载完成，请稍候再试。'); return }
     const booking = bookingForm()
-    const problems = [...generateFormProblems(generate), ...weekDraftProblems(week), ...bookingWindowFormProblems(booking)]
+    const template = weekTemplateFromDraft(week, generate.configuredCapacity ?? 0)
+    const problems = [...weekTemplateFormProblems(template), ...bookingWindowFormProblems(booking)]
     if (problems.length) { setNotice(`请检查：${problems.join('；')}`); return }
-    setNotice(applyDays > 7 ? `正在铺排未来 ${applyDays} 天的时段，请稍候…` : ''); setBusy(true)
-    // 聚合器（可变本地，收尾冻结为只读结果）。
-    const acc: { created: number; closed: number; skipped: { interval: string; reasonCode: string }[]; failed: { label: string; message: string }[] } = { created: 0, closed: 0, skipped: [], failed: [] }
+    setNotice(''); setBusy(true)
     const notes: string[] = []
+    const failed: { label: string; message: string }[] = []
     try {
-      const capacity = generate.configuredCapacity!
-      // One request per segment SHAPE, not per segment (user ruling 2026-11-13): days
-      // sharing the same segment list ride the same batch-generate call; the 200-entry
-      // candidate cap chunks long ranges automatically (365 days × 10 segments ≈ 19 calls).
-      const groups = new Map<string, { dates: string[]; segments: WeekSegmentDraft[] }>()
-      for (const { date, weekday } of nextNDays(beijingToday(), applyDays)) {
-        const day = week[weekday]!
-        if (!day.enabled || day.segments.length === 0) continue
-        const key = day.segments.map(seg => `${seg.start}-${seg.end}`).join('|')
-        const group = groups.get(key) ?? { dates: [], segments: day.segments.map(seg => ({ ...seg })) }
-        group.dates.push(date)
-        groups.set(key, group)
-      }
-      let shapeIndex = 0
-      for (const group of groups.values()) {
-        const perRequest = Math.max(1, Math.floor(200 / group.segments.length))
-        for (let chunkStart = 0; chunkStart < group.dates.length; chunkStart += perRequest) {
-          const chunk = group.dates.slice(chunkStart, chunkStart + perRequest)
-          const input: BatchGenerateInput = {
-            dates: chunk, segments: group.segments,
-            configuredCapacity: capacity, reason: '排期模板保存生效',
-          }
-          try {
-            const result = await repository.batchGenerate(`schedule-generate:shape:${shapeIndex}:${chunkStart}`, input)
-            acc.created += result.createdWindows.length
-            acc.closed += result.closedWindows.length
-            for (const skipped of skippedOf(result)) {
-              if (!acc.skipped.some(item => item.interval === skipped.interval)) acc.skipped.push(skipped)
-            }
-          } catch (error) {
-            acc.failed.push({ label: `${chunk[0]}… ×${group.segments.length} 段/天`, message: scheduleMessage(error) })
-          }
-        }
-        shapeIndex++
+      try {
+        const receipt = await repository.saveWeekTemplate('schedule-week-template:put', template, templateBase.version)
+        notes.push(`周模板已保存并生效（版本 ${receipt.version}）：${weekTemplateSummary(receipt)}。`)
+      } catch (error) {
+        failed.push({ label: '周模板', message: isScheduleConflict(error)
+          ? '模板已被他人修改（版本冲突），已重新读取最新模板；请核对草稿后再次保存。'
+          : scheduleMessage(error) })
       }
       if (bookingBase && (bookingBase.leadMinutes !== booking.leadMinutes || bookingBase.maxDays !== booking.maxDays)) {
         try {
           await repository.saveBookingWindow('schedule-booking-window:put', booking, bookingBase.version)
           notes.push(`可预约范围已保存：客户可预约 ${booking.leadMinutes} 分钟后至 ${booking.maxDays} 天内的时段。`)
         } catch (error) {
-          acc.failed.push({ label: '可预约范围', message: scheduleMessage(error) })
+          failed.push({ label: '可预约范围', message: scheduleMessage(error) })
         }
       }
       for (const date of blackoutDates) {
@@ -365,20 +343,18 @@ export default function ScheduleTemplatePage() {
           notes.push(`不可约日期 ${date}：关闭 ${closed.closedWindows.length} 个时段`
             + (closed.blockedWindows.length ? `，${closed.blockedWindows.length} 个因占用受阻` : '') + '。')
         } catch (error) {
-          acc.failed.push({ label: `不可约日期 ${date}`, message: scheduleMessage(error) })
+          failed.push({ label: `不可约日期 ${date}`, message: scheduleMessage(error) })
         }
       }
-      setOutcome({ title: '保存并生效结果', result: {
-        created: acc.created, closed: acc.closed,
-        skipped: [...acc.skipped], failed: [...acc.failed],
-      }, notes: [
-        `模板覆盖 ${beijingToday()} 起 7 天内启用的日期（1 小时间隔，每时段容量 ${capacity}）。`, ...notes,
-      ] })
-      // 刷新基线与折叠区列表（失败不阻塞结果展示）。
+      setOutcome({ title: '保存并生效结果', notes: [...notes], failed: [...failed] })
+      // 刷新基线与折叠区列表（失败不阻塞结果展示；409 后基线重读，便于核对重存）。
       try {
-        const view = await repository.bookingWindow()
-        setBookingBase({ leadMinutes: view.leadMinutes, maxDays: view.maxDays, version: view.version })
-      } catch { /* keep the pre-save baseline for the optimistic lock */ }
+        const [view, templateView] = await Promise.all([repository.bookingWindow(), repository.weekTemplate()])
+        if (mounted.current) {
+          setBookingBase({ leadMinutes: view.leadMinutes, maxDays: view.maxDays, version: view.version })
+          setTemplateBase(templateView)
+        }
+      } catch { /* keep the pre-save baselines for the optimistic locks */ }
       if (listOpen && listLoadedOnce.current) await loadList()
     } finally {
       if (mounted.current) setBusy(false)
@@ -481,7 +457,7 @@ export default function ScheduleTemplatePage() {
           <Image className='sch-t-generate-icon' src={tSpark} mode='aspectFit' />
           <Text className='sch-t-generate-text'>按门店时间填充一周</Text>
         </Button>
-        <Text className='sch-t-note'>以 1 小时为间隔填充周一~周日的时段草稿，可在下方调整后「保存并生效」（覆盖现有配置）</Text>
+        <Text className='sch-t-note'>以 1 小时为间隔填充周一~周日的时段草稿，可在下方调整后「保存并生效」（保存为周循环模板，长期生效）</Text>
       </View>
       {/* 区块 B 时间设置（SECTION-46）：周一~周日草稿态 */}
       <View className='sch-t-card'>
@@ -593,6 +569,10 @@ export default function ScheduleTemplatePage() {
           {listOpen ? '收起当前排期时段' : `当前排期时段（${listPhase === 'ready' ? `${listTotal} 个` : '点击展开'}）`}
         </Button>
         {listOpen && <>
+          {/* CCR-SCH-SLOT-003 §5：折叠区顶部模板状态条（GET 后渲染，version 展示）。 */}
+          {templateBase && <View className='sch-t-template-bar' role='status'>
+            <Text>{weekTemplateSummary(templateBase)}</Text>
+          </View>}
           {listPhase === 'loading' && <View className='sch-t-list-state'><Text>正在加载排期数据…</Text></View>}
           {listPhase === 'error' && <View className='sch-t-list-state'>
             <Text>{listNotice || '加载失败，请重试。'}</Text>
@@ -668,32 +648,22 @@ export default function ScheduleTemplatePage() {
       {notice && <Text id='sch-notice' className='sch-notice'>{notice}</Text>}
       {preview && <View className='sch-tail'><Text>页面数据：契约 Mock（preview=1，不联调）</Text></View>}
     </ScrollView>
-    {/* 底栏（DIV-302）：生效天数（默认铺满全年，2026-11-13 用户口径）+ 取消 + 保存并生效 */}
+    {/* 底栏（DIV-302）：取消 + 保存并生效（周模板一次 PUT 全替换；CCR-SCH-SLOT-003 移除
+        CCR-002 的「生效 N 天」铺排选择器——模板是持久循环配置，无生效天数概念） */}
     <View className='sch-t-bar'>
-      <Picker mode='selector' range={applyDaysOptions.map(days => `生效 ${days} 天`)}
-        onChange={event => setApplyDays(applyDaysOptions[Number(event.detail.value)] ?? 365)}>
-        <View className='sch-t-bar-range'><Text>生效 {applyDays} 天</Text></View>
-      </Picker>
       <Button id='sch-t-cancel' className='sch-t-bar-cancel' disabled={busy} onClick={resetDraft}>取消</Button>
       <Button id='sch-t-save' className='sch-t-bar-save' disabled={busy} onClick={() => void saveAll()}>
-        {busy ? '正在铺排…' : '保存并生效'}
+        {busy ? '正在保存…' : '保存并生效'}
       </Button>
     </View>
-    {/* 结果弹层：如实展示 created/closed/skipped，被占用跳过的时段明确列出 */}
+    {/* 结果弹层：模板保存结果（成功含版本与概要；409 冲突提示重读）+ C 区各项结果如实展示 */}
     {outcome && <View className='sch-t-mask'>
       <View className='sch-t-modal' role='alert'>
         <Text className='sch-t-modal-title'>{outcome.title}</Text>
-        <Text className='sch-t-modal-line'>新建时段 {outcome.result.created} 个；覆盖关闭 {outcome.result.closed} 个。</Text>
-        {outcome.result.skipped.length > 0 && <>
-          <Text className='sch-t-modal-sub'>被占用跳过 {outcome.result.skipped.length} 个（区间未覆盖，处理占用后可重试）：</Text>
-          {outcome.result.skipped.map(skipped => <Text key={skipped.interval} className='sch-t-modal-item'>
-            · {skipped.interval}（{skipped.reasonCode === 'OCCUPIED' ? '已有预约占用' : skipped.reasonCode}）
-          </Text>)}
-        </>}
         {outcome.notes.length > 0 && outcome.notes.map(note => <Text key={note} className='sch-t-modal-line'>{note}</Text>)}
-        {outcome.result.failed.length > 0 && <>
-          <Text className='sch-t-modal-sub'>部分请求未成功（可修正后重试）：</Text>
-          {outcome.result.failed.map(failure => <Text key={failure.label} className='sch-t-modal-item'>· {failure.label}：{failure.message}</Text>)}
+        {outcome.failed.length > 0 && <>
+          <Text className='sch-t-modal-sub'>部分内容未保存成功（可修正后重试）：</Text>
+          {outcome.failed.map(failure => <Text key={failure.label} className='sch-t-modal-item'>· {failure.label}：{failure.message}</Text>)}
         </>}
         <Button id='sch-t-outcome-close' className='sch-t-modal-close' onClick={() => setOutcome(null)}>我知道了</Button>
       </View>
@@ -704,6 +674,14 @@ export default function ScheduleTemplatePage() {
 function weekdayLabelOf(date: string): string {
   const weekday = weekdayIndexOf(date)
   return weekday >= 0 && weekday < weekdayLabels.length ? weekdayLabels[weekday]! : ''
+}
+
+/** 模板基线容量：首个非空段的 capacity（无任何段=默认 6）——A 区容量输入与 GET 回读一致。 */
+function templateCapacityOf(view: WeekTemplateView): number {
+  for (const day of view.days) {
+    if (day.segments.length > 0) return day.segments[0].capacity
+  }
+  return generateCapacityDefault
 }
 
 function realRepository(): ScheduleDeps {

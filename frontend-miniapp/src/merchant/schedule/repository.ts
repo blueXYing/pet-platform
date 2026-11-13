@@ -5,13 +5,14 @@ import {
   batchGenerateProblems, bookingWindowFormProblems, capabilityProblems, composeTimestamp,
   decodeBatchCloseResult, decodeBatchGenerateResult, decodeBookingWindowReceipt,
   decodeBookingWindowView, decodeCapabilityView, decodeStaffWindowPage, decodeStaffWindowReceipt,
-  decodeWindowPage, decodeWindowReceipt, reasonProblem, staffWindowFormProblems,
-  windowFormProblems,
+  decodeWeekTemplateView, decodeWindowPage, decodeWindowReceipt, reasonProblem,
+  staffWindowFormProblems, weekTemplateFormProblems, windowFormProblems,
   type BatchCloseResult, type BatchGenerateInput, type BatchGenerateResult,
   type BookingWindowForm, type BookingWindowReceipt, type BookingWindowView,
   type CapabilityView, type ScheduleDeps, type ScheduleWindowPage,
   type ScheduleWindowReceipt, type StaffWindowFormInput, type StaffWindowReceipt,
-  type StaffWindowPage, type WindowFormInput, type WindowPageQuery,
+  type StaffWindowPage, type WeekTemplateForm, type WeekTemplateReceipt,
+  type WeekTemplateView, type WindowFormInput, type WindowPageQuery,
 } from './model'
 
 /**
@@ -162,6 +163,31 @@ export class RealScheduleRepository implements ScheduleDeps {
     return this.write(slot, `/api/v1/merchant/stores/${storeId}/booking-window`, 'PUT', {
       merchantId, leadMinutes: form.leadMinutes, maxDays: form.maxDays, expectedVersion,
     }, decodeBookingWindowReceipt)
+  }
+
+  /** CCR-SCH-SLOT-003 §3（53号 v0.3 增补）GET week-template：门店周循环模板，缺行=七天
+   *  全休 version "0"（服务端物化默认）。GET → {days:[{enabled,segments:[{start,end,
+   *  capacity}]}×7], version}；store 坐标只随路径，query 仅 merchantId（booking-window 同款）。 */
+  async weekTemplate(): Promise<WeekTemplateView> {
+    const { merchantId, storeId } = this.target()
+    return this.read(`/api/v1/merchant/stores/${storeId}/week-template`, { merchantId }, decodeWeekTemplateView)
+  }
+
+  /** §3 PUT week-template：一次全替换 + expectedVersion 乐观锁（改模板非减少可用性动作，
+   *  已物化窗口一律不动，无 reason）。PUT {merchantId, days, expectedVersion} → 回执=新头
+   *  （同 view 线形态，无 updatedAt）。这是「保存并生效」的唯一模板写路径——CCR-003 取代
+   *  CCR-002 的 batch-generate 铺排（该端点保留为手动批量入口）。 */
+  async saveWeekTemplate(slot: string, form: WeekTemplateForm, expectedVersion: string): Promise<WeekTemplateReceipt> {
+    const { merchantId, storeId } = this.target()
+    if (weekTemplateFormProblems(form).length) throw new Error('WORKSPACE_FORM_INVALID')
+    return this.write(slot, `/api/v1/merchant/stores/${storeId}/week-template`, 'PUT', {
+      merchantId,
+      days: form.days.map(day => ({
+        enabled: day.enabled,
+        segments: day.segments.map(segment => ({ start: segment.start, end: segment.end, capacity: segment.capacity })),
+      })),
+      expectedVersion,
+    }, decodeWeekTemplateView)
   }
 
   async staffWindows(staffId: string): Promise<StaffWindowPage> {

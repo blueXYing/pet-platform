@@ -245,8 +245,12 @@ export class ConsumerApi {
     // CCR-SCH-SLOT-002 (2026-11-13) appends the batch-generate coverage-rebuild command and
     // the store-level booking-window config route to the same 53号 family — without this
     // registration the client rejects the new contract routes with INVALID_PATH.
+    // CCR-SCH-SLOT-003 (2026-11-13) appends the store-level week-template config routes
+    // (read-time expansion + booking-time materialization; GET missing row = all-rest
+    // version 0, PUT full-replace under expectedVersion) to the same 53号 family.
     const schedulePath = (/^\/api\/v1\/merchant\/stores\/[1-9][0-9]{0,18}\/availability-windows(\/[1-9][0-9]{0,18}(\/close|\/open)?|\/batch-close|\/batch-generate)?$/.test(spec.path) ||
       /^\/api\/v1\/merchant\/stores\/[1-9][0-9]{0,18}\/booking-window$/.test(spec.path) ||
+      /^\/api\/v1\/merchant\/stores\/[1-9][0-9]{0,18}\/week-template$/.test(spec.path) ||
       /^\/api\/v1\/merchant\/staff\/[1-9][0-9]{0,18}\/(availability-windows(\/[1-9][0-9]{0,18}(\/close|\/open)?)?|service-capabilities)$/.test(spec.path)) &&
       ['GET', 'POST', 'PUT'].includes(spec.method)
     // Verification completion (48 K2 v0.3, switch pet.verification.completion.http.enabled

@@ -207,15 +207,15 @@
 .sch-t-copy-row { display: flex; flex-wrap: wrap; gap: calc(var(--sch-unit) * 5.76); }
 /* 折叠区（P-11a 成果迁入）。 */
 .sch-page .sch-t-collapse { margin-top: 0; width: 100%; height: calc(var(--sch-unit) * 40); border-radius: calc(var(--sch-unit) * 11.51); background: #fff; border: calc(var(--sch-unit) * 0.96) solid #c0ecff; color: #3185ba; font-size: calc(var(--sch-unit) * 13); display: flex; align-items: center; justify-content: center; }
+/* CCR-SCH-SLOT-003 模板状态条：折叠区顶部信息条（浅蓝 token 族，同折叠按钮配色）。 */
+.sch-t-template-bar { margin-top: calc(var(--sch-unit) * 12); padding: calc(var(--sch-unit) * 9.6) calc(var(--sch-unit) * 11.51); border-radius: calc(var(--sch-unit) * 11.51); background: #f0fbff; border: calc(var(--sch-unit) * 0.96) solid #c0ecff; color: #3185ba; font-size: calc(var(--sch-unit) * 12.47); line-height: calc(var(--sch-unit) * 18.71); font-weight: 600; }
 .sch-t-list-state { margin-top: calc(var(--sch-unit) * 12); font-size: calc(var(--sch-unit) * 13); line-height: calc(var(--sch-unit) * 21); color: #577683; display: flex; flex-direction: column; gap: calc(var(--sch-unit) * 8); }
 .sch-t-staff-head { margin-top: calc(var(--sch-unit) * 14); }
 /* 底栏 DIV-302：固定于 tab 栏之上。 */
 .sch-t-bar { position: fixed; left: 0; right: 0; bottom: calc(var(--sch-unit) * 62 + env(safe-area-inset-bottom)); z-index: 20; display: flex; gap: calc(var(--sch-unit) * 11.51); padding: calc(var(--sch-unit) * 12.47) calc(var(--sch-unit) * 15.35) calc(var(--sch-unit) * 11.51); background: rgba(255, 255, 255, 0.95); border-top: calc(var(--sch-unit) * 0.96) solid #f0f2f5; backdrop-filter: blur(calc(var(--sch-unit) * 7.68)); }
 .sch-page .sch-t-bar-cancel { flex: 1; height: calc(var(--sch-unit) * 46); border-radius: calc(var(--sch-unit) * 11.51); background: #f3f4f6; color: #6b7280; font-size: calc(var(--sch-unit) * 15.35); line-height: calc(var(--sch-unit) * 23.03); font-weight: 700; display: flex; align-items: center; justify-content: center; }
 .sch-page .sch-t-bar-save { flex: 1; height: calc(var(--sch-unit) * 46); border-radius: calc(var(--sch-unit) * 11.51); background: #5baae8; color: #fff; font-size: calc(var(--sch-unit) * 15.35); line-height: calc(var(--sch-unit) * 23.03); font-weight: 700; box-shadow: 0 calc(var(--sch-unit) * 3.84) calc(var(--sch-unit) * 11.51) rgba(156, 163, 175, 0.44); display: flex; align-items: center; justify-content: center; }
-/* 生效天数选择（2026-11-13：默认铺满全年）。 */
-.sch-t-bar-range { height: calc(var(--sch-unit) * 46); padding: 0 calc(var(--sch-unit) * 11.51); border-radius: calc(var(--sch-unit) * 11.51); background: #f0fbff; border: calc(var(--sch-unit) * 0.96) solid #c0ecff; color: #5baae8; font-size: calc(var(--sch-unit) * 12.47); font-weight: 700; display: flex; align-items: center; justify-content: center; }
-/* 结果弹层：created/closed/skipped 如实展示。 */
+/* 结果弹层：模板保存结果（成功/409 冲突重读）+ 各项结果如实展示（CCR-SCH-SLOT-003）。 */
 .sch-t-mask { position: fixed; left: 0; right: 0; top: 0; bottom: 0; z-index: 50; background: rgba(31, 45, 61, 0.45); display: flex; align-items: center; justify-content: center; padding: 0 calc(var(--sch-unit) * 29); }
 .sch-t-modal { width: 100%; max-height: 70vh; overflow-y: auto; background: #fff; border-radius: calc(var(--sch-unit) * 15.35); padding: calc(var(--sch-unit) * 15.35); display: flex; flex-direction: column; gap: calc(var(--sch-unit) * 7.68); }
 .sch-t-modal-title { font-size: calc(var(--sch-unit) * 15.35); line-height: calc(var(--sch-unit) * 23.03); font-weight: 700; color: #1a1a2e; }
