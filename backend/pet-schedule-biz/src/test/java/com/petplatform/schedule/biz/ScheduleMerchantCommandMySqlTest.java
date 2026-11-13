@@ -432,9 +432,13 @@ class ScheduleMerchantCommandMySqlTest {
         try (Database db = new Database()) {
             Components app = new Components(db);
             CommandContext pinned = ctx();
+            java.util.List<com.petplatform.schedule.api.dto.ScheduleWriteTypes.BatchSegment> segs =
+                    java.util.List.of(new com.petplatform.schedule.api.dto.ScheduleWriteTypes.BatchSegment(
+                                    LocalTime.of(9, 0), LocalTime.of(10, 0)),
+                            new com.petplatform.schedule.api.dto.ScheduleWriteTypes.BatchSegment(
+                                    LocalTime.of(10, 0), LocalTime.of(11, 0)));
             BatchGenerateCommand command = new BatchGenerateCommand(pinned, "10", "201",
-                    LocalDate.parse("2030-01-01"), LocalDate.parse("2030-01-01"),
-                    LocalTime.of(9, 0), LocalTime.of(11, 0), 60, 6, "周模板保存");
+                    java.util.List.of(LocalDate.parse("2030-01-01")), segs, 6, "周模板保存");
             BatchGenerateResult first = app.commands.batchGenerate(command);
             BatchGenerateResult replay = app.commands.batchGenerate(command);
             assertEquals(first.createdWindows().size(), replay.createdWindows().size());
@@ -443,8 +447,7 @@ class ScheduleMerchantCommandMySqlTest {
             assertEquals(2, db.count("schedule_availability_window"));
             assertEquals(CommonApiCodes.IDEMPOTENCY_KEY_CONFLICT, assertThrows(ApiException.class,
                     () -> app.commands.batchGenerate(new BatchGenerateCommand(pinned, "10",
-                            "201", LocalDate.parse("2030-01-01"), LocalDate.parse("2030-01-01"),
-                            LocalTime.of(9, 0), LocalTime.of(11, 0), 30, 6, "周模板保存")))
+                            "201", java.util.List.of(LocalDate.parse("2030-01-01")), segs, 30, "周模板保存")))
                     .code());
             assertEquals(2, db.count("schedule_availability_window"));
         }
@@ -508,13 +511,25 @@ class ScheduleMerchantCommandMySqlTest {
         }
     }
 
+    /** Legacy-call adapter: slices [dailyStart, dailyEnd) per intervalMinutes into the
+     *  pre-sliced segments the 2026-11-13 wire shape expects (one window per segment). */
     private static BatchGenerateCommand generate(String requestId, LocalDate fromDate,
             LocalDate toDate, LocalTime dailyStart, LocalTime dailyEnd, int intervalMinutes,
             int configuredCapacity, String reason) {
+        java.util.List<LocalDate> dates = new java.util.ArrayList<>();
+        for (LocalDate day = fromDate; !day.isAfter(toDate); day = day.plusDays(1)) dates.add(day);
+        java.util.List<com.petplatform.schedule.api.dto.ScheduleWriteTypes.BatchSegment> segments =
+                new java.util.ArrayList<>();
+        int startMinute = dailyStart.getHour() * 60 + dailyStart.getMinute();
+        int endMinute = dailyEnd.getHour() * 60 + dailyEnd.getMinute();
+        for (int at = startMinute; at + intervalMinutes <= endMinute; at += intervalMinutes) {
+            segments.add(new com.petplatform.schedule.api.dto.ScheduleWriteTypes.BatchSegment(
+                    LocalTime.of(at / 60, at % 60),
+                    LocalTime.of((at + intervalMinutes) / 60, (at + intervalMinutes) % 60)));
+        }
         return new BatchGenerateCommand(
                 new CommandContext(requestId, "sch004-test", OperatorType.USER, "601", "test"),
-                "10", "201", fromDate, toDate, dailyStart, dailyEnd, intervalMinutes,
-                configuredCapacity, reason);
+                "10", "201", dates, segments, configuredCapacity, reason);
     }
 
     private static BatchGenerateCommand generate(String requestId, LocalDate fromDate,
