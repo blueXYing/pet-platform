@@ -121,3 +121,103 @@
 .sch-page .sch-secondary { flex: 1; height: calc(var(--sch-unit) * 46.5); border-radius: calc(var(--sch-unit) * 11.6); background: #fff; border: calc(var(--sch-unit) * 1.16) solid #5baae8; color: #5baae8; font-size: calc(var(--sch-unit) * 15); display: flex; align-items: center; justify-content: center; }
 .sch-notice { display: block; margin-top: calc(var(--sch-unit) * 14); font-size: calc(var(--sch-unit) * 12); line-height: calc(var(--sch-unit) * 18); color: #a83232; }
 .sch-tail { margin-top: calc(var(--sch-unit) * 18); font-size: calc(var(--sch-unit) * 10); line-height: calc(var(--sch-unit) * 15); color: #9bb3bd; text-align: center; }
+
+/* ---------------------------------------------------------------------------
+   CCR-SCH-SLOT-002 模板编辑页（sch-t-* 族，Figma 12:6214 节点数据精确取值，2026-11-13）。
+   变体与按钮类一律带 .sch-page 前缀压过 button 原生重置（0,3,0/0,2,0 > 0,1,1，同上方
+   .sch-chip 手法）；无 data-* 选择器、无 keyframes calc(var())。节点对照：
+   - 分区卡 SECTION-17/46/256（58:3517/58:3551/58:3736）：#FFF 底、r15.35、内边距 15.35、
+     投影 0 1.92 7.68 rgba(0,0,0,0.04)（DROP_SHADOW blur7.676 offset-y1.919）。
+   - 区块头 DIV-18/DIV-47/DIV-257：icon 16x15（#5BAAE8 向量）+ H2 Roboto 700 14.39/21.59
+     #1A1A2E；右侧 SPAN 提示 11.51/17.27 #9CA3AF（58:3528/58:3562）。
+   - INPUT（58:3533）：#FFF、描边 #D1D5DB 0.96、r9.6、内边距 10.55/8.64、值 13.43/20.15
+     #1A1A2E；标签 门店时间 12.47/18.71 w500 #6B7280（58:3532）；至 12.47 #9CA3AF。
+   - 渐变主按钮 BUTTON-38（58:3541）：342x46、r11.51、linear 180deg #C0ECFF→#53BFEE
+     （GRADIENT_LINEAR 0→1）、投影 0 3.84 11.51 rgba(156,163,175,0.39)、白字 Roboto 700
+     14.39、text-shadow 0 3.84 11.51 rgba(255,122,0,0.25)（58:3546 DROP_SHADOW）。
+   - 说明 P-43（58:3549）：居中 11.51/18.71 #9CA3AF。
+   - 周行（58:3564 族）：星期 12.47/18.71 w700 #1A1A2E；开关 31x17 胶囊 #5BAAE8（全帧仅
+     on 态，off 态取本帧描边中性 #D1D5DB）、旋钮 13x13 #FFF 投影 0 0.96 2.88
+     rgba(0,0,0,0.15)；时段胶囊 DIV-65/72：#FFF、描边 #C0ECFF 0.96、r7.68、内边距
+     4.8/2.88/4.8/8.64、时间 11.03/16.55 w700 #5BAAE8 ls-0.28、× 12.47 w700 #5BAAE8
+     （14x12 r3.84）；＋ BUTTON-79 25x25 #FFF/#D1D5DB r7.68 + 14.39 w700 #6B7280；
+     📋 BUTTON-82 25x25 #FAFAFB/#F0F2F5 r7.68 icon 9x10 #9CA3AF；日分隔 Line1-6
+     #E5E7EB 1；💡 提示 11.51/19 #9CA3AF（58:3734）。
+   - 通用设置（58:3745 族）：组标签 13.43/20.15 w500 #6B7280；句子 13.43 #1A1A2E；
+     SELECT 31 高 #FFF/#D1D5DB r7.68 内边距 10.55/6.72；暂无 12.47 #9CA3AF；
+     + 添加日期 79x30 #FFF r9.6 12.47 w600 #5BAAE8（58:3778）；💡 11.51/17.27 #9CA3AF。
+   - 底栏 DIV-302（58:3783）：rgba(255,255,255,0.95) + 顶线 #F0F2F5 0.96 + 背景模糊
+     7.68；取消 #F3F4F6 r11.51 15.35 w700 #6B7280；保存并生效 #5BAAE8 r11.51 白字 +
+     投影 0 3.84 11.51 rgba(156,163,175,0.44)。
+   --------------------------------------------------------------------------- */
+/* 底栏净空：tab 61+1 + 操作栏 12.47+46+11.51 ≈ 71 + 呼吸 8。 */
+.sch-t-editor { padding-bottom: calc(var(--sch-unit) * 141 + env(safe-area-inset-bottom)); }
+.sch-t-card { margin-top: calc(var(--sch-unit) * 12.7); background: #fff; border-radius: calc(var(--sch-unit) * 15.35); padding: calc(var(--sch-unit) * 15.35); box-shadow: 0 calc(var(--sch-unit) * 1.92) calc(var(--sch-unit) * 7.68) rgba(0, 0, 0, 0.04); display: flex; flex-direction: column; }
+.sch-t-head { display: flex; align-items: center; gap: calc(var(--sch-unit) * 5.76); padding-bottom: calc(var(--sch-unit) * 11.51); }
+.sch-t-head-icon { width: calc(var(--sch-unit) * 16); height: calc(var(--sch-unit) * 15); flex: none; }
+.sch-t-h2 { font-size: calc(var(--sch-unit) * 14.39); line-height: calc(var(--sch-unit) * 21.59); font-weight: 700; color: #1a1a2e; }
+.sch-t-head-hint { flex: 1; min-width: 0; text-align: right; font-size: calc(var(--sch-unit) * 11.51); line-height: calc(var(--sch-unit) * 17.27); color: #9ca3af; }
+.sch-t-row { display: flex; align-items: center; gap: calc(var(--sch-unit) * 7.68); margin-top: calc(var(--sch-unit) * 11.51); }
+.sch-t-label { flex: none; font-size: calc(var(--sch-unit) * 12.47); line-height: calc(var(--sch-unit) * 18.71); font-weight: 500; color: #6b7280; }
+.sch-t-picker { flex: 1; min-width: 0; }
+.sch-t-picker picker { display: block; width: 100%; }
+.sch-t-field { width: 100%; min-width: 0; height: calc(var(--sch-unit) * 39); display: flex; align-items: center; padding: 0 calc(var(--sch-unit) * 10.55); background: #fff; border: calc(var(--sch-unit) * 0.96) solid #d1d5db; border-radius: calc(var(--sch-unit) * 9.6); }
+.sch-t-field-text { font-size: calc(var(--sch-unit) * 13.43); line-height: calc(var(--sch-unit) * 20.15); color: #1a1a2e; }
+.sch-page .sch-t-field-input { flex: 1; min-width: 0; padding: 0 calc(var(--sch-unit) * 10.55); font-size: calc(var(--sch-unit) * 13.43); color: #1a1a2e; }
+.sch-t-mid { flex: none; font-size: calc(var(--sch-unit) * 12.47); line-height: calc(var(--sch-unit) * 18.71); color: #9ca3af; }
+.sch-page .sch-t-generate { margin-top: calc(var(--sch-unit) * 11.51); height: calc(var(--sch-unit) * 46); border-radius: calc(var(--sch-unit) * 11.51); background: linear-gradient(180deg, #c0ecff 0%, #53bfee 100%); box-shadow: 0 calc(var(--sch-unit) * 3.84) calc(var(--sch-unit) * 11.51) rgba(156, 163, 175, 0.39); display: flex; align-items: center; justify-content: center; gap: calc(var(--sch-unit) * 5.76); }
+.sch-t-generate-icon { width: calc(var(--sch-unit) * 10); height: calc(var(--sch-unit) * 14); }
+.sch-t-generate-text { font-size: calc(var(--sch-unit) * 14.39); line-height: calc(var(--sch-unit) * 21.59); font-weight: 700; color: #fff; text-shadow: 0 calc(var(--sch-unit) * 3.84) calc(var(--sch-unit) * 11.51) rgba(255, 122, 0, 0.25); }
+.sch-t-note { margin-top: calc(var(--sch-unit) * 9.6); text-align: center; font-size: calc(var(--sch-unit) * 11.51); line-height: calc(var(--sch-unit) * 18.71); color: #9ca3af; }
+/* 周行：左列 40（星期+开关），右侧胶囊流（两列 91 宽胶囊 + ＋/📋 收尾，58:3570-58:3583）。 */
+.sch-t-day { display: flex; flex-direction: column; padding-top: calc(var(--sch-unit) * 11.5); }
+.sch-t-day-sep { margin-top: calc(var(--sch-unit) * 11.5); padding-top: calc(var(--sch-unit) * 11.5); border-top: calc(var(--sch-unit) * 1) solid #e5e7eb; }
+.sch-t-day-main { display: flex; align-items: flex-start; gap: calc(var(--sch-unit) * 10); }
+.sch-t-day-left { flex: none; width: calc(var(--sch-unit) * 40); display: flex; flex-direction: column; align-items: flex-start; gap: calc(var(--sch-unit) * 6.72); }
+.sch-t-day-name { font-size: calc(var(--sch-unit) * 12.47); line-height: calc(var(--sch-unit) * 18.71); font-weight: 700; color: #1a1a2e; }
+.sch-page .sch-t-switch { position: relative; width: calc(var(--sch-unit) * 31); height: calc(var(--sch-unit) * 17.27); border-radius: calc(var(--sch-unit) * 100); background: #d1d5db; padding: 0; }
+.sch-page .sch-t-switch.sch-t-switch-on { background: #5baae8; }
+.sch-t-knob { position: absolute; top: calc(var(--sch-unit) * 2.14); left: calc(var(--sch-unit) * 2.14); width: calc(var(--sch-unit) * 13); height: calc(var(--sch-unit) * 13); border-radius: 50%; background: #fff; box-shadow: 0 calc(var(--sch-unit) * 0.96) calc(var(--sch-unit) * 2.88) rgba(0, 0, 0, 0.15); }
+.sch-t-switch-on .sch-t-knob { left: calc(var(--sch-unit) * 15.9); }
+.sch-t-caps { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: flex-start; gap: calc(var(--sch-unit) * 4.8) calc(var(--sch-unit) * 5); }
+.sch-t-cap { display: inline-flex; align-items: center; height: calc(var(--sch-unit) * 26); max-width: 100%; min-width: 0; box-sizing: border-box; background: #fff; border: calc(var(--sch-unit) * 0.96) solid #c0ecff; border-radius: calc(var(--sch-unit) * 7.68); padding: 0 calc(var(--sch-unit) * 2.88) 0 calc(var(--sch-unit) * 8.64); }
+.sch-page .sch-t-cap-time { max-width: 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: calc(var(--sch-unit) * 11.03); line-height: calc(var(--sch-unit) * 16.55); font-weight: 700; color: #5baae8; letter-spacing: calc(var(--sch-unit) * -0.28); }
+.sch-page .sch-t-cap-x { flex: none; width: calc(var(--sch-unit) * 14); height: calc(var(--sch-unit) * 12); margin-left: calc(var(--sch-unit) * 1.92); border-radius: calc(var(--sch-unit) * 3.84); display: flex; align-items: center; justify-content: center; font-size: calc(var(--sch-unit) * 12.47); line-height: calc(var(--sch-unit) * 12.47); font-weight: 700; color: #5baae8; }
+.sch-page .sch-t-add { flex: none; width: calc(var(--sch-unit) * 25); height: calc(var(--sch-unit) * 25); background: #fff; border: calc(var(--sch-unit) * 0.96) solid #d1d5db; border-radius: calc(var(--sch-unit) * 7.68); display: flex; align-items: center; justify-content: center; font-size: calc(var(--sch-unit) * 14.39); line-height: calc(var(--sch-unit) * 21.59); font-weight: 700; color: #6b7280; }
+.sch-page .sch-t-copy { flex: none; width: calc(var(--sch-unit) * 25); height: calc(var(--sch-unit) * 25); background: #fafafb; border: calc(var(--sch-unit) * 0.96) solid #f0f2f5; border-radius: calc(var(--sch-unit) * 7.68); display: flex; align-items: center; justify-content: center; }
+.sch-t-copy-icon { width: calc(var(--sch-unit) * 9); height: calc(var(--sch-unit) * 10); }
+.sch-t-tip { margin-top: calc(var(--sch-unit) * 12); padding-left: calc(var(--sch-unit) * 6); font-size: calc(var(--sch-unit) * 11.51); line-height: calc(var(--sch-unit) * 19); color: #9ca3af; }
+/* 通用设置。 */
+.sch-t-group { margin-top: calc(var(--sch-unit) * 11.51); font-size: calc(var(--sch-unit) * 13.43); line-height: calc(var(--sch-unit) * 20.15); font-weight: 500; color: #6b7280; }
+.sch-t-booking { display: flex; align-items: center; flex-wrap: wrap; gap: calc(var(--sch-unit) * 5.76); margin-top: calc(var(--sch-unit) * 11.51); }
+.sch-t-booking-text { font-size: calc(var(--sch-unit) * 13.43); line-height: calc(var(--sch-unit) * 20.15); color: #1a1a2e; }
+.sch-page .sch-t-select { width: calc(var(--sch-unit) * 72); height: calc(var(--sch-unit) * 31); background: #fff; border: calc(var(--sch-unit) * 0.96) solid #d1d5db; border-radius: calc(var(--sch-unit) * 7.68); padding: 0 calc(var(--sch-unit) * 10.55); text-align: center; font-size: calc(var(--sch-unit) * 13.43); color: #1a1a2e; }
+.sch-t-dates { display: flex; flex-wrap: wrap; align-items: center; gap: calc(var(--sch-unit) * 4.8) calc(var(--sch-unit) * 5); margin-top: calc(var(--sch-unit) * 5.76); }
+.sch-t-dates-empty { font-size: calc(var(--sch-unit) * 12.47); line-height: calc(var(--sch-unit) * 18.71); color: #9ca3af; }
+.sch-t-blackout-actions { display: flex; gap: calc(var(--sch-unit) * 7.68); margin-top: calc(var(--sch-unit) * 5.76); }
+.sch-page .sch-t-add-date { height: calc(var(--sch-unit) * 30); padding: 0 calc(var(--sch-unit) * 9.6); background: #fff; border-radius: calc(var(--sch-unit) * 9.6); font-size: calc(var(--sch-unit) * 12.47); line-height: calc(var(--sch-unit) * 18.71); font-weight: 600; color: #5baae8; display: flex; align-items: center; }
+/* 胶囊编辑 / 复制面板（草稿态行内面板）。 */
+.sch-t-edit { margin-top: calc(var(--sch-unit) * 8); padding: calc(var(--sch-unit) * 9.6); background: #f9fafb; border-radius: calc(var(--sch-unit) * 7.68); display: flex; flex-direction: column; gap: calc(var(--sch-unit) * 7.68); }
+.sch-t-edit-title { font-size: calc(var(--sch-unit) * 12.47); line-height: calc(var(--sch-unit) * 18.71); font-weight: 600; color: #374151; }
+.sch-t-edit-row { display: flex; align-items: center; gap: calc(var(--sch-unit) * 7.68); }
+.sch-t-edit-actions { display: flex; gap: calc(var(--sch-unit) * 7.68); }
+.sch-page .sch-t-mini { flex: 1; height: calc(var(--sch-unit) * 34); border-radius: calc(var(--sch-unit) * 9.6); font-size: calc(var(--sch-unit) * 12.47); line-height: calc(var(--sch-unit) * 18.71); display: flex; align-items: center; justify-content: center; }
+.sch-page .sch-t-mini.sch-t-mini-primary { background: #5baae8; color: #fff; font-weight: 600; }
+.sch-page .sch-t-mini.sch-t-mini-ghost { background: #fff; border: calc(var(--sch-unit) * 0.96) solid #5baae8; color: #5baae8; }
+.sch-t-copy-row { display: flex; flex-wrap: wrap; gap: calc(var(--sch-unit) * 5.76); }
+/* 折叠区（P-11a 成果迁入）。 */
+.sch-page .sch-t-collapse { margin-top: 0; width: 100%; height: calc(var(--sch-unit) * 40); border-radius: calc(var(--sch-unit) * 11.51); background: #fff; border: calc(var(--sch-unit) * 0.96) solid #c0ecff; color: #3185ba; font-size: calc(var(--sch-unit) * 13); display: flex; align-items: center; justify-content: center; }
+.sch-t-list-state { margin-top: calc(var(--sch-unit) * 12); font-size: calc(var(--sch-unit) * 13); line-height: calc(var(--sch-unit) * 21); color: #577683; display: flex; flex-direction: column; gap: calc(var(--sch-unit) * 8); }
+.sch-t-staff-head { margin-top: calc(var(--sch-unit) * 14); }
+/* 底栏 DIV-302：固定于 tab 栏之上。 */
+.sch-t-bar { position: fixed; left: 0; right: 0; bottom: calc(var(--sch-unit) * 62 + env(safe-area-inset-bottom)); z-index: 20; display: flex; gap: calc(var(--sch-unit) * 11.51); padding: calc(var(--sch-unit) * 12.47) calc(var(--sch-unit) * 15.35) calc(var(--sch-unit) * 11.51); background: rgba(255, 255, 255, 0.95); border-top: calc(var(--sch-unit) * 0.96) solid #f0f2f5; backdrop-filter: blur(calc(var(--sch-unit) * 7.68)); }
+.sch-page .sch-t-bar-cancel { flex: 1; height: calc(var(--sch-unit) * 46); border-radius: calc(var(--sch-unit) * 11.51); background: #f3f4f6; color: #6b7280; font-size: calc(var(--sch-unit) * 15.35); line-height: calc(var(--sch-unit) * 23.03); font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.sch-page .sch-t-bar-save { flex: 1; height: calc(var(--sch-unit) * 46); border-radius: calc(var(--sch-unit) * 11.51); background: #5baae8; color: #fff; font-size: calc(var(--sch-unit) * 15.35); line-height: calc(var(--sch-unit) * 23.03); font-weight: 700; box-shadow: 0 calc(var(--sch-unit) * 3.84) calc(var(--sch-unit) * 11.51) rgba(156, 163, 175, 0.44); display: flex; align-items: center; justify-content: center; }
+/* 结果弹层：created/closed/skipped 如实展示。 */
+.sch-t-mask { position: fixed; left: 0; right: 0; top: 0; bottom: 0; z-index: 50; background: rgba(31, 45, 61, 0.45); display: flex; align-items: center; justify-content: center; padding: 0 calc(var(--sch-unit) * 29); }
+.sch-t-modal { width: 100%; max-height: 70vh; overflow-y: auto; background: #fff; border-radius: calc(var(--sch-unit) * 15.35); padding: calc(var(--sch-unit) * 15.35); display: flex; flex-direction: column; gap: calc(var(--sch-unit) * 7.68); }
+.sch-t-modal-title { font-size: calc(var(--sch-unit) * 15.35); line-height: calc(var(--sch-unit) * 23.03); font-weight: 700; color: #1a1a2e; }
+.sch-t-modal-line { font-size: calc(var(--sch-unit) * 13.43); line-height: calc(var(--sch-unit) * 20.15); color: #374151; }
+.sch-t-modal-sub { font-size: calc(var(--sch-unit) * 12.47); line-height: calc(var(--sch-unit) * 18.71); font-weight: 600; color: #b45309; }
+.sch-t-modal-item { font-size: calc(var(--sch-unit) * 12.47); line-height: calc(var(--sch-unit) * 18.71); color: #6b7280; }
+.sch-page .sch-t-modal-close { margin-top: calc(var(--sch-unit) * 5.76); height: calc(var(--sch-unit) * 42); border-radius: calc(var(--sch-unit) * 11.51); background: #5baae8; color: #fff; font-size: calc(var(--sch-unit) * 14.39); font-weight: 600; display: flex; align-items: center; justify-content: center; }

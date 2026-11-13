@@ -66,6 +66,29 @@ export type BlockedWindow = Readonly<{ window: ScheduleWindowReceipt; reasonCode
 export type BatchCloseResult = Readonly<{
   storeId: string; closedWindows: readonly ScheduleWindowReceipt[]; blockedWindows: readonly BlockedWindow[]
 }>
+// CCR-SCH-SLOT-002 §1 batch-generate: skipped windows carry reasonCode OCCUPIED (a window
+// with effective claims cannot be closed, so generation leaves its interval untouched).
+export type SkippedWindow = Readonly<{ window: ScheduleWindowReceipt; reasonCode: string }>
+export type BatchGenerateResult = Readonly<{
+  storeId: string
+  createdWindows: readonly ScheduleWindowReceipt[]
+  closedWindows: readonly ScheduleWindowReceipt[]
+  skippedWindows: readonly SkippedWindow[]
+}>
+/** Store-level booking window rule (CCR-SCH-SLOT-002 §2): client-selectable slots must
+ *  satisfy startAt >= now + leadMinutes and startAt <= now + maxDays days. GET answers the
+ *  defaults (60/7) when no row exists; the read projection carries updatedAt like every
+ *  other read in the family. */
+export type BookingWindowView = Readonly<{
+  merchantId: string; storeId: string
+  leadMinutes: number; maxDays: number
+  version: string; updatedAt: string
+}>
+/** PUT booking-window receipt: full replace answers the new head without updatedAt. */
+export type BookingWindowReceipt = Readonly<{
+  merchantId: string; storeId: string
+  leadMinutes: number; maxDays: number; version: string
+}>
 export type StaffWindowItem = Readonly<{
   windowId: string; merchantId: string; storeId: string; staffId: string
   startAt: string; endAt: string; status: StaffWindowStatus; version: string; updatedAt: string
@@ -184,6 +207,56 @@ export function decodeBatchCloseResult(value: unknown): BatchCloseResult {
     storeId: isId(v.storeId) ? v.storeId : invalid(),
     closedWindows: v.closedWindows.map(decodeWindowReceipt),
     blockedWindows: v.blockedWindows.map(decodeBlocked),
+  }
+}
+export function decodeBatchGenerateResult(value: unknown): BatchGenerateResult {
+  const v = exact(value, ['storeId', 'createdWindows', 'closedWindows', 'skippedWindows'])
+  if (!Array.isArray(v.createdWindows) || v.createdWindows.length > MAX_LIST_ITEMS) invalid()
+  if (!Array.isArray(v.closedWindows) || v.closedWindows.length > MAX_LIST_ITEMS) invalid()
+  if (!Array.isArray(v.skippedWindows) || v.skippedWindows.length > MAX_LIST_ITEMS) invalid()
+  // Contract §1: one batch command caps CANDIDATE entries (created+closed+skipped) at 200 —
+  // a conformant server never answers more, so the decode fails closed beyond it.
+  if (v.createdWindows.length + v.closedWindows.length + v.skippedWindows.length > 200) invalid()
+  const decodeSkipped = (item: unknown): SkippedWindow => {
+    const s = exact(item, ['window', 'reasonCode'])
+    if (typeof s.reasonCode !== 'string' || s.reasonCode.length === 0 || s.reasonCode.length > 100) invalid()
+    return { window: decodeWindowReceipt(s.window), reasonCode: s.reasonCode }
+  }
+  return {
+    storeId: isId(v.storeId) ? v.storeId : invalid(),
+    createdWindows: v.createdWindows.map(decodeWindowReceipt),
+    closedWindows: v.closedWindows.map(decodeWindowReceipt),
+    skippedWindows: v.skippedWindows.map(decodeSkipped),
+  }
+}
+// Booking-window bounds (CCR-SCH-SLOT-002 §2): lead 0..1440 minutes, maxDays 1..90 days;
+// missing store row = defaults 60/7 (the server materializes defaults, never the client).
+export const bookingLeadMinutesDefault = 60
+export const bookingMaxDaysDefault = 7
+const leadMinutesOf = (value: any): number => {
+  if (!Number.isSafeInteger(value) || value < 0 || value > 1440) invalid()
+  return value
+}
+const maxDaysOf = (value: any): number => {
+  if (!Number.isSafeInteger(value) || value < 1 || value > 90) invalid()
+  return value
+}
+export function decodeBookingWindowView(value: unknown): BookingWindowView {
+  const v = exact(value, ['merchantId', 'storeId', 'leadMinutes', 'maxDays', 'version', 'updatedAt'])
+  return {
+    merchantId: isId(v.merchantId) ? v.merchantId : invalid(),
+    storeId: isId(v.storeId) ? v.storeId : invalid(),
+    leadMinutes: leadMinutesOf(v.leadMinutes), maxDays: maxDaysOf(v.maxDays),
+    version: isVersion(v.version) ? v.version : invalid(), updatedAt: timestamp(v.updatedAt),
+  }
+}
+export function decodeBookingWindowReceipt(value: unknown): BookingWindowReceipt {
+  const v = exact(value, ['merchantId', 'storeId', 'leadMinutes', 'maxDays', 'version'])
+  return {
+    merchantId: isId(v.merchantId) ? v.merchantId : invalid(),
+    storeId: isId(v.storeId) ? v.storeId : invalid(),
+    leadMinutes: leadMinutesOf(v.leadMinutes), maxDays: maxDaysOf(v.maxDays),
+    version: isVersion(v.version) ? v.version : invalid(),
   }
 }
 export function decodeStaffWindowItem(value: unknown): StaffWindowItem {
@@ -372,6 +445,125 @@ export function reasonProblem(reason: string, required: boolean): string | null 
   if (length > 500) return '操作原因最多500字'
   return null
 }
+
+// ---------------------------------------------------------------------------
+// CCR-SCH-SLOT-002（2026-11-13 批准）排期模板编辑草稿态。红线：周一~周日仅是前端编辑态
+// 草稿（dayOfWeek/repeatWeekly/copyNextWeek 三字段永不入库），「保存并生效」把启用日物化为
+// 真实分钟级统一槽窗口（batch-generate 覆盖重建）。容量是全店共享输入（CCR §7 裁决：默认 6，
+// 一处填写，驱动一键生成与模板保存）；间隔固定 60 分钟（原稿说明文案钉死，非用户输入）。
+// ---------------------------------------------------------------------------
+/** HH:mm → 当日分钟数（无时区换算，草稿态纯墙钟）。 */
+export function timeMinutes(time: string): number {
+  if (!/^\d{2}:\d{2}$/.test(time) || !Number.isFinite(Date.parse(`2000-01-01T${time}:00Z`))) invalid()
+  return Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5))
+}
+export const generateIntervalMinutes = 60
+export const generateCapacityDefault = 6
+/** 一键生成 / 模板保存共用的容量+门店时间输入。 */
+export type GenerateFormInput = Readonly<{
+  dailyStart: string; dailyEnd: string; configuredCapacity: number | null
+}>
+export function generateFormProblems(form: GenerateFormInput): string[] {
+  const problems: string[] = []
+  if (form.configuredCapacity === null || !Number.isSafeInteger(form.configuredCapacity)
+    || form.configuredCapacity < 1 || form.configuredCapacity > 999) {
+    problems.push('容量需为 1-999 的整数')
+  }
+  if (timeMinutes(form.dailyStart) >= timeMinutes(form.dailyEnd)) {
+    problems.push('门店时间结束需晚于开始')
+  }
+  return problems
+}
+/** batch-generate 请求模型（Contract 53号增补，CCR §1）：fromDate..toDate 北京历日跨度
+ *  1..366 天，dailyStart/dailyEnd "HH:mm" start<end，intervalMinutes 1..1440，
+ *  configuredCapacity 1..999，reason 必填 1..500。 */
+export type BatchGenerateInput = Readonly<{
+  fromDate: string; toDate: string
+  dailyStart: string; dailyEnd: string
+  intervalMinutes: number; configuredCapacity: number
+  reason: string
+}>
+export function batchGenerateProblems(input: BatchGenerateInput): string[] {
+  const problems = generateFormProblems({
+    dailyStart: input.dailyStart, dailyEnd: input.dailyEnd, configuredCapacity: input.configuredCapacity,
+  })
+  if (!Number.isSafeInteger(input.intervalMinutes) || input.intervalMinutes < 1 || input.intervalMinutes > 1440) {
+    problems.push('间隔需为 1-1440 的整数分钟')
+  }
+  const days = batchRangeDays(input.fromDate, input.toDate)
+  if (days < 1 || days > 366) problems.push('日期跨度需在 1-366 天内')
+  const reasonIssue = reasonProblem(input.reason, true)
+  if (reasonIssue) problems.push(reasonIssue)
+  return problems
+}
+/** 周模板草稿：一天 = 开关 + 若干时段段（start/end 墙钟，半开语义）。 */
+export type WeekSegmentDraft = Readonly<{ start: string; end: string }>
+export type WeekdayDraft = Readonly<{ enabled: boolean; segments: readonly WeekSegmentDraft[] }>
+export type WeekDraft = readonly WeekdayDraft[]
+export const weekdayLabels = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'] as const
+/** 默认草稿：七天全启用，各一段 09:00-19:00（与一键生成门店时间默认一致）。 */
+export function defaultWeekDraft(): WeekDraft {
+  return weekdayLabels.map(() => ({ enabled: true, segments: [{ start: '09:00', end: '19:00' }] }))
+}
+/** 单日草稿校验：start<end、段间不重叠（相邻半开可衔接）、启用日至少一段。 */
+export function weekdayDraftProblems(day: WeekdayDraft): string[] {
+  const problems: string[] = []
+  if (day.enabled && day.segments.length === 0) problems.push('启用的日期至少保留一个时段')
+  const sorted = [...day.segments].sort((a, b) => timeMinutes(a.start) - timeMinutes(b.start))
+  for (const segment of sorted) {
+    if (timeMinutes(segment.start) >= timeMinutes(segment.end)) {
+      problems.push('时段结束需晚于开始')
+      break
+    }
+  }
+  for (let index = 1; index < sorted.length; index++) {
+    if (timeMinutes(sorted[index - 1]!.end) > timeMinutes(sorted[index]!.start)) {
+      problems.push('同一天时段不能重叠')
+      break
+    }
+  }
+  return problems
+}
+export function weekDraftProblems(week: WeekDraft): string[] {
+  const problems: string[] = []
+  week.forEach((day, index) => {
+    for (const problem of weekdayDraftProblems(day)) problems.push(`${weekdayLabels[index]}：${problem}`)
+  })
+  return problems
+}
+/** 北京历日 → 周一基索引（0=周一…6=周日；view.ts 同口径按 UTC 日取星期）。 */
+export function weekdayIndexOf(date: string): number {
+  const parsed = new Date(`${isoDate(date)}T00:00:00.000Z`)
+  if (Number.isNaN(parsed.getTime())) invalid()
+  return (parsed.getUTCDay() + 6) % 7
+}
+/** 模板物化窗口：今天起 7 个北京历日（含今日，同一键生成口径），各带周几索引。 */
+export function nextSevenDays(today: string): readonly { date: string; weekday: number }[] {
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = addBeijingDays(today, index)
+    return { date, weekday: weekdayIndexOf(date) }
+  })
+}
+/** booking-window 配置草稿与校验（lead 0..1440 分钟 / maxDays 1..90 天）。 */
+export type BookingWindowForm = Readonly<{ leadMinutes: number | null; maxDays: number | null }>
+export function bookingWindowFormProblems(form: BookingWindowForm): string[] {
+  const problems: string[] = []
+  if (form.leadMinutes === null || !Number.isSafeInteger(form.leadMinutes)
+    || form.leadMinutes < 0 || form.leadMinutes > 1440) {
+    problems.push('提前分钟需为 0-1440 的整数')
+  }
+  if (form.maxDays === null || !Number.isSafeInteger(form.maxDays)
+    || form.maxDays < 1 || form.maxDays > 90) {
+    problems.push('可约天数需为 1-90 的整数')
+  }
+  return problems
+}
+/** 生成结果汇总（一键生成/保存并生效多段调用的聚合，页面如实展示）。 */
+export type GenerateOutcome = Readonly<{
+  created: number; closed: number
+  skipped: readonly { interval: string; reasonCode: string }[]
+  failed: readonly { label: string; message: string }[]
+}>
 /** Capability set replace: duplicates 400; removals require a reason (any one removed item). */
 export function capabilityProblems(selected: readonly string[], current: readonly string[], reason: string): string[] {
   const problems: string[] = []
@@ -449,6 +641,12 @@ export type ScheduleDeps = {
   closeWindow(slot: string, windowId: string, expectedVersion: string, reason: string): Promise<ScheduleWindowReceipt>
   openWindow(slot: string, windowId: string, expectedVersion: string): Promise<ScheduleWindowReceipt>
   batchClose(slot: string, fromDate: string, toDate: string, reason: string): Promise<BatchCloseResult>
+  /** CCR-SCH-SLOT-002 §1 覆盖重建：范围内既有 OPEN/SOLD_OUT 先逐个 close（占用窗跳过并
+   *  明列 skippedWindows），再按 intervalMinutes 逐段创建；候选上限 200。 */
+  batchGenerate(slot: string, input: BatchGenerateInput): Promise<BatchGenerateResult>
+  /** §2 门店级可预约范围（GET 缺省返回默认值 60/7）。 */
+  bookingWindow(): Promise<BookingWindowView>
+  saveBookingWindow(slot: string, form: BookingWindowForm, expectedVersion: string): Promise<BookingWindowReceipt>
   staffWindows(staffId: string): Promise<StaffWindowPage>
   createStaffWindow(slot: string, staffId: string, input: StaffWindowFormInput): Promise<StaffWindowReceipt>
   updateStaffWindow(slot: string, staffId: string, windowId: string, expectedVersion: string, input: StaffWindowFormInput): Promise<StaffWindowReceipt>
@@ -481,6 +679,8 @@ export class PreviewScheduleRepository implements ScheduleDeps {
   private uuidSeed = 0
   private clock = 0
   private failNextRead = false
+  /** Store-level booking-window head (CCR-SCH-SLOT-002 §2); version 0 = defaults, never persisted. */
+  private bookingHead: { leadMinutes: number; maxDays: number; version: string } | null = null
   /** Fixture switch: treat every AVAILABLE staff row as assignment-protected (the real
    *  backend answers 409 via getCurrentAssignments + whole-store feasibility re-check). */
   protectedStaff = false
@@ -671,6 +871,87 @@ export class PreviewScheduleRepository implements ScheduleDeps {
         closedWindows.push({ ...entry.window })
       }
       return { storeId: fixtureStoreId, closedWindows, blockedWindows }
+    })
+  }
+  /** batch-generate（CCR-SCH-SLOT-002 §1 覆盖重建）：与「生成区间」（fromDate 起 dailyStart
+   *  至 toDate 止 dailyEnd 的连续区间）相交的 OPEN/SOLD_OUT 窗先逐个 close——占用窗跳过
+   *  （reasonCode OCCUPIED）且其区间内不再生成（同店重叠校验自然拦住）；随后按
+   *  intervalMinutes 从 dailyStart 逐段创建（容量=请求值）。覆盖范围按生成区间（非整历日）
+   *  理解：CCR §1 前端段明确「多段多次调用」组装启用日，若按历日关闭，同日后续段的调用会把
+   *  前段刚建的窗再关掉——只有生成区间口径使逐段覆盖自洽。候选条目（created+closed+
+   *  skipped 上界 = 相交窗数+计划槽数）超 200 整笔 400；部分成功允许，全受阻不伪称成功。 */
+  async batchGenerate(slot: string, input: BatchGenerateInput): Promise<BatchGenerateResult> {
+    this.gate(false)
+    if (batchGenerateProblems(input).length) throw new ScheduleMockError('COMMON_INVALID_ARGUMENT', 400)
+    return this.command(slot, JSON.stringify(['generate', input]), () => {
+      const dayCount = batchRangeDays(input.fromDate, input.toDate)
+      const interval = Math.max(1, input.intervalMinutes)
+      const dailyStart = timeMinutes(input.dailyStart), dailyEnd = timeMinutes(input.dailyEnd)
+      const slots: { startAt: string; endAt: string }[] = []
+      for (let dayOffset = 0; dayOffset < dayCount; dayOffset++) {
+        const date = addBeijingDays(input.fromDate, dayOffset)
+        for (let minute = dailyStart; minute < dailyEnd; minute += interval) {
+          const end = Math.min(minute + interval, dailyEnd)
+          const hhmm = (value: number) => `${String(Math.floor(value / 60)).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`
+          slots.push({ startAt: composeTimestamp(date, hhmm(minute)), endAt: composeTimestamp(date, hhmm(end)) })
+        }
+      }
+      const rangeStart = composeTimestamp(input.fromDate, input.dailyStart)
+      const rangeEnd = composeTimestamp(input.toDate, input.dailyEnd)
+      const intersecting = this.store.filter(entry => {
+        if (this.statusFor(entry) === 'CLOSED') return false
+        return entry.window.startAt < rangeEnd && rangeStart < entry.window.endAt
+      })
+      // §1/§3.2 candidate cap: intersecting windows + planned slots must fit one command.
+      if (intersecting.length + slots.length > 200) throw new ScheduleMockError('COMMON_INVALID_ARGUMENT', 400)
+      const closedWindows: ScheduleWindowReceipt[] = []
+      const skippedWindows: SkippedWindow[] = []
+      const blocked: { startAt: string; endAt: string }[] = []
+      for (const entry of intersecting) {
+        if (entry.occupied > 0) {
+          skippedWindows.push({ window: { ...entry.window, status: this.statusFor(entry) }, reasonCode: 'OCCUPIED' })
+          blocked.push({ startAt: entry.window.startAt, endAt: entry.window.endAt })
+          continue
+        }
+        entry.window = { ...entry.window, status: 'CLOSED', version: this.bump() }
+        entry.updatedAt = this.now()
+        closedWindows.push({ ...entry.window })
+      }
+      const createdWindows: ScheduleWindowReceipt[] = []
+      for (const slot of slots) {
+        const suppressed = blocked.some(zone => slot.startAt < zone.endAt && zone.startAt < slot.endAt)
+        if (suppressed) continue // 被跳过窗的区间内不再生成（§1）
+        const window: ScheduleWindowReceipt = {
+          windowId: String(this.nextId++), merchantId: fixtureMerchantId, storeId: fixtureStoreId,
+          startAt: slot.startAt, endAt: slot.endAt,
+          configuredCapacity: input.configuredCapacity, status: 'OPEN', version: this.bump(),
+        }
+        this.store.push({ window, updatedAt: this.now(), occupied: 0 })
+        createdWindows.push(window)
+      }
+      return { storeId: fixtureStoreId, createdWindows, closedWindows, skippedWindows }
+    })
+  }
+  /** booking-window（§2）：缺行=默认值 60/7（version 0）；PUT 全替换 + expectedVersion CAS。 */
+  async bookingWindow(): Promise<BookingWindowView> {
+    this.gate(true)
+    const head = this.bookingHead
+    return {
+      merchantId: fixtureMerchantId, storeId: fixtureStoreId,
+      leadMinutes: head?.leadMinutes ?? bookingLeadMinutesDefault,
+      maxDays: head?.maxDays ?? bookingMaxDaysDefault,
+      version: head?.version ?? '0', updatedAt: this.now(),
+    }
+  }
+  async saveBookingWindow(slot: string, form: BookingWindowForm, expectedVersion: string): Promise<BookingWindowReceipt> {
+    this.gate(false)
+    if (bookingWindowFormProblems(form).length) throw new ScheduleMockError('COMMON_INVALID_ARGUMENT', 400)
+    return this.command(slot, JSON.stringify(['booking-window', form, expectedVersion]), () => {
+      const current = this.bookingHead
+      if ((current?.version ?? '0') !== expectedVersion) throw new ScheduleMockError('COMMON_CONFLICT', 409)
+      const next = { leadMinutes: form.leadMinutes!, maxDays: form.maxDays!, version: this.bump() }
+      this.bookingHead = next
+      return { merchantId: fixtureMerchantId, storeId: fixtureStoreId, ...next }
     })
   }
   async staffWindows(staffId: string): Promise<StaffWindowPage> {

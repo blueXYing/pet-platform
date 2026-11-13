@@ -27,11 +27,13 @@ export function ScheduleShell(props: {
   onRetry: () => void
   onBack: () => void
   preview: boolean
+  /** Extra page-level class (e.g. the template editor adds bottom-bar clearance). */
+  pageClass?: string
   children: ReactNode
 }) {
   const [info] = useState(() => Taro.getWindowInfo())
   const unit = info.windowWidth / 402
-  return <View className='sch-page' style={props.style}>
+  return <View className={props.pageClass ? `sch-page ${props.pageClass}` : 'sch-page'} style={props.style}>
     <View className='sch-status-area' />
     <View className='sch-header'>
       <Button ariaLabel='返回' className='sch-back' onClick={props.onBack}><Image src={navBack} mode='scaleToFill' /></Button>

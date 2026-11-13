@@ -9,10 +9,13 @@ import {
   type ScheduleWindowReceipt,
 } from '../schedule/model'
 import { RealScheduleRepository } from '../schedule/repository'
+// CCR-SCH-SLOT-002：batch-generate（覆盖重建）与 booking-window（门店级可预约范围）。
 
 async function rejects(call: () => Promise<unknown> | unknown): Promise<unknown> {
   try { await call(); return new Error('NO_THROW') } catch (error) { return error }
 }
+/** assert.rejects validator: the mock answered the generic 400. */
+const rejects400 = (error: unknown) => (error as ScheduleMockError).code === 'COMMON_INVALID_ARGUMENT'
 const formFor = (start: string, end: string, capacity: number) =>
   ({ startDate: start.slice(0, 10), startTime: start.slice(11, 16),
     endDate: end.slice(0, 10), endTime: end.slice(11, 16), configuredCapacity: capacity })
@@ -133,6 +136,94 @@ test('preview batch close: partial success names blocked windows; >200 entries r
   // Reason is mandatory; from>to is rejected client-side by the page and here via helper.
   const noReason = await rejects(() => repository.batchClose('b3', '2026-10-07', '2026-10-07', ' '))
   assert.equal((noReason as ScheduleMockError).code, 'COMMON_INVALID_ARGUMENT')
+})
+
+test('preview batch generate: coverage rebuild closes intersecting windows, skips occupied, 200 cap', async () => {
+  // Fixture day 2026-10-07: 61001 09:00-12:00 OPEN, 61002 15:00-17:00 OPEN occupied=1,
+  // 61004 13:00-14:30 OPEN, 61006 CLOSED. Overlap rebuild (CCR-SCH-SLOT-002 §1):
+  const repository = new PreviewScheduleRepository()
+  const clean = await repository.batchGenerate('g1', {
+    fromDate: '2026-10-07', toDate: '2026-10-07', dailyStart: '09:00', dailyEnd: '12:00',
+    intervalMinutes: 60, configuredCapacity: 6, reason: '一键生成',
+  })
+  assert.equal(clean.closedWindows.length, 1, '61001 was rebuilt-over (closed first)')
+  assert.equal(clean.closedWindows[0]!.windowId, '61001')
+  assert.equal(clean.createdWindows.length, 3, '09-10/10-11/11-12 minute windows')
+  assert.equal(clean.skippedWindows.length, 0)
+  for (const created of clean.createdWindows) {
+    assert.equal(created.configuredCapacity, 6)
+    assert.equal(created.status, 'OPEN')
+  }
+  // Occupied window: skipped with OCCUPIED, and NO slot is generated inside its interval.
+  const blocked = await repository.batchGenerate('g2', {
+    fromDate: '2026-10-07', toDate: '2026-10-07', dailyStart: '15:00', dailyEnd: '17:00',
+    intervalMinutes: 60, configuredCapacity: 6, reason: '一键生成',
+  })
+  assert.equal(blocked.createdWindows.length, 0)
+  assert.equal(blocked.closedWindows.length, 0)
+  assert.equal(blocked.skippedWindows.length, 1)
+  assert.equal(blocked.skippedWindows[0]!.reasonCode, 'OCCUPIED')
+  assert.equal(blocked.skippedWindows[0]!.window.windowId, '61002')
+  // Mixed day: closes 61001/61004, skips 61002, suppresses the slot crossing 15:00.
+  const mixed = await new PreviewScheduleRepository().batchGenerate('g3', {
+    fromDate: '2026-10-07', toDate: '2026-10-07', dailyStart: '09:00', dailyEnd: '16:00',
+    intervalMinutes: 60, configuredCapacity: 6, reason: '一键生成',
+  })
+  assert.equal(mixed.closedWindows.length, 2)
+  assert.equal(mixed.skippedWindows.length, 1)
+  assert.equal(mixed.createdWindows.length, 6, '7 hourly slots minus the occupied 15:00-16:00')
+  for (const created of mixed.createdWindows) {
+    const intersects = created.startAt < '2026-10-07T17:00:00.000+08:00'
+      && '2026-10-07T15:00:00.000+08:00' < created.endAt
+    assert.equal(intersects, false, 'no created window intersects the occupied window')
+  }
+  // Same slot replays the journaled receipt (idempotent).
+  const replay = await repository.batchGenerate('g1', {
+    fromDate: '2026-10-07', toDate: '2026-10-07', dailyStart: '09:00', dailyEnd: '12:00',
+    intervalMinutes: 60, configuredCapacity: 6, reason: '一键生成',
+  })
+  assert.deepEqual(replay.createdWindows.map(item => item.windowId), clean.createdWindows.map(item => item.windowId))
+})
+
+test('preview batch generate rejects invalid ranges and the >200 candidate cap', async () => {
+  const repository = new PreviewScheduleRepository()
+  const good = (over: Record<string, unknown> = {}) => ({
+    fromDate: '2026-11-13', toDate: '2026-11-13', dailyStart: '09:00', dailyEnd: '19:00',
+    intervalMinutes: 60, configuredCapacity: 6, reason: '一键生成', ...over,
+  })
+  await assert.rejects(() => repository.batchGenerate('v1', good({ configuredCapacity: 0 })), rejects400)
+  await assert.rejects(() => repository.batchGenerate('v2', good({ dailyStart: '19:00', dailyEnd: '09:00' })), rejects400)
+  await assert.rejects(() => repository.batchGenerate('v3', good({ intervalMinutes: 1441 })), rejects400)
+  await assert.rejects(() => repository.batchGenerate('v4', good({ reason: ' ' })), rejects400)
+  await assert.rejects(() => repository.batchGenerate('v5', good({ toDate: '2027-12-31' })), rejects400)
+  // 23 hourly slots/day on empty days: 8 days=184 fits, 9 days=207 exceeds the §1 cap.
+  const wide = (fromDate: string, toDate: string) => good({ fromDate, toDate, dailyStart: '00:00', dailyEnd: '23:00' })
+  const fits = await repository.batchGenerate('v6', wide('2026-11-13', '2026-11-20'))
+  assert.equal(fits.createdWindows.length, 8 * 23)
+  await assert.rejects(() => repository.batchGenerate('v7', wide('2026-11-13', '2026-11-21')), rejects400)
+})
+
+test('preview booking-window: GET answers defaults, PUT replaces under CAS', async () => {
+  const repository = new PreviewScheduleRepository()
+  const initial = await repository.bookingWindow()
+  assert.equal(initial.leadMinutes, 60)
+  assert.equal(initial.maxDays, 7)
+  assert.equal(initial.version, '0')
+  const saved = await repository.saveBookingWindow('bw1', { leadMinutes: 30, maxDays: 14 }, '0')
+  assert.equal(saved.leadMinutes, 30)
+  assert.equal(saved.maxDays, 14)
+  assert.notEqual(saved.version, '0')
+  const reread = await repository.bookingWindow()
+  assert.equal(reread.leadMinutes, 30)
+  assert.equal(reread.maxDays, 14)
+  // Stale expectedVersion → COMMON_CONFLICT; bounds mirror the server 400.
+  const stale = await rejects(() => repository.saveBookingWindow('bw2', { leadMinutes: 45, maxDays: 30 }, '0'))
+  assert.equal((stale as ScheduleMockError).code, 'COMMON_CONFLICT')
+  const bad = await rejects(() => repository.saveBookingWindow('bw3', { leadMinutes: 1441, maxDays: 7 }, saved.version))
+  assert.equal((bad as ScheduleMockError).code, 'COMMON_INVALID_ARGUMENT')
+  // Switch-off / dependency failure fails the read closed like every other schedule read.
+  const closed = new PreviewScheduleRepository(undefined, undefined, undefined, 'closed')
+  await assert.rejects(() => closed.bookingWindow())
 })
 
 test('preview staff windows: overlap 409, assignment protection 409, CAS 409', async () => {
@@ -380,4 +471,78 @@ test('real repository fails closed on consumer coordinates and validates forms b
   const badForm = emptyWindowForm('2026-10-07', '09:00')
   await assert.rejects(() => repository.createWindow('slot-c', badForm), /WORKSPACE_FORM_INVALID/)
   await assert.rejects(() => repository.closeWindow('slot-d', '61009', '0', '   '), /WORKSPACE_FORM_INVALID/)
+})
+
+// ---------------------------------------------------------------------------
+// CCR-SCH-SLOT-002 real wiring: batch-generate + booking-window routes/bodies.
+// ---------------------------------------------------------------------------
+const generateReceipt = (windowId: string) => ({
+  windowId, merchantId: '958001', storeId: '958002',
+  startAt: '2026-11-13T01:00:00.000Z', endAt: '2026-11-13T02:00:00.000Z',
+  configuredCapacity: 6, status: 'OPEN' as const, version: '0',
+})
+
+test('real repository wires batch-generate and booking-window (CCR-SCH-SLOT-002)', async () => {
+  const { repository, seen } = await wiredApi(call => {
+    if (call.method === 'POST' && call.path.endsWith('/availability-windows/batch-generate')) {
+      return ok({
+        storeId: '958002',
+        createdWindows: [generateReceipt('61101')],
+        closedWindows: [generateReceipt('61001')],
+        skippedWindows: [{ window: { ...generateReceipt('61003'), status: 'SOLD_OUT' as const }, reasonCode: 'OCCUPIED' }],
+      })
+    }
+    if (call.method === 'GET' && call.path.endsWith('/booking-window')) {
+      return ok({ merchantId: '958001', storeId: '958002', leadMinutes: 60, maxDays: 7, version: '0', updatedAt: '2026-11-13T02:00:00.000Z' })
+    }
+    if (call.method === 'PUT' && call.path.endsWith('/booking-window')) {
+      return ok({ merchantId: '958001', storeId: '958002', leadMinutes: 30, maxDays: 14, version: '1' })
+    }
+    return undefined
+  })
+  const generated = await repository.batchGenerate('w1', {
+    fromDate: '2026-11-13', toDate: '2026-11-19', dailyStart: '09:00', dailyEnd: '19:00',
+    intervalMinutes: 60, configuredCapacity: 6, reason: ' 一键生成 ',
+  })
+  assert.equal(generated.createdWindows.length, 1)
+  assert.equal(generated.skippedWindows[0]!.reasonCode, 'OCCUPIED')
+  const generateCall = seen.find(item => item.method === 'POST' && item.path === '/api/v1/merchant/stores/958002/availability-windows/batch-generate')!
+  // §1 strict-JSON body: exactly the eight contract fields; reason is trimmed.
+  assert.deepEqual(Object.keys(generateCall.data ?? {}).sort(),
+    ['configuredCapacity', 'dailyEnd', 'dailyStart', 'fromDate', 'intervalMinutes', 'merchantId', 'reason', 'toDate'])
+  assert.equal(generateCall.data?.fromDate, '2026-11-13')
+  assert.equal(generateCall.data?.toDate, '2026-11-19')
+  assert.equal(generateCall.data?.dailyStart, '09:00')
+  assert.equal(generateCall.data?.dailyEnd, '19:00')
+  assert.equal(generateCall.data?.intervalMinutes, 60)
+  assert.equal(generateCall.data?.configuredCapacity, 6)
+  assert.equal(generateCall.data?.reason, '一键生成')
+  assert.match(String(generateCall.requestId), /^[0-9a-f-]{36}$/)
+  // booking-window GET carries the workspace merchantId (store rides the path).
+  const view = await repository.bookingWindow()
+  assert.equal(view.leadMinutes, 60)
+  assert.equal(view.version, '0')
+  const readCall = seen.find(item => item.method === 'GET' && item.path === '/api/v1/merchant/stores/958002/booking-window')!
+  assert.equal(readCall.data?.merchantId, '958001')
+  // PUT is a full replace under expectedVersion (no reason field, §2).
+  const saved = await repository.saveBookingWindow('w2', { leadMinutes: 30, maxDays: 14 }, '0')
+  assert.equal(saved.version, '1')
+  const putCall = seen.find(item => item.method === 'PUT' && item.path === '/api/v1/merchant/stores/958002/booking-window')!
+  assert.deepEqual(Object.keys(putCall.data ?? {}).sort(), ['expectedVersion', 'leadMinutes', 'maxDays', 'merchantId'])
+  assert.equal(putCall.data?.expectedVersion, '0')
+  assert.equal(putCall.data?.reason, undefined)
+})
+
+test('real repository pre-validates batch-generate / booking-window before the wire', async () => {
+  const { repository, seen } = await wiredApi(() => undefined)
+  await assert.rejects(() => repository.batchGenerate('w3', {
+    fromDate: '2026-11-13', toDate: '2026-11-19', dailyStart: '19:00', dailyEnd: '09:00',
+    intervalMinutes: 60, configuredCapacity: 6, reason: '一键生成',
+  }), /WORKSPACE_FORM_INVALID/)
+  await assert.rejects(() => repository.batchGenerate('w4', {
+    fromDate: '2026-11-13', toDate: '2026-11-19', dailyStart: '09:00', dailyEnd: '19:00',
+    intervalMinutes: 60, configuredCapacity: 0, reason: '一键生成',
+  }), /WORKSPACE_FORM_INVALID/)
+  await assert.rejects(() => repository.saveBookingWindow('w5', { leadMinutes: 1441, maxDays: 7 }, '0'), /WORKSPACE_FORM_INVALID/)
+  assert.equal(seen.length, 0, 'nothing reaches the wire on a mirrored 400')
 })

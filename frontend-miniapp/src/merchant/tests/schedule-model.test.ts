@@ -2,13 +2,15 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { ApiError } from '../../shared/request'
 import {
-  addBeijingDays, batchRangeDays, beijingToday, capabilityProblems, chipClass, composeTimestamp,
-  decodeBatchCloseResult, decodeCapabilityView, decodeStaffWindowPage, decodeStaffWindowReceipt,
-  decodeWindowItem, decodeWindowPage, decodeWindowReceipt, formatWindowInterval, fixtureCapability,
-  fixtureStaffWindows, fixtureWindows, isVersion, reasonProblem,
+  addBeijingDays, batchGenerateProblems, batchRangeDays, beijingToday, bookingWindowFormProblems,
+  capabilityProblems, chipClass, composeTimestamp, decodeBatchCloseResult, decodeBatchGenerateResult,
+  decodeBookingWindowReceipt, decodeBookingWindowView, decodeCapabilityView, decodeStaffWindowPage,
+  decodeStaffWindowReceipt, decodeWindowItem, decodeWindowPage, decodeWindowReceipt,
+  defaultWeekDraft, formatWindowInterval, fixtureCapability, fixtureStaffWindows, fixtureWindows,
+  generateFormProblems, isVersion, nextSevenDays, reasonProblem,
   scheduleAvailability, scheduleClosedReason, scheduleMessage, splitBeijingParts,
-  staffStatusTagClass, staffWindowFormProblems, windowFormFromItem, windowFormProblems,
-  windowStatusTagClass,
+  staffStatusTagClass, staffWindowFormProblems, weekdayIndexOf, weekdayLabels, weekDraftProblems,
+  windowFormFromItem, windowFormProblems, windowStatusTagClass,
 } from '../schedule/model'
 
 const wire = (value: unknown): Record<string, unknown> => JSON.parse(JSON.stringify(value))
@@ -193,6 +195,124 @@ test('availability classifies switch-off/dependency failure as closed; error tex
   assert.equal(scheduleMessage(new ApiError('SERVICE_STATE_NOT_ALLOWED', 409)).includes('不可经营'), true)
   assert.equal(scheduleMessage(new ApiError('COMMON_FORBIDDEN', 403)).includes('无权'), true)
   assert.equal(scheduleMessage(new Error('PENDING_WRITE_CHANGED')).includes('尚未确认'), true)
+})
+
+// ---------------------------------------------------------------------------
+// CCR-SCH-SLOT-002（batch-generate + booking-window + 周模板草稿态）。
+// ---------------------------------------------------------------------------
+const receipt = (windowId: string, startAt: string, endAt: string) => ({
+  windowId, merchantId: '958001', storeId: '958002',
+  startAt, endAt, configuredCapacity: 6, status: 'OPEN' as const, version: '3',
+})
+
+test('batch-generate decoder is exact-key and enforces the 200-candidate cap', () => {
+  const base = () => ({
+    storeId: '958002',
+    createdWindows: [receipt('61101', '2026-11-13T01:00:00.000Z', '2026-11-13T02:00:00.000Z')],
+    closedWindows: [receipt('61001', '2026-11-13T01:00:00.000Z', '2026-11-13T04:00:00.000Z')],
+    skippedWindows: [{ window: receipt('61003', '2026-11-13T11:30:00.000Z', '2026-11-13T13:00:00.000Z'), reasonCode: 'OCCUPIED' }],
+  })
+  const good = decodeBatchGenerateResult(base())
+  assert.equal(good.createdWindows.length, 1)
+  assert.equal(good.skippedWindows[0]!.reasonCode, 'OCCUPIED')
+  // batch-close naming stays a separate wire shape (blockedWindows ≠ skippedWindows).
+  assert.throws(() => decodeBatchCloseResult(base()), /INVALID_RESPONSE/)
+  assert.throws(() => decodeBatchGenerateResult(decodeBatchCloseResult({
+    storeId: '958002', closedWindows: [], blockedWindows: [],
+  })), /INVALID_RESPONSE/)
+  for (const mutate of [
+    (v: Record<string, any>) => { delete v.skippedWindows },
+    (v: Record<string, any>) => { v.extra = 1 },
+    (v: Record<string, any>) => { v.skippedWindows[0].reasonCode = '' },
+    (v: Record<string, any>) => { v.skippedWindows[0].other = 1 },
+  ]) {
+    const value: any = base()
+    mutate(value)
+    assert.throws(() => decodeBatchGenerateResult(value), /INVALID_RESPONSE/)
+  }
+  // §1/§3.2 candidate cap: created+closed+skipped beyond 200 fails closed.
+  const crowded = {
+    storeId: '958002',
+    createdWindows: Array.from({ length: 201 }, (_, index) => receipt(String(70000 + index),
+      '2026-11-13T01:00:00.000Z', '2026-11-13T02:00:00.000Z')),
+    closedWindows: [], skippedWindows: [],
+  }
+  assert.throws(() => decodeBatchGenerateResult(crowded), /INVALID_RESPONSE/)
+})
+
+test('booking-window decoders are exact-key with lead 0..1440 / maxDays 1..90 bounds', () => {
+  const view = {
+    merchantId: '958001', storeId: '958002', leadMinutes: 60, maxDays: 7,
+    version: '0', updatedAt: '2026-11-13T02:00:00.000Z',
+  }
+  assert.equal(decodeBookingWindowView(view).leadMinutes, 60)
+  // Receipt is a separate shape (no updatedAt on the wire).
+  assert.throws(() => decodeBookingWindowReceipt(view), /INVALID_RESPONSE/)
+  const receiptShape = { merchantId: '958001', storeId: '958002', leadMinutes: 30, maxDays: 14, version: '1' }
+  assert.equal(decodeBookingWindowReceipt(receiptShape).maxDays, 14)
+  assert.throws(() => decodeBookingWindowView(receiptShape), /INVALID_RESPONSE/)
+  for (const mutate of [
+    (v: Record<string, any>) => { v.leadMinutes = -1 },
+    (v: Record<string, any>) => { v.leadMinutes = 1441 },
+    (v: Record<string, any>) => { v.leadMinutes = 1.5 },
+    (v: Record<string, any>) => { v.maxDays = 0 },
+    (v: Record<string, any>) => { v.maxDays = 91 },
+    (v: Record<string, any>) => { v.extra = 1 },
+  ]) {
+    const value: any = { ...view }
+    mutate(value)
+    assert.throws(() => decodeBookingWindowView(value), /INVALID_RESPONSE/)
+  }
+})
+
+test('generate / booking draft validation mirrors the CCR §1/§2 bounds', () => {
+  assert.deepEqual(generateFormProblems({ dailyStart: '09:00', dailyEnd: '19:00', configuredCapacity: 6 }), [])
+  assert.ok(generateFormProblems({ dailyStart: '19:00', dailyEnd: '19:00', configuredCapacity: 6 }).some(p => p.includes('结束')))
+  assert.ok(generateFormProblems({ dailyStart: '09:00', dailyEnd: '19:00', configuredCapacity: 1000 }).some(p => p.includes('容量')))
+  assert.ok(generateFormProblems({ dailyStart: '09:00', dailyEnd: '19:00', configuredCapacity: null }).some(p => p.includes('容量')))
+  const good = { fromDate: '2026-11-13', toDate: '2026-11-19', dailyStart: '09:00', dailyEnd: '19:00',
+    intervalMinutes: 60, configuredCapacity: 6, reason: '一键生成' }
+  assert.deepEqual(batchGenerateProblems(good), [])
+  assert.ok(batchGenerateProblems({ ...good, intervalMinutes: 0 }).some(p => p.includes('间隔')))
+  assert.ok(batchGenerateProblems({ ...good, toDate: '2027-12-31' }).some(p => p.includes('跨度')))
+  assert.ok(batchGenerateProblems({ ...good, reason: ' ' }).some(p => p.includes('原因')))
+  assert.deepEqual(bookingWindowFormProblems({ leadMinutes: 0, maxDays: 1 }), [])
+  assert.deepEqual(bookingWindowFormProblems({ leadMinutes: 1440, maxDays: 90 }), [])
+  assert.ok(bookingWindowFormProblems({ leadMinutes: 1441, maxDays: 7 }).some(p => p.includes('分钟')))
+  assert.ok(bookingWindowFormProblems({ leadMinutes: 60, maxDays: 91 }).some(p => p.includes('天数')))
+  assert.ok(bookingWindowFormProblems({ leadMinutes: null, maxDays: null }).length === 2)
+})
+
+test('week draft defaults validate; overlap / empty / inverted segments are named per day', () => {
+  const draft = defaultWeekDraft()
+  assert.equal(draft.length, 7)
+  assert.deepEqual(weekDraftProblems(draft), [])
+  assert.deepEqual(draft[0], { enabled: true, segments: [{ start: '09:00', end: '19:00' }] })
+  const overlapped = draft.map((day, index) => index === 1
+    ? { enabled: true, segments: [{ start: '09:00', end: '12:00' }, { start: '11:00', end: '13:00' }] }
+    : day)
+  assert.ok(weekDraftProblems(overlapped).some(problem => problem.startsWith('周二：') && problem.includes('重叠')))
+  // 相邻半开可衔接（12:00 起 = 上一段终点）。
+  const adjacent = draft.map((day, index) => index === 1
+    ? { enabled: true, segments: [{ start: '09:00', end: '12:00' }, { start: '12:00', end: '13:00' }] }
+    : day)
+  assert.deepEqual(weekDraftProblems(adjacent), [])
+  const emptyEnabled = draft.map((day, index) => index === 2 ? { enabled: true, segments: [] } : day)
+  assert.ok(weekDraftProblems(emptyEnabled).some(problem => problem.startsWith('周三：') && problem.includes('至少')))
+  const inverted = draft.map((day, index) => index === 0
+    ? { enabled: true, segments: [{ start: '12:00', end: '12:00' }] } : day)
+  assert.ok(weekDraftProblems(inverted).some(problem => problem.startsWith('周一：') && problem.includes('结束')))
+})
+
+test('weekdayIndexOf / nextSevenDays map Beijing dates onto 周一..周日 (2026-11-13 周五锚点)', () => {
+  assert.equal(weekdayIndexOf('2026-11-13'), 4, '2026-11-13 is Friday')
+  assert.equal(weekdayIndexOf('2026-11-16'), 0, '2026-11-16 is Monday')
+  assert.equal(weekdayIndexOf('2026-11-15'), 6, '2026-11-15 is Sunday')
+  const week = nextSevenDays('2026-11-13')
+  assert.deepEqual(week.map(day => day.date),
+    ['2026-11-13', '2026-11-14', '2026-11-15', '2026-11-16', '2026-11-17', '2026-11-18', '2026-11-19'])
+  assert.deepEqual(week.map(day => weekdayLabels[day.weekday]),
+    ['周五', '周六', '周日', '周一', '周二', '周三', '周四'])
 })
 
 test('fixtures cover the open/partial/full/closed state space for preview', () => {
