@@ -303,7 +303,6 @@ export default function ScheduleTemplatePage() {
     }
     if (segments.length === 0) { setNotice('门店时间不足以按当前间隔切出时段，请调整。'); return }
     setWeek(weekdayLabels.map(() => ({ enabled: true, segments: segments.map(seg => ({ ...seg })) })))
-    setNotice(`已按 ${generate.dailyStart}-${generate.dailyEnd}、每时段 ${generateIntervalMinutes} 分钟填充一周（共 ${segments.length} 段/天）；可在下方调整，点「保存并生效」保存为周模板。`)
   }
 
   /** 底栏「保存并生效」（CCR-SCH-SLOT-003）：B 区周草稿 + A 区容量 → 一次 PUT
