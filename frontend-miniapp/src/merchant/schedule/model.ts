@@ -291,7 +291,8 @@ const decodeWeekTemplateDay = (value: unknown): WeekTemplateDay => {
   return { enabled: v.enabled, segments }
 }
 export function decodeWeekTemplateView(value: unknown): WeekTemplateView {
-  const v = exact(value, ['days', 'version'])
+  // Wire shape (H6): three keys — days, version, updatedAt (null for default row).
+  const v = exact(value, ['days', 'version', 'updatedAt'])
   if (!Array.isArray(v.days) || v.days.length !== 7) invalid()
   return { days: v.days.map(decodeWeekTemplateDay), version: isVersion(v.version) ? v.version : invalid() }
 }
