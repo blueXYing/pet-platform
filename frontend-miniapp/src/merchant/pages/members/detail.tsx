@@ -211,13 +211,13 @@ export default function MerchantMemberDetailPage() {
         </View>
         <View className='mmd-field'>
           <Text className='mmd-field-label'>岗位</Text>
-          <View className='mmd-position-row'>
-            <Input id='mmd-position-input' className='mmd-position-input' maxlength={64}
-              placeholder='如：美容师 / 前台（选填）' value={positionDraft}
-              onInput={event => setPositionDraft(event.detail.value)} />
-            <Button id='mmd-position-save' ariaLabel={`保存${member.memberName}的岗位`}
-              className='mmd-position-save' disabled={state.busy || positionDraft.trim() === member.position}
-              onClick={() => void savePosition()}>保存</Button>
+          <Input id='mmd-position-input' className='mmd-position-input' maxlength={64}
+            placeholder='如：美容师 / 前台（选填）' value={positionDraft}
+            onInput={event => setPositionDraft(event.detail.value)} />
+          <View id='mmd-position-save'
+            className={`mmd-position-save${state.busy || positionDraft.trim() === member.position ? ' mmd-position-save-disabled' : ''}`}
+            onClick={() => { if (!(state.busy || positionDraft.trim() === member.position)) void savePosition() }}>
+            <Text className='mmd-position-save-text'>保存岗位</Text>
           </View>
           <Text className='mmd-hint'>岗位为老板可编辑的自由文本标签，仅用于展示，不关联操作权限。</Text>
         </View>

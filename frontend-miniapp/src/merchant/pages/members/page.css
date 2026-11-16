@@ -83,8 +83,9 @@
    保存按钮沿用设计 filled #5BAAE8 白字小号（frame 12:7842 BUTTON 家族）。 */
 .mmd-position-row { display: flex; align-items: center; gap: calc(var(--mmb-unit) * 7.69); }
 .mmd-position-input { flex: 1; min-width: 0; height: calc(var(--mmb-unit) * 44); padding: 0 calc(var(--mmb-unit) * 16.35); box-sizing: border-box; background: #f9fafb; border: calc(var(--mmb-unit) * 0.96) solid #e5e7eb; border-radius: calc(var(--mmb-unit) * 11.54); font-size: calc(var(--mmb-unit) * 13.46); color: #111827; }
-.mmd-position-save { flex: none; height: calc(var(--mmb-unit) * 44); padding: 0 calc(var(--mmb-unit) * 18); margin: 0; border-radius: calc(var(--mmb-unit) * 11.54); background: #5baae8; color: #fff; font-size: calc(var(--mmb-unit) * 13.46); font-weight: 600; line-height: calc(var(--mmb-unit) * 44); }
-.mmd-position-save[disabled] { opacity: 0.5; }
+.mmd-position-save { display: flex; align-items: center; justify-content: center; width: 100%; height: calc(var(--mmb-unit) * 44); margin: calc(var(--mmb-unit) * 7.69) 0 0; border-radius: calc(var(--mmb-unit) * 11.54); background: #5baae8; }
+.mmd-position-save-disabled { opacity: 0.5; }
+.mmd-position-save-text { color: #fff; font-size: calc(var(--mmb-unit) * 13.46); font-weight: 600; }
 .mmd-chips { display: flex; flex-wrap: wrap; gap: calc(var(--mmb-unit) * 7.69); }
 .mmd-chip { padding: calc(var(--mmb-unit) * 5.77) calc(var(--mmb-unit) * 11.54); border-radius: calc(var(--mmb-unit) * 14); background: #f0fbff; font-size: calc(var(--mmb-unit) * 11.54); line-height: calc(var(--mmb-unit) * 15.39); font-weight: 500; color: #5baae8; }
 .mmd-hint { font-size: calc(var(--mmb-unit) * 11.54); line-height: calc(var(--mmb-unit) * 17); color: #9ca3af; }
