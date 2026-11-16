@@ -10,6 +10,7 @@ import com.petplatform.merchant.api.command.GrantStaffMemberActionsCommand;
 import com.petplatform.merchant.api.command.InviteStaffMemberCommand;
 import com.petplatform.merchant.api.command.MerchantStaffMemberCommandApi;
 import com.petplatform.merchant.api.command.StaffMemberLifecycleCommand;
+import com.petplatform.merchant.api.command.UpdateStaffMemberPositionCommand;
 import com.petplatform.merchant.api.dto.MerchantStaffInvitationCommandResult;
 import com.petplatform.merchant.api.dto.MerchantStaffInvitationDetailDTO;
 import com.petplatform.merchant.api.dto.MerchantStaffInvitationListPageDTO;
@@ -111,6 +112,11 @@ public final class MerchantStaffMemberApiImpl
     @Override
     public MerchantStaffMemberCommandResult revokeStoreGrant(StaffMemberLifecycleCommand command) {
         return service.revokeStoreGrant(command);
+    }
+
+    @Override
+    public MerchantStaffMemberCommandResult updatePosition(UpdateStaffMemberPositionCommand command) {
+        return service.updatePosition(command);
     }
 
     @Override

@@ -178,7 +178,7 @@ export default function MerchantMembersPage() {
           <View className='mmb-card-main'>
             <View className='mmb-card-line'>
               <Text className='mmb-card-name'>{row.memberName}</Text>
-              <Text className='mmb-role-tag'>核销员</Text>
+              <Text className='mmb-role-tag'>{row.position || '成员'}</Text>
             </View>
             <Text className='mmb-card-phone'>{row.phoneMasked}</Text>
             <View className='mmb-card-line'>

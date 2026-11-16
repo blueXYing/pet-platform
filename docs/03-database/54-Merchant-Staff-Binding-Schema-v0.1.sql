@@ -1,7 +1,9 @@
 -- MER staff binding delta (STA-B; SQL54). Isolated validation input, NOT default Flyway.
 -- Complements the approved contract-52 relations (merchant_member / merchant_member_store_grant /
--- merchant_member_store_action stay unchanged) with the invitation-confirm flow approved by
+-- merchant_member_store_action) with the invitation-confirm flow approved by
 -- CCR-W2-API-001 staff-identity-binding-proposal §5 (D1=invite-confirm, D2=verify-only catalog).
+-- 2026-11-16 CCR-M-STAFF-POS-001: merchant_member gains the owner-editable position label
+-- (ALTER below); grant/action relations stay unchanged.
 -- UTC timestamps. The audit table never stores clear-text phone/name (supplement 35 precedent);
 -- the invitation row stores the registered phone only because confirm-time phone equality needs
 -- it (see contract 54 §3); projections always mask it.
@@ -101,3 +103,11 @@ CREATE TABLE merchant_member_audit (
         AND OCTET_LENGTH(request_id) BETWEEN 1 AND 512),
     CONSTRAINT chk_mer_member_audit_trace CHECK (trace_id IS NULL OR OCTET_LENGTH(trace_id) <= 128)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- 2026-11-16 CCR-M-STAFF-POS-001: merchant_member gains an owner-editable free-text position
+-- label (e.g. 美容师/前台). It is a display fact only — never a permission fact — and rides the
+-- contract-54 OWNER member projections plus the PUT position command. The verification action
+-- (merchant.order.verify) is granted automatically inside the confirm transaction (D2 catalog),
+-- so the label never feeds any action gate. Empty string means "not set" (0..64 code points).
+ALTER TABLE merchant_member
+    ADD COLUMN position VARCHAR(64) NOT NULL DEFAULT '' COMMENT 'owner-editable free-text display label; 0..64 code points; never a permission fact (CCR-M-STAFF-POS-001)' AFTER user_id;

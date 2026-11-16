@@ -1,18 +1,21 @@
 import { ApiError } from '../../shared/request'
-import { APPROVED_ACTIONS, membersMessage, type MemberRow, type MembersPage } from './model'
+import { membersMessage, type MemberRow, type MembersPage } from './model'
 
 /**
  * Contract 54 offers no single-member read endpoint (§4 owner queries are the two list routes
  * only), so the detail page re-reads the owner member list and picks the row by memberId. That
  * keeps the member/grant versions fresh for the optimistic-concurrency writes below — 54 §3:
- * disable/enable pin memberVersion, revoke-store/grant-actions pin grantVersion.
+ * disable/enable and the position label pin memberVersion, revoke-store pins grantVersion.
+ * CCR-M-STAFF-POS-001: verify is granted by default at confirm, so the manual grant-actions
+ * command is gone from this face; revoke-store stays (terminal) and the position label edit
+ * remains available even after the store grant was revoked (岗位保留).
  */
 export interface MemberDetailDeps {
   listMembers(page: number, pageSize: number): Promise<MembersPage>
   disableMember(slot: string, memberId: string, expectedVersion: string): Promise<MemberRow>
   enableMember(slot: string, memberId: string, expectedVersion: string): Promise<MemberRow>
   revokeStoreGrant(slot: string, memberId: string, expectedVersion: string): Promise<MemberRow>
-  grantActions(slot: string, memberId: string, actions: readonly string[],
+  updatePosition(slot: string, memberId: string, position: string,
     expectedVersion: string): Promise<MemberRow>
 }
 
@@ -26,7 +29,7 @@ export type MemberDetailState = Readonly<{
   notice: string
 }>
 
-export type MemberActionKey = 'disable' | 'enable' | 'revoke-store' | 'grant-actions'
+export type MemberActionKey = 'disable' | 'enable' | 'revoke-store'
 
 const LIST_PAGE_SIZE = 50
 // Defensive walk cap: the backend caps pageSize at 100 and the owner list is one store's staff;
@@ -34,18 +37,18 @@ const LIST_PAGE_SIZE = 50
 const LIST_PAGE_CAP = 40
 
 /**
- * Which lifecycle buttons the detail page may offer. All four 54号 owner commands require a
- * usable store grant (REVOKED grant → 409 pending D3), and 停用/启用 are mutually exclusive
- * against the current member status.
+ * Which lifecycle buttons the detail page may offer. Both remaining 54号 owner commands
+ * require a usable store grant (REVOKED grant → 409 pending D3), and 停用/启用 are mutually
+ * exclusive against the current member status. The position edit is NOT gated here: it is a
+ * display-only label and stays editable after the store grant was revoked (CCR-M-STAFF-POS-001).
  */
 export function availableMemberActions(member: MemberRow | null): readonly MemberActionKey[] {
   if (!member || member.grantStatus !== 'ENABLED') return []
-  const grantActions: MemberActionKey[] = ['revoke-store', 'grant-actions']
-  if (member.memberStatus === 'ENABLED') return ['disable', ...grantActions]
-  if (member.memberStatus === 'DISABLED') return ['enable', ...grantActions]
+  if (member.memberStatus === 'ENABLED') return ['disable', 'revoke-store']
+  if (member.memberStatus === 'DISABLED') return ['enable', 'revoke-store']
   // memberStatus REVOKED (command itself is D3-reserved; decoder keeps the value forward-safe):
-  // only the grant-scoped operations remain legal.
-  return grantActions
+  // only the grant-scoped revoke remains legal.
+  return ['revoke-store']
 }
 
 /** One controller per mounted member-detail page; stale loads are dropped via run counters. */
@@ -120,26 +123,26 @@ export class MemberDetailController {
     } catch (error) { return this.fail(error) }
   }
 
-  /** 整店撤权 is terminal until ruling D3; pins grantVersion. */
+  /** 整店撤权 is terminal until ruling D3; pins grantVersion. The position label survives. */
   async revokeStore(slot: string): Promise<boolean> {
     const row = this.state.member
     if (this.state.busy || !row || !availableMemberActions(row).includes('revoke-store')) return false
     this.publish({ busy: true, notice: '' })
     try {
       const next = await this.deps.revokeStoreGrant(slot, row.memberId, row.grantVersion)
-      this.replace(next, '门店授权已撤回（终局）。该成员在本店的核销权限立即失效。')
+      this.replace(next, '门店授权已撤回（终局）。该成员在本店的核销权限立即失效，岗位标签保留。')
       return true
     } catch (error) { return this.fail(error) }
   }
 
-  /** 授权操作: full action-set replacement with the D2 frozen single-action catalog. */
-  async grantVerify(slot: string): Promise<boolean> {
+  /** 岗位编辑: pins memberVersion (the write bumps it); display-only, never grant-gated. */
+  async updatePosition(slot: string, position: string): Promise<boolean> {
     const row = this.state.member
-    if (this.state.busy || !row || !availableMemberActions(row).includes('grant-actions')) return false
+    if (this.state.busy || !row) return false
     this.publish({ busy: true, notice: '' })
     try {
-      const next = await this.deps.grantActions(slot, row.memberId, APPROVED_ACTIONS, row.grantVersion)
-      this.replace(next, '已授予核销操作权限（本店范围）。')
+      const next = await this.deps.updatePosition(slot, row.memberId, position, row.memberVersion)
+      this.replace(next, position === '' ? '岗位已清空。' : '岗位已更新。')
       return true
     } catch (error) { return this.fail(error) }
   }

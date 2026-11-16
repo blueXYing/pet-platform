@@ -107,6 +107,22 @@ public final class MerchantStaffMemberController {
         return envelope(result.member(), req);
     }
 
+    /** CCR-M-STAFF-POS-001: OWNER edits the position label; body pins the member version. */
+    @PutMapping(value = "/{memberId}/position", consumes = MediaType.APPLICATION_JSON_VALUE)
+    Map<String, Object> updatePosition(@PathVariable String memberId, @RequestBody String json,
+            HttpServletRequest req) {
+        onlyParameters(req);
+        mini(req);
+        JsonNode body = body(json, Set.of("merchantId", "storeId", "position", "expectedVersion"));
+        MerchantStaffMemberCommandResult result = members.updatePosition(
+                new UpdateStaffMemberPositionCommand(id(requiredText(body, "merchantId")),
+                        id(requiredText(body, "storeId")), id(memberId),
+                        requiredText(body, "position"),
+                        Long.toString(version(requiredText(body, "expectedVersion"))),
+                        userCommand(req)));
+        return envelope(result.member(), req);
+    }
+
     private Map<String, Object> lifecycle(String memberId, String json, HttpServletRequest req,
             String action) {
         onlyParameters(req);

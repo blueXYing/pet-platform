@@ -127,12 +127,16 @@ export function isMerchantRefundTargetPath(spec: RequestSpec): boolean {
 // Contract 54 M-side member management (switch pet.merchant.staff-member.enabled, default
 // OFF): every route carries the caller's merchant+store coordinates; the server re-proves the
 // OWNER relation per call. The employee confirmation channel lives on the C-side invitation
-// routes and is not part of this family.
+// routes and is not part of this family. CCR-M-STAFF-POS-001 adds the PUT position subroute
+// (display-only label edit; same coordinate discipline and X-Request-Id journaling).
 export function isMerchantStaffMemberPath(spec: RequestSpec): boolean {
   const path = spec.path
   if (spec.method === 'GET') {
     return path === '/api/v1/merchant/staff-members'
       || path === '/api/v1/merchant/staff-members/invitations'
+  }
+  if (spec.method === 'PUT') {
+    return /^\/api\/v1\/merchant\/staff-members\/[1-9][0-9]{0,18}\/position$/.test(path)
   }
   if (spec.method !== 'POST') return false
   return path === '/api/v1/merchant/staff-members/invitations'

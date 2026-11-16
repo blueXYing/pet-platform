@@ -15,6 +15,7 @@ import com.petplatform.merchant.api.command.ConfirmStaffMemberInvitationCommand;
 import com.petplatform.merchant.api.command.GrantStaffMemberActionsCommand;
 import com.petplatform.merchant.api.command.InviteStaffMemberCommand;
 import com.petplatform.merchant.api.command.StaffMemberLifecycleCommand;
+import com.petplatform.merchant.api.command.UpdateStaffMemberPositionCommand;
 import com.petplatform.merchant.api.dto.MerchantStaffInvitationCommandResult;
 import com.petplatform.merchant.api.dto.MerchantStaffInvitationDTO;
 import com.petplatform.merchant.api.dto.MerchantStaffInvitationDetailDTO;
@@ -65,13 +66,18 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * no member REVOKED exists and revoked grants are never revived. Guarded commands take the
  * shared store guard before locking member/grant rows, so the contract-52 action gate stays
  * fail-closed against in-flight verification (D4 approved mechanism).
+ * CCR-M-STAFF-POS-001 (2026-11-16): the verify action is granted by DEFAULT inside the
+ * confirm transaction, and the member's position label (0..64 code points, display-only,
+ * never a permission fact) becomes OWNER-editable via updatePosition; the label survives a
+ * revoked store grant and bumps the member version like every merchant_member write.
  */
 public final class MerchantStaffMemberService {
     private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final Pattern PHONE = Pattern.compile("1[0-9]{10}");
     /** D2 approved minimal catalog; extension requires a contract-54 revision. */
-    private static final Set<String> ACTION_CATALOG = Set.of("merchant.order.verify");
+    private static final String VERIFY_ACTION = "merchant.order.verify";
+    private static final Set<String> ACTION_CATALOG = Set.of(VERIFY_ACTION);
     private static final Set<String> MERCHANT_STATUSES =
             Set.of("APPLYING", "ACTIVE", "OFFLINE", "FROZEN", "CANCELED");
     private static final Set<String> STORE_STATUSES = Set.of("ACTIVE", "OFFLINE", "FROZEN");
@@ -90,9 +96,10 @@ public final class MerchantStaffMemberService {
             DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm:ss.SSSXXX");
 
     private record Intent(String action, long merchantId, long storeId, long memberId,
-                          long invitationId, String phone, String memberName, List<String> actions,
-                          Long expectedVersion, long actorId, String operatorId, String requestId,
-                          String traceId, byte[] key, MerchantCanonicalParams.Canonical canonical) {}
+                          long invitationId, String phone, String memberName, String position,
+                          List<String> actions, Long expectedVersion, long actorId,
+                          String operatorId, String requestId, String traceId, byte[] key,
+                          MerchantCanonicalParams.Canonical canonical) {}
 
     private record Principal(long actorId, String operatorId, String requestId, String traceId) {}
 
@@ -151,8 +158,8 @@ public final class MerchantStaffMemberService {
         if (command.phone() == null || !PHONE.matcher(command.phone()).matches()) invalid();
         requireName(command.memberName());
         Intent intent = ownerIntent("merchant.staff-member.invite", command.merchantId(),
-                command.storeId(), 0, 0, command.phone(), command.memberName(), actions, null,
-                command.context());
+                command.storeId(), 0, 0, command.phone(), command.memberName(), null, actions,
+                null, command.context());
         return runInvitation(intent, (mapper, agreements) -> inviteExecution(mapper, intent));
     }
 
@@ -161,7 +168,7 @@ public final class MerchantStaffMemberService {
         if (command == null) invalid();
         long invitationId = target(command.invitationId(), "invitationId");
         Intent intent = ownerIntent("merchant.staff-member.invitation.cancel", command.merchantId(),
-                command.storeId(), 0, invitationId, null, null, null,
+                command.storeId(), 0, invitationId, null, null, null, null,
                 version(command.expectedVersion()), command.context());
         return runInvitation(intent, (mapper, agreements) -> cancelExecution(mapper, intent));
     }
@@ -281,14 +288,31 @@ public final class MerchantStaffMemberService {
         return runMember(intent, (mapper, agreements) -> revokeStoreExecution(mapper, intent));
     }
 
+    /**
+     * CCR-M-STAFF-POS-001: OWNER edits the member's free-text position label. Display-only —
+     * it never feeds any action gate, so unlike disable/enable it also works on a member whose
+     * store grant was revoked (岗位保留). expectedVersion is the member version; the write
+     * bumps it exactly like updateMemberStatus.
+     */
+    public MerchantStaffMemberCommandResult updatePosition(UpdateStaffMemberPositionCommand command) {
+        if (command == null) invalid();
+        if (command.merchantId() == null || command.storeId() == null || command.memberId() == null)
+            invalid();
+        requirePosition(command.position());
+        Intent intent = ownerIntent("merchant.staff-member.update-position", command.merchantId(),
+                command.storeId(), target(command.memberId(), "memberId"), 0, null, null,
+                command.position(), null, version(command.expectedVersion()), command.context());
+        return runMember(intent, (mapper, agreements) -> updatePositionExecution(mapper, intent));
+    }
+
     public MerchantStaffMemberCommandResult grantActions(GrantStaffMemberActionsCommand command) {
         if (command == null) invalid();
         List<String> actions = catalogActions(command.actions());
         if (command.merchantId() == null || command.storeId() == null || command.memberId() == null)
             invalid();
         Intent intent = ownerIntent("merchant.staff-member.grant-actions", command.merchantId(),
-                command.storeId(), target(command.memberId(), "memberId"), 0, null, null, actions,
-                version(command.expectedVersion()), command.context());
+                command.storeId(), target(command.memberId(), "memberId"), 0, null, null, null,
+                actions, version(command.expectedVersion()), command.context());
         return runMember(intent, (mapper, agreements) -> grantActionsExecution(mapper, intent));
     }
 
@@ -303,7 +327,7 @@ public final class MerchantStaffMemberService {
         if (command.merchantId() == null || command.storeId() == null || command.memberId() == null)
             invalid();
         return ownerIntent(action, command.merchantId(), command.storeId(),
-                target(command.memberId(), "memberId"), 0, null, null, null,
+                target(command.memberId(), "memberId"), 0, null, null, null, null,
                 version(command.expectedVersion()), command.context());
     }
 
@@ -386,6 +410,24 @@ public final class MerchantStaffMemberService {
         return memberReceipt(mapper, intent);
     }
 
+    private MerchantStaffMemberCommandResult updatePositionExecution(
+            MerchantStaffMemberMapper mapper, Intent intent) {
+        MerchantMemberGrantScopeEntity scope = mapper.lockMemberScope(
+                intent.merchantId(), intent.memberId(), intent.storeId());
+        requireMemberScope(scope, intent.memberId());
+        // The owner list is grant-scoped (INNER JOIN on this store), so a member without a
+        // grant row here reads exactly like a missing member.
+        if (scope.getGrantId() == null) notFound();
+        // CCR-M-STAFF-POS-001: the label is display-only and survives a REVOKED store grant
+        // (岗位保留), so only the grant facts must be healthy — not the grant usable.
+        requireGrantFacts(scope);
+        if (scope.getMemberVersion() != intent.expectedVersion()) conflict("member version changed");
+        if (mapper.updateMemberPosition(intent.memberId(), intent.merchantId(), intent.position(),
+                intent.expectedVersion(), now()) != 1)
+            conflict("member write lost a concurrent version race");
+        return memberReceipt(mapper, intent);
+    }
+
     private MerchantStaffMemberCommandResult grantActionsExecution(MerchantStaffMemberMapper mapper,
             Intent intent) {
         MerchantMemberGrantScopeEntity scope = mapper.lockMemberScope(
@@ -449,8 +491,8 @@ public final class MerchantStaffMemberService {
         byte[] key = MerchantRequestKey.encode("merchant.staff-member.confirm", "USER",
                 principal.operatorId(), "INVITATION:" + command.invitationId(), principal.requestId());
         Intent intent = new Intent("merchant.staff-member.confirm", 0, 0, 0, invitationId, null,
-                null, null, null, principal.actorId(), principal.operatorId(), principal.requestId(),
-                principal.traceId(), key, canonical);
+                null, null, null, null, principal.actorId(), principal.operatorId(),
+                principal.requestId(), principal.traceId(), key, canonical);
         if (TransactionSynchronizationManager.isActualTransactionActive())
             throw new IllegalStateException("confirm admission requires no outer transaction");
         admitWithRecovery(intent);
@@ -514,8 +556,10 @@ public final class MerchantStaffMemberService {
         MerchantMemberGrantScopeEntity existing =
                 mapper.lockMemberByUser(merchantId, intent.actorId());
         if (existing != null) conflict("this account is already bound to the merchant");
-        List<String> actions = catalogCodes(mapper.listInvitationActions(intent.invitationId()));
-        if (actions.isEmpty()) unavailable("invitation actions are damaged");
+        // CCR-M-STAFF-POS-001 (2026-11-16): verification is granted by DEFAULT at confirm —
+        // pinned server-side to the D2 single-action catalog, no longer an artifact of the
+        // invitation's action rows and never depending on a manual owner grant.
+        List<String> actions = List.of(VERIFY_ACTION);
         long memberId = store.nextId();
         if (mapper.insertMember(memberId, merchantId, intent.actorId(), now()) != 1)
             unavailable("member insert failed");
@@ -840,6 +884,12 @@ public final class MerchantStaffMemberService {
                 || row.getMemberName().codePointCount(0, row.getMemberName().length()) > 64
                 || row.getPhone() == null || !PHONE.matcher(row.getPhone()).matches())
             unavailable("member naming facts are damaged");
+        // CCR-M-STAFF-POS-001: the position label is display-only; '' means "not set" and the
+        // projection fails closed on a damaged label like on every other member fact.
+        if (row.getPosition() == null
+                || row.getPosition().codePointCount(0, row.getPosition().length()) > 64
+                || hasUnpairedSurrogate(row.getPosition()))
+            unavailable("member position facts are damaged");
         if (row.getGrantStatus() != null
                 && (row.getGrantVersion() == null || row.getGrantVersion() < 0))
             unavailable("store grant facts are damaged");
@@ -847,7 +897,7 @@ public final class MerchantStaffMemberService {
                 ? List.of() : catalogCodes(mapper.listGrantActions(row.getMemberId(), row.getStoreId()));
         return new MerchantStaffMemberDTO(Long.toUnsignedString(row.getMerchantId()),
                 Long.toUnsignedString(row.getStoreId()), Long.toUnsignedString(row.getMemberId()),
-                row.getMemberName(), mask(row.getPhone()), row.getMemberStatus(),
+                row.getMemberName(), row.getPosition(), mask(row.getPhone()), row.getMemberStatus(),
                 row.getGrantStatus(), actions, Long.toUnsignedString(row.getMemberVersion()),
                 Long.toUnsignedString(row.getGrantVersion() == null ? 0 : row.getGrantVersion()));
     }
@@ -924,11 +974,15 @@ public final class MerchantStaffMemberService {
             unavailable("member facts are damaged");
     }
 
-    private static void requireGrantUsable(MerchantMemberGrantScopeEntity scope) {
-        if (scope.getGrantId() == null) return;
+    private static void requireGrantFacts(MerchantMemberGrantScopeEntity scope) {
         if (scope.getGrantStatus() == null || !GRANT_STATUSES.contains(scope.getGrantStatus())
                 || scope.getGrantVersion() == null || scope.getGrantVersion() < 0)
             unavailable("store grant facts are damaged");
+    }
+
+    private static void requireGrantUsable(MerchantMemberGrantScopeEntity scope) {
+        if (scope.getGrantId() == null) return;
+        requireGrantFacts(scope);
         if ("REVOKED".equals(scope.getGrantStatus()))
             conflict("store grant was revoked; re-granting is pending ruling D3");
     }
@@ -981,8 +1035,8 @@ public final class MerchantStaffMemberService {
     }
 
     private Intent ownerIntent(String action, String merchantId, String storeId, long memberId,
-            long invitationId, String phone, String memberName, List<String> actions,
-            Long expectedVersion, CommandContext context) {
+            long invitationId, String phone, String memberName, String position,
+            List<String> actions, Long expectedVersion, CommandContext context) {
         long merchant = target(merchantId, "merchantId");
         long targetStore = target(storeId, "storeId");
         Principal principal = principal(context);
@@ -993,17 +1047,20 @@ public final class MerchantStaffMemberService {
         if (memberId != 0) fields.put("memberId", Long.toUnsignedString(memberId));
         if (invitationId != 0) fields.put("invitationId", Long.toUnsignedString(invitationId));
         // Sensitive values participate in equality via the pinned protected-value HMAC; the
-        // canonical bytes never contain the name or phone in plaintext (35号 precedent).
+        // canonical bytes never contain the name or phone in plaintext (35号 precedent). The
+        // position label joins the same protected family (owner-entered member-adjacent text).
         if (phone != null) fields.put("phone", protectedToken("merchant.staff-member.phone.v1", phone));
         if (memberName != null)
             fields.put("memberName", protectedToken("merchant.staff-member.name.v1", memberName));
+        if (position != null)
+            fields.put("position", protectedToken("merchant.staff-member.position.v1", position));
         if (actions != null) fields.put("actions", String.join(",", actions));
         if (expectedVersion != null) fields.put("expectedVersion", Long.toString(expectedVersion));
         MerchantCanonicalParams.Canonical canonical = MerchantCanonicalParams.of(fields);
         byte[] key = MerchantRequestKey.encode(action, "USER", principal.operatorId(),
                 "OWNER:" + principal.operatorId(), principal.requestId());
         return new Intent(action, merchant, targetStore, memberId, invitationId, phone, memberName,
-                actions, expectedVersion, principal.actorId(), principal.operatorId(),
+                position, actions, expectedVersion, principal.actorId(), principal.operatorId(),
                 principal.requestId(), principal.traceId(), key, canonical);
     }
 
@@ -1083,6 +1140,12 @@ public final class MerchantStaffMemberService {
     private static void requireName(String name) {
         if (name == null || name.isBlank() || name.codePointCount(0, name.length()) > 64
                 || hasUnpairedSurrogate(name)) invalid();
+    }
+
+    /** CCR-M-STAFF-POS-001: 0..64 code points, '' allowed ("not set"); trim is the caller's UX. */
+    private static void requirePosition(String position) {
+        if (position == null || position.codePointCount(0, position.length()) > 64
+                || hasUnpairedSurrogate(position)) invalid();
     }
 
     private static boolean hasUnpairedSurrogate(String text) {

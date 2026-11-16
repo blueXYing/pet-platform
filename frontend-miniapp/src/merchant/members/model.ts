@@ -18,6 +18,8 @@ export type MemberRow = Readonly<{
   storeId: string
   memberId: string
   memberName: string
+  /** CCR-M-STAFF-POS-001: owner-editable free-text label (0..64 code points, '' = not set). */
+  position: string
   phoneMasked: string
   memberStatus: MemberStatus
   grantStatus: GrantStatus
@@ -105,6 +107,12 @@ function isMaskedPhone(value: unknown): value is string {
 function isText(value: unknown, max: number): value is string {
   return typeof value === 'string' && value.length >= 1 && value.length <= max
 }
+// Position label: same family as memberName but empty means "not set" (CCR-M-STAFF-POS-001);
+// code-point bound mirrors the server's 0..64 rule.
+function isLabel(value: unknown, max: number): value is string {
+  // UTF-16 units bound the spread cost first; the spread counts code points exactly.
+  return typeof value === 'string' && value.length <= max * 2 && [...value].length <= max
+}
 function statusOf<T extends string>(value: unknown, allowed: readonly T[]): T {
   return typeof value === 'string' && (allowed as readonly string[]).includes(value) ? value as T : invalid()
 }
@@ -127,16 +135,17 @@ function actionsOf(value: unknown): readonly string[] {
 }
 
 export function decodeMemberRow(value: unknown): MemberRow {
-  const v = exact(value, ['merchantId', 'storeId', 'memberId', 'memberName', 'phoneMasked',
-    'memberStatus', 'grantStatus', 'grantedActions', 'memberVersion', 'grantVersion'])
+  const v = exact(value, ['merchantId', 'storeId', 'memberId', 'memberName', 'position',
+    'phoneMasked', 'memberStatus', 'grantStatus', 'grantedActions', 'memberVersion',
+    'grantVersion'])
   if (!isId(v.merchantId) || !isId(v.storeId) || !isId(v.memberId)) invalid()
-  if (!isText(v.memberName, 64) || !isMaskedPhone(v.phoneMasked)) invalid()
+  if (!isText(v.memberName, 64) || !isLabel(v.position, 64) || !isMaskedPhone(v.phoneMasked)) invalid()
   if (!isVersion(v.memberVersion) || !isVersion(v.grantVersion)) invalid()
   const grantStatus = statusOf(v.grantStatus, ['ENABLED', 'REVOKED'] as const)
   if (grantStatus === 'REVOKED' && v.grantedActions.length !== 0) invalid()
   return {
     merchantId: v.merchantId, storeId: v.storeId, memberId: v.memberId,
-    memberName: v.memberName, phoneMasked: v.phoneMasked,
+    memberName: v.memberName, position: v.position, phoneMasked: v.phoneMasked,
     memberStatus: statusOf(v.memberStatus, ['ENABLED', 'DISABLED', 'REVOKED'] as const),
     grantStatus, grantedActions: actionsOf(v.grantedActions),
     memberVersion: v.memberVersion, grantVersion: v.grantVersion,
@@ -184,4 +193,8 @@ export function isValidInvitePhone(phone: string): boolean {
 export function isValidInviteName(name: string): boolean {
   const trimmed = name.trim()
   return trimmed.length >= 1 && [...trimmed].length <= 64
+}
+/** Position label (CCR-M-STAFF-POS-001): 0..64 code points after trim; empty clears the label. */
+export function isValidPosition(position: string): boolean {
+  return [...position.trim()].length <= 64
 }

@@ -71,6 +71,11 @@ public interface MerchantStaffMemberMapper {
     int updateMemberStatus(@Param("memberId") long memberId, @Param("merchantId") long merchantId,
         @Param("status") String status, @Param("expectedVersion") long expectedVersion,
         @Param("now") LocalDateTime now);
+    // CCR-M-STAFF-POS-001: owner-editable position label; bumps the member version like every
+    // other merchant_member write so disable/enable optimistic locking stays coherent.
+    int updateMemberPosition(@Param("memberId") long memberId, @Param("merchantId") long merchantId,
+        @Param("position") String position, @Param("expectedVersion") long expectedVersion,
+        @Param("now") LocalDateTime now);
     int insertGrant(@Param("id") long id, @Param("memberId") long memberId,
         @Param("storeId") long storeId, @Param("now") LocalDateTime now);
     int updateGrantStatus(@Param("memberId") long memberId, @Param("storeId") long storeId,

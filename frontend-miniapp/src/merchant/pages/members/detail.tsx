@@ -1,4 +1,4 @@
-import { Button, Image, ScrollView, Text, View } from '@tarojs/components'
+import { Button, Image, Input, ScrollView, Text, View } from '@tarojs/components'
 import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
@@ -8,7 +8,7 @@ import {
   MemberDetailController, availableMemberActions, type MemberDetailDeps,
 } from '../../members/detail-controller'
 import {
-  actionText, memberStatusClass, memberStatusText, type MemberRow,
+  isValidPosition, memberStatusClass, memberStatusText, type MemberRow,
 } from '../../members/model'
 import { previewMembersDeps } from '../../workbench/preview'
 import { MerchantTabBar } from '../../components/tab-bar'
@@ -17,12 +17,15 @@ import './page.css'
 
 // M 端成员详情（P-12；contract 54 read side + owner lifecycle commands; design source:
 // merchant frame 12:7842「首页-员工管理」详情态, 402x1673 — identity card with 54 #C0ECFF avatar,
-// 基本信息 value rows #F9FAFB/#E5E7EB, permission chips #F0FBFF/#5BAAE8, filled/danger action
-// buttons #5BAAE8 / #FECACA+#EF4444). 54号 has no single-member read endpoint (§4 lists only),
-// so the route carries the Snowflake memberId (String, encodeURIComponent'd) and the page
-// re-reads the owner member list for fresh member/grant versions. V1 cuts per contract D3:
-// 姓名/手机号编辑、重邀/换绑/恢复 REVOKED 成员均不做；年龄/性别/资质证照/服务单量 carry no
-// contract-54 data and are not rendered (no invented fields).
+// 基本信息 value rows #F9FAFB/#E5E7EB, filled/danger action buttons #5BAAE8 /
+// #FECACA+#EF4444). 54号 has no single-member read endpoint (§4 lists only), so the route
+// carries the Snowflake memberId (String, encodeURIComponent'd) and the page re-reads the
+// owner member list for fresh member/grant versions. CCR-M-STAFF-POS-001 (2026-11-16): 岗位
+// becomes an owner-editable free-text label (PUT position, member version pinned); the
+// 操作权限 card is gone — verify is granted by DEFAULT at confirm (D2 single-action catalog),
+// so the remaining owner operations are 停用/启用 + 撤门店权（终局；撤权后不可核销但岗位保留）。
+// V1 cuts per contract D3: 姓名/手机号编辑、重邀/换绑/恢复 REVOKED 成员均不做；年龄/性别/
+// 资质证照/服务单量 carry no contract-54 data and are not rendered (no invented fields).
 
 const MEMBER_ID_PATTERN = /^[1-9][0-9]{0,18}$/
 
@@ -32,7 +35,8 @@ function previewMemberDetailDeps(): MemberDetailDeps {
   const rows = new Map<string, MemberRow>()
   const rowOf = (memberId: string): MemberRow => rows.get(memberId) ?? {
     merchantId: '9007199254740995', storeId: '9007199254740996', memberId,
-    memberName: '王小美', phoneMasked: '138****0001', memberStatus: 'ENABLED', grantStatus: 'ENABLED',
+    memberName: '王小美', position: '美容师', phoneMasked: '138****0001',
+    memberStatus: 'ENABLED', grantStatus: 'ENABLED',
     grantedActions: ['merchant.order.verify'], memberVersion: '1', grantVersion: '1',
   }
   const bump = (row: MemberRow, patch: Partial<MemberRow>): MemberRow => ({
@@ -49,8 +53,8 @@ function previewMemberDetailDeps(): MemberDetailDeps {
     enableMember: async (_slot, memberId, _version) => bump(rowOf(memberId), { memberStatus: 'ENABLED' }),
     revokeStoreGrant: async (_slot, memberId, _version) =>
       bump(rowOf(memberId), { grantStatus: 'REVOKED', grantedActions: [] }),
-    grantActions: async (_slot, memberId, actions, _version) =>
-      bump(rowOf(memberId), { grantStatus: 'ENABLED', grantedActions: [...actions] }),
+    updatePosition: async (_slot, memberId, position, _version) =>
+      bump(rowOf(memberId), { position }),
   }
 }
 
@@ -81,6 +85,7 @@ export default function MerchantMemberDetailPage() {
   const [controller] = useState(() => new MemberDetailController(repository))
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
   const [notice, setNotice] = useState('')
+  const [positionDraft, setPositionDraft] = useState('')
   const [platformInfo] = useState(() => Taro.getWindowInfo())
   const unit = platformInfo.windowWidth / 402
   const style = { '--mmb-status-top': `${platformInfo.statusBarHeight || 0}px`, '--mmb-unit': `${unit}px` } as CSSProperties
@@ -113,6 +118,10 @@ export default function MerchantMemberDetailPage() {
       if (!current || current.workspace !== 'merchant') controller.entry()
     }
   }, [revision, scope, controller])
+  // 岗位草稿跟随成员行（加载/写回执都会替换整行）；打字只改草稿不触发重置。
+  useEffect(() => {
+    setPositionDraft(state.member?.position ?? '')
+  }, [state.member?.memberId, state.member?.position])
 
   async function back() {
     // P-03 追缉（2026-11-12）：商家域返回不用 navigateBack——隐藏页树可能已被 dispose，
@@ -147,24 +156,23 @@ export default function MerchantMemberDetailPage() {
     const row = state.member
     if (!row) return
     const ok = await confirmModal('撤销门店授权',
-      `撤销后「${row.memberName}」在本店的全部操作授权立即失效且不可恢复（54号终局）；历史操作记录保留。`,
+      `撤销后「${row.memberName}」在本店的核销权限立即失效且不可恢复（54号终局）；历史操作记录与岗位标签保留。`,
       '确认撤销')
     if (!ok) return
     await controller.revokeStore(`staff-member:${row.memberId}:revoke-store`)
   }
 
-  async function grantActions() {
+  async function savePosition() {
     const row = state.member
     if (!row) return
-    const ok = await confirmModal('授权核销操作',
-      `将把本店核销操作权限授予「${row.memberName}」（覆盖现有授权动作集，V1 目录仅含核销）。`, '确认授权')
-    if (!ok) return
-    await controller.grantVerify(`staff-member:${row.memberId}:grant-actions`)
+    const next = positionDraft.trim()
+    if (!isValidPosition(next)) { setNotice('岗位需在 64 个字符以内。'); return }
+    // 槽位携带目标值：失败后改文重试换新 requestId，同值重试安全重放（23号幂等）。
+    await controller.updatePosition(`staff-member:${row.memberId}:position:${next}`, next)
   }
 
   const member = state.member
   const actions = availableMemberActions(member)
-  const grantRevoked = member?.grantStatus === 'REVOKED'
   const ready = state.status === 'ready' && member
   return <View className='mmb-page' style={style}>
     <View className='mmb-status-area' />
@@ -203,25 +211,21 @@ export default function MerchantMemberDetailPage() {
         </View>
         <View className='mmd-field'>
           <Text className='mmd-field-label'>岗位</Text>
-          <Text className='mmd-field-value'>核销员</Text>
+          <View className='mmd-position-row'>
+            <Input id='mmd-position-input' className='mmd-position-input' maxlength={64}
+              placeholder='如：美容师 / 前台（选填）' value={positionDraft}
+              onInput={event => setPositionDraft(event.detail.value)} />
+            <Button id='mmd-position-save' ariaLabel={`保存${member.memberName}的岗位`}
+              className='mmd-position-save' disabled={state.busy || positionDraft.trim() === member.position}
+              onClick={() => void savePosition()}>保存</Button>
+          </View>
+          <Text className='mmd-hint'>岗位为老板可编辑的自由文本标签，仅用于展示，不关联操作权限。</Text>
         </View>
         <View className='mmd-field'>
           <Text className='mmd-field-label'>成员状态</Text>
           <Text id='mmd-status' className='mmd-field-value'>{memberStatusText[member.memberStatus]}</Text>
         </View>
         <Text className='mmd-hint'>姓名与手机号来自邀请绑定时登记的信息，V1 不支持修改（54号 D3 保留）。</Text>
-      </View>
-      <View className='mmd-card'>
-        <Text className='mmd-card-title'>操作权限（本店）</Text>
-        {member.grantedActions.length > 0 && <View className='mmd-chips'>
-          {member.grantedActions.map(code => <Text key={code} className='mmd-chip'>{actionText(code)}</Text>)}
-        </View>}
-        {grantRevoked && <Text id='mmd-grant-revoked' className='mmd-terminal'>
-          门店授权已撤回（终局）。重新授权/恢复属后续裁决（54号 D3），V1 不可操作。
-        </Text>}
-        {!grantRevoked && member.grantedActions.length === 0
-          && <Text className='mmd-hint'>暂无授权操作。</Text>}
-        <Text className='mmd-hint'>V1 动作目录仅含核销（54号 D2 冻结）；权限仅限本店范围。</Text>
       </View>
       <View className='mmd-ops'>
         {notice && <Text id='mmd-notice' className='mmb-notice'>{notice}</Text>}
@@ -234,17 +238,11 @@ export default function MerchantMemberDetailPage() {
           id='mmd-enable' ariaLabel={`启用${member.memberName}`}
           className='mmd-op mmd-op-primary' disabled={state.busy}
           onClick={() => void toggleMember()}>启用成员</Button>}
-        {actions.includes('grant-actions') && <Button
-          id='mmd-grant' ariaLabel={`授权核销操作给${member.memberName}`}
-          className='mmd-op mmd-op-outline' disabled={state.busy}
-          onClick={() => void grantActions()}>
-          {member.grantedActions.length > 0 ? '重新授权核销操作' : '授权核销操作'}
-        </Button>}
         {actions.includes('revoke-store') && <Button
           id='mmd-revoke' ariaLabel={`撤销${member.memberName}的门店授权`}
           className='mmd-op mmd-op-danger' disabled={state.busy}
           onClick={() => void revokeStore()}>撤销门店授权</Button>}
-        {actions.length === 0 && <Text className='mmd-terminal'>当前状态无可执行操作。</Text>}
+        {actions.length === 0 && <Text className='mmd-terminal'>门店授权已撤回（终局）：本店无可执行操作，岗位标签仍可编辑。</Text>}
       </View>
       <Text className='mmd-tail'>仅展示 54号契约数据 · 手机号脱敏展示</Text>
       {preview && <Text className='mmd-tail'>页面数据：契约 Mock（preview=1，不联调）</Text>}

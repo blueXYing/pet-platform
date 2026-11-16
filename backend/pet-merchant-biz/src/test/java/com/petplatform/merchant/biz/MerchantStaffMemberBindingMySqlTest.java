@@ -12,6 +12,7 @@ import com.petplatform.merchant.api.command.ConfirmStaffMemberInvitationCommand;
 import com.petplatform.merchant.api.command.GrantStaffMemberActionsCommand;
 import com.petplatform.merchant.api.command.InviteStaffMemberCommand;
 import com.petplatform.merchant.api.command.StaffMemberLifecycleCommand;
+import com.petplatform.merchant.api.command.UpdateStaffMemberPositionCommand;
 import com.petplatform.merchant.api.dto.MerchantStaffInvitationCommandResult;
 import com.petplatform.merchant.api.dto.MerchantStaffInvitationListPageDTO;
 import com.petplatform.merchant.api.dto.MerchantStaffMemberCommandResult;
@@ -411,6 +412,61 @@ class MerchantStaffMemberBindingMySqlTest {
             // The second store keeps working.
             identity.getStaffFacts(new com.petplatform.merchant.api.query.MerchantStaffIdentityFactsQuery(
                     id(MERCHANT), id(STORE2), query(USER)));
+        }
+    }
+
+    @Test
+    void positionLabelIsEditableAndSurvivesStoreRevoke() throws Exception {
+        try (var db = new StaffBindingMySqlTestDatabase()) {
+            seed(db);
+            var api = api(db);
+            String invitationId = invite(api, "inv-1", PHONE).invitation().invitationId();
+            String memberId = confirm(api, "cf-1", USER, invitationId).member().memberId();
+
+            // Fresh members carry the empty "not set" label on the owner list (CCR default '').
+            var members = api.listMembers(new StaffMemberManagementQuery(id(MERCHANT), id(STORE),
+                    1, 20, query(OWNER)));
+            assertEquals("", members.items().getFirst().position());
+
+            // Update pins and bumps the member version; the receipt carries the new label.
+            var updated = api.updatePosition(new UpdateStaffMemberPositionCommand(id(MERCHANT),
+                    id(STORE), memberId, "美容师", "0", command("p1", OWNER)));
+            assertEquals("美容师", updated.member().position());
+            assertEquals("1", updated.member().memberVersion());
+            assertEquals(List.of(VERIFY), updated.member().grantedActions());
+
+            // 0..64 code points (empty allowed); >64 is invalid; stale version conflicts.
+            assertEquals(CommonApiCodes.INVALID_ARGUMENT, assertThrows(ApiException.class,
+                    () -> api.updatePosition(new UpdateStaffMemberPositionCommand(id(MERCHANT),
+                            id(STORE), memberId, "好".repeat(65), "1", command("p2", OWNER)))).code());
+            var cleared = api.updatePosition(new UpdateStaffMemberPositionCommand(id(MERCHANT),
+                    id(STORE), memberId, "", "1", command("p2b", OWNER)));
+            assertEquals("", cleared.member().position());
+            assertEquals(CommonApiCodes.CONFLICT, assertThrows(ApiException.class,
+                    () -> api.updatePosition(new UpdateStaffMemberPositionCommand(id(MERCHANT),
+                            id(STORE), memberId, "前台", "0", command("p3", OWNER)))).code());
+
+            // Same requestId replays the CURRENT projection; different params on the key conflict.
+            var replayed = api.updatePosition(new UpdateStaffMemberPositionCommand(id(MERCHANT),
+                    id(STORE), memberId, "美容师", "0", command("p1", OWNER)));
+            assertTrue(replayed.replayed());
+            assertEquals("", replayed.member().position());
+            assertEquals(CommonApiCodes.IDEMPOTENCY_KEY_CONFLICT, assertThrows(ApiException.class,
+                    () -> api.updatePosition(new UpdateStaffMemberPositionCommand(id(MERCHANT),
+                            id(STORE), memberId, "前台", "0", command("p1", OWNER)))).code());
+
+            // The label survives a terminal store revoke (岗位保留) and stays editable, while
+            // disable/enable keep requiring a usable grant.
+            api.revokeStoreGrant(new StaffMemberLifecycleCommand(id(MERCHANT), id(STORE), memberId,
+                    "0", command("r1", OWNER)));
+            var afterRevoke = api.updatePosition(new UpdateStaffMemberPositionCommand(id(MERCHANT),
+                    id(STORE), memberId, "店长助理", "2", command("p4", OWNER)));
+            assertEquals("店长助理", afterRevoke.member().position());
+            assertEquals("REVOKED", afterRevoke.member().grantStatus());
+            assertEquals("3", afterRevoke.member().memberVersion());
+            assertEquals(CommonApiCodes.CONFLICT, assertThrows(ApiException.class,
+                    () -> api.disableMember(new StaffMemberLifecycleCommand(id(MERCHANT), id(STORE),
+                            memberId, "3", command("d1", OWNER)))).code());
         }
     }
 

@@ -262,16 +262,20 @@ export function previewStatsDeps(): MerchantStorefrontDeps {
 }
 
 // 成员管理视觉验收样本（54号）：3 名成员 + 1 个待确认邀请，覆盖启用/停用。
+// position 为 CCR-M-STAFF-POS-001 岗位标签样本（'' = 未设置）。
 const previewMembers: readonly MemberRow[] = [
   { merchantId: '9007199254740995', storeId: '9007199254740996', memberId: '9501',
-    memberName: '王小美', phoneMasked: '138****0001', memberStatus: 'ENABLED', grantStatus: 'ENABLED',
-    grantedActions: ['merchant.order.verify'], memberVersion: '1', grantVersion: '1' },
+    memberName: '王小美', position: '美容师', phoneMasked: '138****0001', memberStatus: 'ENABLED',
+    grantStatus: 'ENABLED', grantedActions: ['merchant.order.verify'], memberVersion: '1',
+    grantVersion: '1' },
   { merchantId: '9007199254740995', storeId: '9007199254740996', memberId: '9502',
-    memberName: '王往', phoneMasked: '138****0002', memberStatus: 'ENABLED', grantStatus: 'ENABLED',
-    grantedActions: ['merchant.order.verify'], memberVersion: '1', grantVersion: '1' },
+    memberName: '王往', position: '前台', phoneMasked: '138****0002', memberStatus: 'ENABLED',
+    grantStatus: 'ENABLED', grantedActions: ['merchant.order.verify'], memberVersion: '1',
+    grantVersion: '1' },
   { merchantId: '9007199254740995', storeId: '9007199254740996', memberId: '9503',
-    memberName: '李想', phoneMasked: '138****0003', memberStatus: 'DISABLED', grantStatus: 'ENABLED',
-    grantedActions: ['merchant.order.verify'], memberVersion: '1', grantVersion: '1' },
+    memberName: '李想', position: '', phoneMasked: '138****0003', memberStatus: 'DISABLED',
+    grantStatus: 'ENABLED', grantedActions: ['merchant.order.verify'], memberVersion: '1',
+    grantVersion: '1' },
 ]
 const previewInvitations: readonly InvitationRow[] = [
   { merchantId: '9007199254740995', storeId: '9007199254740996', invitationId: '9551',

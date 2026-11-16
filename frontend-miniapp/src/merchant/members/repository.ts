@@ -66,7 +66,7 @@ export class RealMembersRepository implements MembersDeps {
     }, decodeMemberRow)
   }
 
-  // Contract 54 §3: both grant operations pin the GRANT version (disable/enable pin the member
+  // Contract 54 §3: the grant operation pins the GRANT version (disable/enable pin the member
   // version instead); the server projects the full member row back after the state change.
   async revokeStoreGrant(slot: string, memberId: string, expectedGrantVersion: string): Promise<MemberRow> {
     const { merchantId, storeId } = this.target()
@@ -76,12 +76,14 @@ export class RealMembersRepository implements MembersDeps {
     }, decodeMemberRow)
   }
 
-  async grantActions(slot: string, memberId: string, actions: readonly string[],
-    expectedGrantVersion: string): Promise<MemberRow> {
+  // CCR-M-STAFF-POS-001: position label edit pins the MEMBER version (the write bumps it);
+  // the label is display-only and stays editable after a revoked store grant.
+  async updatePosition(slot: string, memberId: string, position: string,
+    expectedMemberVersion: string): Promise<MemberRow> {
     const { merchantId, storeId } = this.target()
     return this.api.write(slot, {
-      method: 'POST', path: `/api/v1/merchant/staff-members/${memberId}/grant-actions`,
-      data: { merchantId, storeId, actions: [...actions], expectedVersion: expectedGrantVersion },
+      method: 'PUT', path: `/api/v1/merchant/staff-members/${memberId}/position`,
+      data: { merchantId, storeId, position, expectedVersion: expectedMemberVersion },
     }, decodeMemberRow)
   }
 }

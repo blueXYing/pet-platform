@@ -22,6 +22,9 @@ public interface MerchantStaffMemberCommandApi {
 
     MerchantStaffMemberCommandResult revokeStoreGrant(StaffMemberLifecycleCommand command);
 
+    /** CCR-M-STAFF-POS-001: OWNER edits the position label; pins and bumps the member version. */
+    MerchantStaffMemberCommandResult updatePosition(UpdateStaffMemberPositionCommand command);
+
     /** Employee-side confirm; operator is the session user, not the owner. */
     MerchantStaffMemberCommandResult confirmInvitation(ConfirmStaffMemberInvitationCommand command);
 }

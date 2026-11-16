@@ -1,8 +1,9 @@
 package com.petplatform.merchant.biz.infrastructure.persistence.entity;
 
 /**
- * OWNER member-list projection for one store (contract 54 §4): contract-52 relation facts plus
- * the display name/phone from the member's CONFIRMED invitation row (never stored in 52 tables).
+ * OWNER member-list projection for one store (contract 54 §4): contract-52 relation facts
+ * (including the position label, CCR-M-STAFF-POS-001) plus the display name/phone from the
+ * member's CONFIRMED invitation row (never stored in 52 tables).
  */
 public final class MerchantMemberRowEntity {
     private Long merchantId;
@@ -10,6 +11,7 @@ public final class MerchantMemberRowEntity {
     private Long memberId;
     private Long userId;
     private String memberName;
+    private String position;
     private String phone;
     private String memberStatus;
     private Long memberVersion;
@@ -26,6 +28,8 @@ public final class MerchantMemberRowEntity {
     public void setUserId(Long value) { userId = value; }
     public String getMemberName() { return memberName; }
     public void setMemberName(String value) { memberName = value; }
+    public String getPosition() { return position; }
+    public void setPosition(String value) { position = value; }
     public String getPhone() { return phone; }
     public void setPhone(String value) { phone = value; }
     public String getMemberStatus() { return memberStatus; }

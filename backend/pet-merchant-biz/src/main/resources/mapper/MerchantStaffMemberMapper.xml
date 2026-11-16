@@ -116,7 +116,7 @@
   </select>
   <select id="readMemberRow" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantMemberRowEntity">
     SELECT mb.merchant_id AS merchantId,#{storeId} AS storeId,mb.id AS memberId,
-      mb.user_id AS userId,inv.member_name AS memberName,inv.phone AS phone,
+      mb.user_id AS userId,inv.member_name AS memberName,mb.position AS position,inv.phone AS phone,
       mb.status AS memberStatus,mb.version AS memberVersion,
       g.status AS grantStatus,g.version AS grantVersion
     FROM merchant_member mb
@@ -130,6 +130,10 @@
   </insert>
   <update id="updateMemberStatus">
     UPDATE merchant_member SET status=#{status},version=version+1,updated_at=#{now}
+    WHERE id=#{memberId} AND merchant_id=#{merchantId} AND version=#{expectedVersion}
+  </update>
+  <update id="updateMemberPosition">
+    UPDATE merchant_member SET position=#{position},version=version+1,updated_at=#{now}
     WHERE id=#{memberId} AND merchant_id=#{merchantId} AND version=#{expectedVersion}
   </update>
   <insert id="insertGrant">
@@ -159,7 +163,7 @@
   </sql>
   <select id="listMemberRows" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantMemberRowEntity">
     SELECT mb.merchant_id AS merchantId,#{storeId} AS storeId,mb.id AS memberId,
-      mb.user_id AS userId,inv.member_name AS memberName,inv.phone AS phone,
+      mb.user_id AS userId,inv.member_name AS memberName,mb.position AS position,inv.phone AS phone,
       mb.status AS memberStatus,mb.version AS memberVersion,
       g.status AS grantStatus,g.version AS grantVersion
     <include refid="memberListFrom"/>

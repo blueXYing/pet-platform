@@ -89,3 +89,9 @@ CREATE TABLE merchant_member_audit (
         AND OCTET_LENGTH(request_id) BETWEEN 1 AND 512),
     CONSTRAINT chk_mer_member_audit_trace CHECK (trace_id IS NULL OR OCTET_LENGTH(trace_id) <= 128)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- 2026-11-16 CCR-M-STAFF-POS-001: owner-editable free-text position label on merchant_member
+-- (display only, never a permission fact; 0..64 code points, '' = not set). Verification is
+-- granted automatically at confirm inside the same transaction, independent of this label.
+ALTER TABLE merchant_member
+    ADD COLUMN position VARCHAR(64) NOT NULL DEFAULT '' COMMENT 'owner-editable free-text display label; 0..64 code points; never a permission fact (CCR-M-STAFF-POS-001)' AFTER user_id;
