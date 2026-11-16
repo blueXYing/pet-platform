@@ -13,7 +13,7 @@ import {
   weekTemplateFromDraft, weekTemplateSummary, weekTemplateToDraft, windowCountPageSize,
   windowListPageSize, windowStatusTagClass, windowStatusText, windowStatuses,
   type BookingWindowForm, type GenerateFormInput,
-  type ScheduleDeps, type ScheduleWindowItem, type StaffWindowItem, type WeekDraft,
+  type ScheduleDeps, type ScheduleWindowItem, type WeekDraft,
   type WeekSegmentDraft, type WeekTemplateView,
   type WindowStatus,
 } from '../../schedule/model'
@@ -48,7 +48,6 @@ import './page.css'
 //   显示「周模板生效中：周X N 段 · 周Y 休…（版本 N）」；入口宫格与员工排班查询保留；
 //   windows/staff/capabilities 子页不变。
 // 导航纪律：返回工作台 reLaunch（P-03）；merchant 域禁 navigateBack。
-type StaffQuery = 'idle' | 'loading' | 'ready' | 'error'
 type WindowListQuery = { page: number; pageSize: number; status?: WindowStatus }
 type ListPhase = 'idle' | 'loading' | 'ready' | 'error'
 /** 时段胶囊编辑器：index=null 表示添加新段。 */
@@ -97,9 +96,6 @@ export default function ScheduleTemplatePage() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [summary, setSummary] = useState<Readonly<Record<WindowStatus, number>>>({ OPEN: 0, SOLD_OUT: 0, CLOSED: 0 })
   const [status, setStatus] = useState<WindowStatus | ''>('')
-  const [staffId, setStaffId] = useState('')
-  const [staffPhase, setStaffPhase] = useState<StaffQuery>('idle')
-  const [staffWindows, setStaffWindows] = useState<readonly StaffWindowItem[]>([])
   const mounted = useRef(true)
   const loadSequence = useRef(0)
   const listLoadedOnce = useRef(false)
@@ -384,18 +380,7 @@ export default function ScheduleTemplatePage() {
       if (mounted.current) setLoadingMore(false)
     }
   }
-  async function queryStaff() {
-    if (!/^[1-9][0-9]{0,18}$/.test(staffId)) { setNotice('请输入正确的员工编号（数字）。'); return }
-    setNotice(''); setStaffPhase('loading')
-    try {
-      const page = await repository.staffWindows(staffId)
-      if (!mounted.current) return
-      setStaffWindows(page.items); setStaffPhase('ready')
-    } catch (error) {
-      if (!mounted.current) return
-      setStaffWindows([]); setStaffPhase('error'); setNotice(scheduleMessage(error))
-    }
-  }
+  // CCR-SCH-STAFF-OFFLINE-001: 员工排班查询已移除。
 
   const dayGroups = groupWindowsByDate(windows)
   return <ScheduleShell title='排期管理' style={style} phase={phase} notice={notice} closedReason={closedReason}
@@ -408,11 +393,7 @@ export default function ScheduleTemplatePage() {
             <Text className='sch-v-grid-label'>服务时段管理</Text>
             <Text className='sch-v-grid-sub'>分钟级时段增改</Text>
           </Button>
-          <Button id='sch-go-staff' className='sch-v-grid-cell' onClick={() => open('staff')}>
-            <View className='sch-v-grid-tile'><Image className='sch-v-grid-icon' src={gridMembers} mode='aspectFit' /></View>
-            <Text className='sch-v-grid-label'>员工排班</Text>
-            <Text className='sch-v-grid-sub'>员工可用时间</Text>
-          </Button>
+          {/* CCR-SCH-STAFF-OFFLINE-001: 员工排班宫格移除（排班归线下管理）。 */}
           <Button id='sch-go-capabilities' className='sch-v-grid-cell' onClick={() => open('capabilities')}>
             <View className='sch-v-grid-tile'><Image className='sch-v-grid-icon' src={gridVerify} mode='aspectFit' /></View>
             <Text className='sch-v-grid-label'>员工能力</Text>
