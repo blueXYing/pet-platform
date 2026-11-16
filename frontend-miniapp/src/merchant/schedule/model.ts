@@ -265,7 +265,7 @@ export function decodeBookingWindowReceipt(value: unknown): BookingWindowReceipt
 // 段为 "HH:mm" start<end 半开不重叠（空段=该天休），每天 0..24 段。
 export type WeekTemplateSegment = Readonly<{ start: string; end: string; capacity: number }>
 export type WeekTemplateDay = Readonly<{ enabled: boolean; segments: readonly WeekTemplateSegment[] }>
-export type WeekTemplateView = Readonly<{ days: readonly WeekTemplateDay[]; version: string }>
+export type WeekTemplateView = Readonly<{ days: readonly WeekTemplateDay[]; version: string; updatedAt?: string | null }>
 /** PUT receipt：全替换回执即新头——与 view 同一线形态（同 booking-window，回执无 updatedAt）。 */
 export type WeekTemplateReceipt = WeekTemplateView
 /** PUT 请求形态：七天全量（停用日=空段）；expectedVersion 由仓储层随命令体携带。 */
@@ -291,9 +291,16 @@ const decodeWeekTemplateDay = (value: unknown): WeekTemplateDay => {
   return { enabled: v.enabled, segments }
 }
 export function decodeWeekTemplateView(value: unknown): WeekTemplateView {
-  const v = exact(value, ['days', 'version'])
+  // Wire shape (H6 backend): three keys — days, version, updatedAt (null for the default
+  // unset row). The two-key decoder below rejected the third key → INVALID_RESPONSE on
+  // every page load (same pattern as the booking-window six-key bug).
+  const v = exact(value, ['days', 'version', 'updatedAt'])
   if (!Array.isArray(v.days) || v.days.length !== 7) invalid()
-  return { days: v.days.map(decodeWeekTemplateDay), version: isVersion(v.version) ? v.version : invalid() }
+  return {
+    days: v.days.map(decodeWeekTemplateDay),
+    version: isVersion(v.version) ? v.version : invalid(),
+    updatedAt: v.updatedAt === null ? null : timestamp(v.updatedAt),
+  }
 }
 export function decodeStaffWindowItem(value: unknown): StaffWindowItem {
   const v = exact(value, staffItemKeys)
