@@ -386,21 +386,8 @@ export default function ScheduleTemplatePage() {
   return <ScheduleShell title='排期管理' style={style} phase={phase} notice={notice} closedReason={closedReason}
     onRetry={() => void load()} onBack={() => void back()} preview={preview} pageClass='sch-t-editor'>
     <ScrollView className='sch-body' scrollY enhanced showScrollbar={false}>
-      <View className='sch-v-grid-card'>
-        <View className='sch-v-grid'>
-          <Button id='sch-go-windows' className='sch-v-grid-cell' onClick={() => open('windows')}>
-            <View className='sch-v-grid-tile'><Image className='sch-v-grid-icon' src={gridSchedule} mode='aspectFit' /></View>
-            <Text className='sch-v-grid-label'>服务时段管理</Text>
-            <Text className='sch-v-grid-sub'>分钟级时段增改</Text>
-          </Button>
-          {/* CCR-SCH-STAFF-OFFLINE-001: 员工排班宫格移除（排班归线下管理）。 */}
-          <Button id='sch-go-capabilities' className='sch-v-grid-cell' onClick={() => open('capabilities')}>
-            <View className='sch-v-grid-tile'><Image className='sch-v-grid-icon' src={gridVerify} mode='aspectFit' /></View>
-            <Text className='sch-v-grid-label'>员工能力</Text>
-            <Text className='sch-v-grid-sub'>服务能力配置</Text>
-          </Button>
-        </View>
-      </View>
+      {/* 用户 2026-11-16 拍板：整个宫格区移除（员工排班/员工能力不属排期页；服务时段管理
+          已融入一键生成+时间设置编辑器）。排期页纯 Figma 12:6214 编辑器。 */}
       {/* 区块 A 一键生成（SECTION-17） */}
       <View className='sch-t-card'>
         <View className='sch-t-head'>
