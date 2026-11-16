@@ -101,18 +101,7 @@
           ON c.reservation_id=r.id
         WHERE r.store_id=#{storeId} AND c.store_id&lt;&gt;#{storeId} LIMIT 1
     </select>
-    <select id="lockedCapabilities" resultType="map">
-        SELECT id,staff_id,service_id,status FROM staff_service_capability
-        FORCE INDEX (uk_staff_service)
-        WHERE staff_id IN
-        <foreach collection="staffIds" item="staffId" open="(" separator="," close=")">
-            #{staffId}
-        </foreach>
-        ORDER BY staff_id,service_id FOR UPDATE
-    </select>
-    <select id="lockedAvailability" resultType="map">
-        SELECT id,store_id,staff_id,start_at,end_at,status,version
-        FROM staff_availability_window FORCE INDEX (idx_store_avail_time)
-        WHERE store_id=#{storeId} ORDER BY staff_id,start_at,id FOR UPDATE
-    </select>
+    <!-- CCR-SCH-STAFF-OFFLINE-001 (2026-11-16): the lockedCapabilities/lockedAvailability
+         staff-facts statements were removed — capacity proofs no longer read staff
+         scheduling; staff_availability_window keeps historical rows without any access. -->
 </mapper>

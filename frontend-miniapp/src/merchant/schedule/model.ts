@@ -19,8 +19,9 @@
 //   named per window (reasonCode SCHEDULE_WINDOW_STATE_NOT_ALLOWED). The store-windows list
 //   read is paged (§3.3, #122): page 1..10000 / pageSize 1..50, filter-matched total in the
 //   envelope, order start_at/id ascending — the pages always consume the paged mode.
-// - Staff windows: AVAILABLE/CLOSED, same overlap discipline; shrinking availability is
-//   protected by current assignments (409) and a whole-store feasibility re-check (409/503).
+// - Staff windows: REMOVED by CCR-SCH-STAFF-OFFLINE-001 (2026-11-16): staff scheduling is
+//   managed offline; capacity = the slot's configuredCapacity (no per-staff min, no
+//   coverage check on hold). The staff availability-windows wire shapes/mocks are gone.
 // - Capabilities: whole-set replace on a versioned head (SCHC-2); stale expectedVersion 409
 //   COMMON_CONFLICT (re-read, never last-write-wins); duplicate serviceIds 400; LEGACY_
 //   UNVERSIONED heads answer 503 and stay quarantined; removals require a reason.
@@ -33,11 +34,6 @@ export type WindowStatus = 'OPEN' | 'CLOSED' | 'SOLD_OUT'
 export const windowStatuses: readonly WindowStatus[] = ['OPEN', 'CLOSED', 'SOLD_OUT']
 export const windowStatusText: Record<WindowStatus, string> = {
   OPEN: '开放中', CLOSED: '已关闭', SOLD_OUT: '已约满',
-}
-export type StaffWindowStatus = 'AVAILABLE' | 'CLOSED'
-export const staffWindowStatuses: readonly StaffWindowStatus[] = ['AVAILABLE', 'CLOSED']
-export const staffWindowStatusText: Record<StaffWindowStatus, string> = {
-  AVAILABLE: '可约', CLOSED: '已关闭',
 }
 
 /** GET /merchant/stores/{storeId}/availability-windows item (read projection carries
@@ -66,15 +62,6 @@ export type BlockedWindow = Readonly<{ window: ScheduleWindowReceipt; reasonCode
 export type BatchCloseResult = Readonly<{
   storeId: string; closedWindows: readonly ScheduleWindowReceipt[]; blockedWindows: readonly BlockedWindow[]
 }>
-export type StaffWindowItem = Readonly<{
-  windowId: string; merchantId: string; storeId: string; staffId: string
-  startAt: string; endAt: string; status: StaffWindowStatus; version: string; updatedAt: string
-}>
-export type StaffWindowReceipt = Readonly<{
-  windowId: string; merchantId: string; storeId: string; staffId: string
-  startAt: string; endAt: string; status: StaffWindowStatus; version: string
-}>
-export type StaffWindowPage = Readonly<{ storeId: string; staffId: string; items: readonly StaffWindowItem[] }>
 export type CapabilityView = Readonly<{
   merchantId: string; storeId: string; staffId: string; serviceIds: readonly string[]; version: string
 }>
@@ -101,20 +88,13 @@ const capacity = (value: any): number => {
 }
 const statusOf = (value: any): WindowStatus =>
   windowStatuses.includes(value) ? value as WindowStatus : invalid()
-const staffStatusOf = (value: any): StaffWindowStatus =>
-  staffWindowStatuses.includes(value) ? value as StaffWindowStatus : invalid()
 
 const windowItemKeys = ['windowId', 'merchantId', 'storeId', 'startAt',
   'endAt', 'configuredCapacity', 'status', 'version', 'updatedAt'] as const
 const windowReceiptKeys = ['windowId', 'merchantId', 'storeId', 'startAt',
   'endAt', 'configuredCapacity', 'status', 'version'] as const
-const staffItemKeys = ['windowId', 'merchantId', 'storeId', 'staffId', 'startAt', 'endAt',
-  'status', 'version', 'updatedAt'] as const
-const staffReceiptKeys = ['windowId', 'merchantId', 'storeId', 'staffId', 'startAt', 'endAt',
-  'status', 'version'] as const
-/** Sanity bounds only — the contract sets no page size for the staff-window read (§4 has
- *  no pagination); the decode must still fail closed on absurd payloads instead of freezing
- *  the page. The store-windows read carries its own §3.3 paged bound below. */
+/** Sanity bound so the batch-close decode fails closed on absurd payloads instead of
+ *  freezing the page. The store-windows read carries its own §3.3 paged bound below. */
 const MAX_LIST_ITEMS = 1000
 const MAX_CAPABILITY_ITEMS = 2000
 /** §3.3 paged-windows bounds: page 1..10000, pageSize 1..50; a conformant server never
@@ -186,37 +166,6 @@ export function decodeBatchCloseResult(value: unknown): BatchCloseResult {
     blockedWindows: v.blockedWindows.map(decodeBlocked),
   }
 }
-export function decodeStaffWindowItem(value: unknown): StaffWindowItem {
-  const v = exact(value, staffItemKeys)
-  return {
-    windowId: isId(v.windowId) ? v.windowId : invalid(),
-    merchantId: isId(v.merchantId) ? v.merchantId : invalid(),
-    storeId: isId(v.storeId) ? v.storeId : invalid(),
-    staffId: isId(v.staffId) ? v.staffId : invalid(),
-    startAt: timestamp(v.startAt), endAt: timestamp(v.endAt), status: staffStatusOf(v.status),
-    version: isVersion(v.version) ? v.version : invalid(), updatedAt: timestamp(v.updatedAt),
-  }
-}
-export function decodeStaffWindowReceipt(value: unknown): StaffWindowReceipt {
-  const v = exact(value, staffReceiptKeys)
-  return {
-    windowId: isId(v.windowId) ? v.windowId : invalid(),
-    merchantId: isId(v.merchantId) ? v.merchantId : invalid(),
-    storeId: isId(v.storeId) ? v.storeId : invalid(),
-    staffId: isId(v.staffId) ? v.staffId : invalid(),
-    startAt: timestamp(v.startAt), endAt: timestamp(v.endAt), status: staffStatusOf(v.status),
-    version: isVersion(v.version) ? v.version : invalid(),
-  }
-}
-export function decodeStaffWindowPage(value: unknown): StaffWindowPage {
-  const v = exact(value, ['storeId', 'staffId', 'items'])
-  if (!Array.isArray(v.items) || v.items.length > MAX_LIST_ITEMS) invalid()
-  return {
-    storeId: isId(v.storeId) ? v.storeId : invalid(),
-    staffId: isId(v.staffId) ? v.staffId : invalid(),
-    items: v.items.map(decodeStaffWindowItem),
-  }
-}
 export function decodeCapabilityView(value: unknown): CapabilityView {
   const v = exact(value, ['merchantId', 'storeId', 'staffId', 'serviceIds', 'version'])
   if (!Array.isArray(v.serviceIds) || v.serviceIds.length > MAX_CAPABILITY_ITEMS) invalid()
@@ -238,11 +187,6 @@ export function decodeCapabilityView(value: unknown): CapabilityView {
 export function windowStatusTagClass(status: WindowStatus): string {
   if (status === 'OPEN') return 'sch-tag sch-tag-open'
   if (status === 'SOLD_OUT') return 'sch-tag sch-tag-soldout'
-  if (status === 'CLOSED') return 'sch-tag sch-tag-closed'
-  return 'sch-tag'
-}
-export function staffStatusTagClass(status: StaffWindowStatus): string {
-  if (status === 'AVAILABLE') return 'sch-tag sch-tag-open'
   if (status === 'CLOSED') return 'sch-tag sch-tag-closed'
   return 'sch-tag'
 }
@@ -317,23 +261,13 @@ export type WindowFormInput = Readonly<{
   endDate: string; endTime: string
   configuredCapacity: number | null
 }>
-export type StaffWindowFormInput = Readonly<{
-  startDate: string; startTime: string; endDate: string; endTime: string
-}>
 export function emptyWindowForm(today: string, now: string): WindowFormInput {
   return { startDate: today, startTime: now, endDate: today, endTime: now, configuredCapacity: null }
-}
-export function emptyStaffWindowForm(today: string, now: string): StaffWindowFormInput {
-  return { startDate: today, startTime: now, endDate: today, endTime: now }
 }
 export function windowFormFromItem(item: ScheduleWindowItem): WindowFormInput {
   const start = splitBeijingParts(item.startAt), end = splitBeijingParts(item.endAt)
   return { startDate: start.date, startTime: start.time, endDate: end.date, endTime: end.time,
     configuredCapacity: item.configuredCapacity }
-}
-export function staffWindowFormFromItem(item: StaffWindowItem): StaffWindowFormInput {
-  const start = splitBeijingParts(item.startAt), end = splitBeijingParts(item.endAt)
-  return { startDate: start.date, startTime: start.time, endDate: end.date, endTime: end.time }
 }
 const MINUTES_PER_DAY = 24 * 60
 function startMinute(startDate: string, startTime: string): number {
@@ -346,16 +280,6 @@ export function windowFormProblems(form: WindowFormInput): string[] {
   if (form.configuredCapacity === null || !Number.isSafeInteger(form.configuredCapacity) || form.configuredCapacity < 1) {
     problems.push('容量需为不小于1的整数')
   } else if (form.configuredCapacity > 2147483647) problems.push('容量超出上限')
-  if (startMinute(form.startDate, form.startTime) >= startMinute(form.endDate, form.endTime)) {
-    problems.push('结束时间需晚于开始时间（分钟级半开区间）')
-  }
-  if (startMinute(form.endDate, form.endTime) - startMinute(form.startDate, form.startTime) > 366 * MINUTES_PER_DAY) {
-    problems.push('单个时段不能超过一年')
-  }
-  return problems
-}
-export function staffWindowFormProblems(form: StaffWindowFormInput): string[] {
-  const problems: string[] = []
   if (startMinute(form.startDate, form.startTime) >= startMinute(form.endDate, form.endTime)) {
     problems.push('结束时间需晚于开始时间（分钟级半开区间）')
   }
@@ -449,11 +373,6 @@ export type ScheduleDeps = {
   closeWindow(slot: string, windowId: string, expectedVersion: string, reason: string): Promise<ScheduleWindowReceipt>
   openWindow(slot: string, windowId: string, expectedVersion: string): Promise<ScheduleWindowReceipt>
   batchClose(slot: string, fromDate: string, toDate: string, reason: string): Promise<BatchCloseResult>
-  staffWindows(staffId: string): Promise<StaffWindowPage>
-  createStaffWindow(slot: string, staffId: string, input: StaffWindowFormInput): Promise<StaffWindowReceipt>
-  updateStaffWindow(slot: string, staffId: string, windowId: string, expectedVersion: string, input: StaffWindowFormInput): Promise<StaffWindowReceipt>
-  closeStaffWindow(slot: string, staffId: string, windowId: string, expectedVersion: string, reason: string): Promise<StaffWindowReceipt>
-  openStaffWindow(slot: string, staffId: string, windowId: string, expectedVersion: string): Promise<StaffWindowReceipt>
   capabilities(staffId: string): Promise<CapabilityView>
   replaceCapabilities(slot: string, staffId: string, serviceIds: readonly string[], expectedVersion: string, reason: string): Promise<CapabilityView>
 }
@@ -469,11 +388,11 @@ export const isScheduleScenario = (value?: string): value is ScheduleScenario =>
 // command semantics the backend enforces — overlap 409, occupied-window guards, CAS 409,
 // capability-set versioning, 200-entry batch cap, SOLD_OUT derivation with capacity raise
 // re-judge — but it is NOT a real backend integration and never authorizes anyone.
+// (Staff-window CRUD is gone per CCR-SCH-STAFF-OFFLINE-001; only capabilities remain
+// staff-scoped.)
 type MockWindow = { window: ScheduleWindowReceipt; updatedAt: string; occupied: number }
-type MockStaffWindow = { window: StaffWindowReceipt; updatedAt: string }
 export class PreviewScheduleRepository implements ScheduleDeps {
   private store: MockWindow[]
-  private staffStore: MockStaffWindow[]
   private capabilitiesByStaff: Map<string, CapabilityView>
   private nextId = 61000
   private nextVersion = 100
@@ -481,19 +400,14 @@ export class PreviewScheduleRepository implements ScheduleDeps {
   private uuidSeed = 0
   private clock = 0
   private failNextRead = false
-  /** Fixture switch: treat every AVAILABLE staff row as assignment-protected (the real
-   *  backend answers 409 via getCurrentAssignments + whole-store feasibility re-check). */
-  protectedStaff = false
   constructor(
     windows: MockWindow[] = fixtureWindows(),
-    staffWindows: MockStaffWindow[] = fixtureStaffWindows(),
     capabilities: CapabilityView[] = [fixtureCapability()],
     private scenario: ScheduleScenario = 'normal',
   ) {
     this.store = windows.map(entry => ({ ...entry, window: { ...entry.window } }))
-    this.staffStore = staffWindows.map(entry => ({ ...entry, window: { ...entry.window } }))
     this.capabilitiesByStaff = new Map(capabilities.map(view => [view.staffId, view]))
-    if (scenario === 'empty') { this.store = []; this.staffStore = []; this.capabilitiesByStaff.clear() }
+    if (scenario === 'empty') { this.store = []; this.capabilitiesByStaff.clear() }
     this.failNextRead = scenario === 'load-error'
   }
   private unavailable(): never {
@@ -673,89 +587,6 @@ export class PreviewScheduleRepository implements ScheduleDeps {
       return { storeId: fixtureStoreId, closedWindows, blockedWindows }
     })
   }
-  async staffWindows(staffId: string): Promise<StaffWindowPage> {
-    this.gate(true)
-    if (!isId(staffId)) throw new ScheduleMockError('COMMON_INVALID_ARGUMENT', 400)
-    const items = this.staffStore
-      .filter(entry => entry.window.staffId === staffId)
-      .map(entry => ({ ...entry.window, updatedAt: entry.updatedAt }))
-      .sort((a, b) => (a.startAt < b.startAt ? 1 : -1))
-    return { storeId: fixtureStoreId, staffId, items }
-  }
-  private assertNoStaffOverlap(candidate: { windowId?: string; staffId: string; startAt: string; endAt: string }): void {
-    const overlap = this.staffStore.some(entry => {
-      const window = entry.window
-      if (window.windowId === candidate.windowId || window.staffId !== candidate.staffId) return false
-      if (window.status === 'CLOSED') return false
-      return candidate.startAt < window.endAt && window.startAt < candidate.endAt
-    })
-    if (overlap) throw new ScheduleMockError('SCHEDULE_WINDOW_OVERLAP', 409)
-  }
-  async createStaffWindow(slot: string, staffId: string, input: StaffWindowFormInput): Promise<StaffWindowReceipt> {
-    this.gate(false)
-    if (!isId(staffId) || staffWindowFormProblems(input).length) throw new ScheduleMockError('COMMON_INVALID_ARGUMENT', 400)
-    return this.command(slot, JSON.stringify(['staff-create', staffId, input]), () => {
-      const startAt = composeTimestamp(input.startDate, input.startTime)
-      const endAt = composeTimestamp(input.endDate, input.endTime)
-      this.assertNoStaffOverlap({ staffId, startAt, endAt })
-      const window: StaffWindowReceipt = {
-        windowId: String(this.nextId++), merchantId: fixtureMerchantId, storeId: fixtureStoreId,
-        staffId, startAt, endAt, status: 'AVAILABLE', version: this.bump(),
-      }
-      this.staffStore.push({ window, updatedAt: this.now() })
-      return window
-    })
-  }
-  async updateStaffWindow(slot: string, staffId: string, windowId: string, expectedVersion: string, input: StaffWindowFormInput): Promise<StaffWindowReceipt> {
-    this.gate(false)
-    if (!isId(staffId) || staffWindowFormProblems(input).length) throw new ScheduleMockError('COMMON_INVALID_ARGUMENT', 400)
-    return this.command(slot, JSON.stringify(['staff-update', staffId, windowId, expectedVersion, input]), () => {
-      const entry = this.staffStore.find(candidate => candidate.window.windowId === windowId)
-      if (!entry || entry.window.staffId !== staffId) throw new ScheduleMockError('COMMON_NOT_FOUND', 404)
-      if (entry.window.version !== expectedVersion) throw new ScheduleMockError('COMMON_CONFLICT', 409)
-      const startAt = composeTimestamp(input.startDate, input.startTime)
-      const endAt = composeTimestamp(input.endDate, input.endTime)
-      // Shrinking availability (the new range no longer covers the old one) is protected —
-      // the mock answers the assignment-protection 409 deterministically for occupied rows.
-      const shrinks = startAt > entry.window.startAt || endAt < entry.window.endAt
-      if (shrinks && entry.window.status === 'AVAILABLE' && this.protectedStaff) {
-        throw new ScheduleMockError('SCHEDULE_WINDOW_STATE_NOT_ALLOWED', 409)
-      }
-      this.assertNoStaffOverlap({ windowId, staffId, startAt, endAt })
-      entry.window = { ...entry.window, startAt, endAt, version: this.bump() }
-      entry.updatedAt = this.now()
-      return { ...entry.window }
-    })
-  }
-  async closeStaffWindow(slot: string, staffId: string, windowId: string, expectedVersion: string, reason: string): Promise<StaffWindowReceipt> {
-    this.gate(false)
-    const reasonIssue = reasonProblem(reason, true)
-    if (reasonIssue || !isId(staffId)) throw new ScheduleMockError('COMMON_INVALID_ARGUMENT', 400)
-    return this.command(slot, JSON.stringify(['staff-close', staffId, windowId, expectedVersion, reason]), () => {
-      const entry = this.staffStore.find(candidate => candidate.window.windowId === windowId)
-      if (!entry || entry.window.staffId !== staffId) throw new ScheduleMockError('COMMON_NOT_FOUND', 404)
-      if (entry.window.version !== expectedVersion) throw new ScheduleMockError('COMMON_CONFLICT', 409)
-      if (entry.window.status === 'AVAILABLE' && this.protectedStaff) {
-        throw new ScheduleMockError('SCHEDULE_WINDOW_STATE_NOT_ALLOWED', 409)
-      }
-      entry.window = { ...entry.window, status: 'CLOSED', version: this.bump() }
-      entry.updatedAt = this.now()
-      return { ...entry.window }
-    })
-  }
-  async openStaffWindow(slot: string, staffId: string, windowId: string, expectedVersion: string): Promise<StaffWindowReceipt> {
-    this.gate(false)
-    if (!isId(staffId)) throw new ScheduleMockError('COMMON_INVALID_ARGUMENT', 400)
-    return this.command(slot, JSON.stringify(['staff-open', staffId, windowId, expectedVersion]), () => {
-      const entry = this.staffStore.find(candidate => candidate.window.windowId === windowId)
-      if (!entry || entry.window.staffId !== staffId) throw new ScheduleMockError('COMMON_NOT_FOUND', 404)
-      if (entry.window.version !== expectedVersion) throw new ScheduleMockError('COMMON_CONFLICT', 409)
-      this.assertNoStaffOverlap({ windowId, staffId, startAt: entry.window.startAt, endAt: entry.window.endAt })
-      entry.window = { ...entry.window, status: 'AVAILABLE', version: this.bump() }
-      entry.updatedAt = this.now()
-      return { ...entry.window }
-    })
-  }
   async capabilities(staffId: string): Promise<CapabilityView> {
     this.gate(true)
     if (!isId(staffId)) throw new ScheduleMockError('COMMON_INVALID_ARGUMENT', 400)
@@ -787,6 +618,8 @@ export class PreviewScheduleRepository implements ScheduleDeps {
 // ---------------------------------------------------------------------------
 export const fixtureMerchantId = '958001'
 export const fixtureStoreId = '958002'
+/** Capability head fixture staff (staff windows themselves are offline per
+ *  CCR-SCH-STAFF-OFFLINE-001; the id only seeds the capability view). */
 export const fixtureStaffId = '958003'
 export const fixtureServiceGrooming = '30001'
 export const fixtureServiceDelivery = '30007'
@@ -814,19 +647,6 @@ export function fixtureWindows(): MockWindow[] {
     { window: { windowId: '61006', merchantId: fixtureMerchantId, storeId: fixtureStoreId,
         startAt: dayAt('21:30'), endAt: dayAt('22:30'),
         configuredCapacity: 1, status: 'CLOSED', version: '5' }, updatedAt: '2026-10-06T02:25:00.000Z', occupied: 0 },
-  ]
-}
-export function fixtureStaffWindows(): MockStaffWindow[] {
-  return [
-    { window: { windowId: '62001', merchantId: fixtureMerchantId, storeId: fixtureStoreId,
-        staffId: fixtureStaffId, startAt: dayAt('09:00'), endAt: dayAt('12:00'),
-        status: 'AVAILABLE', version: '2' }, updatedAt: '2026-10-06T02:30:00.000Z' },
-    { window: { windowId: '62002', merchantId: fixtureMerchantId, storeId: fixtureStoreId,
-        staffId: fixtureStaffId, startAt: dayAt('14:00'), endAt: dayAt('18:00'),
-        status: 'AVAILABLE', version: '1' }, updatedAt: '2026-10-06T02:35:00.000Z' },
-    { window: { windowId: '62003', merchantId: fixtureMerchantId, storeId: fixtureStoreId,
-        staffId: fixtureStaffId, startAt: dayAt('18:00'), endAt: dayAt('20:00'),
-        status: 'CLOSED', version: '3' }, updatedAt: '2026-10-06T02:40:00.000Z' },
   ]
 }
 export function fixtureCapability(): CapabilityView {

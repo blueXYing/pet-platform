@@ -42,6 +42,4 @@ public interface ScheduleCommandMapper {
     List<Map<String, Object>> lockedReservations(@Param("storeId") long storeId);
     List<Map<String, Object>> lockedClaims(@Param("storeId") long storeId);
     List<Long> crossStoreClaims(@Param("storeId") long storeId);
-    List<Map<String, Object>> lockedCapabilities(@Param("staffIds") List<Long> staffIds);
-    List<Map<String, Object>> lockedAvailability(@Param("storeId") long storeId);
 }

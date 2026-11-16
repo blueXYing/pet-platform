@@ -3,7 +3,6 @@ package com.petplatform.boot.config;
 import com.petplatform.common.SnowflakeIdGenerator;
 import com.petplatform.merchant.api.query.MerchantAdmissionQueryApi;
 import com.petplatform.merchant.api.query.MerchantCurrentStaffFactsApi;
-import com.petplatform.order.api.query.OrderProtectionFactsApi;
 import com.petplatform.schedule.api.protection.ScheduleCapacityGuardApi;
 import com.petplatform.schedule.api.protection.ScheduleProtectionFactsApi;
 import com.petplatform.schedule.biz.apiimpl.ScheduleCapacityProofApiImpl;
@@ -20,11 +19,12 @@ import org.springframework.context.annotation.Configuration;
 
 /**
  * SCH-004 merchant schedule write slice (PRD29, 34号 §2~§4, write-proposal v0.2): service
- * window / staff availability / capability maintenance commands plus the workbench reads,
- * default OFF via pet.schedule.command.enabled (35号 B-class blocker: its admission gate chains
- * to the merchant application kernel). It additionally requires the reservation
- * protection foundation (pet.schedule.protection.enabled=true) whose shared beans provide the
- * per-store guard, the SCH facts, the MER staff facts and the ORDER assignment facts — the
+ * window / capability maintenance commands plus the workbench reads (CCR-SCH-STAFF-OFFLINE-001
+ * 2026-11-16 removed the staff availability-window commands — staff scheduling is
+ * offline-managed), default OFF via pet.schedule.command.enabled (35号 B-class blocker: its
+ * admission gate chains to the merchant application kernel). It additionally requires the
+ * reservation protection foundation (pet.schedule.protection.enabled=true) whose shared beans
+ * provide the per-store guard, the SCH facts, the MER staff facts and the ORDER facts — the
  * write commands fail closed without them. Assembly stays on the schedule module's apiimpl /
  * application surface; persistence wiring is owned by schedule-biz (ARCH-002). The isolated
  * opt-in migration mirrors the guarded V27 service-write precedent: only an explicitly named
@@ -44,11 +44,11 @@ public class ScheduleWriteConfiguration {
     ScheduleMerchantCommandApiImpl scheduleMerchantCommandApi(javax.sql.DataSource source,
             SnowflakeIdGenerator ids, ScheduleAdmissionGate admissions,
             ScheduleCapacityGuardApi guard, ScheduleProtectionFactsApi facts,
-            MerchantCurrentStaffFactsApi merchant, OrderProtectionFactsApi orders,
+            MerchantCurrentStaffFactsApi merchant,
             ServiceQueryApi serviceFacts, ScheduleCapacityProofApiImpl proof,
             org.springframework.beans.factory.ObjectProvider<Clock> clock) {
         return new ScheduleMerchantCommandApiImpl(source, ids, admissions, guard, facts, merchant,
-                orders, serviceFacts, proof, clock.getIfAvailable(Clock::systemUTC));
+                serviceFacts, proof, clock.getIfAvailable(Clock::systemUTC));
     }
 
     @Bean

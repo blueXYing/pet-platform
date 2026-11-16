@@ -26,15 +26,11 @@ import com.petplatform.schedule.api.dto.ReservationHoldTypes.HoldCommand;
 import com.petplatform.schedule.api.dto.ReservationHoldTypes.HoldResult;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BatchCloseCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BatchCloseResult;
-import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BlockedWindow;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CapabilityQuery;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CapabilityResult;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CapabilityView;
-import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CreateStaffWindowCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CreateWindowCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.ReplaceCapabilitiesCommand;
-import com.petplatform.schedule.api.dto.ScheduleWriteTypes.StaffWindowCloseCommand;
-import com.petplatform.schedule.api.dto.ScheduleWriteTypes.StaffWindowResult;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.UpdateWindowCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WindowCloseCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WindowOpenCommand;
@@ -82,10 +78,11 @@ import org.springframework.transaction.support.TransactionTemplate;
 /**
  * SCH-004 merchant write side against real MySQL (core rows of W2-SCHW-001/003/004/005/006/
  * 007/008): 23号 idempotent envelope, OWNER admission, the per-store guard inside one
- * transaction, occupied-window protection (SCHW-D4), batch partial close (SCHW-D5), staff
- * reduction protection (SCHW-D6 with 36号 assignment facts), capability set CAS (SCHC-2) and
- * the append-only audit (SCHW-D9). Every command opens its own admission and execution
- * transactions, so tests call the API directly without an surrounding transaction.
+ * transaction, occupied-window protection (SCHW-D4), batch partial close (SCHW-D5),
+ * capability set CAS (SCHC-2) and the append-only audit (SCHW-D9). CCR-SCH-STAFF-OFFLINE-001
+ * (2026-11-16) removed the staff availability-window command family; capability removals now
+ * pass the simplified whole-store capacity re-proof. Every command opens its own admission and
+ * execution transactions, so tests call the API directly without an surrounding transaction.
  */
 class ScheduleMerchantCommandMySqlTest {
     private static final Instant NOW = Instant.parse("2026-09-27T12:34:56.789Z");
@@ -212,11 +209,7 @@ class ScheduleMerchantCommandMySqlTest {
             assertEquals(CommonApiCodes.CONFLICT, assertThrows(ApiException.class,
                     () -> app.commands.closeWindow(
                             new WindowCloseCommand(ctx(), "101", "10", "201", 7L, "x"))).code());
-            assertEquals(CommonApiCodes.CONFLICT, assertThrows(ApiException.class,
-                    () -> app.commands.closeStaffWindow(new StaffWindowCloseCommand(
-                            ctx(), "404", "10", "201", "401", 9L, "请假"))).code());
             assertEquals("OPEN", db.windowStatus(101));
-            assertEquals("AVAILABLE", db.staffWindowStatus(404));
             assertEquals(0, db.count("schedule_write_action"));
         }
     }
@@ -251,62 +244,9 @@ class ScheduleMerchantCommandMySqlTest {
         }
     }
 
-    @Test
-    void staffWindowsRequireActiveEmploymentAndRejectOverlaps() throws Exception {
-        try (Database db = new Database()) {
-            Components app = new Components(db);
-            // INACTIVE staff is not a capacity premise (SCHW-D6): 409 and no rows.
-            app.merchant.employmentStatus = "INACTIVE";
-            assertEquals(ScheduleWriteApiCodes.SCHEDULE_WINDOW_STATE_NOT_ALLOWED,
-                    assertThrows(ApiException.class, () -> app.commands.createStaffWindowOutcome(
-                            new CreateStaffWindowCommand(ctx(), "10", "201", "401", S, E),
-                            new StaffWindowResult[1])).code());
-            assertEquals(0, db.count("staff_availability_window"));
-            app.merchant.employmentStatus = "ACTIVE";
-            StaffWindowResult[] out = new StaffWindowResult[1];
-            assertTrue(app.commands.createStaffWindowOutcome(
-                    new CreateStaffWindowCommand(ctx(), "10", "201", "401", S, E), out));
-            assertEquals("AVAILABLE", out[0].status());
-            assertEquals("0", out[0].version());
-            // Overlap rejected, adjacent allowed.
-            assertEquals(ScheduleWriteApiCodes.SCHEDULE_WINDOW_OVERLAP,
-                    assertThrows(ApiException.class, () -> app.commands.createStaffWindowOutcome(
-                            new CreateStaffWindowCommand(ctx(), "10", "201", "401", S130, E),
-                            new StaffWindowResult[1])).code());
-            assertTrue(app.commands.createStaffWindowOutcome(new CreateStaffWindowCommand(
-                    ctx(), "10", "201", "401", E, E300), new StaffWindowResult[1]));
-            assertEquals(2, db.count("staff_availability_window"));
-        }
-    }
-
-    @Test
-    void staffReductionIsProtectedByAssignmentCheckAndWholeStoreProof() throws Exception {
-        try (Database db = new Database()) {
-            Components app = new Components(db);
-            db.seedGeneral(); // staff 401 capability+availability cover the seeded window
-            db.hold(app, "501"); // TEMP_LOCKED claim depends on the only qualified employee 401
-            // A protected current assignment must be reassigned first (36号): 409, no writes.
-            app.orders.protectStaff("401");
-            assertEquals(CommonApiCodes.CONFLICT, assertThrows(ApiException.class,
-                    () -> app.commands.closeStaffWindow(new StaffWindowCloseCommand(
-                            ctx(), "404", "10", "201", "401", 0L, "请假"))).code());
-            assertEquals("AVAILABLE", db.staffWindowStatus(404));
-            // Without an assignment the reduction still must keep every active reservation
-            // coverable: 401 is the only qualified person, so the close fails closed as a 409.
-            app.orders.protectStaff(null);
-            assertEquals(CommonApiCodes.CONFLICT, assertThrows(ApiException.class,
-                    () -> app.commands.closeStaffWindow(new StaffWindowCloseCommand(
-                            ctx(), "404", "10", "201", "401", 0L, "请假"))).code());
-            assertEquals("AVAILABLE", db.staffWindowStatus(404));
-            // A second qualified, scheduled employee keeps the store feasible: reduction passes.
-            db.secondStaffCovers();
-            StaffWindowResult closed = app.commands.closeStaffWindow(new StaffWindowCloseCommand(
-                    ctx(), "404", "10", "201", "401", 0L, "请假"));
-            assertEquals("CLOSED", closed.status());
-            assertEquals("1", closed.version());
-            assertEquals(1, db.count("schedule_reservation"));
-        }
-    }
+    // CCR-SCH-STAFF-OFFLINE-001 (2026-11-16): the staff availability-window command tests
+    // (employment gate/overlap, reduction protection) were removed together with the
+    // commands — staff scheduling is offline-managed.
 
     @Test
     void capabilitySetCoversFirstEmptyVersionCasAndConflict() throws Exception {
@@ -341,36 +281,34 @@ class ScheduleMerchantCommandMySqlTest {
     }
 
     @Test
-    void capabilityRemovalRequiresReasonAndFailClosedWithoutAlternativeStaff() throws Exception {
+    void capabilityRemovalRequiresReasonAndPassesTheSimplifiedCapacityProof() throws Exception {
         try (Database db = new Database()) {
             Components app = new Components(db);
             db.seedGeneral();
+            db.seedCapabilityDetail();
             // The seeded legacy detail is inventoried and backfilled to a non-zero baseline
             // version before protected use (34号 storage §3).
             db.jdbc.update("INSERT INTO staff_capability_set(staff_id,store_id,version,"
                     + "updated_at) VALUES(401,201,1,UTC_TIMESTAMP(3))");
-            db.hold(app, "501"); // a protected reservation served by the only employee 401
+            db.hold(app, "501"); // an active reservation on the store's slot
             CapabilityView view = app.commands.getCapabilities(
                     new CapabilityQuery(ctx(), "10", "201", "401"));
             assertEquals(List.of("301"), view.serviceIds());
             assertEquals("1", view.version());
-            // Removing the last qualification of the only employee breaks the held reservation:
-            // a missing reason is a 400; with a reason the whole-store proof still refuses it.
+            // A removal without reason stays a 400 (SCHC-2).
             assertEquals(CommonApiCodes.INVALID_ARGUMENT, assertThrows(ApiException.class,
                     () -> app.commands.replaceCapabilities(replace("1", null))).code());
-            assertEquals(CommonApiCodes.CONFLICT, assertThrows(ApiException.class,
-                    () -> app.commands.replaceCapabilities(replace("1", "不再提供该服务"))).code());
-            assertEquals(1, db.jdbc.queryForObject(
-                    "SELECT COUNT(*) FROM staff_service_capability WHERE staff_id=401",
-                    Integer.class));
-            assertEquals(1L, db.jdbc.queryForObject(
-                    "SELECT version FROM staff_capability_set WHERE staff_id=401", Long.class));
-            // A second qualified scheduled employee makes the removal provably safe.
-            db.secondStaffCovers();
+            // CCR-SCH-STAFF-OFFLINE-001: staff scheduling is offline, so the whole-store
+            // re-proof is the capacity invariant only — the removal passes without any
+            // alternative qualified employee and deletes the detail rows.
             CapabilityResult reduced = app.commands.replaceCapabilities(
                     replace("1", "不再提供该服务"));
             assertEquals("2", reduced.version());
             assertEquals(List.of(), reduced.serviceIds());
+            assertEquals(0, db.jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM staff_service_capability WHERE staff_id=401",
+                    Integer.class));
+            assertEquals(1, db.count("schedule_reservation"), "the hold stays untouched");
         }
     }
 
@@ -425,26 +363,16 @@ class ScheduleMerchantCommandMySqlTest {
     }
 
     private static final class FakeMerchant implements MerchantCurrentStaffFactsApi {
-        private String employmentStatus = "ACTIVE";
-
         @Override
         public CurrentStoreStaffFacts readStore(String storeId, QueryContext context) {
-            List<CurrentStaffFact> staff = new ArrayList<>();
-            staff.add(new CurrentStaffFact("401", "10", storeId, employmentStatus, true, "0"));
-            if ("ACTIVE".equals(employmentStatus)) {
-                staff.add(new CurrentStaffFact("402", "10", storeId, "ACTIVE", true, "0"));
-            }
-            return new CurrentStoreStaffFacts("10", storeId, true, staff);
+            return new CurrentStoreStaffFacts("10", storeId, true, List.of(
+                    new CurrentStaffFact("401", "10", storeId, "ACTIVE", true, "0"),
+                    new CurrentStaffFact("402", "10", storeId, "ACTIVE", true, "0")));
         }
     }
 
     private static final class FakeOrders implements OrderProtectionFactsApi {
-        private String protectedStaffId;
         private Database db;
-
-        private void protectStaff(String staffId) {
-            this.protectedStaffId = staffId;
-        }
 
         @Override
         public OrderProtectionSnapshot readStore(String store, QueryContext query) {
@@ -485,13 +413,7 @@ class ScheduleMerchantCommandMySqlTest {
         @Override
         public OrderProtectionSnapshot getCurrentAssignments(String store,
                 List<String> staffIds, QueryContext query) {
-            List<OrderProtectionFact> facts = new ArrayList<>();
-            if (protectedStaffId != null && staffIds.contains(protectedStaffId)) {
-                facts.add(new OrderProtectionFact("501", "601", "601", "10", store, "301",
-                        "IN_STORE", protectedStaffId, "PENDING_PAYMENT", "UNVERIFIED", "0",
-                        "701", "0", true));
-            }
-            return new OrderProtectionSnapshot(store, true, facts.size(), facts.size(), facts);
+            throw new UnsupportedOperationException();
         }
     }
 
@@ -553,7 +475,7 @@ class ScheduleMerchantCommandMySqlTest {
                     Clock.fixed(NOW, ZoneOffset.UTC), 1000);
             ScheduleWriteStore store = new ScheduleWriteStore(db.source, seq(5000));
             ScheduleMerchantCommandService service = new ScheduleMerchantCommandService(store,
-                    new ScheduleAdmissionGate(admission), guard, facts, merchant, orders,
+                    new ScheduleAdmissionGate(admission), guard, facts, merchant,
                     services, proof, Clock.fixed(NOW, ZoneOffset.UTC));
             commands = new ScheduleMerchantCommandApiImpl(service);
         }
@@ -610,27 +532,19 @@ class ScheduleMerchantCommandMySqlTest {
 
         private void seedGeneral() {
             // CCR-SCH-SLOT-001: store-wide unified slot (no service_id/window_kind columns).
+            // CCR-SCH-STAFF-OFFLINE-001: no staff capability/availability seeds — capacity is
+            // the configured slot capacity only.
             jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,"
                     + "start_at,end_at,configured_capacity,status,version,created_at,"
                     + "updated_at) VALUES(101,10,201,'2030-01-01 01:00:00',"
                     + "'2030-01-01 02:00:00',2,'OPEN',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
+        }
+
+        /** Legacy capability detail for the SCHC-2 inventory/backfill scenarios (34号 §3). */
+        private void seedCapabilityDetail() {
             jdbc.update("INSERT INTO staff_service_capability(id,staff_id,service_id,status,"
                     + "created_at,updated_at) VALUES(402,401,301,'ENABLED',UTC_TIMESTAMP(3),"
                     + "UTC_TIMESTAMP(3))");
-            jdbc.update("INSERT INTO staff_availability_window(id,store_id,staff_id,start_at,"
-                    + "end_at,status,version,created_at,updated_at) VALUES(404,201,401,"
-                    + "'2030-01-01 01:00:00','2030-01-01 02:00:00','AVAILABLE',0,"
-                    + "UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
-        }
-
-        private void secondStaffCovers() {
-            jdbc.update("INSERT INTO staff_service_capability(id,staff_id,service_id,status,"
-                    + "created_at,updated_at) VALUES(412,402,301,'ENABLED',UTC_TIMESTAMP(3),"
-                    + "UTC_TIMESTAMP(3))");
-            jdbc.update("INSERT INTO staff_availability_window(id,store_id,staff_id,start_at,"
-                    + "end_at,status,version,created_at,updated_at) VALUES(414,201,402,"
-                    + "'2030-01-01 01:00:00','2030-01-01 02:00:00','AVAILABLE',0,"
-                    + "UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
         }
 
         /** One TEMP_LOCKED hold plus its bound order, both committed. */
@@ -671,12 +585,6 @@ class ScheduleMerchantCommandMySqlTest {
         private String windowStatus(long windowId) {
             return jdbc.queryForObject(
                     "SELECT status FROM schedule_availability_window WHERE id=?", String.class,
-                    windowId);
-        }
-
-        private String staffWindowStatus(long windowId) {
-            return jdbc.queryForObject(
-                    "SELECT status FROM staff_availability_window WHERE id=?", String.class,
                     windowId);
         }
 

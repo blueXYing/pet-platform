@@ -21,8 +21,13 @@ CREATE TABLE staff_capability_set (
   COMMENT='SCHC-2 capability set header; CAS target for full-replacement PUT';
 
 -- SCHW-D9 append-only write audit (34号 Schedule-Protection-Storage §6): one row per affected
--- target per request; reason is mandatory for close/batch-close/staff-window-close actions and
--- for availability/capability reductions (application-enforced for the conditional cases).
+-- target per request; reason is mandatory for close/batch-close actions and for capability
+-- reductions (application-enforced for the conditional cases).
+-- CCR-SCH-STAFF-OFFLINE-001 (2026-11-16): the STAFF_WINDOW target type and the
+-- STAFF_WINDOW_CREATE/UPDATE/CLOSE/OPEN actions are DEPRECATED — the staff availability-window
+-- commands were removed (staff scheduling is offline-managed). The vocabulary stays in the
+-- CHECK constraints only so historical audit rows keep reading; no new such row is written.
+-- The applied V29 migration file is intentionally left unchanged.
 CREATE TABLE schedule_write_action (
     id             BIGINT        NOT NULL,
     target_type    VARCHAR(16)   NOT NULL COMMENT 'WINDOW/STAFF_WINDOW/CAPABILITY_SET',

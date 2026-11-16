@@ -8,6 +8,9 @@
       on the window's original row whose reservation is CONFIRMED (confirmed_count) or an
       unexpired TEMP_LOCKED (temp_locked_count, compared against the bound `now` read-only
       fact). All filters bind with #{}; the service validates vocabularies first.
+      CCR-SCH-STAFF-OFFLINE-001 (2026-11-16): staff scheduling is offline-managed; this
+      operator view still lists the RETAINED historical staff_availability_window rows only
+      (no merchant/C-side read or write path exists any more).
     -->
     <sql id="windowFilter">
         <if test="merchantId != null">AND w.merchant_id = #{merchantId}</if>

@@ -61,7 +61,8 @@ for (const page of ['index', 'detail', 'form', 'vaccine-form', 'deworm-form']) {
 const packages = app.subPackages || app.subpackages || []
 assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
   { root: 'merchant', pages: ['pages/workspace/index', 'pages/services/index', 'pages/services/edit', 'pages/messages/index',
-    'pages/schedule/index', 'pages/schedule/windows', 'pages/schedule/staff', 'pages/schedule/capabilities', 'pages/members/index',
+    // CCR-SCH-STAFF-OFFLINE-001: pages/schedule/staff removed (staff scheduling is offline).
+    'pages/schedule/index', 'pages/schedule/windows', 'pages/schedule/capabilities', 'pages/members/index',
     'pages/aftersale/index', 'pages/aftersale/detail',
     // P-12 member detail (54号): list-derived single member view + lifecycle actions.
     'pages/members/detail',
@@ -230,8 +231,9 @@ for (const page of ['index', 'edit']) {
       `M-002 service page build artifact missing: ${page}.${extension}`)
   }
 }
-// M-002 schedule maintenance pages (53号 write-side consumption slice).
-for (const page of ['index', 'windows', 'staff', 'capabilities']) {
+// M-002 schedule maintenance pages (53号 write-side consumption slice; staff page removed
+// by CCR-SCH-STAFF-OFFLINE-001 — staff scheduling is managed offline).
+for (const page of ['index', 'windows', 'capabilities']) {
   for (const extension of ['js', 'json', 'wxml', 'wxss']) {
     assert.ok(fs.existsSync(path.join(root, `merchant/pages/schedule/${page}.` + extension)),
       `M-002 schedule page build artifact missing: ${page}.${extension}`)

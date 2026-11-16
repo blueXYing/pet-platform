@@ -24,7 +24,9 @@ export default defineAppConfig({
   // the platform per-package limit; routes are unchanged.
   subPackages: [
     { root: 'merchant', pages: ['pages/workspace/index', 'pages/services/index', 'pages/services/edit', 'pages/messages/index',
-      'pages/schedule/index', 'pages/schedule/windows', 'pages/schedule/staff', 'pages/schedule/capabilities',
+      // CCR-SCH-STAFF-OFFLINE-001 (2026-11-16): staff scheduling moved offline — the
+      // pages/schedule/staff page is removed; capabilities stay (54号).
+      'pages/schedule/index', 'pages/schedule/windows', 'pages/schedule/capabilities',
       // Contract 54 staff binding (D1-a): member management workbench child page, one compact
       // line so parallel M-side page PRs rebase cleanly.
       'pages/members/index', 'pages/aftersale/index', 'pages/aftersale/detail',

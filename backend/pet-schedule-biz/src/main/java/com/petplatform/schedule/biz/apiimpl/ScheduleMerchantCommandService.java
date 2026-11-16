@@ -9,12 +9,9 @@ import com.petplatform.common.CommonApiCodes;
 import com.petplatform.common.DecimalPublicIdCodec;
 import com.petplatform.common.OperatorType;
 import com.petplatform.common.QueryContext;
-import com.petplatform.common.SnowflakeIdGenerator;
 import com.petplatform.merchant.api.dto.MerchantCurrentStaffTypes.CurrentStaffFact;
 import com.petplatform.merchant.api.dto.MerchantCurrentStaffTypes.CurrentStoreStaffFacts;
 import com.petplatform.merchant.api.query.MerchantCurrentStaffFactsApi;
-import com.petplatform.order.api.dto.OrderProtectionTypes.OrderProtectionSnapshot;
-import com.petplatform.order.api.query.OrderProtectionFactsApi;
 import com.petplatform.schedule.api.command.ScheduleMerchantCommandApi;
 import com.petplatform.schedule.api.dto.ScheduleProtectionTypes.ClaimFact;
 import com.petplatform.schedule.api.dto.ScheduleProtectionTypes.ReservationFact;
@@ -26,13 +23,8 @@ import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BlockedWindow;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CapabilityQuery;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CapabilityResult;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CapabilityView;
-import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CreateStaffWindowCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CreateWindowCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.ReplaceCapabilitiesCommand;
-import com.petplatform.schedule.api.dto.ScheduleWriteTypes.StaffWindowCloseCommand;
-import com.petplatform.schedule.api.dto.ScheduleWriteTypes.StaffWindowOpenCommand;
-import com.petplatform.schedule.api.dto.ScheduleWriteTypes.StaffWindowResult;
-import com.petplatform.schedule.api.dto.ScheduleWriteTypes.UpdateStaffWindowCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.UpdateWindowCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WindowCloseCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WindowOpenCommand;
@@ -51,8 +43,6 @@ import com.petplatform.service.api.query.ServiceQueryApi;
 import com.petplatform.service.api.query.ServiceSnapshotQuery;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
-import java.time.Instant;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -74,8 +64,9 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * ScheduleCapacityGuardApi, authoritative current reads, guarded writes, append-only
  * schedule_write_action audit and the first success receipt, committed together. Occupied
  * windows (TEMP_LOCKED/CONFIRMED claims) cannot close, shrink or move (SCHW-D4);
- * staff-availability/capability reductions must pass the ORDER protected-assignment check and
- * the whole-store feasibility re-proof or fail closed (SCHW-D6/D7, 36号).
+ * capability reductions must pass the simplified whole-store capacity re-proof or fail
+ * closed (SCHW-D7; CCR-SCH-STAFF-OFFLINE-001 removed the staff-availability commands and
+ * their protected-assignment gate - staff scheduling is offline-managed).
  */
 public final class ScheduleMerchantCommandService implements ScheduleMerchantCommandApi {
     private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
@@ -95,7 +86,6 @@ public final class ScheduleMerchantCommandService implements ScheduleMerchantCom
     private final ScheduleCapacityGuardApi guard;
     private final ScheduleProtectionFactsApi facts;
     private final MerchantCurrentStaffFactsApi merchant;
-    private final OrderProtectionFactsApi orders;
     private final ServiceQueryApi serviceFacts;
     private final ScheduleCapacityProofApiImpl proof;
     private final Clock clock;
@@ -106,7 +96,6 @@ public final class ScheduleMerchantCommandService implements ScheduleMerchantCom
             ScheduleCapacityGuardApi guard,
             ScheduleProtectionFactsApi facts,
             MerchantCurrentStaffFactsApi merchant,
-            OrderProtectionFactsApi orders,
             ServiceQueryApi serviceFacts,
             ScheduleCapacityProofApiImpl proof,
             Clock clock) {
@@ -115,7 +104,6 @@ public final class ScheduleMerchantCommandService implements ScheduleMerchantCom
         this.guard = Objects.requireNonNull(guard, "guard is required");
         this.facts = Objects.requireNonNull(facts, "facts is required");
         this.merchant = Objects.requireNonNull(merchant, "merchant is required");
-        this.orders = Objects.requireNonNull(orders, "orders is required");
         this.serviceFacts = Objects.requireNonNull(serviceFacts, "serviceFacts is required");
         this.proof = Objects.requireNonNull(proof, "proof is required");
         this.clock = Objects.requireNonNull(clock, "clock is required");
@@ -388,181 +376,9 @@ public final class ScheduleMerchantCommandService implements ScheduleMerchantCom
         return executed.result();
     }
 
-    // ------------------------------------------------------------------ staff windows
-
-    @Override
-    public boolean createStaffWindowOutcome(CreateStaffWindowCommand c, StaffWindowResult[] out) {
-        CommandContext ctx = user(c == null ? null : c.context());
-        windowId(c.merchantId(), "merchantId");
-        windowId(c.storeId(), "storeId");
-        windowId(c.staffId(), "staffId");
-        interval(c.startAt(), c.endAt());
-        Map<String, Object> p = new LinkedHashMap<>();
-        p.put("merchantId", c.merchantId());
-        p.put("storeId", c.storeId());
-        p.put("staffId", c.staffId());
-        p.put("startAt", c.startAt().toString());
-        p.put("endAt", c.endAt().toString());
-        Executed<StaffWindowResult> executed = command(
-                "merchant.schedule.staffWindow.create",
-                ctx,
-                "STAFF:" + c.merchantId() + ":" + c.storeId() + ":" + c.staffId(),
-                p,
-                StaffWindowResult.class,
-                m -> {
-                    admissions.requireOperable(query(ctx), id(c.merchantId()), id(c.storeId()));
-                    guard.acquire(List.of(c.storeId()), query(ctx));
-                    requireActiveStaff(ctx, c.storeId(), c.staffId(), c.merchantId());
-                    ensureNoAvailableOverlap(m, c.storeId(), c.staffId(),
-                            c.startAt(), c.endAt(), null);
-                    long windowId = store.nextId();
-                    one(m.insertStaffWindow(ScheduleSqlRows.values(
-                            "id", windowId, "storeId", id(c.storeId()),
-                            "staffId", id(c.staffId()),
-                            "startAt", utc(c.startAt()), "endAt", utc(c.endAt()),
-                            "now", now())));
-                    StaffWindowResult result =
-                            rowToStaffWindow(m.selectStaffWindowByIdForUpdate(windowId),
-                                    c.merchantId());
-                    audit(m, ctx, "STAFF_WINDOW", windowId, id(c.merchantId()), id(c.storeId()),
-                            "STAFF_WINDOW_CREATE", null, null, 0L);
-                    return result;
-                });
-        out[0] = executed.result();
-        return executed.fresh();
-    }
-
-    @Override
-    public StaffWindowResult updateStaffWindow(UpdateStaffWindowCommand c) {
-        CommandContext ctx = user(c == null ? null : c.context());
-        windowId(c.windowId(), "windowId");
-        windowId(c.merchantId(), "merchantId");
-        windowId(c.storeId(), "storeId");
-        windowId(c.staffId(), "staffId");
-        interval(c.startAt(), c.endAt());
-        String reason = optionalReason(c.reason());
-        Map<String, Object> p = new LinkedHashMap<>();
-        p.put("merchantId", c.merchantId());
-        p.put("storeId", c.storeId());
-        p.put("staffId", c.staffId());
-        p.put("windowId", c.windowId());
-        p.put("startAt", c.startAt().toString());
-        p.put("endAt", c.endAt().toString());
-        p.put("expectedVersion", Long.toString(c.expectedVersion()));
-        p.put("reason", reason);
-        Executed<StaffWindowResult> executed = command(
-                "merchant.schedule.staffWindow.update",
-                ctx,
-                "STAFF_WINDOW:" + c.windowId(),
-                p,
-                StaffWindowResult.class,
-                m -> {
-                    admissions.requireOperable(query(ctx), id(c.merchantId()), id(c.storeId()));
-                    guard.acquire(List.of(c.storeId()), query(ctx));
-                    Map<String, Object> row =
-                            lockedStaffWindow(m, c.windowId(), c.storeId(), c.staffId());
-                    requireCurrentVersion(row, c.expectedVersion());
-                    boolean reducing = isReduction(row, c.startAt(), c.endAt());
-                    if (reducing) {
-                        if (reason == null) {
-                            invalid("reason is required for availability reductions");
-                        }
-                        requireNoProtectedAssignment(c.storeId(), c.staffId(), ctx);
-                    }
-                    ensureNoAvailableOverlap(m, c.storeId(), c.staffId(),
-                            c.startAt(), c.endAt(), c.windowId());
-                    one(m.updateStaffWindow(id(c.windowId()), utc(c.startAt()), utc(c.endAt()),
-                            c.expectedVersion(), now()));
-                    if (reducing) proof.proveReductionSafe(c.storeId(), query(ctx));
-                    StaffWindowResult result = rowToStaffWindow(
-                            m.selectStaffWindowByIdForUpdate(id(c.windowId())), c.merchantId());
-                    audit(m, ctx, "STAFF_WINDOW", id(c.windowId()), id(c.merchantId()),
-                            id(c.storeId()), "STAFF_WINDOW_UPDATE", reason,
-                            c.expectedVersion(), c.expectedVersion() + 1);
-                    return result;
-                });
-        return executed.result();
-    }
-
-    @Override
-    public StaffWindowResult closeStaffWindow(StaffWindowCloseCommand c) {
-        CommandContext ctx = user(c == null ? null : c.context());
-        windowId(c.windowId(), "windowId");
-        windowId(c.merchantId(), "merchantId");
-        windowId(c.storeId(), "storeId");
-        windowId(c.staffId(), "staffId");
-        String reason = requiredReason(c.reason());
-        Map<String, Object> p = new LinkedHashMap<>();
-        p.put("merchantId", c.merchantId());
-        p.put("storeId", c.storeId());
-        p.put("staffId", c.staffId());
-        p.put("windowId", c.windowId());
-        p.put("expectedVersion", Long.toString(c.expectedVersion()));
-        p.put("reason", reason);
-        Executed<StaffWindowResult> executed = command(
-                "merchant.schedule.staffWindow.close",
-                ctx,
-                "STAFF_WINDOW:" + c.windowId(),
-                p,
-                StaffWindowResult.class,
-                m -> {
-                    admissions.requireOperable(query(ctx), id(c.merchantId()), id(c.storeId()));
-                    guard.acquire(List.of(c.storeId()), query(ctx));
-                    Map<String, Object> row =
-                            lockedStaffWindow(m, c.windowId(), c.storeId(), c.staffId());
-                    requireCurrentVersion(row, c.expectedVersion());
-                    requireNoProtectedAssignment(c.storeId(), c.staffId(), ctx);
-                    one(m.closeStaffWindow(id(c.windowId()), c.expectedVersion(), now()));
-                    proof.proveReductionSafe(c.storeId(), query(ctx));
-                    StaffWindowResult result = rowToStaffWindow(
-                            m.selectStaffWindowByIdForUpdate(id(c.windowId())), c.merchantId());
-                    audit(m, ctx, "STAFF_WINDOW", id(c.windowId()), id(c.merchantId()),
-                            id(c.storeId()), "STAFF_WINDOW_CLOSE", reason,
-                            c.expectedVersion(), c.expectedVersion() + 1);
-                    return result;
-                });
-        return executed.result();
-    }
-
-    @Override
-    public StaffWindowResult openStaffWindow(StaffWindowOpenCommand c) {
-        CommandContext ctx = user(c == null ? null : c.context());
-        windowId(c.windowId(), "windowId");
-        windowId(c.merchantId(), "merchantId");
-        windowId(c.storeId(), "storeId");
-        windowId(c.staffId(), "staffId");
-        Map<String, Object> p = new LinkedHashMap<>();
-        p.put("merchantId", c.merchantId());
-        p.put("storeId", c.storeId());
-        p.put("staffId", c.staffId());
-        p.put("windowId", c.windowId());
-        p.put("expectedVersion", Long.toString(c.expectedVersion()));
-        Executed<StaffWindowResult> executed = command(
-                "merchant.schedule.staffWindow.open",
-                ctx,
-                "STAFF_WINDOW:" + c.windowId(),
-                p,
-                StaffWindowResult.class,
-                m -> {
-                    admissions.requireOperable(query(ctx), id(c.merchantId()), id(c.storeId()));
-                    guard.acquire(List.of(c.storeId()), query(ctx));
-                    Map<String, Object> row =
-                            lockedStaffWindow(m, c.windowId(), c.storeId(), c.staffId());
-                    if (!"CLOSED".equals(ScheduleSqlRows.text(row, "status"))) stateNotAllowed();
-                    requireCurrentVersion(row, c.expectedVersion());
-                    ensureNoAvailableOverlap(m, c.storeId(), c.staffId(),
-                            ScheduleSqlRows.at(row, "start_at"),
-                            ScheduleSqlRows.at(row, "end_at"), c.windowId());
-                    one(m.openStaffWindow(id(c.windowId()), c.expectedVersion(), now()));
-                    StaffWindowResult result = rowToStaffWindow(
-                            m.selectStaffWindowByIdForUpdate(id(c.windowId())), c.merchantId());
-                    audit(m, ctx, "STAFF_WINDOW", id(c.windowId()), id(c.merchantId()),
-                            id(c.storeId()), "STAFF_WINDOW_OPEN", null,
-                            c.expectedVersion(), c.expectedVersion() + 1);
-                    return result;
-                });
-        return executed.result();
-    }
+    // ------------------------------------------- staff windows (removed)
+    // CCR-SCH-STAFF-OFFLINE-001 (2026-11-16): the staff availability-window commands
+    // (create/update/close/open) were removed - staff scheduling is offline-managed.
 
     // ------------------------------------------------------------------ capabilities
 
@@ -825,28 +641,6 @@ public final class ScheduleMerchantCommandService implements ScheduleMerchantCom
         }
     }
 
-    /** 36号: a staff member with a protected current assignment must be reassigned first. */
-    private void requireNoProtectedAssignment(String storeId, String staffId, CommandContext ctx) {
-        OrderProtectionSnapshot snapshot;
-        try {
-            snapshot = orders.getCurrentAssignments(storeId, List.of(staffId), query(ctx));
-        } catch (ApiException known) {
-            throw known;
-        } catch (RuntimeException unreadable) {
-            unavailable("order assignment facts are unavailable");
-            throw unreadable;
-        }
-        if (snapshot == null || !snapshot.complete()) {
-            unavailable("order assignment facts are incomplete");
-        }
-        boolean blocked = snapshot.items().stream().anyMatch(item -> item != null
-                && staffId.equals(item.currentStaffId()) && item.protectRequired());
-        if (blocked) {
-            throw new ApiException(CommonApiCodes.CONFLICT,
-                    "the staff member still holds a protected assignment");
-        }
-    }
-
     /** CCR-SCH-SLOT-001: store-wide unified slots must not overlap — same store, every window. */
     private static void ensureNoOpenOverlap(StoreScheduleFacts snapshot,
             OffsetDateTime start, OffsetDateTime end, String excludedWindowId) {
@@ -863,23 +657,6 @@ public final class ScheduleMerchantCommandService implements ScheduleMerchantCom
                 throw new ApiException(
                         ScheduleWriteApiCodes.SCHEDULE_WINDOW_OVERLAP,
                         "an open window of this store already covers this interval");
-            }
-        }
-    }
-
-    private void ensureNoAvailableOverlap(ScheduleWriteMapper m, String storeId, String staffId,
-            OffsetDateTime start, OffsetDateTime end, String excludedWindowId) {
-        for (Map<String, Object> row : m.listStaffWindows(id(storeId), id(staffId))) {
-            if (!"AVAILABLE".equals(ScheduleSqlRows.text(row, "status"))
-                    || ScheduleSqlRows.id(row, "id").equals(excludedWindowId)) {
-                continue;
-            }
-            OffsetDateTime otherStart = ScheduleSqlRows.at(row, "start_at");
-            OffsetDateTime otherEnd = ScheduleSqlRows.at(row, "end_at");
-            if (otherStart.isBefore(end) && start.isBefore(otherEnd)) {
-                throw new ApiException(
-                        ScheduleWriteApiCodes.SCHEDULE_WINDOW_OVERLAP,
-                        "an available window of the same staff already covers this interval");
             }
         }
     }
@@ -901,28 +678,11 @@ public final class ScheduleMerchantCommandService implements ScheduleMerchantCom
         return claims;
     }
 
-    private static boolean isReduction(Map<String, Object> row, OffsetDateTime start,
-            OffsetDateTime end) {
-        OffsetDateTime oldStart = ScheduleSqlRows.at(row, "start_at");
-        OffsetDateTime oldEnd = ScheduleSqlRows.at(row, "end_at");
-        return start.isAfter(oldStart) || end.isBefore(oldEnd);
-    }
-
     private Map<String, Object> lockedWindow(ScheduleWriteMapper m, String windowId,
             String merchantId, String storeId) {
         Map<String, Object> row = m.selectWindowByIdForUpdate(id(windowId));
         if (row == null || id(merchantId) != ScheduleSqlRows.number(row, "merchant_id")
                 || id(storeId) != ScheduleSqlRows.number(row, "store_id")) {
-            notFound();
-        }
-        return row;
-    }
-
-    private Map<String, Object> lockedStaffWindow(ScheduleWriteMapper m, String windowId,
-            String storeId, String staffId) {
-        Map<String, Object> row = m.selectStaffWindowByIdForUpdate(id(windowId));
-        if (row == null || id(storeId) != ScheduleSqlRows.number(row, "store_id")
-                || id(staffId) != ScheduleSqlRows.number(row, "staff_id")) {
             notFound();
         }
         return row;
@@ -968,19 +728,6 @@ public final class ScheduleMerchantCommandService implements ScheduleMerchantCom
         return new WindowResult(window.windowId(), window.merchantId(), window.storeId(),
                 window.startAt(), window.endAt(),
                 window.configuredCapacity(), window.status(), window.version());
-    }
-
-    private static StaffWindowResult rowToStaffWindow(Map<String, Object> row,
-            String merchantId) {
-        return new StaffWindowResult(
-                ScheduleSqlRows.id(row, "id"),
-                merchantId,
-                ScheduleSqlRows.id(row, "store_id"),
-                ScheduleSqlRows.id(row, "staff_id"),
-                ScheduleSqlRows.at(row, "start_at"),
-                ScheduleSqlRows.at(row, "end_at"),
-                ScheduleSqlRows.text(row, "status"),
-                ScheduleSqlRows.version(row, "version"));
     }
 
     // ------------------------------------------------------------------ primitives

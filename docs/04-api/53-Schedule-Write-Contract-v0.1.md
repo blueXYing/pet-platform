@@ -1,6 +1,6 @@
 # Schedule Write Contract v0.1（商家排期写侧）
 
-状态：IMPLEMENTED_DEFAULT_OFF，2026-10-02；默认关闭，不表示生产已开放或页面已联调。2026-10-05 用户裁决：§7-1（B5）按方案 A 落地显式 SOLD_OUT 派生态与释放联动、§7-3（原登记的 200 上限问题）落地批量命令单次 200 条上限，均已并入本契约（见 §3 与 §3.1）；§7-2（C 端 kind）裁决本批不做。**2026-10-07 增补：§3.3 商家窗口列表标准分页（#106 登记的契约缺口，向后兼容、无新错误码、无 Schema 变更）。****本文档原编号 52：与 #101（staff-identity，52-Merchant-Staff-Identity）撞号，#101 合并后已重编号为 53（2026-10-06，含 docs/03-database/SQL53、11号 x-contract、代码注释与测试引用同步）。** **2026-11-13 修订（v0.2，[CCR-SCH-SLOT-001](../../planning/ccr/CCR-SCH-SLOT-001.md) 全店统一时间槽+单容量池）：§3 窗口身份改为 `storeId+时间区间`（全店共享，去 `serviceId`/`windowKind` 维度），请求/响应示例与 §3.3 列表过滤参数同步去 serviceId/kind，履约方式×kind 写入校验删除，窗口重叠校验改同店口径；batch-close、SCHC 闸门与事务序、幂等/审计/乐观并发/SOLD_OUT 派生态均不变；涉及 `kind` 的 C 端增列/过滤项随维度取消不再适用。** 产品依据：[SSOT §29](../00-ssot/01-SSOT-宠物平台V1.0-最终业务基线.md)、[PRD29](../01-prd/29-排期人员容量与维护人工裁决补充-v1.0.md)、SSOT §12/§13；技术契约：[34号排期保护契约](34-Schedule-Protection-Contract-v0.1.md)（SCHC-1～4，已批）、[34号存储](../03-database/34-Schedule-Protection-Storage-v0.1.md)、[36号预约与订单人员保护](36-Reservation-Order-Protection-Contract-v0.1.md)（ROC 已批、事实 API 已交付）、[写入提案 v0.2](../../planning/ccr/CCR-W2-API-001/schedule-write-proposal.md) 与[联合审阅回执](../../planning/ccr/CCR-W2-API-001/schedule-review-decisions.md)、[四项技术裁决回执](../../planning/ccr/CCR-W2-API-001/schedule-write-completion-decisions.md)。存储增量见 [SQL53](../03-database/53-Schedule-Write-Schema-v0.1.sql) 与隔离迁移 `schedule-migration/V29__schedule_write.sql`（仅显式 `schw001_*` 库可执行，永不跑共享数据源；SOLD_OUT 为既有 `status VARCHAR(16)` 列的应用层枚举值，无 DDL 变更）。
+状态：IMPLEMENTED_DEFAULT_OFF，2026-10-02；默认关闭，不表示生产已开放或页面已联调。2026-10-05 用户裁决：§7-1（B5）按方案 A 落地显式 SOLD_OUT 派生态与释放联动、§7-3（原登记的 200 上限问题）落地批量命令单次 200 条上限，均已并入本契约（见 §3 与 §3.1）；§7-2（C 端 kind）裁决本批不做。**2026-10-07 增补：§3.3 商家窗口列表标准分页（#106 登记的契约缺口，向后兼容、无新错误码、无 Schema 变更）。****本文档原编号 52：与 #101（staff-identity，52-Merchant-Staff-Identity）撞号，#101 合并后已重编号为 53（2026-10-06，含 docs/03-database/SQL53、11号 x-contract、代码注释与测试引用同步）。** **2026-11-13 修订（v0.2，[CCR-SCH-SLOT-001](../../planning/ccr/CCR-SCH-SLOT-001.md) 全店统一时间槽+单容量池）：§3 窗口身份改为 `storeId+时间区间`（全店共享，去 `serviceId`/`windowKind` 维度），请求/响应示例与 §3.3 列表过滤参数同步去 serviceId/kind，履约方式×kind 写入校验删除，窗口重叠校验改同店口径；batch-close、SCHC 闸门与事务序、幂等/审计/乐观并发/SOLD_OUT 派生态均不变；涉及 `kind` 的 C 端增列/过滤项随维度取消不再适用。** **2026-11-16 修订（[CCR-SCH-STAFF-OFFLINE-001](../../planning/ccr/CCR-SCH-STAFF-OFFLINE-001.md) 取消系统化员工排班，容量=时段容量）：§4 员工排班 CRUD 整节废除（五路由删除、`staff_availability_window` 保留历史数据但读写全移除、`STAFF_WINDOW` 审计词表废弃）；§3 时段容量语义不变（effectiveCapacity=configuredCapacity，无员工数 min）；§5 能力授权保留，撤销保护简化为全店容量不变量复核。** 产品依据：[SSOT §29](../00-ssot/01-SSOT-宠物平台V1.0-最终业务基线.md)、[PRD29](../01-prd/29-排期人员容量与维护人工裁决补充-v1.0.md)、SSOT §12/§13；技术契约：[34号排期保护契约](34-Schedule-Protection-Contract-v0.1.md)（SCHC-1～4，已批）、[34号存储](../03-database/34-Schedule-Protection-Storage-v0.1.md)、[36号预约与订单人员保护](36-Reservation-Order-Protection-Contract-v0.1.md)（ROC 已批、事实 API 已交付）、[写入提案 v0.2](../../planning/ccr/CCR-W2-API-001/schedule-write-proposal.md) 与[联合审阅回执](../../planning/ccr/CCR-W2-API-001/schedule-review-decisions.md)、[四项技术裁决回执](../../planning/ccr/CCR-W2-API-001/schedule-write-completion-decisions.md)。存储增量见 [SQL53](../03-database/53-Schedule-Write-Schema-v0.1.sql) 与隔离迁移 `schedule-migration/V29__schedule_write.sql`（仅显式 `schw001_*` 库可执行，永不跑共享数据源；SOLD_OUT 为既有 `status VARCHAR(16)` 列的应用层枚举值，无 DDL 变更）。
 
 ## 1. 范围与开关
 
@@ -63,19 +63,22 @@
 - **排序固定不变**：`start_at` 升序、`id` 升序 tiebreak（既有口径），不接排序参数；过滤先应用、分页在过滤之后（先过滤再计数与切片）。
 - 幂等、审计（读侧本无审计）、`no-store`、OWNER 准入、开关分层语义均不变。
 
-## 4. 员工排班（SCHW-D6）
+## 4. 员工排班（SCHW-D6）——已废除（CCR-SCH-STAFF-OFFLINE-001，2026-11-16）
 
-写入前提=员工属该店、在职 ACTIVE、商家/门店准入通过（经 MER 当前事实，失败关闭 503；INACTIVE 409）。同员工 AVAILABLE 排班不重叠，相邻可衔接；关闭/重开保留历史。
+**本节整节废除**：用户裁决「员工排班让线下人员自己排，没必要和系统挂钩；时段容量是多少就是多少」（[CCR-SCH-STAFF-OFFLINE-001](../../planning/ccr/CCR-SCH-STAFF-OFFLINE-001.md)）。员工排班改由线下管理，系统不再承载排班数据：
+
+- 下表五个路由（GET/POST/PUT/close/open `/merchant/staff/{staffId}/availability-windows*`）**已删除**，OpenAPI 同步移除，安全链不再放行；
+- `staff_availability_window` 表与历史数据保留（仅存档），本模块读写全部移除；
+- `schedule_write_action` 词表中 `STAFF_WINDOW` 目标类型与 `STAFF_WINDOW_CREATE/UPDATE/CLOSE/OPEN` 动作**废弃**（CHECK 约束保留仅为可读历史审计行，不再产生新行）；
+- 原「减少可用性保护」（36号 protectRequired 指派闸门 + 全店可行性复核）随排班命令一并移除；§5 能力撤销的保护简化为仅全店容量不变量复核（34号 SCHC 简化）。
 
 | Method | Path | Body | 回执 |
 |---|---|---|---|
-| GET | /merchant/staff/{staffId}/availability-windows | merchantId,storeId | `{storeId,staffId,items:[{windowId,…,status,version,updatedAt}]}` |
-| POST | /merchant/staff/{staffId}/availability-windows | merchantId,storeId,startAt,endAt | 201/200 `{windowId,…,status:"AVAILABLE",version:"0"}` |
-| PUT | /merchant/staff/{staffId}/availability-windows/{windowId} | merchantId,storeId,startAt,endAt,expectedVersion；reason 缩减时必填 | `{window,…}` |
-| POST | /merchant/staff/{staffId}/availability-windows/{windowId}/close | merchantId,storeId,expectedVersion,reason 必填 | `{window,status:"CLOSED"}` |
-| POST | /merchant/staff/{staffId}/availability-windows/{windowId}/open | merchantId,storeId,expectedVersion | `{window,status:"AVAILABLE"}`；重叠 409 |
-
-减少可用性（close 或缩短/移动使新区间不完全覆盖旧区间）的保护=36号已批语义的本批实现：①ORDER `getCurrentAssignments` 显示该员工仍有 `protectRequired` 当前指派 → 409（先合法改派再重试）；②通过后同事务应用变更，再以既有 `CapacityFeasibilitySolver` 对全店活跃预约做整体可行性复核（SCHC-1 事实源+既定预算），不可行 409、预算/事实故障 503 整笔回滚——恢复依赖服务后重试原意。新增/放宽排班不需要占用保护，仍走鉴权、重叠、版本与审计。
+| ~~GET~~ | ~~/merchant/staff/{staffId}/availability-windows~~ | 已删除 | 已删除 |
+| ~~POST~~ | ~~/merchant/staff/{staffId}/availability-windows~~ | 已删除 | 已删除 |
+| ~~PUT~~ | ~~/merchant/staff/{staffId}/availability-windows/{windowId}~~ | 已删除 | 已删除 |
+| ~~POST~~ | ~~/merchant/staff/{staffId}/availability-windows/{windowId}/close~~ | 已删除 | 已删除 |
+| ~~POST~~ | ~~/merchant/staff/{staffId}/availability-windows/{windowId}/open~~ | 已删除 | 已删除 |
 
 ## 5. 员工服务能力（SCHC-2）
 
@@ -86,7 +89,7 @@
 | GET | /merchant/staff/{staffId}/service-capabilities | query: merchantId,storeId | `{merchantId,storeId,staffId,serviceIds,version}`；仅头与明细都不存在时返回 `serviceIds:[],version:"0"`（`X-Request-Id` 写请求必填，GET 可省） |
 | PUT | /merchant/staff/{staffId}/service-capabilities | merchantId,storeId,serviceIds(去重，重复 400),expectedVersion；reason 移除时任一项必填 | `{merchantId,storeId,staffId,serviceIds,version}` |
 
-PUT 为全量替换：过期 `expectedVersion` 409 `COMMON_CONFLICT` 提示重读，不 last-write-wins；首次空集合 PUT 带 `expectedVersion:"0"` 原子建头推进 "1"；同 requestId 同参重放返回首次版本不递增，不同 requestId 的相同集合仍递增并审计；写成空集合头保留不回 0；版本上溢拒绝。目标服务必须属该店该商家（404），不按类目扩权；撤销项先过 §4 同款减员保护再删除明细，未通过 409 整笔回滚。
+PUT 为全量替换：过期 `expectedVersion` 409 `COMMON_CONFLICT` 提示重读，不 last-write-wins；首次空集合 PUT 带 `expectedVersion:"0"` 原子建头推进 "1"；同 requestId 同参重放返回首次版本不递增，不同 requestId 的相同集合仍递增并审计；写成空集合头保留不回 0；版本上溢拒绝。目标服务必须属该店该商家（404），不按类目扩权；撤销项在删除明细后做全店容量不变量复核（CCR-SCH-STAFF-OFFLINE-001 简化：员工排班维度已废除，不再做员工覆盖可行性匹配），复核不可行 409 整笔回滚。
 
 ## 6. 审计与验收边界
 

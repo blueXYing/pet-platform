@@ -13,11 +13,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * SCH-004 (W2-SCHW-012): with pet.schedule.command.enabled / pet.schedule.command.http.enabled
  * explicitly false, neither the write assembly nor the merchant routes exist, so
- * /api/v1/merchant/stores/{storeId}/* availability-windows,
- * /api/v1/merchant/staff/{staffId}/availability-windows and
- * /api/v1/merchant/staff/{staffId}/service-capabilities stay unreachable. Ruling 35
- * (2026-10-16) flips the platform capability switches to default ON, so this fail-closed
- * check closes the switches explicitly instead of relying on the absent-property default.
+ * /api/v1/merchant/stores/{storeId}/* availability-windows and
+ * /api/v1/merchant/staff/{staffId}/service-capabilities stay unreachable (the staff
+ * availability-windows family was removed by CCR-SCH-STAFF-OFFLINE-001, 2026-11-16).
+ * Ruling 35 (2026-10-16) flips the platform capability switches to default ON, so this
+ * fail-closed check closes the switches explicitly instead of relying on the absent-property
+ * default.
  */
 class ScheduleWriteDisabledTest {
 

@@ -242,17 +242,19 @@ STORE_CATALOG_OPERATIONS = {
 
 # SCH-001 schedule availability (CCR-W2-API-001, ruling 2026-09-23): implemented default-off
 # behind pet.schedule.query.enabled. Mandatory session (SCH-D1, OUTSIDE the STR-D8 anonymous
-# browse family). SCH-002 now assembles real staff/capability/availability facts; missing or
-# unreadable providers still fail closed. This surface is not booking/hold authority.
+# browse family). CCR-SCH-STAFF-OFFLINE-001 (2026-11-16): capacity is the configured slot
+# capacity — no staff availability facts participate. This surface is not booking/hold authority.
 SCHEDULE_AVAILABILITY_OPERATIONS = {
     'cGetServiceAvailability': ('get', '/c/services/{serviceId}/availability'),
 }
 
 # Contract53 (SCH-004 merchant schedule write side, PRD29/SSOT §29 + SCHW/SCHC rulings):
-# owner-gated service-window / staff-availability / capability maintenance plus the merchant
-# workbench reads, default off behind pet.schedule.command.*. Response codes are pinned per
-# operation and every error reply must use the merchant error envelope; creates answer 201
-# first-commit / 200 same-params replay with identical bodies (API23).
+# owner-gated service-window / capability maintenance plus the merchant workbench reads,
+# default off behind pet.schedule.command.*. CCR-SCH-STAFF-OFFLINE-001 (2026-11-16) removed
+# the staff availability-window CRUD family (GET/POST/PUT/close/open) — staff scheduling is
+# offline-managed. Response codes are pinned per operation and every error reply must use the
+# merchant error envelope; creates answer 201 first-commit / 200 same-params replay with
+# identical bodies (API23).
 SCHEDULE_WRITE_OPERATIONS = {
     'merchantListScheduleWindows': (
         'get', '/merchant/stores/{storeId}/availability-windows',
@@ -272,21 +274,6 @@ SCHEDULE_WRITE_OPERATIONS = {
     'merchantBatchCloseScheduleWindows': (
         'post', '/merchant/stores/{storeId}/availability-windows/batch-close',
         ('200', '400', '401', '403', '409', '503')),
-    'merchantListStaffAvailabilityWindows': (
-        'get', '/merchant/staff/{staffId}/availability-windows',
-        ('200', '400', '401', '403', '503')),
-    'merchantCreateStaffAvailabilityWindow': (
-        'post', '/merchant/staff/{staffId}/availability-windows',
-        ('200', '201', '400', '401', '403', '404', '409', '503')),
-    'merchantUpdateStaffAvailabilityWindow': (
-        'put', '/merchant/staff/{staffId}/availability-windows/{windowId}',
-        ('200', '400', '401', '403', '404', '409', '503')),
-    'merchantCloseStaffAvailabilityWindow': (
-        'post', '/merchant/staff/{staffId}/availability-windows/{windowId}/close',
-        ('200', '400', '401', '403', '404', '409', '503')),
-    'merchantOpenStaffAvailabilityWindow': (
-        'post', '/merchant/staff/{staffId}/availability-windows/{windowId}/open',
-        ('200', '400', '401', '403', '404', '409', '503')),
     'merchantGetStaffServiceCapabilities': (
         'get', '/merchant/staff/{staffId}/service-capabilities',
         ('200', '400', '401', '403', '404', '503')),

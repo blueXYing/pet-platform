@@ -486,8 +486,9 @@ class MerchantStaffAcceptanceHttpTest {
     String service = createActiveService(token, merchantId, storeId, String.valueOf(category));
     LocalDate day = LocalDate.now(ZoneId.of("Asia/Shanghai")).plusDays(10);
     String start = utc(day, 9, 0), end = utc(day, 10, 0);
-    // CCR-SCH-SLOT-001: the slot is store-wide; the service's bookability comes from staff
-    // capability + schedule coverage, which the steps below add progressively.
+    // CCR-SCH-SLOT-001: the slot is store-wide. CCR-SCH-STAFF-OFFLINE-001 (2026-11-16): the
+    // effective capacity is the configured slot capacity — the C availability read works with
+    // the maintained staff row and needs no capability/availability seed any more.
     db.jdbc.update(
         "INSERT INTO schedule_availability_window(id,merchant_id,store_id,start_at,end_at,configured_capacity,status,version,created_at,updated_at)"
             + " VALUES(?,?,?,?,?,2,'OPEN',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
@@ -499,17 +500,7 @@ class MerchantStaffAcceptanceHttpTest {
     String path =
         "/api/v1/c/services/" + service + "/availability?storeId=" + storeId
             + "&startDate=" + day + "&endDate=" + day;
-    assertCapacity(send("GET", path, null, bearer(token)), 0);
-    db.jdbc.update(
-        "INSERT INTO staff_service_capability(id,staff_id,service_id,status,created_at,updated_at)"
-            + " VALUES(?,?,?,'ENABLED',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
-        db.ids.nextId(), Long.parseLong(staffId), Long.parseLong(service));
-    assertCapacity(send("GET", path, null, bearer(token)), 0);
-    db.jdbc.update(
-        "INSERT INTO staff_availability_window(id,store_id,staff_id,start_at,end_at,status,version,created_at,updated_at)"
-            + " VALUES(?,?,?,?,?,'AVAILABLE',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
-        db.ids.nextId(), Long.parseLong(storeId), Long.parseLong(staffId), start, end);
-    assertCapacity(send("GET", path, null, bearer(token)), 1);
+    assertCapacity(send("GET", path, null, bearer(token)), 2);
   }
 
   private String createActiveService(String token, String merchantId, String storeId, String category)

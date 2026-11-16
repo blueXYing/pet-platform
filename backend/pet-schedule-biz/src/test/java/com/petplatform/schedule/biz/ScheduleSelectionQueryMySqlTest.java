@@ -12,7 +12,6 @@ import com.petplatform.common.OperatorType;
 import com.petplatform.common.QueryContext;
 import com.petplatform.schedule.api.dto.SelectionWindowPageDTO;
 import com.petplatform.schedule.api.query.SelectionWindowQuery;
-import com.petplatform.schedule.biz.application.QualifiedStaffFactsPort;
 import com.petplatform.schedule.biz.application.SelectionWindowQueryService;
 import com.petplatform.schedule.biz.infrastructure.persistence.SelectionReadStore;
 import com.petplatform.service.api.dto.ServiceBookabilityDTO;
@@ -188,9 +187,9 @@ class ScheduleSelectionQueryMySqlTest {
         when(services.getServiceSnapshot(any())).thenReturn(new ServiceSnapshotDTO(
                 "301", "10", "201", "service", "1", "category", BigDecimal.ONE, 60,
                 type, null, null, null, null));
-        QualifiedStaffFactsPort staff = (store, selectedService, from, to) -> 2;
+        // CCR-SCH-STAFF-OFFLINE-001: capacity is the configured slot capacity — no staff port.
         return new SelectionWindowQueryService(new SelectionReadStore(db.source), services,
-                staff, Clock.fixed(Instant.parse("2029-12-31T00:00:00Z"), ZoneOffset.UTC));
+                Clock.fixed(Instant.parse("2029-12-31T00:00:00Z"), ZoneOffset.UTC));
     }
 
     private static final class Database implements AutoCloseable {

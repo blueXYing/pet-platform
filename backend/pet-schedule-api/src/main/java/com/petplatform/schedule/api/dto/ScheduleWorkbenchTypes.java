@@ -23,11 +23,6 @@ public final class ScheduleWorkbenchTypes {
         public WindowPage { items = List.copyOf(items); }
     }
 
-    public record StaffWindowItem(String windowId, String merchantId, String storeId,
-            String staffId, OffsetDateTime startAt, OffsetDateTime endAt, String status,
-            String version, OffsetDateTime updatedAt) {}
-
-    public record StaffWindowPage(String storeId, String staffId, List<StaffWindowItem> items) {
-        public StaffWindowPage { items = List.copyOf(items); }
-    }
+    // CCR-SCH-STAFF-OFFLINE-001 (2026-11-16): StaffWindowItem/StaffWindowPage were removed —
+    // the merchant workbench no longer lists staff availability windows.
 }

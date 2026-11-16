@@ -5,7 +5,7 @@ import { ApiError } from '../../shared/request'
 import { ConsumerApi, type LocalStore } from '../../shared/consumer-api'
 import {
   emptyWindowForm, PreviewScheduleRepository, ScheduleMockError,
-  fixtureStaffWindows, fixtureWindows, scheduleAvailability, windowFormFromItem,
+  fixtureWindows, scheduleAvailability, windowFormFromItem,
   type ScheduleWindowReceipt,
 } from '../schedule/model'
 import { RealScheduleRepository } from '../schedule/repository'
@@ -16,8 +16,6 @@ async function rejects(call: () => Promise<unknown> | unknown): Promise<unknown>
 const formFor = (start: string, end: string, capacity: number) =>
   ({ startDate: start.slice(0, 10), startTime: start.slice(11, 16),
     endDate: end.slice(0, 10), endTime: end.slice(11, 16), configuredCapacity: capacity })
-const staffForm = (start: string, end: string) =>
-  ({ startDate: start.slice(0, 10), startTime: start.slice(11, 16), endDate: end.slice(0, 10), endTime: end.slice(11, 16) })
 
 test('preview workbench read decodes fixtures and derives SOLD_OUT', async () => {
   const repository = new PreviewScheduleRepository()
@@ -135,34 +133,6 @@ test('preview batch close: partial success names blocked windows; >200 entries r
   assert.equal((noReason as ScheduleMockError).code, 'COMMON_INVALID_ARGUMENT')
 })
 
-test('preview staff windows: overlap 409, assignment protection 409, CAS 409', async () => {
-  const repository = new PreviewScheduleRepository()
-  repository.protectedStaff = true
-  const page = await repository.staffWindows('958003')
-  assert.equal(page.items.length, fixtureStaffWindows().length)
-  const overlap = await rejects(() => repository.createStaffWindow('c1', '958003',
-    staffForm('2026-10-07 10:00', '2026-10-07 11:00')))
-  assert.equal((overlap as ScheduleMockError).code, 'SCHEDULE_WINDOW_OVERLAP')
-  const adjacent = await repository.createStaffWindow('c2', '958003', staffForm('2026-10-07 12:00', '2026-10-07 13:00'))
-  assert.equal(adjacent.status, 'AVAILABLE')
-  // Shrinking an AVAILABLE row with protected assignments → 409 (§4 protection).
-  const available = page.items.find(item => item.status === 'AVAILABLE')!
-  const shrink = await rejects(() => repository.updateStaffWindow('c3', '958003', available.windowId, available.version,
-    staffForm('2026-10-07 09:30', '2026-10-07 11:30')))
-  assert.equal((shrink as ScheduleMockError).code, 'SCHEDULE_WINDOW_STATE_NOT_ALLOWED')
-  const close = await rejects(() => repository.closeStaffWindow('c4', '958003', available.windowId, available.version, '请假'))
-  assert.equal((close as ScheduleMockError).code, 'SCHEDULE_WINDOW_STATE_NOT_ALLOWED')
-  // Without protection the same close succeeds; CAS staleness still 409s.
-  repository.protectedStaff = false
-  const stale = await rejects(() => repository.closeStaffWindow('c5', '958003', available.windowId, '0', '请假'))
-  assert.equal((stale as ScheduleMockError).code, 'COMMON_CONFLICT')
-  const closedWindow = await repository.closeStaffWindow('c6', '958003', available.windowId, available.version, '请假')
-  assert.equal(closedWindow.status, 'CLOSED')
-  const reopened = await repository.openStaffWindow('c7', '958003', available.windowId, closedWindow.version)
-  assert.equal(reopened.status, 'AVAILABLE')
-  await assert.rejects(() => repository.staffWindows('not-an-id'))
-})
-
 test('preview capabilities: whole-set CAS replace, removal reason, legacy quarantine', async () => {
   const repository = new PreviewScheduleRepository()
   const current = await repository.capabilities('958003')
@@ -179,21 +149,21 @@ test('preview capabilities: whole-set CAS replace, removal reason, legacy quaran
   assert.deepEqual(fresh.serviceIds, [])
   assert.equal(fresh.version, '0')
   // LEGACY_UNVERSIONED heads answer 503 and stay quarantined (§5).
-  const legacy = new PreviewScheduleRepository(undefined, undefined, undefined, 'legacy')
+  const legacy = new PreviewScheduleRepository(undefined, undefined, 'legacy')
   const quarantined = await rejects(() => legacy.capabilities('958003'))
   assert.equal((quarantined as ScheduleMockError).statusCode, 503)
   assert.equal(scheduleAvailability(quarantined), 'closed')
 })
 
 test('preview scenarios fail closed and the slot journal replays/locks', async () => {
-  const closed = new PreviewScheduleRepository(undefined, undefined, undefined, 'closed')
+  const closed = new PreviewScheduleRepository(undefined, undefined, 'closed')
   const unavailable = await rejects(() => closed.windows({ page: 1, pageSize: 20 }))
   assert.equal((unavailable as ScheduleMockError).statusCode, 503)
-  const empty = new PreviewScheduleRepository(undefined, undefined, undefined, 'empty')
+  const empty = new PreviewScheduleRepository(undefined, undefined, 'empty')
   const emptyPage = await empty.windows({ page: 1, pageSize: 20 })
   assert.equal(emptyPage.items.length, 0)
   assert.equal(emptyPage.total, 0)
-  const loadError = new PreviewScheduleRepository(undefined, undefined, undefined, 'load-error')
+  const loadError = new PreviewScheduleRepository(undefined, undefined, 'load-error')
   const failed = await rejects(() => loadError.windows({ page: 1, pageSize: 20 }))
   assert.equal((failed as ScheduleMockError).statusCode, 503)
   const repository = new PreviewScheduleRepository()
@@ -250,9 +220,6 @@ test('real repository wires the contract routes with workspace coordinates', asy
     if (call.path.endsWith('/close')) return ok({ ...windowReceipt, status: 'CLOSED', version: '1' })
     if (call.path.endsWith('/open')) return ok({ ...windowReceipt, status: 'OPEN', version: '2' })
     if (call.path.endsWith('/batch-close')) return ok({ storeId: '958002', closedWindows: [{ ...windowReceipt, status: 'CLOSED', version: '1' }], blockedWindows: [] })
-    if (call.path.includes('/staff/958003/availability-windows') && call.method === 'GET') {
-      return ok({ storeId: '958002', staffId: '958003', items: [] })
-    }
     if (call.path.includes('/staff/958003/service-capabilities')) {
       return ok({ merchantId: '958001', storeId: '958002', staffId: '958003', serviceIds: ['30001'], version: '3' })
     }
@@ -299,33 +266,18 @@ test('real repository wires the contract routes with workspace coordinates', asy
   const batchCall = seen.find(item => item.path.endsWith('/batch-close'))!
   assert.equal(batchCall.data?.fromDate, '2026-10-07')
   assert.equal(batchCall.data?.toDate, '2026-10-08')
-  await repository.staffWindows('958003')
-  const staffListCall = seen.find(item => item.path === '/api/v1/merchant/staff/958003/availability-windows')!
-  assert.equal(staffListCall.data?.storeId, '958002')
   await repository.capabilities('958003')
   const capCall = seen.find(item => item.path === '/api/v1/merchant/staff/958003/service-capabilities')!
   assert.equal(capCall.data?.merchantId, '958001')
 })
 
-test('real repository: staff and capability commands address staffId in the path', async () => {
-  const staffReceipt = {
-    windowId: '62009', merchantId: '958001', storeId: '958002', staffId: '958003',
-    startAt: '2026-10-07T01:00:00.000Z', endAt: '2026-10-07T04:00:00.000Z',
-    status: 'AVAILABLE' as const, version: '0',
-  }
+test('real repository: capability commands address staffId in the path', async () => {
   const { repository, seen } = await wiredApi(call => {
-    if (call.method === 'POST' && /staff\/958003\/availability-windows$/.test(call.path)) return ok(staffReceipt)
-    if (call.path.endsWith('/958003/availability-windows/62009/close')) return ok({ ...staffReceipt, status: 'CLOSED', version: '1' })
     if (call.method === 'PUT' && /staff\/958003\/service-capabilities$/.test(call.path)) {
       return ok({ merchantId: '958001', storeId: '958002', staffId: '958003', serviceIds: [], version: '4' })
     }
     return undefined
   })
-  await repository.createStaffWindow('e1', '958003', staffForm('2026-10-08 09:00', '2026-10-08 12:00'))
-  const createCall = seen.find(item => item.path === '/api/v1/merchant/staff/958003/availability-windows')!
-  assert.equal(createCall.data?.storeId, '958002')
-  assert.equal(createCall.data?.startAt, '2026-10-08T09:00:00.000+08:00')
-  await repository.closeStaffWindow('e2', '958003', '62009', '0', '请假')
   await repository.replaceCapabilities('e3', '958003', [], '3', '全部撤销')
   const putCall = seen.find(item => item.method === 'PUT' && item.path === '/api/v1/merchant/staff/958003/service-capabilities')!
   assert.deepEqual(putCall.data?.serviceIds, [])

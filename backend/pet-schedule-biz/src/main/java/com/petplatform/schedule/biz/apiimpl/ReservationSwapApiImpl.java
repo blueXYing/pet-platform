@@ -68,11 +68,13 @@ public final class ReservationSwapApiImpl implements ReservationSwapApi {
     if(mapper.claim(values("id",IDS.fromApi(o.claimId()),"reservation",IDS.fromApi(c.reservationId()),"window",IDS.fromApi(n.windowId()),"kind",n.kind(),"start",utc(n.startAt()),"end",utc(n.endAt())))!=1)throw bad();
     current.add(new ClaimFact(o.claimId(),c.reservationId(),n.windowId(),c.storeId(),c.serviceId(),n.kind(),n.startAt(),n.endAt()));
    }
-   int capacity=Math.min(plan.configuredCapacity(),plan.qualifiedStaffCount());
+   // CCR-SCH-STAFF-OFFLINE-001: capacity is the configured slot capacity; the qualified-staff
+   // snapshot column is retained but records the same number.
+   int capacity=plan.configuredCapacity();
    if(mapper.swap(values("id",IDS.fromApi(c.reservationId()),"orderId",IDS.fromApi(c.orderId()),"version",version,"start",utc(start),"end",utc(end),
-    "pickup",pickup?utc(start):null,"returning",utc(returning),"capacity",capacity,"qualified",plan.qualifiedStaffCount(),"now",utc(c.rescheduledAt())))!=1)throw bad();
+    "pickup",pickup?utc(start):null,"returning",utc(returning),"capacity",capacity,"qualified",capacity,"now",utc(c.rescheduledAt())))!=1)throw bad();
    var updated=new ReservationFact(old.reservationId(),old.orderId(),old.userId(),old.merchantId(),old.storeId(),old.serviceId(),old.fulfillmentType(),start,end,pickup?start:null,returning,"CONFIRMED",Long.toString(version+1));
-   var newSnapshot=values("reservation",updated,"claims",current,"capacity",values("id",c.reservationId(),"capacity_snapshot",capacity,"qualified_staff_count_snapshot",plan.qualifiedStaffCount()));
+   var newSnapshot=values("reservation",updated,"claims",current,"capacity",values("id",c.reservationId(),"capacity_snapshot",capacity,"qualified_staff_count_snapshot",capacity));
    // Snapshot IDs are all public strings, including the diagnostic parent identity.
    parent.put("id",c.reservationId());
    if(mapper.history(values("id",change,"reservation",IDS.fromApi(c.reservationId()),"orderId",IDS.fromApi(c.orderId()),"storeId",IDS.fromApi(c.storeId()),

@@ -27,10 +27,9 @@ import java.util.Objects;
  * CCR-W2-API-001 schedule domain (SCH-001, ruling 2026-09-23): minute-level availability query.
  * Visibility first - the four-condition conjunction consumed through the service-domain
  * checkBookable (its own repeatable-read snapshot) answers 404 SERVICE_NOT_FOUND for missing,
- * ineligible or store-mismatched services; facts failures stay 503. Capacity follows SSOT 12.2
- * (min of configured and qualified available staff): the staff facts provider is MANDATORY.
- * The SCH-002 real assembly supplies one, while the defensive absent-provider path remains
- * fail-closed instead of inventing placeholder capacity.
+ * ineligible or store-mismatched services; facts failures stay 503. Capacity follows
+ * CCR-SCH-STAFF-OFFLINE-001 (2026-11-16): the effective capacity IS the configured slot
+ * capacity — staff scheduling is offline-managed and is never a capacity premise.
  */
 public final class AvailabilityQueryService {
     private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
@@ -43,32 +42,27 @@ public final class AvailabilityQueryService {
 
     private final ScheduleReadStore store;
     private final ServiceQueryApi serviceFacts;
-    private final QualifiedStaffFactsPort staffFacts; // nullable by design: absent fails closed
     private final Clock clock;
 
     public AvailabilityQueryService(
             ScheduleReadStore store,
             ServiceQueryApi serviceFacts,
-            QualifiedStaffFactsPort staffFacts,
             Clock clock) {
         this.store = Objects.requireNonNull(store, "store is required");
         this.serviceFacts = Objects.requireNonNull(serviceFacts, "serviceFacts is required");
-        this.staffFacts = staffFacts;
         this.clock = Objects.requireNonNull(clock, "clock is required");
     }
 
     public AvailabilityPageDTO page(AvailabilityQuery query) {
         validate(query);
-        // Visibility first (SCH-D6 ordering): a confirmed invisible service is 404 even when the
-        // staff facts provider is absent; checkBookable already throws SERVICE_NOT_FOUND for a
-        // missing row or a store-id mismatch and DEPENDENCY_UNAVAILABLE for unknown facts.
+        // Visibility first (SCH-D6 ordering): a confirmed invisible service is 404; checkBookable
+        // already throws SERVICE_NOT_FOUND for a missing row or a store-id mismatch and
+        // DEPENDENCY_UNAVAILABLE for unknown facts.
         ServiceBookabilityDTO bookability =
                 serviceFacts.checkBookable(
                         new ServiceBookabilityQuery(
                                 query.serviceId(), query.storeId(), query.context()));
         if (!bookability.bookable()) notFound();
-        QualifiedStaffFactsPort staff = staffFacts;
-        if (staff == null) unavailable("qualified staff facts provider is unavailable");
         OffsetDateTime from = query.startDate().atStartOfDay(BUSINESS_ZONE).toOffsetDateTime();
         OffsetDateTime to =
                 query.endDate().plusDays(1).atStartOfDay(BUSINESS_ZONE).toOffsetDateTime();
@@ -77,8 +71,7 @@ public final class AvailabilityQueryService {
                 store.read(
                         mapper -> {
                             // CCR-SCH-SLOT-001: candidate slots are the store's whole open slot
-                            // timeline; this service's bookability is decided per slot by the
-                            // qualified-staff coverage below, not by a window ownership filter.
+                            // timeline; every service shares the same store-wide capacity pool.
                             List<ScheduleAvailabilityWindowEntity> rows =
                                     mapper.selectOpenWindows(
                                             targetId(query.storeId()),
@@ -87,7 +80,7 @@ public final class AvailabilityQueryService {
                             List<AvailabilityWindowDTO> result = new ArrayList<>(rows.size());
                             for (ScheduleAvailabilityWindowEntity row : rows) {
                                 if (!notFinished(row, now)) continue; // ended windows never return
-                                result.add(aggregate(row, query, staff, mapper, now));
+                                result.add(aggregate(row, query, mapper, now));
                             }
                             return List.copyOf(result);
                         });
@@ -98,7 +91,6 @@ public final class AvailabilityQueryService {
     private AvailabilityWindowDTO aggregate(
             ScheduleAvailabilityWindowEntity row,
             AvailabilityQuery query,
-            QualifiedStaffFactsPort staff,
             ScheduleReadMapper mapper,
             Instant now) {
         if (row.getStoreId() == null
@@ -112,21 +104,12 @@ public final class AvailabilityQueryService {
         }
         OffsetDateTime start = row.getStartAt().atOffset(ZoneOffset.UTC);
         OffsetDateTime end = row.getEndAt().atOffset(ZoneOffset.UTC);
-        int staffCount;
-        try {
-            staffCount =
-                    staff.countQualifiedAvailableStaff(
-                            query.storeId(), query.serviceId(), start, end);
-        } catch (ApiException known) {
-            throw known;
-        } catch (RuntimeException failure) {
-            throw unavailableReturn("qualified staff facts provider is unavailable");
-        }
-        if (staffCount < 0) unavailable("qualified staff facts are invalid");
         // Single pool (CCR-SCH-SLOT-001): occupancy is the effective-claim count on the slot
         // across every service of the store — the same notion the SOLD_OUT deriver uses.
         long occupied = mapper.countActiveClaimsOnWindow(row.getId());
-        int effective = Math.min(row.getConfiguredCapacity(), staffCount);
+        // CCR-SCH-STAFF-OFFLINE-001: effective capacity = configured slot capacity, no staff
+        // minimum. The DTO field keeps its shape but records the same number (deprecated).
+        int effective = row.getConfiguredCapacity();
         int remaining = (int) Math.max(effective - occupied, 0);
         boolean notYetStarted = start.toInstant().isAfter(now);
         return new AvailabilityWindowDTO(
@@ -135,7 +118,7 @@ public final class AvailabilityQueryService {
                 start,
                 end,
                 row.getConfiguredCapacity(),
-                staffCount,
+                effective,
                 effective,
                 (int) occupied,
                 remaining,
@@ -189,10 +172,5 @@ public final class AvailabilityQueryService {
 
     private static void unavailable(String message) {
         throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE, message);
-    }
-
-    /** Same failure with an explicit unreachable return for the catch-and-wrap call sites. */
-    private static RuntimeException unavailableReturn(String message) {
-        return new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE, message);
     }
 }

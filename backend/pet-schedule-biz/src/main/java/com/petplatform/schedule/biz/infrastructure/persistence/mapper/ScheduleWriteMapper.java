@@ -6,9 +6,10 @@ import java.util.List;
 import java.util.Map;
 import org.apache.ibatis.annotations.Param;
 
-/** Merchant schedule write statements: idempotency bindings, windows, staff windows,
- * capability sets and append-only write actions. All statements run inside the caller's
- * guarded top-level transaction (or the short admission transaction for bindings only). */
+/** Merchant schedule write statements: idempotency bindings, windows, capability sets and
+ * append-only write actions (CCR-SCH-STAFF-OFFLINE-001 removed the staff availability
+ * windows). All statements run inside the caller's guarded top-level transaction (or the
+ * short admission transaction for bindings only). */
 public interface ScheduleWriteMapper {
 
     void setTimeZoneUtc();
@@ -49,25 +50,9 @@ public interface ScheduleWriteMapper {
             @Param("expectedStatus") String expectedStatus,
             @Param("nextStatus") String nextStatus, @Param("now") LocalDateTime now);
 
-    // ------------------------------------------------------------ staff availability windows
-
-    Map<String, Object> selectStaffWindowByIdForUpdate(@Param("windowId") long windowId);
-
-    int insertStaffWindow(@Param("row") Map<String, Object> row);
-
-    int updateStaffWindow(@Param("windowId") long windowId,
-            @Param("startAt") LocalDateTime startAt, @Param("endAt") LocalDateTime endAt,
-            @Param("expectedVersion") long expectedVersion, @Param("now") LocalDateTime now);
-
-    int closeStaffWindow(@Param("windowId") long windowId,
-            @Param("expectedVersion") long expectedVersion, @Param("now") LocalDateTime now);
-
-    int openStaffWindow(@Param("windowId") long windowId,
-            @Param("expectedVersion") long expectedVersion, @Param("now") LocalDateTime now);
-
-    /** Guarded staff-window listing for in-transaction overlap checks (all statuses). */
-    List<Map<String, Object>> listStaffWindows(@Param("storeId") long storeId,
-            @Param("staffId") long staffId);
+    // ------------------------------------- staff availability windows (removed)
+    // CCR-SCH-STAFF-OFFLINE-001 (2026-11-16): staff scheduling is offline-managed; the
+    // staff availability-window CRUD statements no longer exist in this module.
 
     // ------------------------------------------------------------ capability set (SCHC-2)
 

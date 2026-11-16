@@ -203,12 +203,12 @@ class OrderRescheduleHttpAcceptanceTest {
         }
     }
 
-    /** The one non-original slot every success case reschedules into (14:00–16:30, capacity 1);
-     * the seeded staff window ends 14:00, so it is stretched to cover the new interval too. */
+    /** The one non-original slot every success case reschedules into (14:00–16:30, capacity 1).
+     * CCR-SCH-STAFF-OFFLINE-001: capacity is the configured slot capacity — no staff
+     * availability needs stretching to cover the new interval any more. */
     private static void fxWindow(AfterSaleHttpFixture f) {
         f.sql("INSERT INTO schedule_availability_window(id,merchant_id,store_id,start_at,end_at,configured_capacity,status,created_at,updated_at)"
                 + " VALUES(" + NEW_WINDOW + ",710301,710302,'2030-01-01 14:00:00','2030-01-01 16:30:00',1,'OPEN',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
-        f.sql("UPDATE staff_availability_window SET end_at='2030-01-01 18:00:00'");
     }
 
     private static Map<String, String> headers(String token, String requestId) {

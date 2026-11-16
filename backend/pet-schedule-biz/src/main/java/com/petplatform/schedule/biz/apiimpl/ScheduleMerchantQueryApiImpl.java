@@ -5,12 +5,9 @@ import com.petplatform.common.CommonApiCodes;
 import com.petplatform.common.DecimalPublicIdCodec;
 import com.petplatform.common.OperatorType;
 import com.petplatform.common.QueryContext;
-import com.petplatform.schedule.api.dto.ScheduleWorkbenchTypes.StaffWindowItem;
-import com.petplatform.schedule.api.dto.ScheduleWorkbenchTypes.StaffWindowPage;
 import com.petplatform.schedule.api.dto.ScheduleWorkbenchTypes.WindowItem;
 import com.petplatform.schedule.api.dto.ScheduleWorkbenchTypes.WindowPage;
 import com.petplatform.schedule.api.query.ScheduleMerchantQueryApi;
-import com.petplatform.schedule.api.query.WorkbenchStaffWindowQuery;
 import com.petplatform.schedule.api.query.WorkbenchWindowQuery;
 import com.petplatform.schedule.biz.application.ScheduleAdmissionGate;
 import com.petplatform.schedule.biz.infrastructure.persistence.ScheduleReadStore;
@@ -27,10 +24,11 @@ import java.util.Set;
  * with SCH-004). Owner-gated read-only projections over one repeatable-read snapshot; CLOSED
  * windows and versions are included so M-002 can drive optimistic updates. No guard is taken:
  * these reads never change protected facts and every write re-validates under the guard.
+ * CCR-SCH-STAFF-OFFLINE-001 (2026-11-16) removed the staff availability-window list.
  */
 public final class ScheduleMerchantQueryApiImpl implements ScheduleMerchantQueryApi {
     private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
-    private static final Set<String> STATUSES = Set.of("OPEN", "CLOSED", "SOLD_OUT", "AVAILABLE");
+    private static final Set<String> STATUSES = Set.of("OPEN", "CLOSED", "SOLD_OUT");
     // 53号 §3.3 (2026-10-07): the notification-list pagination baseline (10号 §3.14 先例),
     // re-validated here so a direct API caller gets the same 400 as the HTTP surface.
     private static final int PAGE_MAX = 10_000;
@@ -87,33 +85,6 @@ public final class ScheduleMerchantQueryApiImpl implements ScheduleMerchantQuery
             }
             return new WindowPage(q.storeId(), items, total, paged ? q.page() : null,
                     paged ? q.pageSize() : null);
-        });
-    }
-
-    @Override
-    public StaffWindowPage listStaffWindows(WorkbenchStaffWindowQuery q) {
-        user(q == null ? null : q.context());
-        positive(q.merchantId(), "merchantId");
-        positive(q.storeId(), "storeId");
-        positive(q.staffId(), "staffId");
-        return store.read(mapper -> {
-            admissions.requireOperable(q.context(), id(q.merchantId()), id(q.storeId()));
-            List<Map<String, Object>> rows =
-                    mapper.listStaffWindows(id(q.storeId()), id(q.staffId()));
-            List<StaffWindowItem> items = new ArrayList<>(rows.size());
-            for (Map<String, Object> row : rows) {
-                items.add(new StaffWindowItem(
-                        ScheduleSqlRows.id(row, "id"),
-                        q.merchantId(),
-                        ScheduleSqlRows.id(row, "store_id"),
-                        ScheduleSqlRows.id(row, "staff_id"),
-                        ScheduleSqlRows.at(row, "start_at"),
-                        ScheduleSqlRows.at(row, "end_at"),
-                        ScheduleSqlRows.text(row, "status"),
-                        ScheduleSqlRows.version(row, "version"),
-                        ScheduleSqlRows.at(row, "updated_at")));
-            }
-            return new StaffWindowPage(q.storeId(), q.staffId(), items);
         });
     }
 

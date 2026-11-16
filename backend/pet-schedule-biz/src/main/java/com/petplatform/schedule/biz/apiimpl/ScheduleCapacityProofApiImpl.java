@@ -4,7 +4,6 @@ import com.petplatform.common.ApiException;
 import com.petplatform.common.CommonApiCodes;
 import com.petplatform.common.DecimalPublicIdCodec;
 import com.petplatform.common.QueryContext;
-import com.petplatform.merchant.api.dto.MerchantCurrentStaffTypes.CurrentStaffFact;
 import com.petplatform.merchant.api.dto.MerchantCurrentStaffTypes.CurrentStoreStaffFacts;
 import com.petplatform.merchant.api.query.MerchantCurrentStaffFactsApi;
 import com.petplatform.order.api.dto.OrderProtectionTypes.OrderProtectionFact;
@@ -24,15 +23,9 @@ import com.petplatform.schedule.biz.domain.service.CapacityFeasibilitySolver.Cla
 import com.petplatform.schedule.biz.domain.service.CapacityFeasibilitySolver.Interval;
 import com.petplatform.schedule.biz.domain.service.CapacityFeasibilitySolver.Outcome;
 import com.petplatform.schedule.biz.domain.service.CapacityFeasibilitySolver.Reservation;
-import com.petplatform.schedule.biz.domain.service.CapacityFeasibilitySolver.Staff;
 import com.petplatform.schedule.biz.domain.service.CapacityFeasibilitySolver.Window;
-import com.petplatform.schedule.biz.infrastructure.persistence.ScheduleMybatis;
-import com.petplatform.schedule.biz.infrastructure.persistence.ScheduleSqlRows;
-import com.petplatform.schedule.biz.infrastructure.persistence.mapper.ScheduleCommandMapper;
 import java.time.Clock;
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -44,7 +37,12 @@ import javax.sql.DataSource;
 import org.springframework.jdbc.datasource.ConnectionHolder;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-/** Resource-only proof. A future write command must repeat it under its own guard before commit. */
+/**
+ * Resource-only proof. A future write command must repeat it under its own guard before commit.
+ * CCR-SCH-STAFF-OFFLINE-001 (2026-11-16): staff scheduling is offline-managed, so feasibility is
+ * the store-wide window-capacity invariant only — no staff availability/capability dimension.
+ * The MER current-staff facts read stays as the merchant-consistency anchor of the windows.
+ */
 public final class ScheduleCapacityProofApiImpl implements ScheduleCapacityProofApi {
     private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
     private static final String CANDIDATE_ID = "_candidate_";
@@ -54,7 +52,6 @@ public final class ScheduleCapacityProofApiImpl implements ScheduleCapacityProof
     private final ScheduleProtectionFactsApi facts;
     private final MerchantCurrentStaffFactsApi merchant;
     private final OrderProtectionFactsApi order;
-    private final ScheduleCommandMapper mapper;
     private final long budgetMillis;
     private final CapacityFeasibilitySolver solver;
 
@@ -77,7 +74,6 @@ public final class ScheduleCapacityProofApiImpl implements ScheduleCapacityProof
         if (budgetMillis <= 0) throw new IllegalArgumentException("positive budget is required");
         this.budgetMillis = budgetMillis;
         this.solver = new CapacityFeasibilitySolver(ticker);
-        this.mapper = ScheduleMybatis.template(source).getMapper(ScheduleCommandMapper.class);
     }
 
     @Override
@@ -96,9 +92,9 @@ public final class ScheduleCapacityProofApiImpl implements ScheduleCapacityProof
     }
 
     /**
-     * Protected-reduction proof (34号 §2 SCHC-1, write-proposal SCHW-D6/D7): after a staff
-     * availability or capability reduction has been applied inside the caller's guarded
-     * transaction, every active reservation of the store must still be coverable together.
+     * Protected-reduction proof (34号 §2 SCHC-1, simplified by CCR-SCH-STAFF-OFFLINE-001):
+     * after a capability reduction has been applied inside the caller's guarded transaction,
+     * every active reservation of the store must still fit the configured window capacities.
      * Known infeasibility is a 409 business conflict; budget exhaustion or unreadable facts
      * fail closed with 503 and the whole transaction rolls back.
      */
@@ -121,8 +117,6 @@ public final class ScheduleCapacityProofApiImpl implements ScheduleCapacityProof
             OrderProtectionSnapshot orders = order.readStore(storeId, context);
             if (orders == null || !orders.complete() || !storeId.equals(orders.storeId())
                     || orders.items().size() != orders.totalOrders()) bad("incomplete order facts");
-            List<Staff> staff = staff(people(employees), employees.merchantId(),
-                    capabilities(people(employees).keySet()), availability(storeId));
             Map<String, OrderProtectionFact> ordersByReservation = orderFacts(orders);
             List<Reservation> reservations = reservations(schedule, windows(schedule),
                     ordersByReservation);
@@ -130,7 +124,7 @@ public final class ScheduleCapacityProofApiImpl implements ScheduleCapacityProof
                     .map(window -> new Window(window.windowId(), window.configuredCapacity()))
                     .toList();
             CapacityFeasibilitySolver.Result result =
-                    solver.solveAll(reservations, capacity, staff, budgetMillis);
+                    solver.solveAll(reservations, capacity, budgetMillis);
             if (result.outcome() == Outcome.BUDGET_EXHAUSTED) {
                 bad("schedule reduction proof calculation budget exhausted");
             }
@@ -168,25 +162,21 @@ public final class ScheduleCapacityProofApiImpl implements ScheduleCapacityProof
                     || orders.items().size() != orders.totalOrders()) bad("incomplete order facts");
             Map<String, WindowFact> windows = windows(schedule);
             List<Claim> candidateClaims = candidate(query, windows);
-            Map<String, CurrentStaffFact> people = people(employees);
-            List<CapabilityRow> capabilities = capabilities(people.keySet());
-            List<AvailabilityRow> availability = availability(query.storeId());
-            List<Staff> staff = staff(people, employees.merchantId(), capabilities, availability);
             Map<String, OrderProtectionFact> ordersByReservation = orderFacts(orders);
             List<Reservation> reservations = reservations(schedule, windows, ordersByReservation);
-            String fixedStaff = null;
             if (replacedId != null) {
                 var old = reservations.stream().filter(r -> replacedId.equals(r.id())).findFirst()
                     .orElseThrow(() -> new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE, "Swap source absent"));
-                if (!query.serviceId().equals(old.serviceId())) bad("Swap service changed");
-                fixedStaff = old.fixedStaffId();
+                // CCR-SCH-STAFF-OFFLINE-001: Reservation no longer carries serviceId (the
+                // capacity solver is service-agnostic); the swap's service match is proven
+                // by the ORDER domain elsewhere.
                 reservations.remove(old);
             }
-            reservations.add(new Reservation(CANDIDATE_ID, query.serviceId(), candidateClaims, fixedStaff));
+            reservations.add(new Reservation(CANDIDATE_ID, candidateClaims));
             List<Window> capacity = schedule.windows().stream()
                     .map(window -> new Window(window.windowId(), window.configuredCapacity())).toList();
             CapacityFeasibilitySolver.Result result =
-                    solver.solve(CANDIDATE_ID, reservations, capacity, staff, budgetMillis);
+                    solver.solve(CANDIDATE_ID, reservations, capacity, budgetMillis);
             if (result.outcome() == Outcome.BUDGET_EXHAUSTED) {
                 bad("schedule capacity proof calculation budget exhausted");
             }
@@ -204,12 +194,11 @@ public final class ScheduleCapacityProofApiImpl implements ScheduleCapacityProof
                         java.time.OffsetDateTime.ofInstant(claim.interval().start(), java.time.ZoneOffset.UTC),
                         java.time.OffsetDateTime.ofInstant(claim.interval().end(), java.time.ZoneOffset.UTC));
             }).toList();
+            // CCR-SCH-STAFF-OFFLINE-001: the effective capacity is the configured slot capacity
+            // (no qualified-staff minimum); both reservation snapshots record that number.
             int configured = candidateClaims.stream().mapToInt(claim ->
                     windows.get(claim.windowId()).configuredCapacity()).min().orElseThrow();
-            int qualified = (int) staff.stream().filter(person ->
-                    person.serviceIds().contains(query.serviceId()) && candidateClaims.stream()
-                            .allMatch(claim -> covers(person.availability(), claim.interval()))).count();
-            return new HoldProofPlan(proven, configured, qualified, result.evaluatedReservations());
+            return new HoldProofPlan(proven, configured, result.evaluatedReservations());
         } catch (ApiException known) {
             rollbackOnly();
             throw known;
@@ -220,20 +209,10 @@ public final class ScheduleCapacityProofApiImpl implements ScheduleCapacityProof
         }
     }
 
-    private static boolean covers(List<Interval> availability, Interval target) {
-        java.time.Instant cursor = target.start();
-        for (Interval interval : availability) {
-            if (interval.start().isAfter(cursor)) return false;
-            if (interval.end().isAfter(cursor)) cursor = interval.end();
-            if (!cursor.isBefore(target.end())) return true;
-        }
-        return false;
-    }
-
     record ProvenClaim(String windowId, String merchantId, String kind,
             OffsetDateTime startAt, OffsetDateTime endAt) {}
     record HoldProofPlan(List<ProvenClaim> claims, int configuredCapacity,
-            int qualifiedStaffCount, int evaluatedReservations) {
+            int evaluatedReservations) {
         HoldProofPlan { claims = List.copyOf(claims); }
     }
 
@@ -317,86 +296,6 @@ public final class ScheduleCapacityProofApiImpl implements ScheduleCapacityProof
                 && query.storeId().equals(window.storeId());
     }
 
-    private static Map<String, CurrentStaffFact> people(CurrentStoreStaffFacts employees) {
-        if (employees.merchantId() == null) bad("employee merchant is missing");
-        Map<String, CurrentStaffFact> result = new HashMap<>();
-        for (CurrentStaffFact person : employees.items()) {
-            if (person == null || !employees.storeId().equals(person.storeId())
-                    || !employees.merchantId().equals(person.merchantId())
-                    || !("ACTIVE".equals(person.employmentStatus())
-                        || "INACTIVE".equals(person.employmentStatus()))
-                    || parseNonnegative(person.version()) < 0
-                    || result.putIfAbsent(person.staffId(), person) != null) {
-                bad("invalid employee facts");
-            }
-        }
-        return result;
-    }
-
-    private List<CapabilityRow> capabilities(Set<String> staffIds) {
-        if (staffIds.isEmpty()) return List.of();
-        List<Long> keys = staffIds.stream().map(ScheduleCapacityProofApiImpl::apiId)
-                .sorted().toList();
-        List<CapabilityRow> result = new ArrayList<>();
-        // Chunking only bounds SQL bind parameters; it does not impose a business staff limit.
-        for (int from = 0; from < keys.size(); from += 500) {
-            List<Long> chunk = keys.subList(from, Math.min(from + 500, keys.size()));
-            result.addAll(mapper.lockedCapabilities(chunk).stream()
-                    .map(row -> new CapabilityRow(ScheduleSqlRows.id(row, "staff_id"),
-                            ScheduleSqlRows.id(row, "service_id"),
-                            ScheduleSqlRows.text(row, "status"))).toList());
-        }
-        return result;
-    }
-
-    private List<AvailabilityRow> availability(String storeId) {
-        return mapper.lockedAvailability(apiId(storeId)).stream()
-                .map(row -> new AvailabilityRow(ScheduleSqlRows.id(row, "store_id"),
-                        ScheduleSqlRows.id(row, "staff_id"), ScheduleSqlRows.at(row, "start_at"),
-                        ScheduleSqlRows.at(row, "end_at"), ScheduleSqlRows.text(row, "status"),
-                        ScheduleSqlRows.version(row, "version"))).toList();
-    }
-
-    private static List<Staff> staff(Map<String, CurrentStaffFact> people, String merchantId,
-            List<CapabilityRow> capabilities, List<AvailabilityRow> availability) {
-        Map<String, Set<String>> serviceIds = new HashMap<>();
-        for (CapabilityRow row : capabilities) {
-            if (!people.containsKey(row.staffId()) || !"ENABLED".equals(row.status())) {
-                bad("invalid staff capability facts");
-            }
-            if (!serviceIds.computeIfAbsent(row.staffId(), ignored -> new HashSet<>())
-                    .add(row.serviceId())) bad("duplicate staff capability");
-        }
-        Map<String, List<Interval>> intervals = new HashMap<>();
-        for (AvailabilityRow row : availability) {
-            if (!people.containsKey(row.staffId())
-                    || !("AVAILABLE".equals(row.status()) || "CLOSED".equals(row.status()))
-                    || !validInterval(row.start(), row.end())) {
-                bad("invalid staff availability facts");
-            }
-            if ("AVAILABLE".equals(row.status())) {
-                intervals.computeIfAbsent(row.staffId(), ignored -> new ArrayList<>())
-                        .add(interval(row.start(), row.end()));
-            }
-        }
-        List<Staff> result = new ArrayList<>();
-        for (CurrentStaffFact person : people.values()) {
-            if (!merchantId.equals(person.merchantId())) bad("employee merchant mismatch");
-            List<Interval> schedule = intervals.getOrDefault(person.staffId(), List.of()).stream()
-                    .sorted(Comparator.comparing(Interval::start)).toList();
-            for (int index = 1; index < schedule.size(); index++) {
-                if (schedule.get(index - 1).overlaps(schedule.get(index))) {
-                    bad("overlapping effective staff availability");
-                }
-            }
-            if ("ACTIVE".equals(person.employmentStatus()) && person.serviceEnabled()) {
-                result.add(new Staff(person.staffId(),
-                        serviceIds.getOrDefault(person.staffId(), Set.of()), schedule));
-            }
-        }
-        return result;
-    }
-
     private static Map<String, OrderProtectionFact> orderFacts(OrderProtectionSnapshot snapshot) {
         Map<String, OrderProtectionFact> byReservation = new HashMap<>();
         Set<String> orderIds = new HashSet<>();
@@ -418,9 +317,9 @@ public final class ScheduleCapacityProofApiImpl implements ScheduleCapacityProof
             Map<String, WindowFact> windows, Map<String, OrderProtectionFact> orders) {
         Map<String, List<ClaimFact>> claims = new HashMap<>();
         for (ClaimFact claim : schedule.claims()) {
-            claims.computeIfAbsent(claim.reservationId(), ignored -> new ArrayList<>()).add(claim);
+            claims.computeIfAbsent(claim.reservationId(), ignored -> new java.util.ArrayList<>()).add(claim);
         }
-        List<Reservation> result = new ArrayList<>();
+        List<Reservation> result = new java.util.ArrayList<>();
         for (ReservationFact fact : schedule.reservations()) {
             if (!("TEMP_LOCKED".equals(fact.status()) || "CONFIRMED".equals(fact.status()))) {
                 continue;
@@ -434,14 +333,13 @@ public final class ScheduleCapacityProofApiImpl implements ScheduleCapacityProof
                     || !fact.fulfillmentType().equals(linked.fulfillmentType())) {
                 bad("active reservation and order facts disagree");
             }
-            List<Claim> segments = new ArrayList<>();
+            List<Claim> segments = new java.util.ArrayList<>();
             for (ClaimFact claim : claims.getOrDefault(fact.reservationId(), List.of())) {
                 if (!windows.containsKey(claim.windowId())) bad("claim original window is absent");
                 segments.add(new Claim(claim.windowId(), interval(claim.startAt(), claim.endAt())));
             }
             if (segments.isEmpty()) bad("active reservation has no claim");
-            result.add(new Reservation(fact.reservationId(), fact.serviceId(), segments,
-                    linked.protectRequired() ? linked.currentStaffId() : null));
+            result.add(new Reservation(fact.reservationId(), segments));
         }
         return result;
     }
@@ -466,17 +364,6 @@ public final class ScheduleCapacityProofApiImpl implements ScheduleCapacityProof
         }
     }
 
-    private static long parseNonnegative(String value) {
-        try {
-            long parsed = Long.parseLong(value);
-            if (parsed < 0) bad("negative version");
-            return parsed;
-        } catch (RuntimeException malformed) {
-            bad("invalid version");
-            throw malformed;
-        }
-    }
-
     private void rollbackOnly() {
         Object resource = TransactionSynchronizationManager.getResource(source);
         if (resource instanceof ConnectionHolder holder) holder.setRollbackOnly();
@@ -493,8 +380,4 @@ public final class ScheduleCapacityProofApiImpl implements ScheduleCapacityProof
     private static void bad(String message) {
         throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE, message);
     }
-
-    private record CapabilityRow(String staffId, String serviceId, String status) {}
-    private record AvailabilityRow(String storeId, String staffId, OffsetDateTime start,
-            OffsetDateTime end, String status, String version) {}
 }

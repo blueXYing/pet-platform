@@ -13,23 +13,14 @@ import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BlockedWindow;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CapabilityQuery;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CapabilityResult;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CapabilityView;
-import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CreateStaffWindowCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CreateWindowCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.ReplaceCapabilitiesCommand;
-import com.petplatform.schedule.api.dto.ScheduleWriteTypes.StaffWindowCloseCommand;
-import com.petplatform.schedule.api.dto.ScheduleWriteTypes.StaffWindowOpenCommand;
-import com.petplatform.schedule.api.dto.ScheduleWriteTypes.StaffWindowResult;
-import com.petplatform.schedule.api.dto.ScheduleWriteTypes.UpdateStaffWindowCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.UpdateWindowCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WindowCloseCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WindowOpenCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WindowResult;
-import com.petplatform.schedule.api.dto.ScheduleWorkbenchTypes.StaffWindowItem;
-import com.petplatform.schedule.api.dto.ScheduleWorkbenchTypes.StaffWindowPage;
 import com.petplatform.schedule.api.dto.ScheduleWorkbenchTypes.WindowItem;
 import com.petplatform.schedule.api.dto.ScheduleWorkbenchTypes.WindowPage;
-import com.petplatform.schedule.api.query.ScheduleMerchantQueryApi;
-import com.petplatform.schedule.api.query.WorkbenchStaffWindowQuery;
 import com.petplatform.schedule.api.query.WorkbenchWindowQuery;
 import com.petplatform.schedule.biz.apiimpl.ScheduleMerchantCommandApiImpl;
 import com.petplatform.schedule.biz.apiimpl.ScheduleMerchantQueryApiImpl;
@@ -61,8 +52,10 @@ import tools.jackson.databind.ObjectReader;
 /**
  * Merchant schedule maintenance (SCH-004 write side; HTTP contract 52号). MINIAPP Bearer is
  * enforced by CBearerSessionFilter; every write carries the terminal X-Request-Id and replays
- * idempotently (23号): first window/staff-window create answers 201, replays and all other
- * commands answer 200. The owner gate, guards and audit live in the schedule module.
+ * idempotently (23号): first window create answers 201, replays and all other commands answer
+ * 200. The owner gate, guards and audit live in the schedule module. CCR-SCH-STAFF-OFFLINE-001
+ * (2026-11-16) removed the staff availability-window routes — staff scheduling is
+ * offline-managed; the staff service-capability routes stay.
  */
 @RestController
 @RequestMapping(value = "/api/v1/merchant", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -216,89 +209,9 @@ public final class MerchantScheduleController {
     }
 
     // ------------------------------------------------------------------ staff windows
-
-    @GetMapping("/staff/{staffId}/availability-windows")
-    Map<String, Object> listStaffWindows(
-            @PathVariable String staffId,
-            @RequestParam String merchantId,
-            @RequestParam String storeId,
-            HttpServletRequest req) {
-        onlyParameters(req, "merchantId", "storeId");
-        mini(req);
-        var session = mini(req);
-        var page = workbench.listStaffWindows(new WorkbenchStaffWindowQuery(
-                id(merchantId), id(storeId), id(staffId),
-                new QueryContext(trace(req), OperatorType.USER, session.userId())));
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("storeId", page.storeId());
-        data.put("staffId", page.staffId());
-        data.put("items", page.items().stream()
-                .map(MerchantScheduleController::staffWindow).toList());
-        return envelope(data, req);
-    }
-
-    @PostMapping(value = "/staff/{staffId}/availability-windows",
-            consumes = MediaType.APPLICATION_JSON_VALUE)
-    Map<String, Object> createStaffWindow(
-            @PathVariable String staffId, @RequestBody String json,
-            HttpServletRequest req, HttpServletResponse response) {
-        onlyParameters(req);
-        mini(req);
-        JsonNode root = readObject(json);
-        CreateStaffWindowCommand command = new CreateStaffWindowCommand(
-                userCommand(req), id(text(root, "merchantId")), id(text(root, "storeId")),
-                id(staffId), timestamp(text(root, "startAt")), timestamp(text(root, "endAt")));
-        StaffWindowResult[] out = new StaffWindowResult[1];
-        boolean created = commands.createStaffWindowOutcome(command, out);
-        response.setStatus(created ? 201 : 200);
-        return envelope(staffWindow(out[0]), req);
-    }
-
-    @PutMapping(value = "/staff/{staffId}/availability-windows/{windowId}",
-            consumes = MediaType.APPLICATION_JSON_VALUE)
-    Map<String, Object> updateStaffWindow(
-            @PathVariable String staffId, @PathVariable String windowId,
-            @RequestBody String json, HttpServletRequest req) {
-        onlyParameters(req);
-        mini(req);
-        JsonNode root = readObject(json);
-        StaffWindowResult result = commands.updateStaffWindow(new UpdateStaffWindowCommand(
-                userCommand(req), id(windowId), id(text(root, "merchantId")),
-                id(text(root, "storeId")), id(staffId),
-                timestamp(text(root, "startAt")), timestamp(text(root, "endAt")),
-                version(text(root, "expectedVersion")), optionalReason(root, "reason")));
-        return envelope(staffWindow(result), req);
-    }
-
-    @PostMapping(value = "/staff/{staffId}/availability-windows/{windowId}/close",
-            consumes = MediaType.APPLICATION_JSON_VALUE)
-    Map<String, Object> closeStaffWindow(
-            @PathVariable String staffId, @PathVariable String windowId,
-            @RequestBody String json, HttpServletRequest req) {
-        onlyParameters(req);
-        mini(req);
-        JsonNode root = readObject(json);
-        StaffWindowResult result = commands.closeStaffWindow(new StaffWindowCloseCommand(
-                userCommand(req), id(windowId), id(text(root, "merchantId")),
-                id(text(root, "storeId")), id(staffId),
-                version(text(root, "expectedVersion")), text(root, "reason")));
-        return envelope(staffWindow(result), req);
-    }
-
-    @PostMapping(value = "/staff/{staffId}/availability-windows/{windowId}/open",
-            consumes = MediaType.APPLICATION_JSON_VALUE)
-    Map<String, Object> openStaffWindow(
-            @PathVariable String staffId, @PathVariable String windowId,
-            @RequestBody String json, HttpServletRequest req) {
-        onlyParameters(req);
-        mini(req);
-        JsonNode root = readObject(json);
-        StaffWindowResult result = commands.openStaffWindow(new StaffWindowOpenCommand(
-                userCommand(req), id(windowId), id(text(root, "merchantId")),
-                id(text(root, "storeId")), id(staffId),
-                version(text(root, "expectedVersion"))));
-        return envelope(staffWindow(result), req);
-    }
+    // CCR-SCH-STAFF-OFFLINE-001 (2026-11-16): the GET/POST/PUT/close/open
+    // /staff/{staffId}/availability-windows routes were removed — staff scheduling is
+    // offline-managed; only the service-capability routes below remain.
 
     // ------------------------------------------------------------------ capabilities
 
@@ -381,33 +294,6 @@ public final class MerchantScheduleController {
     private static Map<String, Object> blocked(BlockedWindow b) {
         Map<String, Object> out = window(b.window());
         out.put("reasonCode", b.reasonCode());
-        return out;
-    }
-
-    private static Map<String, Object> staffWindow(StaffWindowResult r) {
-        Map<String, Object> out = new LinkedHashMap<>();
-        out.put("windowId", r.windowId());
-        out.put("merchantId", r.merchantId());
-        out.put("storeId", r.storeId());
-        out.put("staffId", r.staffId());
-        out.put("startAt", time(r.startAt()));
-        out.put("endAt", time(r.endAt()));
-        out.put("status", r.status());
-        out.put("version", r.version());
-        return out;
-    }
-
-    private static Map<String, Object> staffWindow(StaffWindowItem i) {
-        Map<String, Object> out = new LinkedHashMap<>();
-        out.put("windowId", i.windowId());
-        out.put("merchantId", i.merchantId());
-        out.put("storeId", i.storeId());
-        out.put("staffId", i.staffId());
-        out.put("startAt", time(i.startAt()));
-        out.put("endAt", time(i.endAt()));
-        out.put("status", i.status());
-        out.put("version", i.version());
-        out.put("updatedAt", time(i.updatedAt()));
         return out;
     }
 

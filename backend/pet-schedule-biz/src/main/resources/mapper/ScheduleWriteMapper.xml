@@ -67,40 +67,9 @@
         WHERE id = #{windowId} AND status = #{expectedStatus}
     </update>
 
-    <!-- staff availability windows (06号 §2) -->
-    <select id="selectStaffWindowByIdForUpdate" resultType="map">
-        SELECT id, store_id, staff_id, start_at, end_at, status, version
-        FROM staff_availability_window
-        WHERE id = #{windowId}
-        FOR UPDATE
-    </select>
-    <insert id="insertStaffWindow">
-        INSERT INTO staff_availability_window(id, store_id, staff_id, start_at, end_at,
-            status, version, created_at, updated_at)
-        VALUES(#{row.id}, #{row.storeId}, #{row.staffId}, #{row.startAt}, #{row.endAt},
-            'AVAILABLE', 0, #{row.now}, #{row.now})
-    </insert>
-    <update id="updateStaffWindow">
-        UPDATE staff_availability_window
-        SET start_at = #{startAt}, end_at = #{endAt}, version = version + 1, updated_at = #{now}
-        WHERE id = #{windowId} AND version = #{expectedVersion} AND status = 'AVAILABLE'
-    </update>
-    <update id="closeStaffWindow">
-        UPDATE staff_availability_window
-        SET status = 'CLOSED', version = version + 1, updated_at = #{now}
-        WHERE id = #{windowId} AND version = #{expectedVersion} AND status = 'AVAILABLE'
-    </update>
-    <update id="openStaffWindow">
-        UPDATE staff_availability_window
-        SET status = 'AVAILABLE', version = version + 1, updated_at = #{now}
-        WHERE id = #{windowId} AND version = #{expectedVersion} AND status = 'CLOSED'
-    </update>
-    <select id="listStaffWindows" resultType="map">
-        SELECT id, store_id, staff_id, start_at, end_at, status, version
-        FROM staff_availability_window
-        WHERE store_id = #{storeId} AND staff_id = #{staffId}
-        ORDER BY start_at, id
-    </select>
+    <!-- CCR-SCH-STAFF-OFFLINE-001 (2026-11-16): the staff availability-window statements were
+         removed — staff scheduling is offline-managed and staff_availability_window keeps its
+         historical rows without any module read or write. -->
 
     <!-- capability set header (34号 storage §3, SCHC-2): one BIGINT version per staff -->
     <select id="selectCapabilitySetForUpdate" resultType="map">

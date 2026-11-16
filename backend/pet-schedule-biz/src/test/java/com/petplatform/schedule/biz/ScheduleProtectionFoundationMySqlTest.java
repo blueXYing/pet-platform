@@ -233,7 +233,7 @@ class ScheduleProtectionFoundationMySqlTest {
     }
 
     @Test
-    void completedPastAssignmentDoesNotConsumeFutureStaffAndZeroCapacityIsKnownConflict()
+    void pastClaimOnItsOwnSlotStaysFeasibleAndZeroCapacityIsKnownConflict()
             throws Exception {
         try (Database db = new Database()) {
             ScheduleCapacityGuardApiImpl guard = new ScheduleCapacityGuardApiImpl(db.source);
@@ -255,13 +255,8 @@ class ScheduleProtectionFoundationMySqlTest {
                     + "(id,reservation_id,window_id,store_id,service_id,kind,start_at,end_at) "
                     + "VALUES (801,501,1,301,401,'GENERAL','2025-01-01 01:00:00',"
                     + "'2025-01-01 02:00:00')");
-            db.jdbc.update("INSERT INTO staff_service_capability "
-                    + "(id,staff_id,service_id,status,created_at,updated_at) "
-                    + "VALUES (901,1001,401,'ENABLED',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
-            db.jdbc.update("INSERT INTO staff_availability_window "
-                    + "(id,store_id,staff_id,start_at,end_at,status,version,created_at,updated_at) "
-                    + "VALUES (1002,301,1001,'2030-01-01 01:00:00','2030-01-01 02:00:00',"
-                    + "'AVAILABLE',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
+            // CCR-SCH-STAFF-OFFLINE-001: no staff scheduling seeds any more — the MER staff
+            // facts read below stays only as the window-merchant consistency anchor.
             MerchantCurrentStaffFactsApi merchant = (storeId, context) ->
                     new CurrentStoreStaffFacts("10", storeId, true,
                             List.of(new CurrentStaffFact("1001", "10", storeId,
@@ -293,8 +288,8 @@ class ScheduleProtectionFoundationMySqlTest {
                     OffsetDateTime.parse("2030-01-01T02:00:00Z"), "2", null, null, CONTEXT);
             db.transaction().execute(status -> {
                 guard.acquire(List.of("301"), CONTEXT);
-                assertEquals(1, proof.checkNewReservation(query).evaluatedReservations(),
-                        "past completed current assignment is not a future fixed resource");
+                assertEquals(2, proof.checkNewReservation(query).evaluatedReservations(),
+                        "the capacity sweep evaluates the past claim and the candidate");
                 return null;
             });
             db.jdbc.update("UPDATE schedule_availability_window SET configured_capacity=0 WHERE id=2");

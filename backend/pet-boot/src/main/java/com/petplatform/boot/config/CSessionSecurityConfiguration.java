@@ -234,22 +234,20 @@ public class CSessionSecurityConfiguration {
               // Contract 53 §3/§4 merchant schedule maintenance (default OFF): the MINIAPP
               // Bearer and OWNER store guard stay inside the controller/service; this chain
               // only opens the transport, like the other merchant write families.
+              // CCR-SCH-STAFF-OFFLINE-001 (2026-11-16) removed the
+              // /api/v1/merchant/staff/*/availability-windows* family — staff scheduling is
+              // offline-managed; only the store windows and staff service-capabilities stay.
               a.requestMatchers(HttpMethod.GET,
                       "/api/v1/merchant/stores/*/availability-windows",
                       "/api/v1/merchant/stores/*/availability-windows/*",
-                      "/api/v1/merchant/staff/*/availability-windows",
-                      "/api/v1/merchant/staff/*/availability-windows/*",
                       "/api/v1/merchant/staff/*/service-capabilities")
                   .permitAll();
               a.requestMatchers(HttpMethod.POST,
                       "/api/v1/merchant/stores/*/availability-windows",
-                      "/api/v1/merchant/stores/*/availability-windows/*",
-                      "/api/v1/merchant/staff/*/availability-windows",
-                      "/api/v1/merchant/staff/*/availability-windows/*")
+                      "/api/v1/merchant/stores/*/availability-windows/*")
                   .permitAll();
               a.requestMatchers(HttpMethod.PUT,
                       "/api/v1/merchant/stores/*/availability-windows/*",
-                      "/api/v1/merchant/staff/*/availability-windows/*",
                       "/api/v1/merchant/staff/*/service-capabilities")
                   .permitAll();
             }

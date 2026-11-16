@@ -181,7 +181,8 @@ class ScheduleSelectionHttpContractTest {
         when(services.getServiceSnapshot(any())).thenReturn(new ServiceSnapshotDTO(
                 "3", "4", "2", "Pickup", null, null, null, 35,
                 FulfillmentType.PICKUP_DELIVERY, null, null, null, null));
-        return new SelectionWindowQueryService(store, services, (storeId, serviceId, from, to) -> 2,
+        // CCR-SCH-STAFF-OFFLINE-001: capacity is the configured slot capacity — no staff port.
+        return new SelectionWindowQueryService(store, services,
                 Clock.fixed(Instant.parse("2029-12-31T00:00:00Z"), ZoneOffset.UTC));
     }
 

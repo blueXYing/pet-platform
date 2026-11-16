@@ -120,8 +120,10 @@ public final class ReservationHoldApiImpl implements ReservationHoldApi {
                     "endAt", timestamp(end), "pickupStartAt", timestamp(pickup),
                     "returnStartAt", timestamp(returning), "lockToken", UUID.randomUUID().toString(),
                     "lockExpireAt", timestamp(expires),
-                    "capacitySnapshot", Math.min(plan.configuredCapacity(), plan.qualifiedStaffCount()),
-                    "qualifiedStaffCountSnapshot", plan.qualifiedStaffCount(),
+                    // CCR-SCH-STAFF-OFFLINE-001: capacity is the configured slot capacity; the
+                    // qualified-staff snapshot column is retained but records the same number.
+                    "capacitySnapshot", plan.configuredCapacity(),
+                    "qualifiedStaffCountSnapshot", plan.configuredCapacity(),
                     "createdAt", java.time.LocalDateTime.ofInstant(now, ZoneOffset.UTC),
                     "updatedAt", java.time.LocalDateTime.ofInstant(now, ZoneOffset.UTC)));
             List<HeldClaim> claims = new ArrayList<>(plan.claims().size());

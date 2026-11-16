@@ -48,27 +48,10 @@ public final class ScheduleWriteTypes {
         }
     }
 
-    // ------------------------------------------------------------------ staff availability
-
-    public record CreateStaffWindowCommand(CommandContext context, String merchantId,
-            String storeId, String staffId, OffsetDateTime startAt, OffsetDateTime endAt) {}
-
-    /** A time move/shorten is an availability reduction: {@code reason} is mandatory whenever
-     * the new interval does not fully cover the old one (SCHW-D6/PRD29). */
-    public record UpdateStaffWindowCommand(CommandContext context, String windowId,
-            String merchantId, String storeId, String staffId, OffsetDateTime startAt,
-            OffsetDateTime endAt, long expectedVersion, String reason) {}
-
-    public record StaffWindowCloseCommand(CommandContext context, String windowId,
-            String merchantId, String storeId, String staffId, long expectedVersion,
-            String reason) {}
-
-    public record StaffWindowOpenCommand(CommandContext context, String windowId,
-            String merchantId, String storeId, String staffId, long expectedVersion) {}
-
-    public record StaffWindowResult(String windowId, String merchantId, String storeId,
-            String staffId, OffsetDateTime startAt, OffsetDateTime endAt, String status,
-            String version) {}
+    // --------------------------------------------- staff availability (removed)
+    // CCR-SCH-STAFF-OFFLINE-001 (2026-11-16): the staff availability-window commands
+    // (create/update/close/open and their result shape) were removed — staff scheduling is
+    // offline-managed; only the staff capability family below remains.
 
     // ------------------------------------------------------------------ staff capabilities
 

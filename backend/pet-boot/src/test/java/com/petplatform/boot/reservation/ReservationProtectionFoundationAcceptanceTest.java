@@ -27,7 +27,6 @@ import com.petplatform.schedule.biz.domain.service.CapacityFeasibilitySolver;
 import com.petplatform.schedule.biz.domain.service.CapacityFeasibilitySolver.Claim;
 import com.petplatform.schedule.biz.domain.service.CapacityFeasibilitySolver.Interval;
 import com.petplatform.schedule.biz.domain.service.CapacityFeasibilitySolver.Reservation;
-import com.petplatform.schedule.biz.domain.service.CapacityFeasibilitySolver.Staff;
 import com.petplatform.schedule.biz.domain.service.CapacityFeasibilitySolver.Window;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -39,8 +38,11 @@ import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
+import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -499,28 +501,23 @@ class ReservationProtectionFoundationAcceptanceTest {
     }
 
     @Test
-    void proofSearchesBeyondGreedyFirstStaffAndDoesNotAssignOrder() throws Exception {
+    void proofEvaluatesTheWholeStoreSweepAndDoesNotAssignOrder() throws Exception {
         try (Database db = new Database()) {
             db.store(700001);
             db.staff(Long.parseLong(STAFF_A), 700001, "ACTIVE", 1);
             db.staff(Long.parseLong(STAFF_B), 700001, "ACTIVE", 1);
             db.service(SERVICE_A, 700001, "IN_STORE");
             db.service(SERVICE_B, 700001, "IN_STORE");
-            // CCR-SCH-SLOT-001: one shared capacity-2 slot serves both services, so the
-            // greedy escape stays a pure staff-matching question (claim occupancy 2<=2).
+            // CCR-SCH-SLOT-001 + CCR-SCH-STAFF-OFFLINE-001: one shared capacity-2 slot serves
+            // both services; feasibility is the capacity sweep only (no staff matching).
             db.window(700030, 700001, NINE, NOON, 2);
-            db.capability(700040, Long.parseLong(STAFF_A), SERVICE_A);
-            db.capability(700041, Long.parseLong(STAFF_A), SERVICE_B);
-            db.capability(700042, Long.parseLong(STAFF_B), SERVICE_A);
-            db.availability(700050, 700001, Long.parseLong(STAFF_A), NINE, NOON);
-            db.availability(700051, 700001, Long.parseLong(STAFF_B), NINE, NOON);
             db.generalOrder(701000, 701100, 702000, 700001, SERVICE_A, 700030,
                     TEN, ELEVEN, "CONFIRMED", "PENDING_SERVICE", "UNVERIFIED", null);
             var apis = new ProtectionApis(db.source);
             db.inTransaction(() -> {
                 apis.guard.acquire(List.of(STORE), CTX);
                 var result = apis.proof.checkNewReservation(inStore(SERVICE_B, 700030, TEN, ELEVEN));
-                assertTrue(result.feasible(), "X can use B so Y can use its only candidate A");
+                assertTrue(result.feasible(), "cross-service claim fits the shared capacity 2");
                 assertTrue(result.evaluatedReservations() >= 2);
                 return null;
             });
@@ -533,52 +530,16 @@ class ReservationProtectionFoundationAcceptanceTest {
         }
     }
 
-    @Test
-    void proofRejectsCrossServiceDoubleUseAndRespectsFixedAssignment() throws Exception {
-        try (Database db = new Database()) {
-            db.store(700001);
-            db.staff(Long.parseLong(STAFF_A), 700001, "ACTIVE", 1);
-            db.service(SERVICE_A, 700001, "IN_STORE");
-            db.service(SERVICE_B, 700001, "IN_STORE");
-            // One shared capacity-2 slot (CCR-SCH-SLOT-001): the refusals below stay staff
-            // driven — the only B-capable employee is fixed to X's protected assignment.
-            db.window(700030, 700001, NINE, NOON, 2);
-            db.capability(700040, Long.parseLong(STAFF_A), SERVICE_A);
-            db.capability(700041, Long.parseLong(STAFF_A), SERVICE_B);
-            db.availability(700050, 700001, Long.parseLong(STAFF_A), NINE, NOON);
-            db.generalOrder(701000, 701100, 702000, 700001, SERVICE_A, 700030,
-                    TEN, ELEVEN, "CONFIRMED", "PENDING_SERVICE", "UNVERIFIED", Long.parseLong(STAFF_A));
-            var apis = new ProtectionApis(db.source);
-            assertCode("SCHEDULE_CAPACITY_EXCEEDED", () -> db.inTransaction(() -> {
-                apis.guard.acquire(List.of(STORE), CTX);
-                apis.proof.checkNewReservation(inStore(SERVICE_B, 700030, TEN, ELEVEN));
-                return null;
-            }));
-            db.staff(Long.parseLong(STAFF_B), 700001, "ACTIVE", 1);
-            db.capability(700042, Long.parseLong(STAFF_B), SERVICE_A);
-            db.availability(700051, 700001, Long.parseLong(STAFF_B), NINE, NOON);
-            assertCode("SCHEDULE_CAPACITY_EXCEEDED", () -> db.inTransaction(() -> {
-                apis.guard.acquire(List.of(STORE), CTX);
-                apis.proof.checkNewReservation(inStore(SERVICE_B, 700030, TEN, ELEVEN));
-                return null;
-            }), "existing X is fixed to A; solver cannot silently rematch it to B");
-            assertEquals(Long.parseLong(STAFF_A), db.jdbc.queryForObject(
-                    "SELECT service_staff_id FROM pet_order WHERE id=701000", Long.class));
-        }
-    }
+    // CCR-SCH-STAFF-OFFLINE-001 (2026-11-16): proofRejectsCrossServiceDoubleUseAndRespectsFixedAssignment
+    // was removed — fixed staff assignments no longer constrain feasibility (staff scheduling
+    // is offline-managed); cross-service double use stays governed by the slot capacity alone.
 
     @Test
     void proofAllowsHalfOpenAdjacencyButEnforcesConfiguredWindowCapacity() throws Exception {
         try (Database db = new Database()) {
             db.store(700001);
-            db.staff(Long.parseLong(STAFF_A), 700001, "ACTIVE", 1);
-            db.staff(Long.parseLong(STAFF_B), 700001, "ACTIVE", 1);
             db.service(SERVICE_A, 700001, "IN_STORE");
             db.window(700030, 700001, NINE, NOON, 1);
-            db.capability(700040, Long.parseLong(STAFF_A), SERVICE_A);
-            db.capability(700041, Long.parseLong(STAFF_B), SERVICE_A);
-            db.availability(700050, 700001, Long.parseLong(STAFF_A), NINE, NOON);
-            db.availability(700051, 700001, Long.parseLong(STAFF_B), NINE, NOON);
             db.generalOrder(701000, 701100, 702000, 700001, SERVICE_A, 700030,
                     NINE, TEN, "CONFIRMED", "PENDING_SERVICE", "UNVERIFIED", Long.parseLong(STAFF_A));
             var apis = new ProtectionApis(db.source);
@@ -591,20 +552,17 @@ class ReservationProtectionFoundationAcceptanceTest {
                 apis.guard.acquire(List.of(STORE), CTX);
                 apis.proof.checkNewReservation(inStore(SERVICE_A, 700030, "2030-01-01 09:30:00", "2030-01-01 10:30:00"));
                 return null;
-            }), "two qualified workers do not override one configured window slot");
+            }), "nothing overrides the configured window capacity");
         }
     }
 
     @Test
-    void proofChecksAllStoreWindowClaimsEvenWhenPersonnelClosureIsDisjoint() throws Exception {
+    void proofChecksAllStoreWindowClaimsEvenOutsideTheCandidatesTime() throws Exception {
         try (Database db = new Database()) {
             db.store(700001);
-            db.staff(Long.parseLong(STAFF_A), 700001, "ACTIVE", 1);
             db.service(SERVICE_A, 700001, "IN_STORE");
             db.window(700029, 700001, NINE, TEN, 1);
             db.window(700030, 700001, NOON, ONE_PM, 1);
-            db.capability(700040, Long.parseLong(STAFF_A), SERVICE_A);
-            db.availability(700050, 700001, Long.parseLong(STAFF_A), NOON, ONE_PM);
             db.generalOrder(701000, 701100, 702000, 700001, SERVICE_A, 700029,
                     NINE, TEN, "CONFIRMED", "PENDING_SERVICE", "UNVERIFIED", null);
             db.generalOrder(701001, 701101, 702001, 700001, SERVICE_A, 700029,
@@ -618,39 +576,12 @@ class ReservationProtectionFoundationAcceptanceTest {
         }
     }
 
-    @Test
-    void proofRequiresOneWorkerForBothPickupAndReturnButAllowsGapBetweenThem() throws Exception {
-        try (Database db = new Database()) {
-            db.store(700001);
-            db.staff(Long.parseLong(STAFF_A), 700001, "ACTIVE", 1);
-            db.staff(Long.parseLong(STAFF_B), 700001, "ACTIVE", 1);
-            db.service(SERVICE_A, 700001, "PICKUP_DELIVERY");
-            db.window(700030, 700001, TEN, ELEVEN, 1);
-            db.window(700031, 700001, NOON, ONE_PM, 1);
-            db.capability(700040, Long.parseLong(STAFF_A), SERVICE_A);
-            db.capability(700041, Long.parseLong(STAFF_B), SERVICE_A);
-            db.availability(700050, 700001, Long.parseLong(STAFF_A), TEN, ELEVEN);
-            db.availability(700051, 700001, Long.parseLong(STAFF_A), NOON, ONE_PM);
-            var apis = new ProtectionApis(db.source);
-            CapacityProofQuery query = new CapacityProofQuery(STORE, Long.toString(SERVICE_A), "PICKUP_DELIVERY",
-                    null, null, null, "700030", "700031", CTX);
-            db.inTransaction(() -> {
-                apis.guard.acquire(List.of(STORE), CTX);
-                assertTrue(apis.proof.checkNewReservation(query).feasible());
-                return null;
-            });
-            db.jdbc.update("DELETE FROM staff_availability_window WHERE id=700051");
-            db.availability(700052, 700001, Long.parseLong(STAFF_B), NOON, ONE_PM);
-            assertCode("SCHEDULE_CAPACITY_EXCEEDED", () -> db.inTransaction(() -> {
-                apis.guard.acquire(List.of(STORE), CTX);
-                apis.proof.checkNewReservation(query);
-                return null;
-            }), "different workers covering opposite legs do not form one feasible order worker");
-        }
-    }
+    // CCR-SCH-STAFF-OFFLINE-001 (2026-11-16): proofRequiresOneWorkerForBothPickupAndReturn...
+    // was removed — one-worker-per-order matching no longer exists; pickup+return holds are
+    // governed by the two original windows' configured capacities (see Sch004JointAcceptance).
 
     @Test
-    void completedVerifiedPastClaimDoesNotRequireWorkersCurrentQualificationButFutureClaimFails() throws Exception {
+    void completedVerifiedPastClaimStaysOutsideTheCandidateSweepButFutureClaimFailsClosed() throws Exception {
         try (Database db = new Database()) {
             db.store(700001);
             db.staff(Long.parseLong(STAFF_A), 700001, "INACTIVE", 0);
@@ -663,8 +594,6 @@ class ReservationProtectionFoundationAcceptanceTest {
             db.window(700030, 700001, NINE, NOON, 1);
             db.generalOrder(701000, 701100, 702000, 700001, SERVICE_B, 700029,
                     oldStart, oldEnd, "CONFIRMED", "COMPLETED", "VERIFIED", Long.parseLong(STAFF_A));
-            db.capability(700040, Long.parseLong(STAFF_B), SERVICE_A);
-            db.availability(700050, 700001, Long.parseLong(STAFF_B), NINE, NOON);
             var apis = new ProtectionApis(db.source);
             db.inTransaction(() -> {
                 apis.guard.acquire(List.of(STORE), CTX);
@@ -689,19 +618,10 @@ class ReservationProtectionFoundationAcceptanceTest {
     }
 
     @Test
-    void exactSolverMatchesIndependentExhaustiveOracleAcrossSmallFixedSeedGraphs() {
+    void solverMatchesIndependentConcurrencyOracleAcrossSmallFixedSeedGraphs() {
         var random = new Random(250927L);
         var solver = new CapacityFeasibilitySolver(System::nanoTime);
         for (int caseId = 0; caseId < 150; caseId++) {
-            List<Staff> staff = new ArrayList<>();
-            for (int person = 0; person < 3; person++) {
-                var services = new java.util.HashSet<String>();
-                for (int service = 0; service < 3; service++)
-                    if (random.nextBoolean()) services.add("s" + service);
-                staff.add(new Staff("p" + person, services,
-                        List.of(new Interval(Instant.parse("2030-01-01T08:00:00Z"),
-                                Instant.parse("2030-01-01T15:00:00Z")))));
-            }
             List<Reservation> reservations = new ArrayList<>();
             List<Window> windows = new ArrayList<>();
             int count = 4 + random.nextInt(2);
@@ -711,13 +631,14 @@ class ReservationProtectionFoundationAcceptanceTest {
                 Interval interval = new Interval(Instant.parse(String.format("2030-01-01T%02d:00:00Z", startHour)),
                         Instant.parse(String.format("2030-01-01T%02d:00:00Z", endHour)));
                 String window = "w" + index;
-                windows.add(new Window(window, 1));
-                reservations.add(new Reservation("r" + index, "s" + random.nextInt(3),
-                        List.of(new Claim(window, interval)),
-                        random.nextInt(5) == 0 ? "p" + random.nextInt(3) : null));
+                windows.add(new Window(window, 1 + random.nextInt(2)));
+                reservations.add(new Reservation("r" + index,
+                        List.of(new Claim(window, interval))));
             }
-            boolean expected = independentOracle(reservations, staff);
-            var actual = solver.solve("r0", reservations, windows, staff, 1000);
+            Map<String, Integer> capacityByWindow = new HashMap<>();
+            for (Window window : windows) capacityByWindow.put(window.id(), window.capacity());
+            boolean expected = independentOracle(reservations, capacityByWindow);
+            var actual = solver.solve("r0", reservations, windows, 1000);
             assertEquals(expected ? CapacityFeasibilitySolver.Outcome.FEASIBLE
                             : CapacityFeasibilitySolver.Outcome.INFEASIBLE,
                     actual.outcome(), "fixed-seed graph " + caseId);
@@ -728,11 +649,8 @@ class ReservationProtectionFoundationAcceptanceTest {
     void deterministicProofBudgetExhaustionMapsToDependencyUnavailableWithNoWrites() throws Exception {
         try (Database db = new Database()) {
             db.store(700001);
-            db.staff(Long.parseLong(STAFF_A), 700001, "ACTIVE", 1);
             db.service(SERVICE_A, 700001, "IN_STORE");
             db.window(700030, 700001, NINE, NOON, 1);
-            db.capability(700040, Long.parseLong(STAFF_A), SERVICE_A);
-            db.availability(700050, 700001, Long.parseLong(STAFF_A), NINE, NOON);
             var apis = new ProtectionApis(db.source);
             AtomicLong elapsed = new AtomicLong();
             ScheduleCapacityProofApi bounded = new ScheduleCapacityProofApiImpl(db.source,
@@ -748,55 +666,27 @@ class ReservationProtectionFoundationAcceptanceTest {
         }
     }
 
-    /** Tiny test-only brute force: ordered index enumeration, no production sort or pruning. */
-    private static boolean independentOracle(List<Reservation> all, List<Staff> staff) {
-        boolean[] included = new boolean[all.size()];
-        included[0] = true;
-        boolean expanded;
-        do {
-            expanded = false;
-            for (int i = 0; i < all.size(); i++) {
-                if (!included[i]) continue;
-                for (int j = 0; j < all.size(); j++) {
-                    if (!included[j] && overlaps(all.get(i), all.get(j))) {
-                        included[j] = true;
-                        expanded = true;
-                    }
-                }
+    /** Tiny test-only oracle: every window's maximal concurrent claim count stays within its
+     * configured capacity (CCR-SCH-STAFF-OFFLINE-001 — no staff dimension any more). */
+    private static boolean independentOracle(List<Reservation> all,
+            Map<String, Integer> capacity) {
+        Map<String, TreeMap<Instant, Integer>> endpoints = new HashMap<>();
+        for (Reservation reservation : all) {
+            for (Claim claim : reservation.claims()) {
+                endpoints.computeIfAbsent(claim.windowId(), ignored -> new TreeMap<>())
+                        .merge(claim.interval().start(), 1, Integer::sum);
+                endpoints.computeIfAbsent(claim.windowId(), ignored -> new TreeMap<>())
+                        .merge(claim.interval().end(), -1, Integer::sum);
             }
-        } while (expanded);
-        List<Reservation> relevant = new ArrayList<>();
-        for (int i = 0; i < all.size(); i++) if (included[i]) relevant.add(all.get(i));
-        return enumerateAssignments(relevant, staff, 0, new int[relevant.size()]);
-    }
-
-    private static boolean enumerateAssignments(List<Reservation> reservations, List<Staff> staff,
-            int position, int[] assignment) {
-        if (position == reservations.size()) return true;
-        Reservation current = reservations.get(position);
-        for (int worker = 0; worker < staff.size(); worker++) {
-            Staff person = staff.get(worker);
-            if (current.fixedStaffId() != null && !current.fixedStaffId().equals(person.id())) continue;
-            if (!person.serviceIds().contains(current.serviceId())) continue;
-            boolean conflict = false;
-            for (int earlier = 0; earlier < position; earlier++) {
-                if (assignment[earlier] == worker && overlaps(current, reservations.get(earlier))) {
-                    conflict = true;
-                    break;
-                }
-            }
-            if (conflict) continue;
-            assignment[position] = worker;
-            if (enumerateAssignments(reservations, staff, position + 1, assignment)) return true;
         }
-        return false;
-    }
-
-    private static boolean overlaps(Reservation left, Reservation right) {
-        for (Claim a : left.claims()) for (Claim b : right.claims())
-            if (a.interval().start().isBefore(b.interval().end())
-                    && b.interval().start().isBefore(a.interval().end())) return true;
-        return false;
+        for (var entry : endpoints.entrySet()) {
+            int concurrent = 0;
+            for (int delta : entry.getValue().values()) {
+                concurrent += delta;
+                if (concurrent > capacity.get(entry.getKey())) return false;
+            }
+        }
+        return true;
     }
 
     private static void assertCode(String expected, Runnable action) {
@@ -923,19 +813,8 @@ class ReservationProtectionFoundationAcceptanceTest {
                     id, storeId, start, end, configuredCapacity);
         }
 
-        void capability(long id, long staffId, long serviceId) {
-            jdbc.update("INSERT INTO staff_service_capability"
-                    + "(id,staff_id,service_id,status,created_at,updated_at)"
-                    + " VALUES(?,?,?,'ENABLED',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
-                    id, staffId, serviceId);
-        }
-
-        void availability(long id, long storeId, long staffId, String start, String end) {
-            jdbc.update("INSERT INTO staff_availability_window"
-                    + "(id,store_id,staff_id,start_at,end_at,status,created_at,updated_at)"
-                    + " VALUES(?,?,?,?,?,'AVAILABLE',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
-                    id, storeId, staffId, start, end);
-        }
+        // CCR-SCH-STAFF-OFFLINE-001 (2026-11-16): the staff_availability_window seed
+        // helper was removed — no read path touches staff scheduling any more.
 
         void reservation(long id, long orderId, long userId, long storeId, long serviceId,
                 String fulfillment, String start, String end, String pickup, String returned, String status) {

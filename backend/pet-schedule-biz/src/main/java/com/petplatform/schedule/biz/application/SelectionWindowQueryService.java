@@ -30,25 +30,24 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * SCH slot display projection (CCR-SCH-SLOT-001 unified slots). It never creates a hold or
- * promises a staff assignment. The slot list is the store's whole open timeline; a slot is
- * bookable for the queried service when that service has qualified, scheduled staff covering
- * it. The C-side item keeps its historical windowId/kind shape: kind is the selection ROLE the
- * service's fulfillment projects onto the slot (GENERAL for IN_STORE; PICKUP and RETURN for
- * PICKUP_DELIVERY), so the existing booking/reschedule consumers stay unchanged.
+ * SCH slot display projection (CCR-SCH-SLOT-001 unified slots; CCR-SCH-STAFF-OFFLINE-001
+ * 2026-11-16). It never creates a hold or promises a staff assignment. The slot list is the
+ * store's whole open timeline; a slot's bookable capacity is its configured capacity — staff
+ * scheduling is offline-managed and is never a capacity premise. The C-side item keeps its
+ * historical windowId/kind shape: kind is the selection ROLE the service's fulfillment projects
+ * onto the slot (GENERAL for IN_STORE; PICKUP and RETURN for PICKUP_DELIVERY), so the existing
+ * booking/reschedule consumers stay unchanged.
  */
 public final class SelectionWindowQueryService {
     private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
     private final SelectionReadStore store;
     private final ServiceQueryApi services;
-    private final QualifiedStaffFactsPort staff;
     private final Clock clock;
 
     public SelectionWindowQueryService(SelectionReadStore store, ServiceQueryApi services,
-            QualifiedStaffFactsPort staff, Clock clock) {
+            Clock clock) {
         this.store = Objects.requireNonNull(store);
         this.services = Objects.requireNonNull(services);
-        this.staff = staff;
         this.clock = Objects.requireNonNull(clock);
     }
 
@@ -70,7 +69,6 @@ public final class SelectionWindowQueryService {
         }
         boolean pickupDelivery =
                 snapshot.fulfillmentType() == FulfillmentType.PICKUP_DELIVERY;
-        if (staff == null) unavailable("qualified staff facts provider is unavailable");
 
         LocalDateTime from = query.startDate().atStartOfDay(AvailabilityQueryService.BUSINESS_ZONE)
                 .withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
@@ -102,20 +100,9 @@ public final class SelectionWindowQueryService {
                 if (openDerived(row.status())) priorOpenEnd = row.end();
                 OffsetDateTime start = row.start().atOffset(ZoneOffset.UTC);
                 OffsetDateTime end = row.end().atOffset(ZoneOffset.UTC);
-                int qualified;
-                try {
-                    qualified = staff.countQualifiedAvailableStaff(query.storeId(),
-                            query.serviceId(), start, end);
-                } catch (ApiException known) {
-                    throw known;
-                } catch (RuntimeException failure) {
-                    throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
-                            "qualified staff facts are unavailable");
-                }
-                if (qualified < 0) unavailable("qualified staff count is invalid");
-                // Effective capacity keeps the SSOT §12 service view: min(slot capacity,
-                // qualified staff of this service covering the slot).
-                int effective = Math.min(row.configuredCapacity(), qualified);
+                // CCR-SCH-STAFF-OFFLINE-001: effective capacity = the configured slot capacity
+                // (no qualified-staff minimum); staff scheduling is offline-managed.
+                int effective = row.configuredCapacity();
                 int taken = occupied.getOrDefault(row.id(), Set.of()).size();
                 int remaining = Math.max(0, effective - taken);
                 boolean available = start.toInstant().isAfter(now) && remaining > 0;

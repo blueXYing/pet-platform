@@ -429,7 +429,7 @@ class ScheduleSoldOutLinkMySqlTest {
             ScheduleWriteStore store = new ScheduleWriteStore(db.source, seq(5000));
             commands = new ScheduleMerchantCommandApiImpl(new ScheduleMerchantCommandService(
                     store, new ScheduleAdmissionGate(admission), guard, facts, merchant,
-                    orders, services, proof, Clock.fixed(NOW, ZoneOffset.UTC)));
+                    services, proof, Clock.fixed(NOW, ZoneOffset.UTC)));
             holds = new ReservationHoldApiImpl(db.source, seq(2000), guard, facts, proof,
                     orders, Clock.fixed(NOW, ZoneOffset.UTC));
             confirms = new ReservationConfirmApiImpl(db.source, seq(8000), guard, facts,
@@ -711,9 +711,9 @@ class ScheduleSoldOutLinkMySqlTest {
             }
         }
 
-        /** Window 101 (capacity as given, CCR-SCH-SLOT-001 store-wide unified slot) plus two
-         * qualified scheduled employees 401/402: overlapping claims each need a distinct
-         * qualified staff member (SCH solver). */
+        /** Window 101 (capacity as given, CCR-SCH-SLOT-001 store-wide unified slot). The
+         * legacy staff 401/402 capability/availability seeds are inert historical rows:
+         * CCR-SCH-STAFF-OFFLINE-001 — capacity is the configured slot capacity only. */
         private void seedGeneral(int capacity) {
             jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,"
                     + "start_at,end_at,configured_capacity,status,version,"

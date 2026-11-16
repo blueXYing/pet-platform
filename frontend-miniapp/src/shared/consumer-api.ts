@@ -241,9 +241,10 @@ export class ConsumerApi {
     // M-002 schedule maintenance family (Schedule Write Contract v0.1, 53号; backend switch
     // pet.schedule.command.http.enabled default OFF — reads/writes fail closed through the
     // normal error paths until the platform enables it). Availability windows address the
-    // caller's store; staff windows and capability sets address the caller's store+staff.
+    // caller's store; capability sets address the caller's store+staff. Staff availability-
+    // windows routes are gone (CCR-SCH-STAFF-OFFLINE-001: staff scheduling is offline).
     const schedulePath = (/^\/api\/v1\/merchant\/stores\/[1-9][0-9]{0,18}\/availability-windows(\/[1-9][0-9]{0,18}(\/close|\/open)?|\/batch-close)?$/.test(spec.path) ||
-      /^\/api\/v1\/merchant\/staff\/[1-9][0-9]{0,18}\/(availability-windows(\/[1-9][0-9]{0,18}(\/close|\/open)?)?|service-capabilities)$/.test(spec.path)) &&
+      /^\/api\/v1\/merchant\/staff\/[1-9][0-9]{0,18}\/service-capabilities$/.test(spec.path)) &&
       ['GET', 'POST', 'PUT'].includes(spec.method)
     // Verification completion (48 K2 v0.3, switch pet.verification.completion.http.enabled
     // default OFF): the command body is strictly {verificationCode}; the order in the path is

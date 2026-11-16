@@ -3,11 +3,10 @@ import { ConsumerApi } from '../../shared/consumer-api'
 import { decodeManagedServicePage } from '../services/model'
 import {
   capabilityProblems, composeTimestamp, decodeBatchCloseResult, decodeCapabilityView,
-  decodeStaffWindowPage, decodeStaffWindowReceipt, decodeWindowPage, decodeWindowReceipt,
-  reasonProblem, staffWindowFormProblems, windowFormProblems,
+  decodeWindowPage, decodeWindowReceipt,
+  reasonProblem, windowFormProblems,
   type BatchCloseResult, type CapabilityView, type ScheduleDeps, type ScheduleWindowPage,
-  type ScheduleWindowReceipt, type StaffWindowFormInput, type StaffWindowReceipt,
-  type StaffWindowPage, type WindowFormInput, type WindowPageQuery,
+  type ScheduleWindowReceipt, type WindowFormInput, type WindowPageQuery,
 } from './model'
 
 /**
@@ -123,63 +122,6 @@ export class RealScheduleRepository implements ScheduleDeps {
     return this.write(slot, `/api/v1/merchant/stores/${storeId}/availability-windows/batch-close`, 'POST', {
       merchantId, fromDate, toDate, reason: reason.trim(),
     }, decodeBatchCloseResult)
-  }
-
-  async staffWindows(staffId: string): Promise<StaffWindowPage> {
-    const { merchantId, storeId } = this.target()
-    return this.read(`/api/v1/merchant/staff/${staffId}/availability-windows`, { merchantId, storeId }, value => {
-      const page = decodeStaffWindowPage(value)
-      if (page.staffId !== staffId) throw new Error('INVALID_RESPONSE')
-      return page
-    })
-  }
-
-  async createStaffWindow(slot: string, staffId: string, input: StaffWindowFormInput): Promise<StaffWindowReceipt> {
-    const { merchantId, storeId } = this.target()
-    if (staffWindowFormProblems(input).length) throw new Error('WORKSPACE_FORM_INVALID')
-    return this.write(slot, `/api/v1/merchant/staff/${staffId}/availability-windows`, 'POST', {
-      merchantId, storeId,
-      startAt: composeTimestamp(input.startDate, input.startTime),
-      endAt: composeTimestamp(input.endDate, input.endTime),
-    }, decodeStaffWindowReceipt)
-  }
-
-  async updateStaffWindow(slot: string, staffId: string, windowId: string, expectedVersion: string, input: StaffWindowFormInput): Promise<StaffWindowReceipt> {
-    const { merchantId, storeId } = this.target()
-    if (staffWindowFormProblems(input).length) throw new Error('WORKSPACE_FORM_INVALID')
-    return this.write(slot, `/api/v1/merchant/staff/${staffId}/availability-windows/${windowId}`, 'PUT', {
-      merchantId, storeId,
-      startAt: composeTimestamp(input.startDate, input.startTime),
-      endAt: composeTimestamp(input.endDate, input.endTime),
-      expectedVersion,
-    }, value => {
-      const receipt = decodeStaffWindowReceipt(value)
-      if (receipt.windowId !== windowId || receipt.staffId !== staffId) throw new Error('INVALID_RESPONSE')
-      return receipt
-    })
-  }
-
-  async closeStaffWindow(slot: string, staffId: string, windowId: string, expectedVersion: string, reason: string): Promise<StaffWindowReceipt> {
-    const { merchantId, storeId } = this.target()
-    if (reasonProblem(reason, true)) throw new Error('WORKSPACE_FORM_INVALID')
-    return this.write(slot, `/api/v1/merchant/staff/${staffId}/availability-windows/${windowId}/close`, 'POST', {
-      merchantId, storeId, expectedVersion, reason: reason.trim(),
-    }, value => {
-      const receipt = decodeStaffWindowReceipt(value)
-      if (receipt.windowId !== windowId || receipt.staffId !== staffId || receipt.status !== 'CLOSED') throw new Error('INVALID_RESPONSE')
-      return receipt
-    })
-  }
-
-  async openStaffWindow(slot: string, staffId: string, windowId: string, expectedVersion: string): Promise<StaffWindowReceipt> {
-    const { merchantId, storeId } = this.target()
-    return this.write(slot, `/api/v1/merchant/staff/${staffId}/availability-windows/${windowId}/open`, 'POST', {
-      merchantId, storeId, expectedVersion,
-    }, value => {
-      const receipt = decodeStaffWindowReceipt(value)
-      if (receipt.windowId !== windowId || receipt.staffId !== staffId || receipt.status !== 'AVAILABLE') throw new Error('INVALID_RESPONSE')
-      return receipt
-    })
   }
 
   async capabilities(staffId: string): Promise<CapabilityView> {

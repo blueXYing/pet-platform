@@ -15,13 +15,10 @@ import com.petplatform.merchant.api.dto.MerchantAdmissionDTO;
 import com.petplatform.merchant.api.dto.MerchantCurrentStaffTypes.CurrentStaffFact;
 import com.petplatform.merchant.api.dto.MerchantCurrentStaffTypes.CurrentStoreStaffFacts;
 import com.petplatform.merchant.api.dto.MerchantMembershipPageDTO;
-import com.petplatform.merchant.api.dto.StoreStaffFactsDTO;
 import com.petplatform.merchant.api.query.MerchantAdmissionQuery;
 import com.petplatform.merchant.api.query.MerchantAdmissionQueryApi;
 import com.petplatform.merchant.api.query.MerchantCurrentStaffFactsApi;
 import com.petplatform.merchant.api.query.MerchantMembershipQuery;
-import com.petplatform.merchant.api.query.MerchantStoreStaffFactsApi;
-import com.petplatform.merchant.api.query.StoreStaffFactsQuery;
 import com.petplatform.order.api.dto.OrderPaymentFact;
 import com.petplatform.order.api.dto.OrderProtectionTypes.OrderProtectionFact;
 import com.petplatform.order.api.dto.OrderProtectionTypes.OrderProtectionSnapshot;
@@ -31,35 +28,25 @@ import com.petplatform.order.api.query.OrderProtectionFactsApi;
 import com.petplatform.refund.api.dto.RefundExecutionFact;
 import com.petplatform.refund.api.dto.RefundSuccessFact;
 import com.petplatform.refund.api.query.RefundExecutionFactsApi;
-import com.petplatform.schedule.api.command.ReservationConfirmApi;
 import com.petplatform.schedule.api.dto.AvailabilityPageDTO;
 import com.petplatform.schedule.api.dto.AvailabilityWindowDTO;
 import com.petplatform.schedule.api.dto.ReservationConfirmTypes.ConfirmReservationCommand;
 import com.petplatform.schedule.api.dto.ReservationExpiryTypes.ExpireHoldCommand;
 import com.petplatform.schedule.api.dto.ReservationHoldTypes.HoldCommand;
 import com.petplatform.schedule.api.dto.ReservationHoldTypes.HoldResult;
-import com.petplatform.schedule.api.dto.ScheduleWorkbenchTypes.StaffWindowItem;
 import com.petplatform.schedule.api.dto.ScheduleWorkbenchTypes.WindowItem;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CapabilityQuery;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CapabilityView;
-import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CreateStaffWindowCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CreateWindowCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.ReplaceCapabilitiesCommand;
-import com.petplatform.schedule.api.dto.ScheduleWriteTypes.StaffWindowCloseCommand;
-import com.petplatform.schedule.api.dto.ScheduleWriteTypes.StaffWindowOpenCommand;
-import com.petplatform.schedule.api.dto.ScheduleWriteTypes.StaffWindowResult;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.UpdateWindowCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WindowCloseCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WindowResult;
-import com.petplatform.schedule.api.dto.SelectionWindowDTO;
 import com.petplatform.schedule.api.dto.SelectionWindowPageDTO;
 import com.petplatform.schedule.api.error.ScheduleWriteApiCodes;
-import com.petplatform.schedule.api.protection.ScheduleCapacityGuardApi;
 import com.petplatform.schedule.api.protection.ScheduleProtectionFactsApi;
 import com.petplatform.schedule.api.query.AvailabilityQuery;
-import com.petplatform.schedule.api.query.ScheduleMerchantQueryApi;
 import com.petplatform.schedule.api.query.SelectionWindowQuery;
-import com.petplatform.schedule.api.query.WorkbenchStaffWindowQuery;
 import com.petplatform.schedule.api.query.WorkbenchWindowQuery;
 import com.petplatform.schedule.biz.apiimpl.ReservationConfirmApiImpl;
 import com.petplatform.schedule.biz.apiimpl.ReservationExpiryApiImpl;
@@ -75,7 +62,6 @@ import com.petplatform.schedule.biz.apiimpl.ScheduleQueryApiImpl;
 import com.petplatform.schedule.biz.apiimpl.ScheduleSelectionQueryApiImpl;
 import com.petplatform.schedule.biz.application.ScheduleAdmissionGate;
 import com.petplatform.schedule.biz.infrastructure.persistence.ScheduleWriteStore;
-import com.petplatform.schedule.biz.infrastructure.provider.ScheduleQualifiedStaffFactsProvider;
 import com.petplatform.service.api.dto.ServiceBookabilityDTO;
 import com.petplatform.service.api.dto.ServiceSnapshotDTO;
 import com.petplatform.service.api.dto.ServiceSnapshotPageDTO;
@@ -114,17 +100,18 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * SCH-004 specialised acceptance (issue acceptance walk-through on real MySQL, Contract53;
- * CCR-SCH-SLOT-001 unified store-wide slots). One harness drives the full maintenance chain
- * end to end: merchant writes (store-wide slot windows, staff availability, capability sets)
+ * CCR-SCH-SLOT-001 unified store-wide slots; CCR-SCH-STAFF-OFFLINE-001 capacity = configured
+ * slot capacity — staff scheduling is offline-managed). One harness drives the full
+ * maintenance chain end to end: merchant writes (store-wide slot windows and capability sets)
  * drive the C-side minute-granularity bookability facts (API07 6.1/6.3 + the slot selection
  * projection with the historical kind role shape), the system-derived SOLD_OUT state reacts
- * to occupancy and releases, staff schedule/capability edits move the effective capacity, and
- * the validation chain (pickup+120, store-wide overlap, half-open boundaries, requestId
- * idempotency) holds on both the write and the hold path.
+ * to occupancy and releases, capability edits no longer move capacity, and the validation
+ * chain (pickup+120, store-wide overlap, half-open boundaries, requestId idempotency) holds
+ * on both the write and the hold path.
  *
- * <p>Unlike the sibling contract tests, the schedule rows are not SQL-seeded: every window,
- * staff window and capability row in these scenarios is created through the merchant write
- * commands, so the acceptance proves the maintained state is exactly what consumers read.
+ * <p>Unlike the sibling contract tests, the schedule rows are not SQL-seeded: every window
+ * and capability row in these scenarios is created through the merchant write commands, so
+ * the acceptance proves the maintained state is exactly what consumers read.
  */
 class Sch004JointAcceptanceMySqlTest {
     private static final Instant NOW = Instant.parse("2026-09-27T12:34:56.789Z");
@@ -141,14 +128,12 @@ class Sch004JointAcceptanceMySqlTest {
     private static final OffsetDateTime AT_1140 = OffsetDateTime.parse("2030-01-01T11:40:00Z");
     private static final OffsetDateTime AT_1200 = OffsetDateTime.parse("2030-01-01T12:00:00Z");
     private static final OffsetDateTime AT_1230 = OffsetDateTime.parse("2030-01-01T12:30:00Z");
-    private static final OffsetDateTime AT_1300 = OffsetDateTime.parse("2030-01-01T13:00:00Z");
     private static final OffsetDateTime AT_1359 = OffsetDateTime.parse("2030-01-01T13:59:00Z");
     private static final OffsetDateTime AT_1400 = OffsetDateTime.parse("2030-01-01T14:00:00Z");
     private static final OffsetDateTime AT_1500 = OffsetDateTime.parse("2030-01-01T15:00:00Z");
-    private static final OffsetDateTime AT_1600 = OffsetDateTime.parse("2030-01-01T16:00:00Z");
 
     @Test
-    void maintainedWindowsDriveMinuteGranularityBookabilityThroughStaffReadiness()
+    void maintainedWindowsDriveMinuteGranularityBookabilityAtConfiguredCapacity()
             throws Exception {
         try (Database db = new Database()) {
             App app = new App(db);
@@ -162,25 +147,23 @@ class Sch004JointAcceptanceMySqlTest {
             ApiException overlap = assertThrows(ApiException.class,
                     () -> app.createWindow(AT_1030, AT_1130, 1));
             assertEquals(ScheduleWriteApiCodes.SCHEDULE_WINDOW_OVERLAP, overlap.code());
-            // C-side reads the exact minute boundaries back, but no staff is scheduled yet:
-            // the effective capacity stays 0 and nothing is bookable.
+            // CCR-SCH-STAFF-OFFLINE-001: no staff schedule exists or is needed — the effective
+            // capacity IS the configured slot capacity and both odd-minute slots are bookable.
             AvailabilityPageDTO before = app.availability(SERVICE, DAY, DAY);
             assertEquals(2, before.items().size());
             assertMinuteBounds(before);
             for (AvailabilityWindowDTO item : before.items()) {
-                assertEquals(0, item.qualifiedAvailableStaffCount());
-                assertEquals(0, item.effectiveCapacity());
-                assertFalse(item.available());
+                assertEquals(1, item.qualifiedAvailableStaffCount(),
+                        "deprecated staff-count field mirrors the capacity");
+                assertEquals(1, item.effectiveCapacity());
+                assertEquals(1, item.remainingCapacity());
+                assertTrue(item.available());
             }
-            // Merchant schedules both employees over the interval and grants the capability;
-            // the C-side effective capacity becomes min(configured=1, qualified staff=2)=1.
-            app.createStaffWindow("401", AT_1000, AT_1100);
-            app.createStaffWindow("402", AT_1000, AT_1100);
+            // Capability grants stay merchant bookkeeping: they no longer move capacity.
             app.putCapabilities("401", "0", List.of(SERVICE));
             app.putCapabilities("402", "0", List.of(SERVICE));
             AvailabilityPageDTO ready = app.availability(SERVICE, DAY, DAY);
             for (AvailabilityWindowDTO item : ready.items()) {
-                assertEquals(2, item.qualifiedAvailableStaffCount());
                 assertEquals(1, item.effectiveCapacity());
                 assertEquals(1, item.remainingCapacity());
                 assertTrue(item.available());
@@ -209,10 +192,6 @@ class Sch004JointAcceptanceMySqlTest {
             App app = new App(db);
             app.createWindow(AT_1000, AT_1100, 2);
             String windowId = app.workbenchWindows(null).get(0).windowId();
-            app.createStaffWindow("401", AT_1000, AT_1100);
-            app.createStaffWindow("402", AT_1000, AT_1100);
-            app.putCapabilities("401", "0", List.of(SERVICE));
-            app.putCapabilities("402", "0", List.of(SERVICE));
             // Two claims fill capacity 2: the window derives SOLD_OUT inside the hold
             // transactions and every consumer sees remaining=0.
             HoldResult first = app.hold("511", windowId, AT_1000, AT_1030);
@@ -236,7 +215,7 @@ class Sch004JointAcceptanceMySqlTest {
             assertEquals(ScheduleWriteApiCodes.SCHEDULE_WINDOW_STATE_NOT_ALLOWED,
                     app.shrinkFailure(windowId));
             // Raising passes and the same transaction re-derives the state from occupancy;
-            // the remaining stays staff-capped at 0 while both claims hold.
+            // while both claims hold, the remaining stays capacity-capped at 0.
             WindowResult raised = app.raiseCapacity(windowId, 3);
             assertEquals("OPEN", raised.status());
             assertEquals(0, app.availability(SERVICE, DAY, DAY).items().get(0).remainingCapacity());
@@ -250,8 +229,6 @@ class Sch004JointAcceptanceMySqlTest {
             // A capacity-1 slot goes SOLD_OUT with one claim and still blocks overlapping
             // creations: SOLD_OUT keeps the open slot exactly like an OPEN one (§3.1).
             WindowResult tight = app.createWindow(AT_1130, AT_1200, 1);
-            app.createStaffWindow("401", AT_1130, AT_1200);
-            app.createStaffWindow("402", AT_1130, AT_1200);
             HoldResult third = app.hold("513", tight.windowId(), AT_1130, AT_1200);
             assertEquals("SOLD_OUT", app.workbenchWindow(tight.windowId()).status());
             ApiException blocked = assertThrows(ApiException.class,
@@ -267,47 +244,36 @@ class Sch004JointAcceptanceMySqlTest {
     }
 
     @Test
-    void staffScheduleAndCapabilityEditsChangeBookabilityWithReductionProtection()
-            throws Exception {
+    void capabilityEditsKeepTheCapacityViewAndStayVersionCasProtected() throws Exception {
         try (Database db = new Database()) {
             App app = new App(db);
             app.createWindow(AT_1000, AT_1100, 2);
             String windowId = app.workbenchWindows(null).get(0).windowId();
-            String staffWindow401 = app.createStaffWindow("401", AT_1000, AT_1100).windowId();
-            String staffWindow402 = app.createStaffWindow("402", AT_1000, AT_1100).windowId();
             app.putCapabilities("401", "0", List.of(SERVICE));
             app.putCapabilities("402", "0", List.of(SERVICE));
             assertEquals(2, app.availability(SERVICE, DAY, DAY).items().get(0).remainingCapacity());
-            // Closing one employee's schedule halves the qualified staff and the C-side
-            // effective capacity follows (min of configured and qualified staff).
-            app.closeStaffWindow("402", staffWindow402, "402 休息");
-            AvailabilityPageDTO halved = app.availability(SERVICE, DAY, DAY);
-            assertEquals(1, halved.items().get(0).qualifiedAvailableStaffCount());
-            assertEquals(1, halved.items().get(0).effectiveCapacity());
-            assertEquals(1, halved.items().get(0).remainingCapacity());
-            // Reopening restores the capacity (widening edits need no reduction protection).
-            app.openStaffWindow("402", staffWindow402);
-            assertEquals(2, app.availability(SERVICE, DAY, DAY).items().get(0).remainingCapacity());
-            // The ORDER protected-assignment gate blocks availability reductions for a
-            // staff member with a protectRequired assignment (36号), then passes once clear.
-            app.protect("401");
-            ApiException protectedBlock = assertThrows(ApiException.class,
-                    () -> app.closeStaffWindow("401", staffWindow401, "401 请假"));
-            assertEquals(CommonApiCodes.CONFLICT, protectedBlock.code());
-            app.unprotect("401");
-            app.closeStaffWindow("401", staffWindow401, "401 请假");
-            assertEquals(1, app.availability(SERVICE, DAY, DAY).items().get(0).remainingCapacity());
-            // Capability removal passes the same reduction protection and the C-side
-            // qualified staff count follows the maintained capability set.
+            // CCR-SCH-STAFF-OFFLINE-001: capability edits are merchant bookkeeping — the
+            // capacity view never follows them (no staff-window close/open exists any more).
+            AvailabilityPageDTO page = app.availability(SERVICE, DAY, DAY);
+            assertEquals(2, page.items().get(0).qualifiedAvailableStaffCount(),
+                    "deprecated staff-count field mirrors the configured capacity");
+            assertEquals(2, page.items().get(0).effectiveCapacity());
+            assertEquals(2, page.items().get(0).remainingCapacity());
+            // The capability set keeps its own CAS version chain (SCHC-2).
             String capabilityVersion = app.capabilities("402").version();
             assertEquals("1", capabilityVersion);
             app.putCapabilities("402", capabilityVersion, List.of());
             assertEquals(List.of(), app.capabilities("402").serviceIds());
             assertEquals("2", app.capabilities("402").version());
+            // Removing the capability of every employee no longer drains the capacity view:
+            // capacity stays the configured slot capacity for bookings and holds.
             AvailabilityPageDTO unqualified = app.availability(SERVICE, DAY, DAY);
-            assertEquals(0, unqualified.items().get(0).qualifiedAvailableStaffCount());
-            assertEquals(0, unqualified.items().get(0).remainingCapacity());
-            assertFalse(unqualified.items().get(0).available());
+            assertEquals(2, unqualified.items().get(0).qualifiedAvailableStaffCount());
+            assertEquals(2, unqualified.items().get(0).effectiveCapacity());
+            assertEquals(2, unqualified.items().get(0).remainingCapacity());
+            assertTrue(unqualified.items().get(0).available());
+            app.hold("514", windowId, AT_1000, AT_1030);
+            assertEquals(1, app.availability(SERVICE, DAY, DAY).items().get(0).remainingCapacity());
         }
     }
 
@@ -326,12 +292,8 @@ class Sch004JointAcceptanceMySqlTest {
             // at pickup start + 120 minutes exactly (the legal boundary).
             String pickup = app.createWindow(AT_1200, AT_1230, 1).windowId();
             String returning = app.createWindow(AT_1400, AT_1500, 1).windowId();
-            // Staff readiness for the delivery service: both employees scheduled over both
-            // claim intervals and authorised on the service, so the holds can prove capacity.
-            app.createStaffWindow("401", AT_1200, AT_1400);
-            app.createStaffWindow("401", AT_1400, AT_1500);
-            app.createStaffWindow("402", AT_1200, AT_1400);
-            app.createStaffWindow("402", AT_1400, AT_1500);
+            // Capability grants stay possible but are no longer a hold premise (offline
+            // staff scheduling): the +120 boundary below books without any staff rows.
             app.putCapabilities("401", "0", List.of(PICKUP_SERVICE));
             app.putCapabilities("402", "0", List.of(PICKUP_SERVICE));
             // Hold-level +120 chain: a returnStart before pickupStart+120 is a 400, no
@@ -343,11 +305,6 @@ class Sch004JointAcceptanceMySqlTest {
             assertEquals(2, exact.claims().size());
             app.confirm(exact);
             app.release(exact);
-            // Staff windows follow the same half-open overlap rule; adjacency is legal.
-            assertEquals(ScheduleWriteApiCodes.SCHEDULE_WINDOW_OVERLAP,
-                    app.staffWindowFailure("401", AT_1300, AT_1500));
-            app.createStaffWindow("401", AT_1500, AT_1600);
-            assertEquals(3, app.staffWindows().size());
             // 23号 idempotency: the same requestId replays the first receipt without a
             // second row; the same requestId with different parameters is a 409 conflict.
             String requestId = UUID.randomUUID().toString();
@@ -406,7 +363,7 @@ class Sch004JointAcceptanceMySqlTest {
         private final Database db;
         private final ScheduleCapacityGuardApiImpl guard;
         private final ScheduleMerchantCommandApiImpl commands;
-        private final ScheduleMerchantQueryApi workbench;
+        private final ScheduleMerchantQueryApiImpl workbench;
         private final ScheduleQueryApiImpl availabilityApi;
         private final ScheduleSelectionQueryApiImpl selectionApi;
         private final ReservationHoldApiImpl holds;
@@ -464,7 +421,7 @@ class Sch004JointAcceptanceMySqlTest {
                 }
 
             @Override
-            public com.petplatform.service.api.dto.ServiceSnapshotPageDTO searchVisibleServices(
+            public ServiceSnapshotPageDTO searchVisibleServices(
                     com.petplatform.service.api.query.CatalogServiceSearchQuery query) {
                 throw new UnsupportedOperationException("catalog search not used by this slice");
             }
@@ -474,13 +431,12 @@ class Sch004JointAcceptanceMySqlTest {
             ScheduleAdmissionGate gate = new ScheduleAdmissionGate(admission);
             ScheduleWriteStore store = new ScheduleWriteStore(db.source, seq(15000));
             commands = new ScheduleMerchantCommandApiImpl(new ScheduleMerchantCommandService(
-                    store, gate, guard, facts, merchant, orders, services, proof,
+                    store, gate, guard, facts, merchant, services, proof,
                     Clock.fixed(NOW, ZoneOffset.UTC)));
             workbench = new ScheduleMerchantQueryApiImpl(db.source, gate);
-            ScheduleQualifiedStaffFactsProvider qualified =
-                    new ScheduleQualifiedStaffFactsProvider(new FakeStoreStaff(), db.source);
-            availabilityApi = new ScheduleQueryApiImpl(db.source, services, qualified);
-            selectionApi = new ScheduleSelectionQueryApiImpl(db.source, services, qualified);
+            // CCR-SCH-STAFF-OFFLINE-001: no qualified-staff facts provider any more.
+            availabilityApi = new ScheduleQueryApiImpl(db.source, services);
+            selectionApi = new ScheduleSelectionQueryApiImpl(db.source, services);
             holds = new ReservationHoldApiImpl(db.source, seq(12000), guard, facts, proof,
                     orders, Clock.fixed(NOW, ZoneOffset.UTC));
             confirms = new ReservationConfirmApiImpl(db.source, seq(12500), guard, facts,
@@ -522,21 +478,6 @@ class Sch004JointAcceptanceMySqlTest {
             return failure.code();
         }
 
-        private StaffWindowResult createStaffWindow(String staffId, OffsetDateTime start,
-                OffsetDateTime end) {
-            StaffWindowResult[] out = new StaffWindowResult[1];
-            assertTrue(commands.createStaffWindowOutcome(new CreateStaffWindowCommand(ctx(),
-                    MERCHANT, STORE, staffId, start, end), out));
-            return out[0];
-        }
-
-        private String staffWindowFailure(String staffId, OffsetDateTime start,
-                OffsetDateTime end) {
-            ApiException failure = assertThrows(ApiException.class,
-                    () -> createStaffWindow(staffId, start, end));
-            return failure.code();
-        }
-
         private void putCapabilities(String staffId, String expectedVersion,
                 List<String> serviceIds) {
             commands.replaceCapabilities(new ReplaceCapabilitiesCommand(ctx(), MERCHANT, STORE,
@@ -547,16 +488,6 @@ class Sch004JointAcceptanceMySqlTest {
         private CapabilityView capabilities(String staffId) {
             return commands.getCapabilities(new CapabilityQuery(ctx(), MERCHANT, STORE,
                     staffId));
-        }
-
-        private void closeStaffWindow(String staffId, String windowId, String reason) {
-            commands.closeStaffWindow(new StaffWindowCloseCommand(ctx(), windowId, MERCHANT,
-                    STORE, staffId, staffWindowVersion(windowId), reason));
-        }
-
-        private void openStaffWindow(String staffId, String windowId) {
-            commands.openStaffWindow(new StaffWindowOpenCommand(ctx(), windowId, MERCHANT,
-                    STORE, staffId, staffWindowVersion(windowId)));
         }
 
         private String closeFailure(String windowId) {
@@ -609,11 +540,6 @@ class Sch004JointAcceptanceMySqlTest {
         private SelectionWindowPageDTO selection(String service, LocalDate from, LocalDate to) {
             return selectionApi.querySelectableWindows(new SelectionWindowQuery(service, STORE,
                     from, to, query()));
-        }
-
-        private List<StaffWindowItem> staffWindows() {
-            return workbench.listStaffWindows(new WorkbenchStaffWindowQuery(MERCHANT, STORE,
-                    "401", query())).items();
         }
 
         // reservation lifecycle
@@ -709,20 +635,8 @@ class Sch004JointAcceptanceMySqlTest {
                     java.sql.Timestamp.from(end.toInstant()));
         }
 
-        private void protect(String staffId) {
-            orders.protectedStaff.add(staffId);
-        }
-
-        private void unprotect(String staffId) {
-            orders.protectedStaff.remove(staffId);
-        }
-
         private long windowVersion(String windowId) {
             return Long.parseLong(db.windowVersion(windowId));
-        }
-
-        private long staffWindowVersion(String windowId) {
-            return Long.parseLong(db.staffWindowVersion(windowId));
         }
     }
 
@@ -732,13 +646,6 @@ class Sch004JointAcceptanceMySqlTest {
             return new CurrentStoreStaffFacts(MERCHANT, storeId, true, List.of(
                     new CurrentStaffFact("401", MERCHANT, storeId, "ACTIVE", true, "0"),
                     new CurrentStaffFact("402", MERCHANT, storeId, "ACTIVE", true, "0")));
-        }
-    }
-
-    private static final class FakeStoreStaff implements MerchantStoreStaffFactsApi {
-        @Override
-        public StoreStaffFactsDTO listActiveStoreStaffFacts(StoreStaffFactsQuery query) {
-            return new StoreStaffFactsDTO(query.storeId(), List.of("401", "402"));
         }
     }
 
@@ -920,12 +827,6 @@ class Sch004JointAcceptanceMySqlTest {
                     Long.parseLong(windowId));
         }
 
-        private String staffWindowVersion(String windowId) {
-            return jdbc.queryForObject(
-                    "SELECT version FROM staff_availability_window WHERE id=?", String.class,
-                    Long.parseLong(windowId));
-        }
-
         private static DataSource source(String url, String user, String password) {
             return new DriverManagerDataSource(url + "?allowPublicKeyRetrieval=true&useSSL=false"
                     + "&connectionTimeZone=UTC", user, password) {
@@ -935,9 +836,9 @@ class Sch004JointAcceptanceMySqlTest {
                     try (var statement = connection.createStatement()) {
                         statement.execute("SET SESSION time_zone = '+00:00'");
                         return connection;
-                    } catch (SQLException failed) {
+                    } catch (SQLException failure) {
                         connection.close();
-                        throw failed;
+                        throw failure;
                     }
                 }
             };

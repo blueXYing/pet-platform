@@ -146,9 +146,11 @@ class ReservationHoldMySqlTest {
             assertEquals(1, db.count("schedule_reservation"));
             assertEquals(1, db.count("schedule_reservation_claim"));
             assertEquals(1, db.count("schedule_reservation_audit"));
-            assertEquals(1, db.jdbc.queryForObject("SELECT capacity_snapshot FROM schedule_reservation",
+            // CCR-SCH-STAFF-OFFLINE-001: capacity snapshot = configured slot capacity (2); the
+            // retained qualified-staff snapshot column records the same number (deprecated).
+            assertEquals(2, db.jdbc.queryForObject("SELECT capacity_snapshot FROM schedule_reservation",
                     Integer.class));
-            assertEquals(1, db.jdbc.queryForObject(
+            assertEquals(2, db.jdbc.queryForObject(
                     "SELECT qualified_staff_count_snapshot FROM schedule_reservation", Integer.class));
             assertEquals("2026-09-27 12:44:56.789", db.jdbc.queryForObject(
                     "SELECT DATE_FORMAT(lock_expire_at,'%Y-%m-%d %H:%i:%s.%f') "
@@ -159,13 +161,21 @@ class ReservationHoldMySqlTest {
                         app.hold.hold(general("501"));
                         return null;
                     })).code());
+            // CCR-SCH-STAFF-OFFLINE-001: no staff minimum — the second slot of the configured
+            // capacity 2 window books without any staff schedule; the third exceeds it.
+            db.transaction().execute(status -> {
+                app.guard.acquire(List.of("201"), QUERY);
+                HoldResult second = app.hold.hold(general("502"));
+                db.insertOrder(second, "IN_STORE");
+                return null;
+            });
             assertEquals("SCHEDULE_CAPACITY_EXCEEDED", assertThrows(ApiException.class,
                     () -> db.transaction().execute(status -> {
                         app.guard.acquire(List.of("201"), QUERY);
                         app.hold.hold(general("503"));
                         return null;
                     })).code());
-            assertEquals(1, db.count("schedule_reservation"));
+            assertEquals(2, db.count("schedule_reservation"));
         }
     }
 
@@ -188,7 +198,8 @@ class ReservationHoldMySqlTest {
             assertEquals(List.of("PICKUP", "RETURN"),
                     held.claims().stream().map(claim -> claim.kind()).toList());
             assertEquals(2, db.count("schedule_reservation_claim"));
-            assertEquals(1, db.jdbc.queryForObject(
+            // CCR-SCH-STAFF-OFFLINE-001: both snapshots record the configured capacity (2).
+            assertEquals(2, db.jdbc.queryForObject(
                     "SELECT qualified_staff_count_snapshot FROM schedule_reservation", Integer.class));
         }
     }
@@ -302,11 +313,12 @@ class ReservationHoldMySqlTest {
 
         private void seedGeneral() {
             // CCR-SCH-SLOT-001: store-wide unified slot (no service_id/window_kind columns).
+            // CCR-SCH-STAFF-OFFLINE-001: no staff capability/availability seeds — capacity is
+            // the configured slot capacity only.
             jdbc.update("INSERT INTO schedule_availability_window(id,merchant_id,store_id,"
                     + "start_at,end_at,configured_capacity,status,version,created_at,"
                     + "updated_at) VALUES(101,10,201,'2030-01-01 01:00:00',"
                     + "'2030-01-01 02:00:00',2,'OPEN',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
-            staff("2030-01-01 01:00:00", "2030-01-01 02:00:00");
         }
 
         /** Unified slots: 102 carries the pickup time point, 103 the return time point (the
@@ -319,30 +331,18 @@ class ReservationHoldMySqlTest {
                     + "'OPEN',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3)),"
                     + "(103,10,201,'2030-01-01 03:00:00','2030-01-01 04:00:00',2,"
                     + "'OPEN',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
-            staff("2030-01-01 01:00:00", "2030-01-01 02:00:00");
-            jdbc.update("INSERT INTO staff_availability_window(id,store_id,staff_id,start_at,"
-                    + "end_at,status,version,created_at,updated_at) VALUES(403,201,401,"
-                    + "'2030-01-01 03:00:00','2030-01-01 04:00:00','AVAILABLE',0,"
-                    + "UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
-        }
-
-        private void staff(String start, String end) {
-            jdbc.update("INSERT INTO staff_service_capability(id,staff_id,service_id,status,"
-                    + "created_at,updated_at) VALUES(402,401,301,'ENABLED',UTC_TIMESTAMP(3),"
-                    + "UTC_TIMESTAMP(3))");
-            jdbc.update("INSERT INTO staff_availability_window(id,store_id,staff_id,start_at,"
-                    + "end_at,status,version,created_at,updated_at) VALUES(404,201,401,?,?,"
-                    + "'AVAILABLE',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))", start, end);
         }
 
         private void insertOrder(HoldResult held, String type) {
+            // order_no derives from the order id so parallel holds never collide on it.
             jdbc.update("INSERT INTO pet_order(id,order_no,user_id,merchant_id,store_id,service_id,"
                     + "pet_id,reservation_id,order_stage,payment_status,verification_status,"
                     + "fulfillment_type,original_amount,discount_amount,pay_amount,refunded_amount,"
                     + "appointment_start_at,appointment_end_at,created_at,updated_at) VALUES"
-                    + "(?,901,601,10,201,301,701,?,'PENDING_PAYMENT','INIT','UNVERIFIED',"
+                    + "(?,?,601,10,201,301,701,?,'PENDING_PAYMENT','INIT','UNVERIFIED',"
                     + "?,100.00,0.00,100.00,0.00,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
-                    Long.parseLong(held.orderId()), Long.parseLong(held.reservationId()), type,
+                    Long.parseLong(held.orderId()), 90_000L + Long.parseLong(held.orderId()),
+                    Long.parseLong(held.reservationId()), type,
                     java.sql.Timestamp.from(held.startAt().toInstant()),
                     java.sql.Timestamp.from(held.endAt().toInstant()));
         }

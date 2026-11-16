@@ -209,6 +209,8 @@ CREATE TABLE schedule_availability_window (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
   COMMENT='全店统一时间槽（CCR-SCH-SLOT-001）：单容量池，跨服务共享，同店不重叠';
 
+-- CCR-SCH-STAFF-OFFLINE-001（2026-11-16 裁决）：员工排班改由线下管理，本表废除——
+-- 商家/预约/读侧的读写已全部移除；表与历史数据保留仅作存档（运营只读监管视图仍可查看历史行）。
 CREATE TABLE staff_availability_window (
     id                    BIGINT       NOT NULL,
     store_id              BIGINT       NOT NULL,

@@ -14,8 +14,6 @@ import com.petplatform.merchant.biz.application.PrivateAssetQueryPort;
 import com.petplatform.merchant.biz.application.SubjectCredentialPort;
 import com.petplatform.merchant.biz.infrastructure.provider.AesGcmProtectedValueProvider;
 import com.petplatform.merchant.biz.infrastructure.provider.MainlandSubjectCredentialProvider;
-import com.petplatform.schedule.api.query.AvailabilityQuery;
-import com.petplatform.schedule.biz.apiimpl.ScheduleQueryApiImpl;
 import com.petplatform.service.api.dto.ServiceBookabilityDTO;
 import com.petplatform.service.api.query.ServiceBookabilityQuery;
 import com.petplatform.service.biz.apiimpl.ServiceQueryApiImpl;
@@ -59,7 +57,8 @@ import tools.jackson.databind.json.JsonMapper;
  * writer HTTP chain (draft -> submit -> admin APPROVE), while schedule windows, reservations,
  * employees, capabilities and availability rows are SQL-seeded until their writers exist.
  *
- * <p>SCH2-D5: the enabled real assembly computes staff facts through MER and SCH-owned tables.
+ * <p>CCR-SCH-STAFF-OFFLINE-001 (2026-11-16): effectiveCapacity is the configured slot
+ * capacity — no staff capability/availability facts participate in the read.
  * W2-SCH-007 also exercises the defensive missing-provider constructor branch directly.
  */
 class ScheduleAvailabilityHttpTest {
@@ -261,7 +260,6 @@ class ScheduleAvailabilityHttpTest {
     String pickup =
         createActiveService(
             token, store, String.valueOf(categoryId), "PICKUP_DELIVERY", 120);
-    seedStaffFacts(merchantId, storeId, grooming); // pickup has no capability: qualified count 0
 
     // SCH-D3: no schedule writer exists, slots and reservations are SQL-seeded. Stored as UTC
     // DATETIME(3) (supplement 23 §2); the HTTP projection renders Asia/Shanghai +08:00.
@@ -289,10 +287,10 @@ class ScheduleAvailabilityHttpTest {
 
     String availability = "/api/v1/c/services/" + grooming + "/availability";
 
-    // ---- W2-SCH-001/006: aggregation over real MER/SCH SQL facts (three qualified staff).
+    // ---- W2-SCH-001/006: aggregation over the store-wide slot timeline.
     // The grooming view lists the whole store timeline: its own three OPEN slots plus the two
-    // directional slots of the pickup service (bookability per slot is a staff-coverage
-    // computation, not an ownership filter).
+    // directional slots of the pickup service (bookability is the configured slot capacity,
+    // not an ownership filter — CCR-SCH-SLOT-001/CCR-SCH-STAFF-OFFLINE-001).
     Reply october =
         send("GET", availability + "?storeId=" + store + "&startDate=" + D1 + "&endDate=" + D2, null, bearer(token));
     assertEquals(200, october.status(), october.redacted());
@@ -301,9 +299,9 @@ class ScheduleAvailabilityHttpTest {
     Map<String, Object> first = items.get(0);
     assertEquals(D1 + "T09:15:00+08:00", first.get("start"), "minute level, business zone");
     assertEquals(D1 + "T18:10:00+08:00", first.get("end"));
-    assertEquals(3, ((Number) first.get("effectiveCapacity")).intValue(), "min(5, staff 3)");
+    assertEquals(5, ((Number) first.get("effectiveCapacity")).intValue(), "configured capacity 5");
     assertEquals(1, ((Number) first.get("occupiedCount")).intValue(), "TEMP_LOCKED claim only");
-    assertEquals(2, ((Number) first.get("remainingCapacity")).intValue());
+    assertEquals(4, ((Number) first.get("remainingCapacity")).intValue());
     assertEquals(true, first.get("available"));
     assertEquals(WINDOW_KEYS, first.keySet(), "no windowId/version/status/configured/staff keys");
     Map<String, Object> directional = items.get(1);
@@ -311,7 +309,7 @@ class ScheduleAvailabilityHttpTest {
         "the pickup service's slot joins the shared timeline");
     Map<String, Object> second = items.get(3);
     assertEquals(D2 + "T10:00:00+08:00", second.get("start"));
-    assertEquals(1, ((Number) second.get("effectiveCapacity")).intValue(), "min(1, staff 3)");
+    assertEquals(1, ((Number) second.get("effectiveCapacity")).intValue(), "configured capacity 1");
     Map<String, Object> crossDay = items.get(4);
     assertEquals(D2 + "T22:00:00+08:00", crossDay.get("start"), "starts inside the range");
     assertEquals(D2P + "T06:00:00+08:00", crossDay.get("end"), "ends outside, still whole");
@@ -321,8 +319,8 @@ class ScheduleAvailabilityHttpTest {
         "start-ascending");
 
     // ---- W2-SCH-004: pickup projection - no window kind, no 120-minute filtering here.
-    // The pickup service sees the same shared slots; without qualified staff every slot is
-    // listed but not bookable.
+    // The pickup service sees the same shared slots at the same configured capacities
+    // (CCR-SCH-STAFF-OFFLINE-001: no qualified-staff gate any more).
     Reply pickupReply =
         send(
             "GET",
@@ -336,8 +334,8 @@ class ScheduleAvailabilityHttpTest {
         "both directional slots and the grooming slot return; 120min rule is not query-side");
     assertEquals(WINDOW_KEYS, pickupItems.get(0).keySet());
     assertEquals(
-        0, ((Number) pickupItems.get(0).get("effectiveCapacity")).intValue(), "min(5, staff 0)");
-    assertEquals(false, pickupItems.get(0).get("available"), "no capacity -> not available");
+        5, ((Number) pickupItems.get(0).get("effectiveCapacity")).intValue(), "configured capacity 5");
+    assertEquals(true, pickupItems.get(0).get("available"), "capacity is never staff-gated");
     assertFalse(pickupReply.data().containsKey("fulfillmentType"));
 
     // ---- W2-SCH-005: time boundaries and the Asia/Shanghai day split (16:00 UTC).
@@ -353,7 +351,7 @@ class ScheduleAvailabilityHttpTest {
     assertEquals(1, todayItems.size(), "finished window filtered; in-progress stays");
     Map<String, Object> progress = todayItems.get(0);
     assertEquals(false, progress.get("available"), "in-progress window is not bookable");
-    assertEquals(3, ((Number) progress.get("effectiveCapacity")).intValue());
+    assertEquals(5, ((Number) progress.get("effectiveCapacity")).intValue());
     Reply tzInside =
         send(
             "GET",
@@ -410,39 +408,8 @@ class ScheduleAvailabilityHttpTest {
         send("GET", availability + "?storeId=" + store + "&startDate=" + D1 + "&endDate=" + D1, null, bearer(token))
             .status(),
         "restored facts are visible again");
-    long seededStaff = db.jdbc.queryForObject(
-        "SELECT id FROM merchant_staff WHERE store_id=? ORDER BY id LIMIT 1", Long.class, storeId);
-    db.jdbc.update("UPDATE merchant_staff SET employment_status='UNKNOWN' WHERE id=?", seededStaff);
-    assertUnavailable(send("GET", availability + "?storeId=" + store
-        + "&startDate=" + D1 + "&endDate=" + D1, null, bearer(token)));
-    db.jdbc.update("UPDATE merchant_staff SET employment_status='ACTIVE' WHERE id=?", seededStaff);
-
-    // ---- W2-SCH-007: defensive missing-provider branch remains fail-closed, while the enabled
-    // boot assembly uses the real SQL-backed provider and answers the same visible window.
-    ScheduleQueryApiImpl missingProviderAssembly =
-        new ScheduleQueryApiImpl(db.source, context.getBean(ServiceQueryApiImpl.class), null);
-    QueryContext ctx = new QueryContext("sch-test", OperatorType.USER, ownerId);
-    ApiException closed =
-        assertThrows(
-            ApiException.class,
-            () ->
-                missingProviderAssembly.queryAvailability(
-                    new AvailabilityQuery(
-                        grooming, store, LocalDate.of(2026, 10, 12), LocalDate.of(2026, 10, 12), ctx)));
-    assertEquals("COMMON_DEPENDENCY_UNAVAILABLE", closed.code(), "fail closed, no placeholder");
-    ApiException invisible =
-        assertThrows(
-            ApiException.class,
-            () ->
-                missingProviderAssembly.queryAvailability(
-                    new AvailabilityQuery(
-                        String.valueOf(db.ids.nextId()),
-                        store,
-                        LocalDate.of(2026, 10, 12),
-                        LocalDate.of(2026, 10, 12),
-                        ctx)));
-    assertEquals("SERVICE_NOT_FOUND", invisible.code(), "visibility precedes the staff gate");
-    // The boot context with the provider answers 200 for the same window.
+    // ---- W2-SCH-007 (CCR-SCH-STAFF-OFFLINE-001): the staff-facts fail-closed branch is gone
+    // with the provider itself; the enabled boot assembly answers the same visible window.
     assertEquals(
         200,
         send("GET", availability + "?storeId=" + store + "&startDate=" + D1 + "&endDate=" + D1, null, bearer(token))
@@ -499,6 +466,7 @@ class ScheduleAvailabilityHttpTest {
     // Internal bookability keeps the same store-mismatch semantics the availability route uses:
     // the service-domain checkBookable itself throws SERVICE_NOT_FOUND (the route projects 404).
     ServiceQueryApiImpl serviceApi = context.getBean(ServiceQueryApiImpl.class);
+    QueryContext ctx = new QueryContext("sch-test", OperatorType.USER, ownerId);
     ApiException mismatch =
         assertThrows(
             ApiException.class,
@@ -557,36 +525,8 @@ class ScheduleAvailabilityHttpTest {
             "SELECT merchant_id FROM merchant_store WHERE id=?", Long.class, Long.parseLong(store)));
   }
 
-  /** Explicit personnel SQL seed; it exercises MER's sixth query and SCH's real intersection. */
-  private void seedStaffFacts(long merchantId, long storeId, String serviceId) {
-    for (int i = 0; i < 3; i++) {
-      long staffId = db.ids.nextId();
-      db.jdbc.update(
-          "INSERT INTO merchant_staff"
-              + "(id,merchant_id,store_id,staff_name,employment_status,service_enabled,version,created_at,updated_at)"
-              + " VALUES(?,?,?,?,'ACTIVE',1,0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
-          staffId, merchantId, storeId, "排期员工" + i);
-      db.jdbc.update(
-          "INSERT INTO staff_service_capability"
-              + "(id,staff_id,service_id,status,created_at,updated_at)"
-              + " VALUES(?,?,?,'ENABLED',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
-          db.ids.nextId(), staffId, Long.parseLong(serviceId));
-      seedStaffAvailability(storeId, staffId,
-          D1 + " 00:00:00", D2P + " 00:00:00");
-      seedStaffAvailability(storeId, staffId,
-          "2030-01-15 11:00:00", "2030-01-15 16:00:00");
-      seedStaffAvailability(storeId, staffId,
-          utcMinusMinutes(100), utcPlusMinutes(100));
-    }
-  }
-
-  private void seedStaffAvailability(long storeId, long staffId, String startUtc, String endUtc) {
-    db.jdbc.update(
-        "INSERT INTO staff_availability_window"
-            + "(id,store_id,staff_id,start_at,end_at,status,version,created_at,updated_at)"
-            + " VALUES(?,?,?,?,?,'AVAILABLE',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
-        db.ids.nextId(), storeId, staffId, startUtc, endUtc);
-  }
+  // CCR-SCH-STAFF-OFFLINE-001 (2026-11-16): the staff capability/availability SQL seeds
+  // were removed — no staff facts participate in the availability read any more.
 
   /** CCR-SCH-SLOT-001: slots are store-wide; the serviceId argument only documents intent. */
   private long seedWindow(

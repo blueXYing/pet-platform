@@ -28,7 +28,7 @@ export default function ScheduleWindowsPage() {
   const preview = route.params.preview === '1'
   const scenario = preview && isScheduleScenario(route.params.scenario) ? route.params.scenario : 'normal'
   const { scope, revision, context } = useWorkspace(preview ? 'preview' : 'real')
-  const [repository] = useState<ScheduleDeps>(() => preview ? new PreviewScheduleRepository(undefined, undefined, undefined, scenario) : realRepository())
+  const [repository] = useState<ScheduleDeps>(() => preview ? new PreviewScheduleRepository(undefined, undefined, scenario) : realRepository())
   const style = useScheduleStyle()
   const [phase, setPhase] = useState<PagePhase>('idle')
   const [closedReason, setClosedReason] = useState('')

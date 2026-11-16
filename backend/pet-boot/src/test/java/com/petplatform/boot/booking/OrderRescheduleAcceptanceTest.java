@@ -150,15 +150,8 @@ class OrderRescheduleAcceptanceTest {
    assertEquals(0,t.count("SELECT COUNT(*) FROM schedule_reservation_change"));assertEquals(3,t.count("SELECT COUNT(*) FROM schedule_reservation_claim"));
   }
  }
- @Test void assignedStaffCannotBeSilentlyReplacedWhenOnlyAnotherPersonCoversNewTime() throws Exception {
-  try(var t=new T()){
-   String o=t.f.paid();t.assign(o);t.f.f.db.jdbc.update("UPDATE staff_availability_window SET end_at='2030-01-01 10:30:00'");
-   t.f.f.db.jdbc.update("INSERT INTO merchant_staff(id,merchant_id,store_id,staff_name,employment_status,service_enabled,created_at,updated_at) VALUES(710304,710301,710302,'QA alternate','ACTIVE',1,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
-   t.f.f.db.jdbc.update("INSERT INTO staff_service_capability(id,staff_id,service_id,status,created_at,updated_at) VALUES(?,710304,710401,'ENABLED',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",IDS.incrementAndGet());
-   t.f.f.db.jdbc.update("INSERT INTO staff_availability_window(id,store_id,staff_id,start_at,end_at,status,created_at,updated_at) VALUES(?,710302,710304,'2030-01-01 08:00:00','2030-01-01 14:00:00','AVAILABLE',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",IDS.incrementAndGet());
-   code("SCHEDULE_CAPACITY_EXCEEDED",()->t.service.reschedule(t.command(o)));assertEquals("710303",t.text("SELECT CAST(service_staff_id AS CHAR) FROM pet_order"));
-  }
- }
+ // CCR-SCH-STAFF-OFFLINE-001 (2026-11-16): assignedStaffCannotBeSilentlyReplacedWhenOnlyAnotherPersonCoversNewTime
+ // was removed — reschedule feasibility no longer matches staff schedules (offline-managed).
  @Test void roundOneRepairAndWorkerUseImmutableRescheduleTimeAndRejectTampering() throws Exception {
   for(boolean repairTerminal:List.of(false,true))try(var t=new T()){
    String o=t.f.paid();t.service.reschedule(t.command(o));var auto=t.f.auto();

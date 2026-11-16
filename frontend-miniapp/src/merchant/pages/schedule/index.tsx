@@ -1,4 +1,4 @@
-import { Button, Image, Input, ScrollView, Text, View } from '@tarojs/components'
+import { Button, Image, ScrollView, Text, View } from '@tarojs/components'
 import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useWorkspace } from '../../../shared/workspace-react'
@@ -8,7 +8,7 @@ import {
   isScheduleScenario, PreviewScheduleRepository, scheduleAvailability,
   scheduleClosedReason, scheduleMessage, windowCountPageSize, windowListPageSize,
   windowStatusTagClass, windowStatusText, windowStatuses, type ScheduleDeps,
-  type ScheduleWindowItem, type StaffWindowItem, type WindowStatus,
+  type ScheduleWindowItem, type WindowStatus,
 } from '../../schedule/model'
 import {
   capsuleTimeText, dayGroupLabel, durationMinutesText, groupWindowsByDate,
@@ -16,21 +16,20 @@ import {
 } from '../../schedule/view'
 import { Chip, ScheduleShell, useScheduleStyle, type PagePhase } from './parts'
 import gridSchedule from '../workspace/assets/grid-schedule.svg'
-import gridMembers from '../workspace/assets/grid-members.svg'
 import gridVerify from '../workspace/assets/grid-verify.svg'
 import './page.css'
 
-// M-002 排期工作台（读） — 商家工作台读（Contract 53号 §3 GET availability-windows +
-// §4 GET staff availability-windows 的呈现）。CCR-SCH-SLOT-001（2026-11-13 裁决）后窗口 =
+// M-002 排期工作台（读） — 商家工作台读（Contract 53号 §3 GET availability-windows 的呈现）。
+// CCR-SCH-SLOT-001（2026-11-13 裁决）后窗口 =
 // 全店共享时间槽：无服务/类型维度，筛选只留状态；SOLD_OUT 为系统派生态（全店单池占满），
-// 只读呈现为「已约满」。
+// 只读呈现为「已约满」。CCR-SCH-STAFF-OFFLINE-001（2026-11-16 裁决）：员工排班归线下管理，
+// 本页不再呈现员工排班查询，容量 = 时段容量（不与员工数取 min）。
 // #122/§3.3 后列表切服务端分页：状态 chips 走服务端过滤（每次选择重拉第 1 页），
 // 摘要三态计数用三个单行 status 过滤请求的信封 total（过滤后匹配总数），不再全量拉取。
 // P-11a（2026-11-11）视觉层对齐 Figma 12:6214：只取呈现 token（时段胶囊/日期分组/三态数字
 // 卡/入口宫格，schedule/view.ts），分组维度是窗口 startAt 的北京历日——数据仍是分钟级窗口
 // （SSOT §12.1 无固定 60 分钟槽），帧内「一键生成/周模板编辑/1 小时间隔」属 P-11b CCR 红线，
 // 一律不做。页面结构、导航与数据链路不变。
-type StaffQuery = 'idle' | 'loading' | 'ready' | 'error'
 type WindowListQuery = { page: number; pageSize: number; status?: WindowStatus }
 
 export default function ScheduleWorkbenchPage() {
@@ -38,7 +37,7 @@ export default function ScheduleWorkbenchPage() {
   const preview = route.params.preview === '1'
   const scenario = preview && isScheduleScenario(route.params.scenario) ? route.params.scenario : 'normal'
   const { scope, revision, context } = useWorkspace(preview ? 'preview' : 'real')
-  const [repository] = useState<ScheduleDeps>(() => preview ? new PreviewScheduleRepository(undefined, undefined, undefined, scenario) : realRepository())
+  const [repository] = useState<ScheduleDeps>(() => preview ? new PreviewScheduleRepository(undefined, undefined, scenario) : realRepository())
   const style = useScheduleStyle()
   const [phase, setPhase] = useState<PagePhase>('idle')
   const [closedReason, setClosedReason] = useState('')
@@ -49,9 +48,6 @@ export default function ScheduleWorkbenchPage() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [summary, setSummary] = useState<Readonly<Record<WindowStatus, number>>>({ OPEN: 0, SOLD_OUT: 0, CLOSED: 0 })
   const [status, setStatus] = useState<WindowStatus | ''>('')
-  const [staffId, setStaffId] = useState('')
-  const [staffPhase, setStaffPhase] = useState<StaffQuery>('idle')
-  const [staffWindows, setStaffWindows] = useState<readonly StaffWindowItem[]>([])
   const mounted = useRef(true)
   const loadSequence = useRef(0)
   // Server-side chips: load() reads the CURRENT selection through this ref so useDidShow and
@@ -148,18 +144,6 @@ export default function ScheduleWorkbenchPage() {
       if (mounted.current) setLoadingMore(false)
     }
   }
-  async function queryStaff() {
-    if (!/^[1-9][0-9]{0,18}$/.test(staffId)) { setNotice('请输入正确的员工编号（数字）。'); return }
-    setNotice(''); setStaffPhase('loading')
-    try {
-      const page = await repository.staffWindows(staffId)
-      if (!mounted.current) return
-      setStaffWindows(page.items); setStaffPhase('ready')
-    } catch (error) {
-      if (!mounted.current) return
-      setStaffWindows([]); setStaffPhase('error'); setNotice(scheduleMessage(error))
-    }
-  }
 
   const dayGroups = groupWindowsByDate(windows)
   return <ScheduleShell title='排期工作台' style={style} phase={phase} notice={notice} closedReason={closedReason}
@@ -171,11 +155,6 @@ export default function ScheduleWorkbenchPage() {
             <View className='sch-v-grid-tile'><Image className='sch-v-grid-icon' src={gridSchedule} mode='aspectFit' /></View>
             <Text className='sch-v-grid-label'>服务时段管理</Text>
             <Text className='sch-v-grid-sub'>分钟级时段增改</Text>
-          </Button>
-          <Button id='sch-go-staff' className='sch-v-grid-cell' onClick={() => open('staff')}>
-            <View className='sch-v-grid-tile'><Image className='sch-v-grid-icon' src={gridMembers} mode='aspectFit' /></View>
-            <Text className='sch-v-grid-label'>员工排班</Text>
-            <Text className='sch-v-grid-sub'>员工可用时间</Text>
           </Button>
           <Button id='sch-go-capabilities' className='sch-v-grid-cell' onClick={() => open('capabilities')}>
             <View className='sch-v-grid-tile'><Image className='sch-v-grid-icon' src={gridVerify} mode='aspectFit' /></View>
@@ -228,33 +207,6 @@ export default function ScheduleWorkbenchPage() {
         </View>)}
         {windows.length < listTotal && <Button id='sch-more' className='sch-load-more' disabled={loadingMore}
           onClick={() => void loadMore()}>{loadingMore ? '正在加载…' : `加载更多（已显示 ${windows.length}/${listTotal}）`}</Button>}
-      </View>
-      <View className='sch-v-section'>
-        <View className='sch-v-head'>
-          <Text className='sch-v-h2'>员工排班查询</Text>
-          <Text className='sch-v-head-hint'>按员工编号读取</Text>
-        </View>
-        <View className='sch-inline'>
-          <Input className='sch-input sch-input-grow' value={staffId} placeholder='员工编号（如 958003）' type='number'
-            onInput={event => setStaffId(event.detail.value)} />
-          <Button id='sch-staff-query' className='sch-inline-action' disabled={staffPhase === 'loading'} onClick={() => void queryStaff()}>
-            {staffPhase === 'loading' ? '查询中…' : '查询'}
-          </Button>
-        </View>
-        {staffPhase === 'ready' && staffWindows.length === 0 && <Text className='sch-hint'>该员工暂无排班记录。</Text>}
-        {staffPhase === 'ready' && staffWindows.map(item => {
-          const duration = durationMinutesText(windowDurationMinutes(item.startAt, item.endAt))
-          return <View key={item.windowId} className='sch-v-staff-row'>
-            <View className={item.status === 'AVAILABLE' ? 'sch-cap sch-cap-open' : 'sch-cap sch-cap-closed'}>
-              <Text className='sch-cap-time'>{capsuleTimeText(item.startAt, item.endAt)}</Text>
-              {duration && <Text className='sch-cap-dur'>· {duration}</Text>}
-            </View>
-            <Text className={item.status === 'AVAILABLE' ? 'sch-tag sch-tag-open' : 'sch-tag sch-tag-closed'}>
-              {item.status === 'AVAILABLE' ? '可约' : '已关闭'}
-            </Text>
-          </View>
-        })}
-        {staffPhase === 'ready' && staffWindows.length > 0 && <Text className='sch-hint'>完整增改请进「员工排班」。</Text>}
       </View>
       {notice && <Text className='sch-notice'>{notice}</Text>}
       {preview && <View className='sch-tail'><Text>页面数据：契约 Mock（preview=1，不联调）</Text></View>}

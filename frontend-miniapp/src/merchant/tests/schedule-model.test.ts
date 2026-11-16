@@ -3,11 +3,11 @@ import assert from 'node:assert/strict'
 import { ApiError } from '../../shared/request'
 import {
   addBeijingDays, batchRangeDays, beijingToday, capabilityProblems, chipClass, composeTimestamp,
-  decodeBatchCloseResult, decodeCapabilityView, decodeStaffWindowPage, decodeStaffWindowReceipt,
+  decodeBatchCloseResult, decodeCapabilityView,
   decodeWindowItem, decodeWindowPage, decodeWindowReceipt, formatWindowInterval, fixtureCapability,
-  fixtureStaffWindows, fixtureWindows, isVersion, reasonProblem,
+  fixtureWindows, isVersion, reasonProblem,
   scheduleAvailability, scheduleClosedReason, scheduleMessage, splitBeijingParts,
-  staffStatusTagClass, staffWindowFormProblems, windowFormFromItem, windowFormProblems,
+  windowFormFromItem, windowFormProblems,
   windowStatusTagClass,
 } from '../schedule/model'
 
@@ -106,17 +106,7 @@ test('paged window envelope enforces the §3.3 bounds (fail closed)', () => {
   assert.equal(decodeWindowPage({ ...envelope(), items: Array.from({ length: 50 }, () => baseWindowItem()), pageSize: 50, total: 50 }).items.length, 50)
 })
 
-test('staff window and capability decoders are exact-key', () => {
-  const item = {
-    windowId: '62001', merchantId: '958001', storeId: '958002', staffId: '958003',
-    startAt: '2026-10-07T01:00:00.000Z', endAt: '2026-10-07T04:00:00.000Z',
-    status: 'AVAILABLE', version: '2', updatedAt: '2026-10-06T02:30:00.000Z',
-  }
-  assert.ok(decodeStaffWindowPage({ storeId: '958002', staffId: '958003', items: [item] }))
-  assert.throws(() => decodeStaffWindowPage({ storeId: '958002', staffId: '958003', items: [{ ...item, status: 'OPEN' }] }), /INVALID_RESPONSE/)
-  const { updatedAt: _omitted, ...receiptOnly } = item
-  assert.equal(decodeStaffWindowReceipt(receiptOnly).staffId, '958003')
-  assert.throws(() => decodeStaffWindowReceipt(item), /INVALID_RESPONSE/)
+test('capability decoder is exact-key', () => {
   assert.deepEqual(decodeCapabilityView(fixtureCapability()).serviceIds, ['30001', '30007'])
   assert.throws(() => decodeCapabilityView({ ...fixtureCapability(), serviceIds: ['30001', '30001'] }), /INVALID_RESPONSE/)
   assert.throws(() => decodeCapabilityView({ ...fixtureCapability(), extra: 1 }), /INVALID_RESPONSE/)
@@ -129,8 +119,6 @@ test('status variants are explicit class names (no data-* reliance)', () => {
   assert.equal(windowStatusTagClass('OPEN'), 'sch-tag sch-tag-open')
   assert.equal(windowStatusTagClass('SOLD_OUT'), 'sch-tag sch-tag-soldout')
   assert.equal(windowStatusTagClass('CLOSED'), 'sch-tag sch-tag-closed')
-  assert.equal(staffStatusTagClass('AVAILABLE'), 'sch-tag sch-tag-open')
-  assert.equal(staffStatusTagClass('CLOSED'), 'sch-tag sch-tag-closed')
   assert.equal(chipClass(true), 'sch-chip sch-chip-selected')
   assert.equal(chipClass(false), 'sch-chip')
 })
@@ -165,9 +153,6 @@ test('form pre-validation mirrors the server answers', () => {
   assert.deepEqual(Object.keys(good).sort(), ['configuredCapacity', 'endDate', 'endTime', 'startDate', 'startTime'])
   assert.ok(windowFormProblems({ ...good, configuredCapacity: 0 }).some(problem => problem.includes('容量')))
   assert.ok(windowFormProblems({ ...good, endTime: '09:00' }).some(problem => problem.includes('结束时间')))
-  const staffGood = { startDate: '2026-10-07', startTime: '09:00', endDate: '2026-10-07', endTime: '12:00' }
-  assert.deepEqual(staffWindowFormProblems(staffGood), [])
-  assert.ok(staffWindowFormProblems({ ...staffGood, endTime: '09:00' }).length > 0)
   assert.ok(reasonProblem('', true))
   assert.equal(reasonProblem('装修', true), null)
   assert.ok(reasonProblem('x'.repeat(501), true))
@@ -199,7 +184,6 @@ test('fixtures cover the open/partial/full/closed state space for preview', () =
   const windows = fixtureWindows()
   assert.ok(windows.some(entry => entry.occupied >= entry.window.configuredCapacity)) // SOLD_OUT candidate
   assert.ok(windows.some(entry => entry.window.status === 'CLOSED'))
-  assert.ok(fixtureStaffWindows().some(entry => entry.window.status === 'CLOSED'))
   assert.equal(fixtureCapability().version, '2')
   // CCR-SCH-SLOT-001 §2 同店不重叠：fixture 态本身必须服从统一槽不变量（CLOSED 不参与）。
   for (const entry of windows) {

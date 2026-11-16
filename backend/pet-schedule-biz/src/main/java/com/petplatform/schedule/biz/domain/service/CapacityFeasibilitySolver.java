@@ -1,20 +1,19 @@
 package com.petplatform.schedule.biz.domain.service;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.BitSet;
-import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.LongSupplier;
 
-/** Exact, non-persisting staff matching for the candidate's full time-overlap closure. */
+/**
+ * Exact, non-persisting slot-capacity feasibility (CCR-SCH-STAFF-OFFLINE-001, 2026-11-16):
+ * staff scheduling went offline, so feasibility is only the store-wide window-capacity
+ * invariant — the concurrent effective-claim count of every original window may never exceed
+ * its configured capacity. No staff dimension, no assignment search.
+ */
 public final class CapacityFeasibilitySolver {
     public record Interval(Instant start, Instant end) {
         public Interval {
@@ -30,14 +29,8 @@ public final class CapacityFeasibilitySolver {
 
     public record Claim(String windowId, Interval interval) {}
     public record Window(String id, int capacity) {}
-    public record Reservation(String id, String serviceId, List<Claim> claims, String fixedStaffId) {
+    public record Reservation(String id, List<Claim> claims) {
         public Reservation { claims = List.copyOf(claims); }
-    }
-    public record Staff(String id, Set<String> serviceIds, List<Interval> availability) {
-        public Staff {
-            serviceIds = Set.copyOf(serviceIds);
-            availability = List.copyOf(availability);
-        }
     }
     public enum Outcome { FEASIBLE, INFEASIBLE, BUDGET_EXHAUSTED }
     public record Result(Outcome outcome, int evaluatedReservations) {}
@@ -49,36 +42,22 @@ public final class CapacityFeasibilitySolver {
     }
 
     public Result solve(String candidateId, List<Reservation> all, List<Window> windows,
-            List<Staff> staff, long budgetMillis) {
+            long budgetMillis) {
         Timer timer = validated(all, windows, budgetMillis);
-        Map<String, Reservation> byId = new HashMap<>();
-        for (Reservation reservation : all) byId.put(reservation.id(), reservation);
-        Reservation candidate = byId.get(candidateId);
-        if (candidate == null) throw new IllegalArgumentException("candidate missing");
-        // Including all segments whenever a reservation is reached makes pickup and return a bridge.
-        Set<String> included = new HashSet<>();
-        included.add(candidateId);
-        List<Reservation> frontier = new ArrayList<>();
-        frontier.add(candidate);
-        frontier = closure(all, included, frontier, timer);
-        return search(all, windows, staff, budgetMillis, frontier, timer);
+        if (all.stream().noneMatch(reservation -> candidateId.equals(reservation.id()))) {
+            throw new IllegalArgumentException("candidate missing");
+        }
+        return search(all, windows, timer);
     }
 
     /**
-     * Whole-store variant for protected-reduction proofs (34号 §2 SCHC-1): no candidate; every
-     * reservation of the store must remain coverable together after an already-applied
-     * staff-availability or capability reduction. Same constraints and budget semantics as
-     * {@link #solve}.
+     * Whole-store variant for protected-reduction proofs (34号 §2 SCHC-1, simplified by
+     * CCR-SCH-STAFF-OFFLINE-001): every active reservation of the store must still fit the
+     * configured window capacities together after an already-applied capability reduction.
      */
-    public Result solveAll(List<Reservation> all, List<Window> windows, List<Staff> staff,
-            long budgetMillis) {
+    public Result solveAll(List<Reservation> all, List<Window> windows, long budgetMillis) {
         Timer timer = validated(all, windows, budgetMillis);
-        Set<String> included = new HashSet<>();
-        List<Reservation> frontier = new ArrayList<>();
-        for (Reservation reservation : all) {
-            if (included.add(reservation.id())) frontier.add(reservation);
-        }
-        return search(all, windows, staff, budgetMillis, frontier, timer);
+        return search(all, windows, timer);
     }
 
     private Timer validated(List<Reservation> all, List<Window> windows, long budgetMillis) {
@@ -96,8 +75,7 @@ public final class CapacityFeasibilitySolver {
         }
         for (Reservation reservation : all) {
             if (timer.expired()) return timer;
-            if (reservation.id() == null || reservation.serviceId() == null
-                    || reservation.claims().isEmpty()) {
+            if (reservation.id() == null || reservation.claims().isEmpty()) {
                 throw new IllegalArgumentException("invalid reservation");
             }
             for (Claim claim : reservation.claims()) {
@@ -111,33 +89,11 @@ public final class CapacityFeasibilitySolver {
         return timer;
     }
 
-    private List<Reservation> closure(List<Reservation> all, Set<String> included,
-            List<Reservation> frontier, Timer timer) {
-        for (int position = 0; position < frontier.size(); position++) {
-            if (timer.expired()) return frontier;
-            Reservation source = frontier.get(position);
-            for (Reservation other : all) {
-                if (timer.expired()) return frontier;
-                if (included.contains(other.id())) continue;
-                if (overlaps(source, other)) {
-                    included.add(other.id());
-                    frontier.add(other);
-                }
-            }
-        }
-        return frontier;
-    }
-
-    private Result search(List<Reservation> all, List<Window> windows, List<Staff> staff,
-            long budgetMillis, List<Reservation> frontier, Timer timer) {
-        Map<String, Integer> windowCapacity = new HashMap<>();
-        for (Window window : windows) windowCapacity.put(window.id(), window.capacity());
-        List<Reservation> relevant = frontier.stream()
-                .sorted(Comparator.comparing(Reservation::id)).toList();
-        int count = relevant.size();
+    /** Sweep the half-open claim endpoints of every original window: the concurrent effective
+     * claim count is a store-wide invariant and may never exceed the configured capacity. */
+    private Result search(List<Reservation> all, List<Window> windows, Timer timer) {
+        int count = all.size();
         Map<String, TreeMap<Instant, Integer>> occupancy = new HashMap<>();
-        // Original-window capacity is a store-wide invariant, including active claims outside
-        // the candidate's personnel-overlap closure. Historical staff qualification is not.
         for (Reservation reservation : all) {
             for (Claim claim : reservation.claims()) {
                 if (timer.expired()) return new Result(Outcome.BUDGET_EXHAUSTED, count);
@@ -147,140 +103,19 @@ public final class CapacityFeasibilitySolver {
                 endpoints.merge(claim.interval().end(), -1, Integer::sum);
             }
         }
+        Map<String, Integer> capacity = new HashMap<>();
+        for (Window window : windows) capacity.put(window.id(), window.capacity());
         for (Map.Entry<String, TreeMap<Instant, Integer>> entry : occupancy.entrySet()) {
             int concurrent = 0;
             for (int delta : entry.getValue().values()) {
                 if (timer.expired()) return new Result(Outcome.BUDGET_EXHAUSTED, count);
                 concurrent += delta;
-                if (concurrent > windowCapacity.get(entry.getKey())) {
+                if (concurrent > capacity.get(entry.getKey())) {
                     return new Result(Outcome.INFEASIBLE, count);
                 }
             }
         }
-        List<Staff> sortedStaff = staff.stream().sorted(Comparator.comparing(Staff::id)).toList();
-        Set<String> staffIds = new HashSet<>();
-        for (Staff person : sortedStaff) {
-            if (timer.expired()) return new Result(Outcome.BUDGET_EXHAUSTED, count);
-            if (person.id() == null || !staffIds.add(person.id())) {
-                throw new IllegalArgumentException("invalid staff facts");
-            }
-        }
-        List<List<Integer>> domains = new ArrayList<>(count);
-        for (Reservation reservation : relevant) {
-            if (timer.expired()) return new Result(Outcome.BUDGET_EXHAUSTED, count);
-            List<Integer> options = new ArrayList<>();
-            for (int index = 0; index < sortedStaff.size(); index++) {
-                if (timer.expired()) return new Result(Outcome.BUDGET_EXHAUSTED, count);
-                Staff person = sortedStaff.get(index);
-                if (reservation.fixedStaffId() != null
-                        && !reservation.fixedStaffId().equals(person.id())) continue;
-                if (!person.serviceIds().contains(reservation.serviceId())) continue;
-                boolean covers = true;
-                for (Claim claim : reservation.claims()) {
-                    if (timer.expired()) return new Result(Outcome.BUDGET_EXHAUSTED, count);
-                    boolean segmentCovered = covers(person.availability(), claim.interval(), timer);
-                    if (timer.expired()) return new Result(Outcome.BUDGET_EXHAUSTED, count);
-                    if (!segmentCovered) {
-                        covers = false;
-                        break;
-                    }
-                }
-                if (covers) options.add(index);
-            }
-            if (options.isEmpty()) return new Result(Outcome.INFEASIBLE, count);
-            domains.add(options);
-        }
-        BitSet[] conflicts = new BitSet[count];
-        int[] degree = new int[count];
-        for (int left = 0; left < count; left++) {
-            for (int right = left + 1; right < count; right++) {
-                if (timer.expired()) return new Result(Outcome.BUDGET_EXHAUSTED, count);
-                if (overlaps(relevant.get(left), relevant.get(right))) {
-                    if (conflicts[left] == null) conflicts[left] = new BitSet();
-                    if (conflicts[right] == null) conflicts[right] = new BitSet();
-                    conflicts[left].set(right);
-                    conflicts[right].set(left);
-                    degree[left]++;
-                    degree[right]++;
-                }
-            }
-        }
-        int[] assigned = new int[count];
-        Arrays.fill(assigned, -1);
-        List<Integer> variable = new ArrayList<>();
-        for (int index = 0; index < count; index++) {
-            if (relevant.get(index).fixedStaffId() != null) assigned[index] = domains.get(index).getFirst();
-            else variable.add(index);
-        }
-        for (int left = 0; left < count; left++) {
-            if (assigned[left] < 0) continue;
-            for (int right = left + 1; right < count; right++) {
-                if (conflicts[left] != null && conflicts[left].get(right)
-                        && assigned[left] == assigned[right]) {
-                    return new Result(Outcome.INFEASIBLE, count);
-                }
-            }
-        }
-        variable.sort(Comparator.<Integer>comparingInt(index -> domains.get(index).size())
-                .thenComparing((left, right) -> Integer.compare(degree[right], degree[left]))
-                .thenComparing(index -> relevant.get(index).id()));
-        // Explicit DFS stack avoids turning a large, valid store into a Java stack overflow.
-        int[] optionPosition = new int[variable.size()];
-        int depth = 0;
-        while (depth >= 0) {
-            if (timer.expired()) return new Result(Outcome.BUDGET_EXHAUSTED, count);
-            if (depth == variable.size()) return new Result(Outcome.FEASIBLE, count);
-            int reservationIndex = variable.get(depth);
-            List<Integer> options = domains.get(reservationIndex);
-            if (optionPosition[depth] >= options.size()) {
-                optionPosition[depth] = 0;
-                assigned[reservationIndex] = -1;
-                depth--;
-                if (depth >= 0) {
-                    assigned[variable.get(depth)] = -1;
-                    optionPosition[depth]++;
-                }
-                continue;
-            }
-            int person = options.get(optionPosition[depth]);
-            boolean allowed = true;
-            for (int other = 0; other < count; other++) {
-                if (conflicts[reservationIndex] != null
-                        && conflicts[reservationIndex].get(other) && assigned[other] == person) {
-                    allowed = false;
-                    break;
-                }
-            }
-            if (allowed) {
-                assigned[reservationIndex] = person;
-                depth++;
-            } else {
-                optionPosition[depth]++;
-            }
-        }
-        return new Result(Outcome.INFEASIBLE, count);
-    }
-
-    private static boolean overlaps(Reservation left, Reservation right) {
-        for (Claim one : left.claims()) {
-            for (Claim two : right.claims()) {
-                if (one.interval().overlaps(two.interval())) return true;
-            }
-        }
-        return false;
-    }
-
-    private static boolean covers(List<Interval> availability, Interval target, Timer timer) {
-        List<Interval> ordered = availability.stream()
-                .sorted(Comparator.comparing(Interval::start).thenComparing(Interval::end)).toList();
-        Instant cursor = target.start();
-        for (Interval interval : ordered) {
-            if (timer.expired()) return false;
-            if (interval.start().isAfter(cursor)) return false;
-            if (interval.end().isAfter(cursor)) cursor = interval.end();
-            if (!cursor.isBefore(target.end())) return true;
-        }
-        return false;
+        return new Result(Outcome.FEASIBLE, count);
     }
 
     private static final class Timer {

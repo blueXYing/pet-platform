@@ -161,7 +161,7 @@ class MerchantSchedulePaginationHttpTest {
         ScheduleMerchantCommandApiImpl commands = new ScheduleMerchantCommandApiImpl(
                 new ScheduleMerchantCommandService(
                         new ScheduleWriteStore(fixture.source, ids), gate, guard, facts, merchant,
-                        orders, services, proof, clock));
+                        services, proof, clock));
         controller = new MerchantScheduleController(commands,
                 new ScheduleMerchantQueryApiImpl(fixture.source, gate));
     }

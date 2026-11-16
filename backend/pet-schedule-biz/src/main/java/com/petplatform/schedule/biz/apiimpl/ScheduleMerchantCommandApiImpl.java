@@ -6,13 +6,8 @@ import com.petplatform.schedule.api.dto.ScheduleWriteTypes.BatchCloseResult;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CapabilityQuery;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CapabilityResult;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CapabilityView;
-import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CreateStaffWindowCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.CreateWindowCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.ReplaceCapabilitiesCommand;
-import com.petplatform.schedule.api.dto.ScheduleWriteTypes.StaffWindowCloseCommand;
-import com.petplatform.schedule.api.dto.ScheduleWriteTypes.StaffWindowOpenCommand;
-import com.petplatform.schedule.api.dto.ScheduleWriteTypes.StaffWindowResult;
-import com.petplatform.schedule.api.dto.ScheduleWriteTypes.UpdateStaffWindowCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.UpdateWindowCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WindowCloseCommand;
 import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WindowOpenCommand;
@@ -20,7 +15,8 @@ import com.petplatform.schedule.api.dto.ScheduleWriteTypes.WindowResult;
 /** Local implementation of the merchant schedule write contract; delegates to the command
  * service and exposes the created-vs-replayed flag for the 201/200 mapping (23号 §6).
  * Assembles its own persistence store so terminals never touch schedule persistence types
- * (ARCH-002; ReservationHoldApiImpl precedent). */
+ * (ARCH-002; ReservationHoldApiImpl precedent). CCR-SCH-STAFF-OFFLINE-001 (2026-11-16)
+ * removed the staff availability-window command family. */
 public final class ScheduleMerchantCommandApiImpl implements ScheduleMerchantCommandApi {
     private final ScheduleMerchantCommandService commands;
 
@@ -36,13 +32,12 @@ public final class ScheduleMerchantCommandApiImpl implements ScheduleMerchantCom
             com.petplatform.schedule.api.protection.ScheduleCapacityGuardApi guard,
             com.petplatform.schedule.api.protection.ScheduleProtectionFactsApi facts,
             com.petplatform.merchant.api.query.MerchantCurrentStaffFactsApi merchant,
-            com.petplatform.order.api.query.OrderProtectionFactsApi orders,
             com.petplatform.service.api.query.ServiceQueryApi serviceFacts,
             ScheduleCapacityProofApiImpl proof, java.time.Clock clock) {
         this(new ScheduleMerchantCommandService(
                 new com.petplatform.schedule.biz.infrastructure.persistence.ScheduleWriteStore(
                         source, ids),
-                admissions, guard, facts, merchant, orders, serviceFacts, proof, clock));
+                admissions, guard, facts, merchant, serviceFacts, proof, clock));
     }
 
     @Override
@@ -68,27 +63,6 @@ public final class ScheduleMerchantCommandApiImpl implements ScheduleMerchantCom
     @Override
     public BatchCloseResult batchClose(BatchCloseCommand command) {
         return commands.batchClose(command);
-    }
-
-    @Override
-    public boolean createStaffWindowOutcome(CreateStaffWindowCommand command,
-            StaffWindowResult[] out) {
-        return commands.createStaffWindowOutcome(command, out);
-    }
-
-    @Override
-    public StaffWindowResult updateStaffWindow(UpdateStaffWindowCommand command) {
-        return commands.updateStaffWindow(command);
-    }
-
-    @Override
-    public StaffWindowResult closeStaffWindow(StaffWindowCloseCommand command) {
-        return commands.closeStaffWindow(command);
-    }
-
-    @Override
-    public StaffWindowResult openStaffWindow(StaffWindowOpenCommand command) {
-        return commands.openStaffWindow(command);
     }
 
     @Override
