@@ -132,7 +132,8 @@ export default function ScheduleTemplatePage() {
       setTemplateBase(template)
       setWeek(weekTemplateToDraft(template))
       setGenerate(current => ({ ...current, configuredCapacity: templateCapacityOf(template) }))
-      setPhase('ready')
+      setNotice('') // clear any stale session-recovery 401 notice
+    setPhase('ready')
     } catch (error) {
       if (!mounted.current || sequence !== loadSequence.current) return
       if (scheduleAvailability(error) === 'closed') { setClosedReason(scheduleClosedReason(error)); setPhase('closed'); return }
