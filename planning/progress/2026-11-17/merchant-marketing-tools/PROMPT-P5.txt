@@ -1,0 +1,9 @@
+你负责执行本仓库的 Phase 5（会员卡）。一次只执行一个子阶段（P5.1 起）。
+
+工作区（必须确认）：/mnt/d/wt-marketing-tools
+分支：以用户本条消息为准；若未指定，沿用当前 worktree 的当前分支。开工前核对 `git -C /mnt/d/wt-marketing-tools rev-parse --show-toplevel` 与 `git -C /mnt/d/wt-marketing-tools branch --show-current`；不一致就停止并报告，不要切换 worktree、不要操作 /mnt/d/wt-*。
+
+先读 HANDOFF.md §8 与 PLAN.md §10、41 号补充 §7；确认法务/财务、支付中心阶段 2–6、订单支付方式契约。
+缺失就停止报告，不要 stub、不要问用户、不要用 0 元微信单、不要允许商家手填余额。
+前置齐全时，第一步创建 CCR-MEMBER-CARD-001、80 号契约、CCR-PAY-CENTER-002 并修订相关契约，然后实现当前子阶段。
+不要用 Docker；不要 push main/develop。完成后按 HANDOFF.md §10 模板报告。
