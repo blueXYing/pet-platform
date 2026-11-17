@@ -118,9 +118,11 @@ public class MarketingConfiguration {
     @Bean
     MarketingMerchantApi marketingMerchantApi(
             DataSource source, ObjectProvider<SnowflakeIdGenerator> ids,
-            MarketingStoreFactsPort storeFacts, ObjectProvider<Clock> clock) {
+            MarketingStoreFactsPort storeFacts, ObjectProvider<Clock> clock,
+            MarketingAssetObjectStore assetObjectStore,
+            @Value("${pet.marketing.asset.public-base-url:}") String assetPublicBaseUrl) {
         return new MarketingMerchantApiImpl(source, requireIds(ids), storeFacts,
-                clock.getIfAvailable(Clock::systemUTC));
+                clock.getIfAvailable(Clock::systemUTC), assetObjectStore, assetPublicBaseUrl);
     }
 
     private static SnowflakeIdGenerator requireIds(ObjectProvider<SnowflakeIdGenerator> ids) {

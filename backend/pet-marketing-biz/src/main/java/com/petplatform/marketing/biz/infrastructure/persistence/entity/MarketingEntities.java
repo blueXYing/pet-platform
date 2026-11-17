@@ -24,9 +24,14 @@ public final class MarketingEntities {
         public String status;
         public String title;
         public String subtitle;
+        public String description;
         public String tagCode;
         public String tagName;
+        public String themeCode;
+        public String highlightText;
+        public String playType;
         public String coverUrl;
+        public Long coverAssetId;
         public String cityCodes;
         public String serviceCategoryCodes;
         public LocalDateTime startAt;
@@ -149,6 +154,10 @@ public final class MarketingEntities {
 
     public static final class AssetRow {
         public Long id;
+        public String ownerType;
+        public Long ownerMerchantId;
+        public Long ownerStoreId;
+        public String purpose;
         public String contentType;
         public Long bytes;
         public Integer width;

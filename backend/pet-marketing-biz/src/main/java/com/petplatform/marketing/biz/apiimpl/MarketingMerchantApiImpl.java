@@ -5,23 +5,27 @@ import com.petplatform.marketing.api.MarketingMerchantApi;
 import com.petplatform.marketing.api.dto.MarketingViews;
 import com.petplatform.marketing.biz.application.MarketingMerchantService;
 import com.petplatform.marketing.biz.application.MarketingStoreFactsPort;
+import com.petplatform.marketing.biz.application.port.MarketingAssetObjectStore;
 import com.petplatform.marketing.biz.infrastructure.persistence.MarketingStore;
 import java.time.Clock;
 import java.util.Objects;
 import javax.sql.DataSource;
 
-/** Local implementation of the contract-71 merchant marketing/enrollment face. */
+/** Local implementation of the contract-71/76 merchant marketing/enrollment face. */
 public final class MarketingMerchantApiImpl implements MarketingMerchantApi {
 
     private final MarketingMerchantService service;
 
     public MarketingMerchantApiImpl(DataSource dataSource, SnowflakeIdGenerator ids,
-            MarketingStoreFactsPort storeFacts, Clock clock) {
+            MarketingStoreFactsPort storeFacts, Clock clock,
+            MarketingAssetObjectStore assetObjectStore, String assetPublicBaseUrl) {
         this.service = new MarketingMerchantService(
                 new MarketingStore(Objects.requireNonNull(dataSource, "dataSource is required"),
                         Objects.requireNonNull(ids, "ids are required")),
                 Objects.requireNonNull(storeFacts, "storeFacts is required"),
-                clock);
+                clock,
+                Objects.requireNonNull(assetObjectStore, "assetObjectStore is required"),
+                assetPublicBaseUrl);
     }
 
     @Override
@@ -70,5 +74,15 @@ public final class MarketingMerchantApiImpl implements MarketingMerchantApi {
     @Override
     public MarketingViews.Receipt cancelMyCampaign(MerchantCampaignStatusCommand command) {
         return service.cancelMyCampaign(command);
+    }
+
+    @Override
+    public MarketingViews.MerchantOverview overview(MerchantOverviewQuery query) {
+        return service.overview(query);
+    }
+
+    @Override
+    public MarketingViews.AssetView uploadAsset(UploadMerchantAssetCommand command) {
+        return service.uploadAsset(command);
     }
 }
