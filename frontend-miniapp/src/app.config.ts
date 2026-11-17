@@ -51,6 +51,11 @@ export default defineAppConfig({
       // Contract-71 marketing center (CCR-MKT-001): enrollment + merchant-initiated
       // campaigns. One page keeps the new surface compact; no C-side page is duplicated.
       'pages/marketing/index',
+      // Contract-76 merchant marketing tools P1 (CCR-MKT-TOOLS-001): platform enrollments
+      // move to their own page; festival-campaign list + editor ride the same subpackage.
+      'pages/marketing/platform/index',
+      'pages/marketing/campaigns/index',
+      'pages/marketing/campaigns/edit',
       // 2026-11-04 user-approved merchant bottom tab (Figma 149:926): the "mine" hub
       // aggregates only already-approved M entries; funds/settings stay out of scope.
       'pages/mine/index'] },

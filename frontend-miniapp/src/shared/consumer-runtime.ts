@@ -48,6 +48,18 @@ C_API_ORIGIN ? async input => {
     timeout: 30000,
   })
   return { statusCode: result.statusCode, data: result.data }
+} : undefined,
+// Contract-76 §4.2 商家营销封面上传通道（60s 超时；Bearer 凭据 + 终结性 X-Request-Id；
+// scope 走 query string，multipart 体只有 file 一个参数——与后端 onlyParameters 对齐）。
+C_API_ORIGIN ? async input => {
+  assertApiOrigin(C_API_ORIGIN, ALLOW_LOCAL_HTTP)
+  const result = await Taro.uploadFile({
+    url: `${C_API_ORIGIN}/api/v1/merchant/marketing/assets?merchantId=${encodeURIComponent(input.merchantId)}&storeId=${encodeURIComponent(input.storeId)}`,
+    filePath: input.filePath, name: 'file',
+    header: { Authorization: input.authorization, 'X-Request-Id': input.requestId },
+    timeout: 60000,
+  })
+  return { statusCode: result.statusCode, data: result.data }
 } : undefined)
 
 // 登录体验层单例：app 启动静默登录（workspace-react 的 launch()）与「我的」页手机号引导共用。

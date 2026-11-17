@@ -50,6 +50,9 @@ test('no navigateTo/redirectTo to the workbench remains in the C-scope entry fil
     '../pages/customers/index.tsx',
     '../pages/messages/index.tsx',
     '../pages/marketing/index.tsx',
+    '../pages/marketing/platform/index.tsx',
+    '../pages/marketing/campaigns/index.tsx',
+    '../pages/marketing/campaigns/edit.tsx',
     '../pages/refund/page.tsx',
     '../pages/reviews/index.tsx',
     '../pages/shop-info/index.tsx',
@@ -66,6 +69,35 @@ test('no navigateTo/redirectTo to the workbench remains in the C-scope entry fil
     }
   }
   assert.deepEqual(offenders, [], `workspace must only be entered via reLaunch:\n${offenders.join('\n')}`)
+})
+
+// Contract-76 P1 marketing routes（HANDOFF §4.5.3）：hub 仅「节日营销」与「平台活动」可导航
+// （navigateTo 子页）；未开放工具不得携带路由；二级页返回一律 reLaunch 明确目标页。
+test('marketing hub: only festival campaigns and platform enrollments navigate; disabled tools carry no route', () => {
+  const hub = readFileSync(new URL('../pages/marketing/index.tsx', import.meta.url), 'utf8')
+  assert.match(hub, /Taro\.navigateTo\(\{ url: '\/merchant\/pages\/marketing\/platform\/index' \}\)/)
+  assert.match(hub, /Taro\.reLaunch\(\{ url: '\/merchant\/pages\/workspace\/index' \}\)/)
+  // 6 张工具卡按序注册（优惠券/会员卡/限时秒杀/裂变拉新/赠品活动/节日营销），
+  // 除节日营销外均 available: false（无 url → 不导航）。
+  const tools = hub.match(/MARKETING_TOOLS: readonly MarketingTool\[\] = \[([\s\S]*?)\]\n/)![1]
+  const titles = [...tools.matchAll(/title: '([^']+)'/g)].map(match => match[1])
+  assert.deepEqual(titles, ['优惠券', '会员卡', '限时秒杀', '裂变拉新', '赠品活动', '节日营销'])
+  const available = [...tools.matchAll(/title: '([^']+)'[^}]*available: (true|false)/g)].map(match => [match[1], match[2]])
+  assert.deepEqual(available.filter(([, value]) => value === 'true').map(([title]) => title), ['节日营销'])
+  assert.equal(new Set(available.filter(([, value]) => value === 'false').map(([title]) => title)).size, 5)
+  // 唯一可导航工具卡目标 = 节日营销列表；其余工具卡不携带任何路由。
+  const routed = [...tools.matchAll(/title: '([^']+)'[^}]*url: '(\/[^']+)'/g)].map(match => [match[1], match[2]])
+  assert.deepEqual(routed, [['节日营销', '/merchant/pages/marketing/campaigns/index']])
+})
+
+test('marketing child pages return via reLaunch to their definite parents, never navigateBack', () => {
+  const platform = readFileSync(new URL('../pages/marketing/platform/index.tsx', import.meta.url), 'utf8')
+  assert.match(platform, /Taro\.reLaunch\(\{ url: '\/merchant\/pages\/marketing\/index' \}\)/)
+  const list = readFileSync(new URL('../pages/marketing/campaigns/index.tsx', import.meta.url), 'utf8')
+  assert.match(list, /Taro\.reLaunch\(\{ url: '\/merchant\/pages\/marketing\/index' \}\)/)
+  assert.match(list, /Taro\.navigateTo\(\{ url: `\/merchant\/pages\/marketing\/campaigns\/edit\?campaignId=\$\{campaign\.campaignId\}` \}\)/)
+  const edit = readFileSync(new URL('../pages/marketing/campaigns/edit.tsx', import.meta.url), 'utf8')
+  assert.match(edit, /Taro\.reLaunch\(\{ url: '\/merchant\/pages\/marketing\/campaigns\/index' \}\)/)
 })
 
 test('merchant pages never navigateBack (P-03 follow-up 2026-11-12: dead disposed-tree landings)', () => {
