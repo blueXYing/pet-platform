@@ -388,6 +388,48 @@ public record ServiceSnapshotDTO(
 
 签名 URL 授权规则：仅当行已通过四条件可见性判定且存在封面绑定才签发；签名端口不可用且有封面 → DEPENDENCY_UNAVAILABLE（失败关闭，不返回未签名 URL）；无封面行三字段为 null。SERVICE_COVER 上传/扫描/注册管线为 31 号增补（MER 域 Writer：角色B）。
 
+#### 5.1.3 服务限时价格内部增量（契约 77 / CCR-SVC-FLASH-PRICE-001，2026-11-18）
+
+`ServiceSnapshotDTO` 增补闪价读字段（无闪价/开关 `pet.service.flash-price.enabled=false` 时为 null、`priceSource=LIST`；生效规则与展示见 74 号 §3.8）：
+
+```java
+public record ServiceSnapshotDTO(
+    // …既有字段不变…
+    String priceSource,      // LIST/FLASH；null 视同 LIST（旧调用方兼容）
+    BigDecimal listPrice,    // 闪价生效时的服务原价；否则 null
+    BigDecimal flashPrice,   // 生效闪价；否则 null（salePrice 同值）
+    OffsetDateTime flashStartAt, OffsetDateTime flashEndAt,
+    Integer flashRemaining   // totalQuota−soldCount；无总量 null
+) {}
+```
+
+`BookingServiceFacts`（38 号下单内核消费）增补价格权威字段：
+
+```java
+public record BookingServiceFacts(
+    // …既有字段不变…
+    BigDecimal price,        // = 生效价（闪价生效时即闪价）
+    BigDecimal listPrice,    // 原价；闪价时非空
+    String priceSource,      // LIST/FLASH；null 视同 LIST
+    String flashPriceId,     // 闪价记录；LIST 时 null
+    BigDecimal flashDiscount // 原价−生效价；LIST 时 0
+) {}
+```
+
+新增内部预占接口（order 在下单事务内调用；仅预占，消费走 `OrderPaidEvent.v1`，释放走 SERVICE durable task `FLASH_PRICE_RELEASE_EXPIRED`）：
+
+```java
+public interface ServiceFlashPriceReservationApi {
+    ReservationResult reserve(ReserveCommand command);
+    // ReserveCommand(CommandContext context, String flashPriceId, String orderId,
+    //                String userId, OffsetDateTime expireAt)
+    // ReservationResult(String flashPriceId, BigDecimal price, BigDecimal listPrice,
+    //                   BigDecimal flashDiscount, String status)
+}
+```
+
+订单快照内部 DTO/读取增加 `originalPrice/flashDiscount/priceSource/flashPriceId`（契约 77 §6.5）；`priceSource=LIST` 时闪价字段为零值/null，既有消费方无需变更。
+
 ### 5.2 ServiceCommandApi（CCR-W2-API-001 服务写入方 v0.2，2026-09-22 已批）
 
 ```java
