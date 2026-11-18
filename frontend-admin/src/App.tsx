@@ -43,10 +43,12 @@ import TradeRefundDetailPage from './pages/TradeRefundDetailPage';
 import TradeVerificationListPage from './pages/TradeVerificationListPage';
 import TradeVerificationDetailPage from './pages/TradeVerificationDetailPage';
 import { createMarketingAdminClient } from './api/marketingAdmin';
+import { createServiceFlashPriceAdminClient } from './api/serviceFlashPriceAdmin';
 import { createCommunityAdminClient } from './api/communityAdmin';
 import { createServiceCategoryAdminClient } from './api/serviceCategoryAdmin';
 import ServiceCategoryAdminPage from './pages/ServiceCategoryAdminPage';
 import MarketingCenterPage from './pages/MarketingCenterPage';
+import ServiceFlashPricePage from './pages/ServiceFlashPricePage';
 import CommunityModerationPage from './pages/CommunityModerationPage';
 
 const READ_ACTION = 'merchant.application.read';
@@ -65,6 +67,7 @@ const encyclopedia = createEncyclopediaAdminClient();
 const couponAdmin = createCouponAdminClient();
 const ledgerAdmin = createLedgerAdminClient();
 const marketingAdmin = createMarketingAdminClient();
+const serviceFlashPriceAdmin = createServiceFlashPriceAdminClient();
 const communityAdmin = createCommunityAdminClient();
 const serviceCategories = createServiceCategoryAdminClient();
 
@@ -89,6 +92,7 @@ const FORBIDDEN_TITLES: Record<string, string> = {
   'service.category.read': '403 · 无服务分类权限',
   'community.post.read': '403 · 无社区审核权限',
   'marketing.campaign.read': '403 · 无营销活动权限',
+  'service.flash-price.read': '403 · 无秒杀审核权限',
 };
 
 export function App() {
@@ -118,6 +122,7 @@ export function App() {
     couponAdmin.resetContext(nextToken);
     ledgerAdmin.resetContext(nextToken);
     marketingAdmin.resetContext(nextToken);
+    serviceFlashPriceAdmin.resetContext(nextToken);
     communityAdmin.resetContext(nextToken);
     serviceCategories.resetContext(nextToken);
     try {
@@ -157,6 +162,7 @@ export function App() {
     couponAdmin.resetContext();
     ledgerAdmin.resetContext();
     marketingAdmin.resetContext();
+    serviceFlashPriceAdmin.resetContext();
     communityAdmin.resetContext();
     serviceCategories.resetContext();
   }, [token]);
@@ -190,6 +196,8 @@ export function App() {
   const canHandleCommunityReports = permissions?.actionCodes.includes('community.report.handle') === true;
   const canReadServiceCategories = permissions?.actionCodes.includes('service.category.read') === true;
   const canManageServiceCategories = permissions?.actionCodes.includes('service.category.manage') === true;
+  const canReadFlashPrices = permissions?.actionCodes.includes('service.flash-price.read') === true;
+  const canReviewFlashPrices = permissions?.actionCodes.includes('service.flash-price.review') === true;
   const guard = (element: ReactNode, action = READ_ACTION) => {
     if (!token) return <Navigate to="/login" replace />;
     if (bootstrap === 'loading') return <div className="page"><p role="status">会话加载中</p></div>;
@@ -219,6 +227,7 @@ export function App() {
     ].filter(Boolean) as NonNullable<MenuProps['items']> },
     { type: 'group', label: '运营', children: [
       menuItem('/ops/marketing', '营销活动', canReadMarketing),
+      menuItem('/ops/service-flash-prices', '秒杀审核', canReadFlashPrices),
       menuItem('/ops/coupons/templates', '券模板', canReadCoupons),
       menuItem('/ops/coupons/instances', '券实例台账', canReadInstances),
       menuItem('/ops/ledger/points', '积分台账', canReadPointsLedger),
@@ -260,6 +269,7 @@ export function App() {
     <Route path="/ops/ledger/points" element={guard(<PointsLedgerPage client={ledgerAdmin} onAuthLost={signOut} />, 'points.ledger.read')} />
     <Route path="/ops/settings/runtime" element={guard(<SettingsRuntimePage client={ledgerAdmin} onAuthLost={signOut} />, 'system.parameter.read')} />
     <Route path="/ops/service-categories" element={guard(<ServiceCategoryAdminPage client={serviceCategories} canWrite={canManageServiceCategories} onAuthLost={signOut} />, 'service.category.read')} />
+    <Route path="/ops/service-flash-prices" element={guard(<ServiceFlashPricePage client={serviceFlashPriceAdmin} canReview={canReviewFlashPrices} onAuthLost={signOut} />, 'service.flash-price.read')} />
     <Route path="/ops/community" element={guard(<CommunityModerationPage client={communityAdmin} canModerate={canModerateCommunity} canHandleReports={canHandleCommunityReports} onAuthLost={signOut} />, 'community.post.read')} />
     <Route path="/ops/marketing" element={guard(<MarketingCenterPage client={marketingAdmin} couponClient={couponAdmin} categoryClient={serviceCategories} canManage={canManageMarketing} canPublish={canPublishMarketing} canReview={canReviewMarketing} canCouponManage={canManageCouponCampaigns} canCouponPublish={canPublishCouponCampaigns} onAuthLost={signOut} />, 'marketing.campaign.read')} />
     <Route path="*" element={<main style={{ padding: 32 }}><h1>404 · 页面不存在</h1><p><Link to="/">返回工作台</Link></p></main>} />
