@@ -278,7 +278,7 @@ CREATE TABLE service_flash_price_command (
 ### 5.2 校验
 
 - 服务归属：service_id 属于 merchant_id/store_id，ACTIVE；否则 404/409。
-- `title` 1..100（默认服务名）；`description` ≤300；`discountRate` (0,10)；`startAt < endAt`。
+- `title` 1..100（默认服务名）；`description` ≤300；`discountRate` ∈ (0,10)，最多 1 位小数（如 `8.8`）；`startAt < endAt`。
 - `totalQuota` null 或 1..1,000,000；`perUserLimit` null 或 1..1,000。
 - 窗口重叠：同 service 的 `PENDING_REVIEW/SCHEDULED/ACTIVE/PAUSED` 与新区间相交 → 409 `FLASH_PRICE_WINDOW_OVERLAP`。用服务行 `FOR UPDATE` 或等价串行化，不能只靠“先查后插”。
 - 审核通过时重新读服务当前价；若 `flashPrice >= 当前价` → 409 `FLASH_PRICE_INVALID` 并提示商家调整。
@@ -332,6 +332,7 @@ CREATE TABLE service_flash_price_command (
   /merchant/pages/marketing/flash/index   (Figma 18:9537)
   /merchant/pages/marketing/flash/edit    (Figma 18:9694)
   ```
+- 营销 hub：把 P1 hub 的「限时秒杀」卡从「筹备中」改为可用，点击进入 `/merchant/pages/marketing/flash/index`。这是 P2 对 P1 页面的唯一改动；不要改其他 P1 页面/字段。
 - 列表：场次、参与人数（RESERVED+CONSUMED 去重用户）、已售/名额（有总量时）；不展示转化率（无曝光数据）。
 - 创建/编辑：
   - 选择本店 ACTIVE 服务（显示服务封面/名称/原价）；
