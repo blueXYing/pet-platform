@@ -1,0 +1,30 @@
+你负责执行本仓库的 Phase 2（服务限时秒杀/限时价格）。
+
+工作区（必须确认）：/mnt/d/wt-flash-price
+分支（必须确认）：codex/svc-flash-price-20261118
+P1 已合并到 develop（7ed7a7a3），本分支从该提交开始；不要复用已合并的 P1 分支。
+开工前运行并核对：
+  git -C /mnt/d/wt-flash-price rev-parse --show-toplevel
+  git -C /mnt/d/wt-flash-price branch --show-current
+必须分别输出上述路径与分支；不一致就停止并报告，不要切换 worktree、不要在其他 worktree 开工。
+不要操作 /mnt/d/wt-marketing-tools 或其他 /mnt/d/wt-* worktree。
+以下相对路径均相对于该 worktree；先 cd 到该目录再执行。
+
+先按顺序完整阅读：
+1. AGENTS.md
+2. docs/01-prd/41-商家营销工具与会员卡裁决补充-v1.0.md（§4）
+3. planning/progress/2026-11-18/svc-flash-price/HANDOFF.md（P2 执行手册）
+4. planning/progress/2026-11-17/merchant-marketing-tools/PLAN.md（§7）
+5. docs/04-api/38-Atomic-Booking-Create-Contract-v0.1.md
+6. docs/04-api/74-Service-Catalog-Page-Contract-v0.1.md
+7. docs/04-api/75-Payment-Center-Contract-v0.1.md
+8. backend/pet-order-biz/src/main/java/com/petplatform/order/biz/application/OrderCreationService.java
+9. backend/pet-order-biz/src/main/java/com/petplatform/order/biz/apiimpl/OrderExpiryApiImpl.java
+
+然后按 HANDOFF.md §3–§9 执行 WP-00 到 WP-06：
+- 第一步创建 CCR-SVC-FLASH-PRICE-001、77 号契约、73 号 Schema、service V31 迁移，并修订 38/07/10/11/74/75/12；
+- 再实现 service 模块、order 价快照/预占、运营审核、小程序商家端/C 端、测试与 E2E。
+所有决策已固定，不要向用户提问，不要顺手实现 P3 商家券/P4 裂变/P5 会员卡。
+不要修改 30 分钟确认、预约、排期、退款、售后、核销硬规则；不要新增订单类型/支付方式；不要伪造价格/名额/统计；不要用 Docker；不要 push main/develop。
+提交时只 stage 本阶段相关文件，不要 git add -A，不要提交无关文件。
+每完成一个工作包跑对应测试；最后按 HANDOFF.md §11 模板报告变更文件、契约/Schema 变更、测试命令与结果、E2E 证据、遗留风险。

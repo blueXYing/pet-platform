@@ -1,10 +1,10 @@
-你负责执行本仓库的 Phase 2（服务限时秒杀/限时价格）。
+# P2 提示词已迁移
 
-工作区（必须确认）：/mnt/d/wt-flash-price
-分支（必须确认）：codex/svc-flash-price-20261118
-P1 已合并到 develop（7ed7a7a3），本分支从该提交开始；不要复用已合并的 P1 分支。
-开工前核对 `git -C /mnt/d/wt-flash-price rev-parse --show-toplevel` 与 `git -C /mnt/d/wt-flash-price branch --show-current`；不一致就停止并报告，不要切换 worktree、不要操作 /mnt/d/wt-*。
+P2 已升级为独立执行包，请使用：
 
-先读 HANDOFF.md §5 与 PLAN.md §7、41 号补充 §4。注意 HANDOFF.md §0.1 的默认 worktree/分支是 P1 历史值，本 Phase 以本提示词第 3-4 行为准。第一步创建 CCR-SVC-FLASH-PRICE-001、77 号契约并修订 38/11/74/75；这些文档按 HANDOFF 的固定决策写，不需要再问用户。然后实现后端/前端/测试。
-不要改 P1 已完成页面；不要伪造价格/名额；不要用 Docker；不要 push main/develop。
-完成后按 HANDOFF.md §10 模板报告变更文件、契约/Schema 变更、测试命令与结果、遗留风险。
+- `planning/progress/2026-11-18/svc-flash-price/PROMPT.txt`
+- `planning/progress/2026-11-18/svc-flash-price/HANDOFF.md`
+
+工作区：`/mnt/d/wt-flash-price`；分支：`codex/svc-flash-price-20261118`。
+
+本文件仅为旧入口，不要按旧 §5 简版执行。
