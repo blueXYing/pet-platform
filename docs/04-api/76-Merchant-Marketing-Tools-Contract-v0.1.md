@@ -66,7 +66,7 @@ data：
 
 ### 4.2 商家封面素材上传
 
-`POST /api/v1/merchant/marketing/assets`，`multipart/form-data`，唯一参数 `file`；`X-Request-Id` 必填。
+`POST /api/v1/merchant/marketing/assets?merchantId=&storeId=`，`multipart/form-data`；`merchantId`/`storeId` 为 query 参数（与 71 号商家读接口同一 scope 惯例），multipart 唯一 part 为 `file`；`X-Request-Id` 必填。
 
 - 仅 OWNER；门店当前可运营；PNG/JPEG；≤2 MiB；≤2000×2000；服务端嗅探媒体类型，不信任客户端 Content-Type。
 - `pet.marketing.asset.public-base-url` 未配置时返回 503（与运营上传一致）。
@@ -137,7 +137,7 @@ data：`{items:[CampaignCard],page,pageSize,total}`。
 
 - `name` 2..100；`title` 1..100；`subtitle` ≤200；`description` ≤300；`highlightText` ≤100；`themeCode` 必填白名单；`playType` 空=`THEME`；`startAt < endAt`。
 - `coverAssetId` 可选（草稿）；提供时校验归属/ACTIVE。
-- 创建成功 `data:{campaignId,status:"DRAFT",version:"1",occurredAt}`；编辑成功 `version` 自增（沿用 71 号页面草稿同步规则）。
+- 创建成功 `data:{id,status:"DRAFT",version:"1",occurredAt}`（`id` 即 campaignId，沿用 71 号 `Receipt` 线形状）；编辑成功 `version` 自增（沿用 71 号页面草稿同步规则）。
 - 仅 `DRAFT/REJECTED` 可编辑；否则 409 `CAMPAIGN_STATE_NOT_ALLOWED`。
 - 商家请求中的 `coverUrl` 非空、`couponCampaignId`、`stores`、`ownerType`、`participationMode` 一律 400/忽略；以服务端固定值为准。
 
@@ -146,11 +146,11 @@ data：`{items:[CampaignCard],page,pageSize,total}`。
 `POST .../my-campaigns/{id}/submit` body `{merchantId,storeId,expectedVersion}`
 
 - 仅 `DRAFT/REJECTED`；提交前校验：`coverAssetId` 非空且有效；`themeCode` 合法；`playType=THEME`；`endAt > now`；活动至少绑定本店（服务端已绑定）。
-- 成功 `status=PENDING_REVIEW`，version+1。
+- 成功 `data:{id,status:"PENDING_REVIEW",version,occurredAt}`（`id` 即 campaignId，同 71 号 `Receipt`）。
 
 `POST .../my-campaigns/{id}/cancel` body 同上
 
-- 允许 `DRAFT/REJECTED/PENDING_REVIEW`；成功 `CANCELED`；已发布活动不可由商家取消（409）。
+- 允许 `DRAFT/REJECTED/PENDING_REVIEW`；成功 `data:{id,status:"CANCELED",version,occurredAt}`；已发布活动不可由商家取消（409）。
 
 ### 4.6 平台活动报名
 
