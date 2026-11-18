@@ -82,6 +82,9 @@ assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
     'pages/marketing/platform/index',
     'pages/marketing/campaigns/index',
     'pages/marketing/campaigns/edit',
+    // Service flash price P2 (77号): flash list + editor (Figma 18:9537/18:9694).
+    'pages/marketing/flash/index',
+    'pages/marketing/flash/edit',
     // 2026-11-04 Figma restore PR #211 batch 1: user-approved minimal "我的" hub above the tab bar.
     'pages/mine/index'] },
   { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form', 'vaccine-form', 'deworm-form'] },
