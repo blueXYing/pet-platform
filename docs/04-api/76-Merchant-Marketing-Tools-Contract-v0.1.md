@@ -131,11 +131,12 @@ data：`{items:[CampaignCard],page,pageSize,total}`。
   "coverAssetId": "123456789",
   "startAt": "2026-09-01T00:00:00.000Z",
   "endAt": "2026-09-30T23:59:59.000Z",
-  "expectedVersion": 3
+  "expectedVersion": "3"
 }
 ```
 
 - `name` 2..100；`title` 1..100；`subtitle` ≤200；`description` ≤300；`highlightText` ≤100；`themeCode` 必填白名单；`playType` 空=`THEME`；`startAt < endAt`。
+- `expectedVersion` 为 JSON 整数或等值数字字符串；服务端两者都接受（与 `version` 的十进制字符串线形状兼容）。
 - `coverAssetId` 可选（草稿）；提供时校验归属/ACTIVE。
 - 创建成功 `data:{id,status:"DRAFT",version:"1",occurredAt}`（`id` 即 campaignId，沿用 71 号 `Receipt` 线形状）；编辑成功 `version` 自增（沿用 71 号页面草稿同步规则）。
 - 仅 `DRAFT/REJECTED` 可编辑；否则 409 `CAMPAIGN_STATE_NOT_ALLOWED`。

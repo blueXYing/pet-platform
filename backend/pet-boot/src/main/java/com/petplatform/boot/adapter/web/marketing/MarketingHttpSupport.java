@@ -135,10 +135,23 @@ public final class MarketingHttpSupport {
         return value.asInt();
     }
 
+    /**
+     * Optimistic-lock versions are returned as decimal strings by the wire views (the miniapp
+     * and admin clients round-trip that string verbatim), while older contract examples use a
+     * JSON integer. Accept both shapes; anything else is a boundary error.
+     */
     public static long longValue(JsonNode body, String field) {
         JsonNode value = body == null ? null : body.get(field);
-        if (value == null || !value.isIntegralNumber()) throw invalid();
-        return value.asLong();
+        if (value == null) throw invalid();
+        if (value.isIntegralNumber()) return value.asLong();
+        if (value.isTextual() && value.asText().matches("(0|[1-9][0-9]{0,18})")) {
+            try {
+                return Long.parseLong(value.asText());
+            } catch (NumberFormatException failure) {
+                throw invalid();
+            }
+        }
+        throw invalid();
     }
 
     public static java.math.BigDecimal decimal(JsonNode body, String field) {
