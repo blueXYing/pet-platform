@@ -934,7 +934,8 @@ class ScheduleMerchantCommandMySqlTest {
                 @Override
                 public ServiceSnapshotDTO getServiceSnapshot(ServiceSnapshotQuery query) {
                     return new ServiceSnapshotDTO(query.serviceId(), "10", "201", "洗澡", "cat",
-                            "洗护", null, 30, FulfillmentType.IN_STORE, null, null, null, null);
+                            "洗护", null, 30, FulfillmentType.IN_STORE, null, null, null, null,
+                            null, null, null, null, null, null);
                 }
 
                 @Override

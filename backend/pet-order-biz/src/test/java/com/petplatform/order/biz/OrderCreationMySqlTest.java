@@ -1082,7 +1082,8 @@ class OrderCreationMySqlTest {
                     (storeId, serviceId, context) -> new BookingServiceFacts(serviceId, "200", storeId,
                             "Wash", null, null, new java.math.BigDecimal(price), 60,
                             serviceId.equals("401") ? "PICKUP_DELIVERY" : "IN_STORE",
-                            "Description", Set.of("ALL"), verificationRequired, serviceVersion),
+                            "Description", Set.of("ALL"), verificationRequired, serviceVersion,
+                            null, "LIST", null, java.math.BigDecimal.ZERO),
                     guard, hold, protection, remark -> {
                         if (!policyAvailable) throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
                                 "moderation unavailable");

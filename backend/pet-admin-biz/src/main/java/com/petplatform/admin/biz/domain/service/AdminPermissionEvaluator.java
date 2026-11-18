@@ -78,7 +78,10 @@ public final class AdminPermissionEvaluator {
           "marketing.enrollment.read", "marketing.enrollment.review",
           "coupon.campaign.read", "coupon.campaign.manage", "coupon.campaign.publish",
           "community.post.read", "community.post.moderate",
-          "community.report.read", "community.report.handle");
+          "community.report.read", "community.report.handle",
+          // CCR-SVC-FLASH-PRICE-001 (contract 77 §4): flash-price review face — read for the
+          // list/detail, review for approve/reject/pause/end. Registered 2026-11-18.
+          "service.flash-price.read", "service.flash-price.review");
 
   public static List<String> evaluate(
       boolean superAdmin, Collection<String> grants, Set<String> deployed) {

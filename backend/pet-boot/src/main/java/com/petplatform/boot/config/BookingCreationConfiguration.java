@@ -40,8 +40,11 @@ public class BookingCreationConfiguration {
         return new BookingMerchantFactsApiImpl(source,guard,applications.getIfAvailable(
                 ()->new PersistentApplicationReviewFactsReader(source,ids)));
     }
-    @Bean BookingServiceFactsApi bookingServiceFactsApi(DataSource source,ScheduleCapacityGuardApi guard){
-        return new BookingServiceFactsApiImpl(source,guard);
+    @Bean BookingServiceFactsApi bookingServiceFactsApi(DataSource source,ScheduleCapacityGuardApi guard,
+            ObjectProvider<com.petplatform.service.biz.application.FlashPriceEffectiveResolver> flashPrices){
+        // Contract 77 §6.5: the resolver bean exists only while pet.service.flash-price.enabled
+        // is on; without it the facts stay byte-identical to the pre-flash LIST slice.
+        return new BookingServiceFactsApiImpl(source,guard,flashPrices.getIfAvailable());
     }
     @Bean
     @ConditionalOnMissingBean(OrderCreationInputProtection.class)

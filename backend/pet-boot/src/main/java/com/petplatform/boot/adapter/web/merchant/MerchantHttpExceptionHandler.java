@@ -23,6 +23,8 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
       MerchantApplicationCityController.class,
       MerchantServiceController.class,
       ServiceWriteAdminController.class,
+      ServiceFlashPriceMerchantController.class,
+      ServiceFlashPriceAdminController.class,
       MerchantScheduleController.class,
       MerchantOrderVerificationController.class,
       MerchantVerificationReadController.class
@@ -51,6 +53,22 @@ public final class MerchantHttpExceptionHandler {
           Map.entry(com.petplatform.thirdparty.api.PrivateAssetApiCodes.ASSET_NOT_READY, 409),
           Map.entry(com.petplatform.thirdparty.api.PrivateAssetApiCodes.ASSET_REJECTED, 422),
           Map.entry(com.petplatform.thirdparty.api.PrivateAssetApiCodes.GRANT_GONE, 410),
+          // Flash-price slice (contract 77 §7 additions; 409 business conflicts, 404 for a
+          // missing/unowned row, 503 only for the disabled-switch reserve path).
+          Map.entry(com.petplatform.service.api.error.ServiceFlashPriceApiCodes
+                  .FLASH_PRICE_NOT_FOUND, 404),
+          Map.entry(com.petplatform.service.api.error.ServiceFlashPriceApiCodes
+                  .FLASH_PRICE_STATE_NOT_ALLOWED, 409),
+          Map.entry(com.petplatform.service.api.error.ServiceFlashPriceApiCodes
+                  .FLASH_PRICE_WINDOW_OVERLAP, 409),
+          Map.entry(com.petplatform.service.api.error.ServiceFlashPriceApiCodes
+                  .FLASH_PRICE_QUOTA_EXCEEDED, 409),
+          Map.entry(com.petplatform.service.api.error.ServiceFlashPriceApiCodes
+                  .FLASH_PRICE_LIMIT_REACHED, 409),
+          Map.entry(com.petplatform.service.api.error.ServiceFlashPriceApiCodes
+                  .FLASH_PRICE_INVALID, 409),
+          Map.entry(com.petplatform.service.api.error.ServiceFlashPriceApiCodes
+                  .FLASH_PRICE_DISABLED, 503),
           // Verification HTTP slice (47号§4/48号K2 via 10号; 12号 §7 codes are 409 business
           // conflicts — failed code checks themselves return as 200 receipts, not errors).
           Map.entry("VERIFICATION_NOT_ALLOWED", 409),

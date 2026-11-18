@@ -452,7 +452,8 @@ class Sch004JointAcceptanceMySqlTest {
                     FulfillmentType type = PICKUP_SERVICE.equals(query.serviceId())
                             ? FulfillmentType.PICKUP_DELIVERY : FulfillmentType.IN_STORE;
                     return new ServiceSnapshotDTO(query.serviceId(), MERCHANT, STORE, "洗澡",
-                            "cat", "洗护", null, 30, type, null, null, null, null);
+                            "cat", "洗护", null, 30, type, null, null, null, null,
+                            null, null, null, null, null, null);
                 }
 
                 @Override

@@ -47,6 +47,14 @@ logging:
 pet:
   private-assets:
     enabled: ${PRIVATE_ASSETS_ENABLED:false}
+  # Contract 77 service flash price (CCR-SVC-FLASH-PRICE-001): default OFF — while off the
+  # reservation API answers fail-closed FLASH_PRICE_DISABLED, the C read side and booking facts
+  # stay LIST (no flash query at all) and no consumer/task/controller registers. The four-table
+  # migration rides the existing service-write Flyway (db/service-migration V31, svcw001_*
+  # guarded by pet.service.command.migration-enabled).
+  service:
+    flash-price:
+      enabled: ${SERVICE_FLASH_PRICE_ENABLED:false}
   auth:
     c:
       enabled: ${AUTH_C_ENABLED:false}
