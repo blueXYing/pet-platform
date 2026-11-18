@@ -66,7 +66,7 @@ import org.springframework.jdbc.datasource.init.ScriptUtils;
 
 /**
  * B-MKT-01/02/04/05 acceptance over isolated real MySQL running the marketing migrations
- * V33→V36 (contract 71 v0.3 hot-service patch): the platform-wide single ENABLED
+ * V33→V37 (contract 71 v0.3 hot-service patch): the platform-wide single ENABLED
  * {@code HOT_SERVICE_TOP} placement (409 PLACEMENT_LIMIT_EXCEEDED on a second enable, C-side
  * answers 0/1 after the city-scope filter), the {@code HOT_SERVICE} home-block landing with a
  * nullable target value, the campaign {@code serviceCategoryCodes} dictionary-validation
@@ -433,7 +433,7 @@ class MarketingHotServiceMySqlTest {
         boolean recruit = "MERCHANT_ENROLL".equals(type);
         return new CampaignInput(title + "-名称", type,
                 recruit ? "MERCHANT_ENROLL" : "PLATFORM_SELECTED",
-                title, null, null, null, null,
+                title, null, null, null, null, null, null, null, null, null,
                 List.of(), categories, WIN_START, WIN_END,
                 recruit ? ENROLL_START : null, recruit ? ENROLL_END : null,
                 null, null, 0);
@@ -492,7 +492,7 @@ class MarketingHotServiceMySqlTest {
         return root;
     }
 
-    /** Isolated real-MySQL fixture running marketing migrations V33→V36; dropped on close. */
+    /** Isolated real-MySQL fixture running marketing migrations V33→V37; dropped on close. */
     private static final class Database implements AutoCloseable {
         private final String name = "mkthotsvc_" + UUID.randomUUID().toString().replace("-", "");
         private final JdbcTemplate admin;
@@ -536,7 +536,7 @@ class MarketingHotServiceMySqlTest {
             try (Connection connection = source.getConnection()) {
                 for (String version : List.of("V33__marketing_center.sql",
                         "V34__marketing_assets.sql", "V35__marketing_home_blocks.sql",
-                        "V36__hot_service_placement.sql")) {
+                        "V36__hot_service_placement.sql", "V37__merchant_marketing_tools.sql")) {
                     ScriptUtils.executeSqlScript(connection, new EncodedResource(
                             new FileSystemResource(root()
                                     .resolve("backend/pet-boot/src/main/resources/db/marketing-migration/")
@@ -559,7 +559,8 @@ class MarketingHotServiceMySqlTest {
         }
 
         MarketingMerchantApi merchantApi() {
-            return new MarketingMerchantApiImpl(source, ids, storeFacts, NOW);
+            return new MarketingMerchantApiImpl(source, ids, storeFacts, NOW, assets,
+                    "https://cdn.example.com");
         }
 
         private MarketingAdminAuthorizationPort allowAll() {

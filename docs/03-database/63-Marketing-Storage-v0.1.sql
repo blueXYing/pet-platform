@@ -5,6 +5,10 @@
 -- 业务表 append/更新语义见 docs/04-api/71、72 号契约。
 -- 依赖：C 端门店 promotion 投影读取 SQL27 merchant_store_profile（商家促销字段）；
 -- 启用营销前须按 docs/03-database/27-Merchant-Store-Profile-Schema-v0.1.sql 安装该表。
+-- 2026-11-17 商家营销工具 P1 增量（41 号补充 / CCR-MKT-TOOLS-001 / 契约 76、71 v0.4）：
+--   marketing_campaign 增 description/theme_code/highlight_text/play_type/cover_asset_id；
+--   marketing_asset 增 owner_type/owner_merchant_id/owner_store_id/purpose（存量默认 PLATFORM）。
+--   迁移落地为 marketing-migration/V37__merchant_marketing_tools.sql（CCR 原计划 V34，因 V34–V36 已被占用顺延）。
 
 CREATE TABLE marketing_campaign (
     id                          BIGINT NOT NULL,
@@ -18,9 +22,14 @@ CREATE TABLE marketing_campaign (
     status                      VARCHAR(24) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
     title                       VARCHAR(100) NOT NULL,
     subtitle                    VARCHAR(200) NULL,
+    description                 VARCHAR(300) NULL,
     tag_code                    VARCHAR(32) CHARACTER SET ascii COLLATE ascii_bin NULL,
     tag_name                    VARCHAR(32) NULL,
+    theme_code                  VARCHAR(32) CHARACTER SET ascii COLLATE ascii_bin NULL,
+    highlight_text              VARCHAR(100) NULL,
+    play_type                   VARCHAR(24) CHARACTER SET ascii COLLATE ascii_bin NULL,
     cover_url                   VARCHAR(512) NULL,
+    cover_asset_id              BIGINT NULL,
     city_codes                  JSON NULL,
     service_category_codes      JSON NULL,
     start_at                    DATETIME(3) NOT NULL,
@@ -64,6 +73,9 @@ CREATE TABLE marketing_campaign (
     ),
     CONSTRAINT chk_marketing_campaign_quota CHECK (
         enrollment_quota IS NULL OR (enrollment_quota BETWEEN 1 AND 10000)
+    ),
+    CONSTRAINT chk_marketing_campaign_play_type CHECK (
+        play_type IS NULL OR play_type IN ('THEME')
     ),
     CONSTRAINT chk_marketing_campaign_sort CHECK (sort_weight BETWEEN 0 AND 9999),
     CONSTRAINT chk_marketing_campaign_version CHECK (version > 0)
@@ -240,6 +252,10 @@ CREATE TABLE marketing_command_idempotency (
 
 CREATE TABLE marketing_asset (
     id              BIGINT NOT NULL,
+    owner_type      VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT 'PLATFORM',
+    owner_merchant_id BIGINT NULL,
+    owner_store_id  BIGINT NULL,
+    purpose         VARCHAR(32) CHARACTER SET ascii COLLATE ascii_bin NULL,
     content_type    VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
     bytes           BIGINT NOT NULL,
     width           INT NOT NULL,
@@ -253,9 +269,14 @@ CREATE TABLE marketing_asset (
     PRIMARY KEY (id),
     KEY idx_marketing_asset_sha (sha256),
     KEY idx_marketing_asset_status (status, created_at),
+    KEY idx_marketing_asset_owner (owner_type, owner_merchant_id, owner_store_id, status),
     CONSTRAINT chk_marketing_asset_bytes CHECK (bytes BETWEEN 1 AND 2097152),
     CONSTRAINT chk_marketing_asset_size CHECK (width BETWEEN 1 AND 2000 AND height BETWEEN 1 AND 2000),
-    CONSTRAINT chk_marketing_asset_status CHECK (status IN ('ACTIVE','RETIRED'))
+    CONSTRAINT chk_marketing_asset_status CHECK (status IN ('ACTIVE','RETIRED')),
+    CONSTRAINT chk_marketing_asset_owner CHECK (
+        owner_type IN ('PLATFORM','MERCHANT')
+        AND (owner_type = 'PLATFORM' OR (owner_merchant_id IS NOT NULL AND purpose = 'CAMPAIGN_COVER'))
+    )
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
   COMMENT='营销公开素材（V1 DB 存储；URL 稳定，后续可换 CDN）';
 

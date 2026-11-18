@@ -25,9 +25,15 @@ public final class MarketingViews {
             String status,
             String title,
             String subtitle,
+            String description,
+            String themeCode,
+            String themeLabel,
+            String highlightText,
+            String playType,
+            String coverAssetId,
+            String coverUrl,
             String tagCode,
             String tagName,
-            String coverUrl,
             List<String> cityCodes,
             List<String> serviceCategoryCodes,
             OffsetDateTime startAt,
@@ -41,7 +47,8 @@ public final class MarketingViews {
             int sortWeight,
             int version,
             OffsetDateTime createdAt,
-            OffsetDateTime updatedAt) {}
+            OffsetDateTime updatedAt,
+            String rejectReason) {}
 
     public record CampaignStoreLink(
             String storeId,
@@ -165,6 +172,16 @@ public final class MarketingViews {
             int height,
             String sha256,
             OffsetDateTime createdAt) {}
+
+    /**
+     * Contract 76 §4.1 merchant hub overview: only provable counters, never order/revenue/
+     * conversion figures. {@code active} means ONLINE and inside the activity window.
+     */
+    public record MerchantOverview(
+            long totalCampaignCount,
+            long activeCampaignCount,
+            long pendingReviewCount,
+            long enrolledCampaignCount) {}
 
     /** Common write receipt; unused fields stay null/zero. */
     public record Receipt(

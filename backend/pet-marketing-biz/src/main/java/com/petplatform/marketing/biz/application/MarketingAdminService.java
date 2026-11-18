@@ -5,7 +5,6 @@ import com.petplatform.common.CommandContext;
 import com.petplatform.marketing.api.MarketingAdminApi;
 import com.petplatform.marketing.api.dto.MarketingViews;
 import com.petplatform.marketing.biz.infrastructure.persistence.MarketingStore;
-import com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities.AssetRow;
 import com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities.CampaignRow;
 import com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities.CampaignStoreRow;
 import com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities.EnrollmentRow;
@@ -14,10 +13,6 @@ import com.petplatform.marketing.biz.infrastructure.persistence.entity.Marketing
 import com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities.PlacementRow;
 import com.petplatform.marketing.biz.application.port.MarketingAssetObjectStore;
 import com.petplatform.marketing.biz.infrastructure.persistence.mapper.MarketingMapper;
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -28,7 +23,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import javax.imageio.ImageIO;
 import org.springframework.dao.DuplicateKeyException;
 
 /** Platform-ops marketing center (contract 71 §4). */
@@ -58,7 +52,7 @@ public final class MarketingAdminService extends MarketingSupport implements Mar
 
     private final MarketingCityCatalogPort cityCatalog;
     private final boolean allowHttpAssets;
-    private final MarketingAssetObjectStore assetObjectStore;
+    private final MarketingAssetWriter assetWriter;
     private final MarketingServiceCategoryPort serviceCategories;
     private final boolean categoryValidationEnabled;
 
@@ -77,7 +71,8 @@ public final class MarketingAdminService extends MarketingSupport implements Mar
                 Objects.requireNonNull(couponFacts), clock);
         this.cityCatalog = Objects.requireNonNull(cityCatalog);
         this.allowHttpAssets = allowHttpAssets;
-        this.assetObjectStore = Objects.requireNonNull(assetObjectStore);
+        this.assetWriter = new MarketingAssetWriter(store,
+                Objects.requireNonNull(assetObjectStore, "assetObjectStore is required"));
         this.serviceCategories = Objects.requireNonNull(serviceCategories);
         this.categoryValidationEnabled = categoryValidationEnabled;
     }
@@ -339,6 +334,16 @@ public final class MarketingAdminService extends MarketingSupport implements Mar
                     if ("MERCHANT".equals(current.ownerType) && !"PENDING_REVIEW".equals(current.status)) {
                         conflict("CAMPAIGN_STATE_NOT_ALLOWED", "商家活动只有待审核状态可发布");
                     }
+                    // Contract 76 §5: a themed campaign can only go live with a legal play type
+                    // and, when a cover asset is bound, an ACTIVE cover. Write-path validation
+                    // already enforces this for new rows; the publish gate protects legacy data.
+                    if (current.playType != null && !"THEME".equals(current.playType)) {
+                        conflict("CAMPAIGN_STATE_NOT_ALLOWED", "活动玩法非法，不能发布");
+                    }
+                    if (current.coverAssetId != null
+                            && mapper.selectAssetById(current.coverAssetId) == null) {
+                        conflict("CAMPAIGN_LANDING_INVALID", "封面素材不可用，不能发布");
+                    }
                     String schema = current.pageSchemaJson;
                     if (schema == null || schema.isBlank()) {
                         schema = MarketingPageSchema.defaultSchema(current);
@@ -506,111 +511,19 @@ public final class MarketingAdminService extends MarketingSupport implements Mar
         Objects.requireNonNull(command, "command is required");
         authorize(command.authorization(), command.context(), "marketing.campaign.manage",
                 "MARKETING_CAMPAIGN_LIST", "1", null, null);
-        byte[] content = command.content();
-        if (content == null || content.length == 0) {
-            throw new ApiException("MARKETING_ASSET_INVALID", "素材文件为空");
-        }
-        if (content.length > 2 * 1024 * 1024) {
-            throw new ApiException("MARKETING_ASSET_TOO_LARGE", "素材不能超过 2MiB");
-        }
-        String type = command.contentType() == null ? "" : command.contentType().strip().toLowerCase();
-        if (!"image/png".equals(type) && !"image/jpeg".equals(type)) {
-            throw new ApiException("MARKETING_ASSET_INVALID", "仅支持 PNG/JPEG 图片");
-        }
-        java.awt.image.BufferedImage image;
-        try {
-            image = ImageIO.read(new ByteArrayInputStream(content));
-        } catch (IOException failure) {
-            throw new ApiException("MARKETING_ASSET_INVALID", "图片内容不可读取");
-        }
-        if (image == null) {
-            throw new ApiException("MARKETING_ASSET_INVALID", "图片内容不可读取");
-        }
-        if (image.getWidth() < 1 || image.getHeight() < 1
-                || image.getWidth() > 2000 || image.getHeight() > 2000) {
-            throw new ApiException("MARKETING_ASSET_INVALID", "图片尺寸必须在 1..2000 之间");
-        }
-        String sha = sha256(content);
+        MarketingAssetWriter.Validated asset = MarketingAssetWriter.validate(command.content());
         Map<String, Object> params = new LinkedHashMap<>();
-        params.put("sha256", sha);
-        params.put("contentType", type);
-        params.put("width", image.getWidth());
-        params.put("height", image.getHeight());
-        params.put("bytes", content.length);
-        String key = requestKey("marketing.asset.upload", command.context(), sha);
+        params.put("sha256", asset.sha256());
+        params.put("contentType", asset.contentType());
+        params.put("width", asset.width());
+        params.put("height", asset.height());
+        params.put("bytes", asset.content().length);
+        String key = requestKey("marketing.asset.upload", command.context(), asset.sha256());
         return idempotent(key, "marketing.asset.upload", params,
-                MarketingAdminService::parseAsset,
-                () -> store.execute(mapper -> {
-                    AssetRow row = new AssetRow();
-                    row.id = store.nextId();
-                    row.contentType = type;
-                    row.bytes = (long) content.length;
-                    row.width = image.getWidth();
-                    row.height = image.getHeight();
-                    row.sha256 = sha;
-                    if (assetObjectStore.enabled()) {
-                        String extension = "image/jpeg".equals(type) ? "jpg" : "png";
-                        row.objectKey = "marketing-assets/" + Long.toUnsignedString(row.id) + "." + extension;
-                        try {
-                            assetObjectStore.put(row.objectKey, content, type);
-                        } catch (RuntimeException failure) {
-                            unavailable("素材对象存储不可用");
-                        }
-                        row.content = null;
-                    } else {
-                        row.content = content;
-                    }
-                    row.status = "ACTIVE";
-                    row.createdById = operatorId(command.context());
-                    row.createdAt = nowUtc();
-                    if (mapper.insertAsset(row) != 1) unavailable("素材写入失败");
-                    if (mapper.insertAssetAudit(store.nextId(), row.id, "UPLOAD",
-                            row.createdById, command.context().requestId(),
-                            command.context().traceId(), nowUtc()) != 1) {
-                        unavailable("素材审计写入失败");
-                    }
-                    return new MarketingViews.AssetView(Long.toUnsignedString(row.id),
-                            row.contentType, row.bytes, row.width, row.height, row.sha256,
-                            offset(row.createdAt));
-                }), MarketingAdminService::assetJson);
-    }
-
-    private static MarketingViews.AssetView parseAsset(String json) {
-        try {
-            var root = JSON.readTree(json);
-            return new MarketingViews.AssetView(root.path("assetId").asText(),
-                    root.path("contentType").asText(), root.path("bytes").asLong(),
-                    root.path("width").asInt(), root.path("height").asInt(),
-                    root.path("sha256").asText(),
-                    OffsetDateTime.parse(root.path("createdAt").asText()));
-        } catch (Exception failure) {
-            unavailable("素材回执不可读取");
-            return null;
-        }
-    }
-
-    private static String assetJson(MarketingViews.AssetView asset) {
-        Map<String, Object> out = new LinkedHashMap<>();
-        out.put("assetId", asset.assetId());
-        out.put("contentType", asset.contentType());
-        out.put("bytes", asset.bytes());
-        out.put("width", asset.width());
-        out.put("height", asset.height());
-        out.put("sha256", asset.sha256());
-        out.put("createdAt", asset.createdAt().toString());
-        try {
-            return JSON.writeValueAsString(out);
-        } catch (Exception failure) {
-            throw new IllegalStateException("asset receipt serialization failed", failure);
-        }
-    }
-
-    private static String sha256(byte[] content) {
-        try {
-            return java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(content));
-        } catch (NoSuchAlgorithmException failure) {
-            throw new IllegalStateException("SHA-256 unavailable", failure);
-        }
+                MarketingAssetWriter::parseAsset,
+                () -> store.execute(mapper -> assetWriter.persist(mapper, asset, "PLATFORM",
+                        null, null, null, operatorId(command.context()), command.context())),
+                MarketingAssetWriter::assetJson);
     }
 
     @Override
@@ -1105,8 +1018,16 @@ public final class MarketingAdminService extends MarketingSupport implements Mar
             invalid("couponCampaignId is only for COUPON campaigns");
         }
         int sort = boundedInt(input.sortWeight(), 0, 0, 9999, "sortWeight");
+        String description = optionalText(input.description(), 300, "description");
+        String themeCode = requireThemeCode(input.themeCode(), false);
+        String highlightText = optionalText(input.highlightText(), 100, "highlightText");
+        String playType = requirePlayType(input.playType(), false);
+        Long coverAssetId = input.coverAssetId() == null || input.coverAssetId().isBlank()
+                ? null : id(input.coverAssetId().strip());
         return new CampaignInput(name, type, participation, title, subtitle, tagCode, tagName,
-                coverUrl, cities, categories, input.startAt(), input.endAt(), enrollStart, enrollEnd,
+                coverUrl, description, themeCode, highlightText, playType,
+                coverAssetId == null ? null : Long.toUnsignedString(coverAssetId),
+                cities, categories, input.startAt(), input.endAt(), enrollStart, enrollEnd,
                 quota, couponCampaignId, sort);
     }
 
@@ -1131,9 +1052,15 @@ public final class MarketingAdminService extends MarketingSupport implements Mar
         row.status = "DRAFT";
         row.title = input.title();
         row.subtitle = input.subtitle();
+        row.description = input.description();
         row.tagCode = input.tagCode();
         row.tagName = input.tagName();
+        row.themeCode = input.themeCode();
+        row.highlightText = input.highlightText();
+        row.playType = input.playType();
         row.coverUrl = input.coverUrl();
+        row.coverAssetId = input.coverAssetId() == null || input.coverAssetId().isBlank()
+                ? null : id(input.coverAssetId());
         row.cityCodes = jsonList(input.cityCodes());
         row.serviceCategoryCodes = jsonList(input.serviceCategoryCodes());
         row.startAt = utc(input.startAt());
@@ -1166,6 +1093,11 @@ public final class MarketingAdminService extends MarketingSupport implements Mar
         params.put("tagCode", input.tagCode());
         params.put("tagName", input.tagName());
         params.put("coverUrl", input.coverUrl());
+        params.put("description", input.description());
+        params.put("themeCode", input.themeCode());
+        params.put("highlightText", input.highlightText());
+        params.put("playType", input.playType());
+        params.put("coverAssetId", input.coverAssetId());
         params.put("cityCodes", input.cityCodes());
         params.put("serviceCategoryCodes", input.serviceCategoryCodes());
         params.put("startAt", input.startAt());

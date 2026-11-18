@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import tools.jackson.databind.JsonNode;
 
-/** Contract-71 merchant-facing marketing/enrollment face. */
+/** Contract-71/76 merchant-facing marketing/enrollment face. */
 @RestController
 @ConditionalOnProperty(prefix = "pet",
         name = {"marketing.enabled", "marketing.merchant.http.enabled", "auth.c.enabled"},
@@ -36,9 +36,75 @@ public class MarketingMerchantController {
 
 
     private final MarketingMerchantApi marketing;
+    private final String assetPublicBaseUrl;
 
-    public MarketingMerchantController(MarketingMerchantApi marketing) {
+    public MarketingMerchantController(MarketingMerchantApi marketing,
+            @org.springframework.beans.factory.annotation.Value(
+                    "${pet.marketing.asset.public-base-url:}") String assetPublicBaseUrl) {
         this.marketing = marketing;
+        this.assetPublicBaseUrl = assetPublicBaseUrl == null ? "" : assetPublicBaseUrl.strip();
+    }
+
+    // ------------------------------------------------------------------ P1 tools (contract 76)
+
+    /**
+     * Contract 76 §4.2: campaign-cover upload. Exactly one {@code file} part plus the scope
+     * query parameters; the media type is sniffed in the kernel, never trusted from the client.
+     */
+    @org.springframework.web.bind.annotation.PostMapping(
+            value = "/api/v1/merchant/marketing/assets",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE)
+    Map<String, Object> uploadAsset(
+            @RequestParam String merchantId,
+            @RequestParam String storeId,
+            @org.springframework.web.bind.annotation.RequestPart("file")
+            org.springframework.web.multipart.MultipartFile file,
+            HttpServletRequest req) throws java.io.IOException {
+        onlyParameters(req, "merchantId", "storeId");
+        MiniSessionView session = mini(req);
+        if (file == null || file.isEmpty()) throw invalid();
+        if (assetPublicBaseUrl.isBlank()) {
+            throw new com.petplatform.common.ApiException(
+                    com.petplatform.common.CommonApiCodes.DEPENDENCY_UNAVAILABLE, "素材公开地址未配置");
+        }
+        MerchantScope scope = new MerchantScope(longId(session.userId()),
+                longId(merchantId), longId(storeId));
+        MarketingViews.AssetView asset = marketing.uploadAsset(
+                new MarketingMerchantApi.UploadMerchantAssetCommand(scope, file.getBytes(),
+                        file.getContentType(), userCommand(req)));
+        String base = assetPublicBaseUrl.replaceAll("/$", "");
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("assetId", asset.assetId());
+        out.put("url", base + "/api/v1/c/marketing/assets/" + asset.assetId());
+        out.put("contentType", asset.contentType());
+        out.put("bytes", asset.bytes());
+        out.put("width", asset.width());
+        out.put("height", asset.height());
+        out.put("sha256", asset.sha256());
+        out.put("createdAt", time(asset.createdAt()));
+        return merchantOk(out, req);
+    }
+
+    /** Contract 76 §4.1: hub overview, four provable counters and nothing else. */
+    @GetMapping(value = "/api/v1/merchant/marketing/overview",
+            produces = MediaType.APPLICATION_JSON_VALUE)
+    Map<String, Object> overview(
+            @RequestParam String merchantId,
+            @RequestParam String storeId,
+            HttpServletRequest req) {
+        onlyParameters(req, "merchantId", "storeId");
+        MiniSessionView session = mini(req);
+        MerchantScope scope = new MerchantScope(longId(session.userId()),
+                longId(merchantId), longId(storeId));
+        MarketingViews.MerchantOverview overview = marketing.overview(
+                new MarketingMerchantApi.MerchantOverviewQuery(scope, userQuery(req)));
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("totalCampaignCount", overview.totalCampaignCount());
+        out.put("activeCampaignCount", overview.activeCampaignCount());
+        out.put("pendingReviewCount", overview.pendingReviewCount());
+        out.put("enrolledCampaignCount", overview.enrolledCampaignCount());
+        return merchantOk(out, req);
     }
 
     @GetMapping(value = "/api/v1/merchant/marketing/campaigns",
@@ -165,7 +231,11 @@ public class MarketingMerchantController {
                 new MarketingMerchantApi.MerchantCreateCampaignCommand(
                         scope, text(body, "name"), text(body, "title"), optionalText(body, "subtitle"),
                         optionalText(body, "tagCode"), optionalText(body, "tagName"),
-                        optionalText(body, "coverUrl"), time(body, "startAt"), time(body, "endAt"),
+                        optionalText(body, "coverUrl"),
+                        optionalText(body, "description"), optionalText(body, "themeCode"),
+                        optionalText(body, "highlightText"), optionalText(body, "playType"),
+                        optionalText(body, "coverAssetId"),
+                        time(body, "startAt"), time(body, "endAt"),
                         userCommand(req)));
         return merchantOk(receipt(receipt), req);
     }
@@ -185,6 +255,9 @@ public class MarketingMerchantController {
                         id(campaignId), text(body, "name"), text(body, "title"),
                         optionalText(body, "subtitle"), optionalText(body, "tagCode"),
                         optionalText(body, "tagName"), optionalText(body, "coverUrl"),
+                        optionalText(body, "description"), optionalText(body, "themeCode"),
+                        optionalText(body, "highlightText"), optionalText(body, "playType"),
+                        optionalText(body, "coverAssetId"),
                         time(body, "startAt"), time(body, "endAt"),
                         longValue(body, "expectedVersion"), scope, userCommand(req)));
         return merchantOk(receipt(receipt), req);
@@ -236,9 +309,15 @@ public class MarketingMerchantController {
         out.put("name", c.name());
         out.put("title", c.title());
         out.put("subtitle", c.subtitle());
+        out.put("description", c.description());
+        out.put("themeCode", c.themeCode());
+        out.put("themeLabel", c.themeLabel());
+        out.put("highlightText", c.highlightText());
+        out.put("playType", c.playType());
+        out.put("coverAssetId", c.coverAssetId());
+        out.put("coverUrl", c.coverUrl());
         out.put("tagCode", c.tagCode());
         out.put("tagName", c.tagName());
-        out.put("coverUrl", c.coverUrl());
         out.put("campaignType", c.campaignType());
         out.put("participationMode", c.participationMode());
         out.put("status", c.status());
@@ -248,6 +327,7 @@ public class MarketingMerchantController {
         out.put("enrollEndAt", time(c.enrollEndAt()));
         out.put("storeCount", c.storeCount());
         out.put("version", Integer.toString(c.version()));
+        out.put("rejectReason", c.rejectReason());
         return out;
     }
 

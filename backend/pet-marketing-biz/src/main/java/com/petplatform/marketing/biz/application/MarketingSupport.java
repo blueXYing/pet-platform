@@ -24,6 +24,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -123,6 +124,38 @@ abstract class MarketingSupport {
 
     protected static void requireWindow(OffsetDateTime start, OffsetDateTime end) {
         if (start == null || end == null || !start.isBefore(end)) invalid("time window is invalid");
+    }
+
+    /**
+     * Contract 76 §3.1: {@code themeCode} whitelist. {@code required} distinguishes the
+     * merchant face (a merchant campaign always carries a theme) from the admin face (a
+     * platform campaign may predate P1 and stay unthemed).
+     */
+    protected static String requireThemeCode(String value, boolean required) {
+        String code = value == null ? null : value.strip();
+        if (code == null || code.isEmpty()) {
+            if (required) throw new ApiException("CAMPAIGN_THEME_INVALID", "节日主题必填");
+            return null;
+        }
+        if (!Set.of("SPRING_FESTIVAL", "MID_AUTUMN", "NATIONAL_DAY", "CHRISTMAS",
+                "NEW_YEAR", "DOUBLE_11", "OTHER").contains(code)) {
+            throw new ApiException("CAMPAIGN_THEME_INVALID", "节日主题不在白名单");
+        }
+        return code;
+    }
+
+    /**
+     * Contract 76 §3.1: P1 accepts only {@code THEME}. Merchant inputs normalize blank to
+     * {@code THEME}; the admin face keeps blank as null so legacy platform campaigns are
+     * untouched.
+     */
+    protected static String requirePlayType(String value, boolean blankAsTheme) {
+        String code = value == null ? null : value.strip();
+        if (code == null || code.isEmpty()) return blankAsTheme ? "THEME" : null;
+        if (!"THEME".equals(code)) {
+            throw new ApiException("CAMPAIGN_PLAY_TYPE_INVALID", "P1 仅支持 THEME 玩法");
+        }
+        return code;
     }
 
     protected static List<String> stringList(List<String> values) {
@@ -384,17 +417,37 @@ abstract class MarketingSupport {
 
     // -------------------------------------------------------------- projections
 
+    /**
+     * Contract 76 §4.3: the theme display label is derived server-side from the whitelist;
+     * an unknown stored code degrades to the OTHER label, a null theme stays null.
+     */
+    protected static String themeLabel(String themeCode) {
+        if (themeCode == null || themeCode.isBlank()) return null;
+        return switch (themeCode) {
+            case "SPRING_FESTIVAL" -> "春节";
+            case "MID_AUTUMN" -> "中秋";
+            case "NATIONAL_DAY" -> "国庆";
+            case "CHRISTMAS" -> "圣诞";
+            case "NEW_YEAR" -> "元旦";
+            case "DOUBLE_11" -> "双11";
+            case "OTHER" -> "其他";
+            default -> "其他";
+        };
+    }
+
     protected static MarketingViews.CampaignCard campaignCard(CampaignRow row, int storeCount) {
         return new MarketingViews.CampaignCard(
                 idString(row.id), row.campaignCode, row.name, row.ownerType, row.campaignType,
-                row.participationMode, row.status, row.title, row.subtitle, row.tagCode, row.tagName,
-                row.coverUrl, parseJsonList(row.cityCodes), parseJsonList(row.serviceCategoryCodes),
+                row.participationMode, row.status, row.title, row.subtitle, row.description,
+                row.themeCode, themeLabel(row.themeCode), row.highlightText, row.playType,
+                idString(row.coverAssetId), row.coverUrl, row.tagCode, row.tagName,
+                parseJsonList(row.cityCodes), parseJsonList(row.serviceCategoryCodes),
                 offset(row.startAt), offset(row.endAt), offset(row.enrollStartAt),
                 offset(row.enrollEndAt), row.enrollmentQuota, idString(row.couponCampaignId),
                 row.pageVersion == null ? 0 : row.pageVersion, storeCount,
                 row.sortWeight == null ? 0 : row.sortWeight,
                 row.version == null ? 0 : row.version.intValue(),
-                offset(row.createdAt), offset(row.updatedAt));
+                offset(row.createdAt), offset(row.updatedAt), row.rejectReason);
     }
 
     protected static MarketingViews.CampaignStoreLink storeLink(CampaignStoreRow row) {

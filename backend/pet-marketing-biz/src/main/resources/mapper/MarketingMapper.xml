@@ -4,7 +4,8 @@
 
     <sql id="campaignColumns">
         id,campaign_code,name,owner_type,owner_merchant_id,owner_store_id,campaign_type,
-        participation_mode,status,title,subtitle,tag_code,tag_name,cover_url,city_codes,
+        participation_mode,status,title,subtitle,description,tag_code,tag_name,theme_code,
+        highlight_text,play_type,cover_url,cover_asset_id,city_codes,
         service_category_codes,start_at,end_at,enroll_start_at,enroll_end_at,enrollment_quota,
         coupon_campaign_id,page_schema_json,page_draft_version,published_page_schema_json,
         page_version,sort_weight,reject_reason,version,created_by_type,created_by_id,
@@ -96,17 +97,36 @@
         <if test="status != null">AND status=#{status}</if>
     </select>
 
+    <!-- Contract 76 §4.1 overview counters; active means ONLINE and inside the window. -->
+    <select id="countMerchantCampaigns" resultType="long">
+        SELECT COUNT(*) FROM marketing_campaign
+        WHERE owner_type='MERCHANT' AND owner_merchant_id=#{merchantId} AND owner_store_id=#{storeId}
+        <if test="status != null">AND status=#{status}</if>
+        <if test="activeOnly">AND start_at &lt;= #{now} AND end_at &gt; #{now}</if>
+    </select>
+
+    <select id="countMerchantEnrollmentsByStatus" resultType="long">
+        SELECT COUNT(*) FROM marketing_enrollment
+        WHERE merchant_id=#{merchantId} AND store_id=#{storeId}
+          AND status IN
+        <foreach collection="statuses" item="item" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </select>
+
     <insert id="insertCampaign">
         INSERT INTO marketing_campaign
             (id,campaign_code,name,owner_type,owner_merchant_id,owner_store_id,campaign_type,
-             participation_mode,status,title,subtitle,tag_code,tag_name,cover_url,city_codes,
+             participation_mode,status,title,subtitle,description,tag_code,tag_name,theme_code,
+             highlight_text,play_type,cover_url,cover_asset_id,city_codes,
              service_category_codes,start_at,end_at,enroll_start_at,enroll_end_at,enrollment_quota,
              coupon_campaign_id,page_schema_json,page_draft_version,published_page_schema_json,
              page_version,sort_weight,reject_reason,version,created_by_type,created_by_id,
              created_at,updated_at)
         VALUES
             (#{id},#{campaignCode},#{name},#{ownerType},#{ownerMerchantId},#{ownerStoreId},#{campaignType},
-             #{participationMode},#{status},#{title},#{subtitle},#{tagCode},#{tagName},#{coverUrl},#{cityCodes},
+             #{participationMode},#{status},#{title},#{subtitle},#{description},#{tagCode},#{tagName},
+             #{themeCode},#{highlightText},#{playType},#{coverUrl},#{coverAssetId},#{cityCodes},
              #{serviceCategoryCodes},#{startAt},#{endAt},#{enrollStartAt},#{enrollEndAt},#{enrollmentQuota},
              #{couponCampaignId},#{pageSchemaJson},#{pageDraftVersion},#{publishedPageSchemaJson},
              #{pageVersion},#{sortWeight},#{rejectReason},#{version},#{createdByType},#{createdById},
@@ -116,8 +136,11 @@
     <update id="updateCampaign">
         UPDATE marketing_campaign
         SET name=#{name}, campaign_type=#{campaignType}, participation_mode=#{participationMode},
-            title=#{title}, subtitle=#{subtitle}, tag_code=#{tagCode}, tag_name=#{tagName},
-            cover_url=#{coverUrl}, city_codes=#{cityCodes}, service_category_codes=#{serviceCategoryCodes},
+            title=#{title}, subtitle=#{subtitle}, description=#{description},
+            tag_code=#{tagCode}, tag_name=#{tagName}, theme_code=#{themeCode},
+            highlight_text=#{highlightText}, play_type=#{playType},
+            cover_url=#{coverUrl}, cover_asset_id=#{coverAssetId},
+            city_codes=#{cityCodes}, service_category_codes=#{serviceCategoryCodes},
             start_at=#{startAt}, end_at=#{endAt}, enroll_start_at=#{enrollStartAt},
             enroll_end_at=#{enrollEndAt}, enrollment_quota=#{enrollmentQuota},
             coupon_campaign_id=#{couponCampaignId}, sort_weight=#{sortWeight},
@@ -497,15 +520,17 @@
 
     <insert id="insertAsset">
         INSERT INTO marketing_asset
-            (id,content_type,bytes,width,height,sha256,object_key,content,status,created_by_id,created_at)
+            (id,owner_type,owner_merchant_id,owner_store_id,purpose,content_type,bytes,width,height,
+             sha256,object_key,content,status,created_by_id,created_at)
         VALUES
-            (#{id},#{contentType},#{bytes},#{width},#{height},#{sha256},#{objectKey},#{content},#{status},
-             #{createdById},#{createdAt})
+            (#{id},#{ownerType},#{ownerMerchantId},#{ownerStoreId},#{purpose},#{contentType},#{bytes},
+             #{width},#{height},#{sha256},#{objectKey},#{content},#{status},#{createdById},#{createdAt})
     </insert>
 
     <select id="selectAssetById"
             resultType="com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities$AssetRow">
-        SELECT id,content_type,bytes,width,height,sha256,object_key,content,status,created_by_id,created_at
+        SELECT id,owner_type,owner_merchant_id,owner_store_id,purpose,content_type,bytes,width,height,
+               sha256,object_key,content,status,created_by_id,created_at
         FROM marketing_asset
         WHERE id=#{id} AND status='ACTIVE'
     </select>

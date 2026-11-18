@@ -8,6 +8,11 @@ export type Receipt = { id: string; status: string; version: string; pageVersion
 export type Campaign = {
   campaignId: string; campaignCode: string; name: string; ownerType: string; campaignType: string;
   participationMode: string; status: string; title: string; subtitle: string | null;
+  // Contract 76 v0.1 §5: campaign cards/details carry the merchant-marketing extension
+  // fields. All are nullable — platform campaigns created before P1 have none of them,
+  // and themeLabel/coverUrl are server-derived read-only values.
+  description: string | null; themeCode: string | null; themeLabel: string | null;
+  highlightText: string | null; playType: string | null; coverAssetId: string | null;
   tagCode: string | null; tagName: string | null; coverUrl: string | null;
   cityCodes: string[]; serviceCategoryCodes: string[];
   startAt: string; endAt: string; enrollStartAt: string | null; enrollEndAt: string | null;
@@ -63,6 +68,11 @@ export type MarketingAsset = {
 export type CampaignInput = {
   name: string; campaignType: string; participationMode: string; title: string;
   subtitle?: string; tagCode?: string; tagName?: string; coverUrl?: string;
+  // Contract 76 v0.1 §5: operators may set the merchant-marketing extension fields on
+  // admin create/edit. Sent only when filled — omitting keeps the stored value decision
+  // with the server (themeLabel/coverUrl on the wire are read-only, never submitted).
+  description?: string; themeCode?: string; highlightText?: string;
+  playType?: string; coverAssetId?: string;
   cityCodes: string[]; serviceCategoryCodes: string[];
   startAt: string; endAt: string; enrollStartAt?: string; enrollEndAt?: string;
   enrollmentQuota?: number; couponCampaignId?: string; sortWeight?: number;
@@ -190,6 +200,29 @@ export const HOME_BLOCK_TARGET_TYPES = [
   ['HOT_SERVICE', '热门服务'],
 ] as const;
 
+// Contract 76 v0.1 §3.1: campaign theme whitelist. Codes go on the wire; labels are the
+// frontend display-name mapping (PLAN: 展示名由前端映射), mirroring the server-derived
+// themeLabel for known codes.
+export const CAMPAIGN_THEMES = [
+  ['SPRING_FESTIVAL', '春节'],
+  ['MID_AUTUMN', '中秋'],
+  ['NATIONAL_DAY', '国庆'],
+  ['CHRISTMAS', '圣诞'],
+  ['NEW_YEAR', '元旦'],
+  ['DOUBLE_11', '双11'],
+  ['OTHER', '其他'],
+] as const;
+
+// Contract 76 v0.1 §3.1: playType is optional (server default THEME); P1 only allows THEME.
+export const CAMPAIGN_PLAY_TYPES = [
+  ['THEME', '节日主题'],
+] as const;
+
+export function campaignThemeLabel(code: string | null | undefined): string {
+  if (!code) return '';
+  return CAMPAIGN_THEMES.find(([value]) => value === code)?.[1] ?? code;
+}
+
 // Contract 71 v0.3 §10: the C-side routes on targetType alone for NONE/HOT_SERVICE — the
 // server nulls targetValue regardless of what is sent, so the UI keeps those inputs blank.
 export function targetNeedsValue(targetType: string): boolean {
@@ -202,6 +235,10 @@ const FAILURE_TEXT: Record<string, string> = {
   SERVICE_CATEGORY_INVALID: '保存失败：所选服务分类中有分类不存在或未启用，请在「服务分类」字典确认后重新勾选再保存',
   PLACEMENT_LIMIT_EXCEEDED: '操作失败：已达位置启用上限——热门服务顶部 Banner 全平台最多同时启用 1 个，首页 Banner 同一城市最多同时启用 3 个。请先停用已启用的同位置 Banner 再试',
   CAMPAIGN_LANDING_INVALID: '保存失败：投放窗口必须完全落在关联活动的时间窗口内',
+  CAMPAIGN_THEME_INVALID: '保存失败：节日主题缺失或不在白名单，请从「节日主题」下拉中重新选择',
+  CAMPAIGN_PLAY_TYPE_INVALID: '保存失败：玩法仅支持「节日主题（THEME）」，请重新选择',
+  MARKETING_ASSET_INVALID: '保存失败：封面素材不存在、不属于当前商家或未启用，请重新上传或清空封面资产 ID',
+  MARKETING_ASSET_TOO_LARGE: '上传失败：文件超过 2 MiB 上限，请压缩后重试',
   CAMPAIGN_STATE_NOT_ALLOWED: '操作失败：当前状态不允许该操作，已为你刷新最新数据，请重试',
   CAMPAIGN_NOT_FOUND: '该活动不存在或已被删除，已为你刷新列表',
   COMMON_CONFLICT: '操作冲突：数据已被其他人修改，已为你刷新最新数据，请重试',
