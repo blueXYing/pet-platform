@@ -25,20 +25,26 @@
       (id,order_no,user_id,merchant_id,store_id,service_id,pet_id,reservation_id,
        service_staff_id,order_stage,payment_status,verification_status,fulfillment_type,
        original_amount,discount_amount,pay_amount,refunded_amount,reschedule_count,
+       original_price,flash_discount,price_source,flash_price_id,
        appointment_start_at,appointment_end_at,payment_expire_at,version,created_at,updated_at)
     VALUES
       (#{id},#{orderNo},#{userId},#{merchantId},#{storeId},#{serviceId},#{petId},#{reservationId},
        NULL,'PENDING_PAYMENT','INIT','UNVERIFIED',#{fulfillmentType},
        #{price},#{discountAmount},#{payAmount},0.00,0,
+       #{originalPrice},#{flashDiscount},#{priceSource},#{flashPriceId,jdbcType=BIGINT},
        #{appointmentStart},#{appointmentEnd},#{paymentExpireAt},0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))
   </insert>
   <insert id="insertServiceSnapshot">
     INSERT INTO order_service_snapshot
       (id,order_id,service_id,service_name,category_id,category_name,service_price,
+       service_list_price,service_price_source,service_flash_price_id,
        service_duration_minutes,service_description,merchant_name,store_name,store_address,
        snapshot_json,created_at)
     VALUES (#{id},#{orderId},#{serviceId},#{serviceName},#{categoryId,jdbcType=BIGINT},
-            #{categoryName,jdbcType=VARCHAR},#{servicePrice},#{serviceDurationMinutes},
+            #{categoryName,jdbcType=VARCHAR},#{servicePrice},
+            #{serviceListPrice,jdbcType=DECIMAL},#{servicePriceSource,jdbcType=VARCHAR},
+            #{serviceFlashPriceId,jdbcType=BIGINT},
+            #{serviceDurationMinutes},
             #{serviceDescription,jdbcType=VARCHAR},#{merchantName},#{storeName},#{storeAddress},
             #{snapshotJson,jdbcType=VARCHAR},UTC_TIMESTAMP(3))
   </insert>

@@ -137,9 +137,10 @@ class OrderDeletionFactsMySqlTest {
                     INSERT INTO pet_order
                     (id,order_no,user_id,merchant_id,store_id,service_id,pet_id,reservation_id,
                      order_stage,payment_status,fulfillment_type,original_amount,pay_amount,
+                     original_price,flash_discount,price_source,
                      refund_application_status,refund_order_id,refunded_amount,
                      appointment_start_at,appointment_end_at,created_at,updated_at)
-                    VALUES(?,?,?,?,?,?,?,?+5000,?,'PAID','IN_STORE',100.00,100.00,?,?,?,?,?,
+                    VALUES(?,?,?,?,?,?,?,?+5000,?,'PAID','IN_STORE',100.00,100.00,100.00,0.00,'LIST',?,?,?,?,?,
                            UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))
                     """, id, id, userId, 7100L, storeId, 7200L, 7500L, id, stage,
                     refundApplicationStatus, refundOrderId,

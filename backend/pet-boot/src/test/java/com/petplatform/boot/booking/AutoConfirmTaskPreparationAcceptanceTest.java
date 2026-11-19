@@ -211,9 +211,10 @@ class AutoConfirmTaskPreparationAcceptanceTest {
             // Synthetic anomalous rows exercise pagination only, not booking or confirmation acceptance.
             for (long id : List.of(9_010_000_000_000_001L, 9_010_000_000_000_002L)) {
                 f.db.jdbc.update("INSERT INTO pet_order(id,order_no,user_id,merchant_id,store_id,service_id,pet_id,"
-                        + "reservation_id,order_stage,fulfillment_type,original_amount,pay_amount,appointment_start_at,"
+                        + "reservation_id,order_stage,fulfillment_type,original_amount,pay_amount,"
+                        + "original_price,flash_discount,price_source,appointment_start_at,"
                         + "appointment_end_at,created_at,updated_at) VALUES(?,?,710100,710301,710302,710401,710200,?,"
-                        + "'PENDING_CONFIRM','IN_STORE',128,128,'2030-01-01 09:00:00','2030-01-01 10:30:00',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))", id, id, id);
+                        + "'PENDING_CONFIRM','IN_STORE',128,128,128,0.00,'LIST','2030-01-01 09:00:00','2030-01-01 10:30:00',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))", id, id, id);
             }
             var page1 = query.inspect(SYSTEM, null, 1);
             assertEquals(order, page1.nextAfterOrderId());

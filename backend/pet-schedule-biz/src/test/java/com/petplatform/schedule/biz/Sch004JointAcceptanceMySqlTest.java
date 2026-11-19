@@ -709,10 +709,11 @@ class Sch004JointAcceptanceMySqlTest {
             db.jdbc.update("INSERT INTO pet_order(id,order_no,user_id,merchant_id,"
                     + "store_id,service_id,pet_id,reservation_id,order_stage,payment_status,"
                     + "verification_status,fulfillment_type,original_amount,discount_amount,"
-                    + "pay_amount,refunded_amount,appointment_start_at,appointment_end_at,"
+                    + "pay_amount,refunded_amount,original_price,flash_discount,price_source,"
+                    + "appointment_start_at,appointment_end_at,"
                     + "created_at,updated_at) VALUES(?,?,601,10,201,?,701,?,"
                     + "'PENDING_PAYMENT','INIT','UNVERIFIED',?,100.00,0.00,100.00,"
-                    + "0.00,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+                    + "0.00,100.00,0.00,'LIST',?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
                     Long.parseLong(held.orderId()), Long.parseLong(held.orderId()),
                     Long.parseLong(service), Long.parseLong(held.reservationId()), fulfillment,
                     java.sql.Timestamp.from(start.toInstant()),

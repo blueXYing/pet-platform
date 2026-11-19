@@ -961,8 +961,9 @@ class ReservationProtectionFoundationAcceptanceTest {
             jdbc.update("INSERT INTO pet_order"
                     + "(id,order_no,user_id,merchant_id,store_id,service_id,pet_id,reservation_id,service_staff_id,"
                     + "order_stage,payment_status,verification_status,fulfillment_type,original_amount,pay_amount,"
+                    + "original_price,flash_discount,price_source,"
                     + "appointment_start_at,appointment_end_at,created_at,updated_at)"
-                    + " VALUES(?,?,?,700000,?,?,700200,?,?,?, 'INIT',?,?,100.00,100.00,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+                    + " VALUES(?,?,?,700000,?,?,700200,?,?,?, 'INIT',?,?,100.00,100.00,100.00,0.00,'LIST',?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
                     id, id + 100000L, userId, storeId, serviceId, reservationId, staffId,
                     stage, verification, fulfillment, start, end);
         }

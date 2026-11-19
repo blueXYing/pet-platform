@@ -152,15 +152,16 @@ class OrderQueryHttpTest {
                         + "current_refund_application_id,refund_order_id,current_aftersale_id,"
                         + "refund_application_status,aftersale_status,"
                         + "fulfillment_type,original_amount,discount_amount,pay_amount,refunded_amount,"
+                        + "original_price,flash_discount,price_source,"
                         + "reschedule_count,confirm_mode,appointment_start_at,appointment_end_at,"
                         + "verified_at,version,created_at,updated_at) "
                         + "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,"
-                        + "'IN_STORE',?,?,?,?,0,NULL,"
+                        + "'IN_STORE',?,?,?,?,?,0.00,'LIST',0,NULL,"
                         + "?,?,?,0,?,?)",
                 id, id + 500_000L, user, MERCHANT, STORE, SERVICE, PET, RESERVATION_BASE + (id % 100),
                 stage, payment, verification, applicationId, refundOrder, aftersaleId,
                 application, aftersale,
-                original, discount, pay, refunded,
+                original, discount, pay, refunded, original,
                 createdAt.substring(0, 11) + "09:00:00.000", createdAt.substring(0, 11) + "10:30:00.000",
                 verifiedAt, createdAt, createdAt);
     }
@@ -272,6 +273,10 @@ class OrderQueryHttpTest {
         assertEquals("2026-10-10T09:00:00.000Z", data.get("appointmentStart"));
         assertEquals("2026-10-10T10:30:00.000Z", data.get("appointmentEnd"));
         assertNull(data.get("verifiedAt"));
+        // Contract 77 §6.5 flash snapshot tail: LIST rows also report all three fields.
+        assertEquals("LIST", data.get("priceSource"));
+        assertEquals("88.00", data.get("originalPrice"));
+        assertEquals("0.00", data.get("flashDiscount"));
 
         // In-flight and succeeded refunds project the order-domain refund vocabulary.
         Map<String, Object> inFlight = orders.detail(Long.toString(REFUNDING),

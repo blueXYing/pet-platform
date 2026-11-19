@@ -430,9 +430,10 @@ class SelectionExpiryAcceptanceTest {
       claim(RETURN, "RETURN", r, rEnd);
       jdbc.update("INSERT INTO pet_order(id,order_no,user_id,merchant_id,store_id,service_id,pet_id,reservation_id,"
               + "order_stage,payment_status,verification_status,fulfillment_type,original_amount,discount_amount,"
-              + "pay_amount,appointment_start_at,appointment_end_at,payment_expire_at,version,created_at,updated_at)"
+              + "pay_amount,original_price,flash_discount,price_source,"
+              + "appointment_start_at,appointment_end_at,payment_expire_at,version,created_at,updated_at)"
               + " VALUES(?,?,?,?,?,?,?,?,'PENDING_PAYMENT','INIT','UNVERIFIED','PICKUP_DELIVERY',128.00,0.00,"
-              + "128.00,?,?,?,0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+              + "128.00,128.00,0.00,'LIST',?,?,?,0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
           ORDER, id(), USER, MERCHANT, STORE, SERVICE, PET, RESERVATION, p, rEnd, due);
       seed = new Seed(deadline, day);
       return seed;

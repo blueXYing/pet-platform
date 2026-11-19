@@ -26,6 +26,10 @@ public final class OrderQueryViewEntity {
     private BigDecimal discountAmount;
     private BigDecimal payAmount;
     private BigDecimal refundedAmount;
+    private BigDecimal originalPrice;
+    private BigDecimal flashDiscount;
+    private String priceSource;
+    private Long flashPriceId;
     private LocalDateTime appointmentStartAt;
     private LocalDateTime appointmentEndAt;
     private LocalDateTime paidAt;
@@ -71,6 +75,14 @@ public final class OrderQueryViewEntity {
     public void setPayAmount(BigDecimal payAmount) { this.payAmount = payAmount; }
     public BigDecimal getRefundedAmount() { return refundedAmount; }
     public void setRefundedAmount(BigDecimal refundedAmount) { this.refundedAmount = refundedAmount; }
+    public BigDecimal getOriginalPrice() { return originalPrice; }
+    public void setOriginalPrice(BigDecimal originalPrice) { this.originalPrice = originalPrice; }
+    public BigDecimal getFlashDiscount() { return flashDiscount; }
+    public void setFlashDiscount(BigDecimal flashDiscount) { this.flashDiscount = flashDiscount; }
+    public String getPriceSource() { return priceSource; }
+    public void setPriceSource(String priceSource) { this.priceSource = priceSource; }
+    public Long getFlashPriceId() { return flashPriceId; }
+    public void setFlashPriceId(Long flashPriceId) { this.flashPriceId = flashPriceId; }
     public LocalDateTime getAppointmentStartAt() { return appointmentStartAt; }
     public void setAppointmentStartAt(LocalDateTime appointmentStartAt) { this.appointmentStartAt = appointmentStartAt; }
     public LocalDateTime getAppointmentEndAt() { return appointmentEndAt; }

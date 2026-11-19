@@ -79,9 +79,14 @@ public class BookingCreationConfiguration {
             BookingUserFactsApi users,BookingMerchantFactsApi merchants,BookingServiceFactsApi services,
             ScheduleCapacityGuardApi guard,ReservationHoldApi hold,OrderCreationInputProtection protection,
             OrderCreationRemarkPolicy remarkPolicy,ObjectProvider<Clock> clocks,
-            ObjectProvider<com.petplatform.coupon.api.command.CouponCommandApi> coupons){
+            ObjectProvider<com.petplatform.coupon.api.command.CouponCommandApi> coupons,
+            ObjectProvider<com.petplatform.service.api.command.ServiceFlashPriceReservationApi> flashReservations){
         // Contract 61: absent provider keeps the legacy fail-closed coupon-create behavior.
+        // Contract 77 §6.1: the reservation provider is a bean both when the flash switch is on
+        // (real implementation) and off (fail-closed stub), so a flash-bearing fact can never
+        // silently degrade to LIST; with the switch off the read side never emits flash facts.
         return new OrderCreationApiImpl(source,ids,users,merchants,services,guard,hold,protection,
-                remarkPolicy,coupons.getIfAvailable(),clocks.getIfAvailable(Clock::systemUTC));
+                remarkPolicy,coupons.getIfAvailable(),flashReservations.getIfAvailable(),
+                clocks.getIfAvailable(Clock::systemUTC));
     }
 }
