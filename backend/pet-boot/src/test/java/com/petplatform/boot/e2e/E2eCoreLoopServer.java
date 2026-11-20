@@ -139,8 +139,12 @@ public final class E2eCoreLoopServer {
   private static final String TERM_NO = "T0000001";
   // Round-2 admin operator (bootstrapped as PLATFORM_SUPER_ADMIN scope ALL, SSOT §24: single
   // operator, no extra MFA). Written to server-metadata.txt for the HTTP admin walkthrough.
-  private static final String ADMIN_ACCOUNT = "e2e-round2-operator";
-  private static final String ADMIN_PASSWORD = "E2E_Round2_Operator_91!";
+  // 2026-11-20 用户裁决：测试运营账号改为 admin/admin（简单固定）。
+  // bootstrap 的密码强度检查（3 种字符类型）不适用于此——直接用 JDBC upsert 绕过。
+  private static final String ADMIN_ACCOUNT = "admin";
+  private static final String ADMIN_PASSWORD = "admin";
+  // argon2id hash of "admin"——启动时幂等 upsert，不因重启/换库而变化。
+  private static final String ADMIN_HASH = "$argon2id$v=19$m=65536,t=3,p=1$ddsefv7TWTFiTPLuGD9dRg$HMKW3nZcQipCemiAkE0sdNzgqXqtRGenx4cZhNtZ/QI";
   private static final String ADMIN_ORIGIN = "https://e2e.example.invalid";
 
   private E2eCoreLoopServer() {}
@@ -579,10 +583,8 @@ public final class E2eCoreLoopServer {
       // PLATFORM_SUPER_ADMIN + scope ALL per SSOT §24 single-operator adjudication). Skipped on
       // database reuse — the account already exists from the first process.
       boolean reused = reuseDatabase != null && !reuseDatabase.isBlank();
-      if (!reused) {
-        context.getBean(AdminAuthService.class).bootstrap(ADMIN_ACCOUNT, "E2E二轮验收运营",
-            ADMIN_PASSWORD.toCharArray(), "E2E round-2 simulator walkthrough");
-      }
+      // 2026-11-20 用户裁决：admin/admin 固定可用——每次启动都幂等 upsert（不管新库旧库）。
+      ensureAdminAccount(jdbc, name);
       PaymentNotificationService notifications =
           context.getBean(PaymentNotificationService.class);
       Thread payer = new Thread(() -> sandbox.completePaymentsForever(notifications), "e2e-sandbox-pay");
@@ -1288,6 +1290,34 @@ public final class E2eCoreLoopServer {
         + "accepted_by_user_id,accepted_at,content_sha256)"
         + " VALUES(710801,?,710800,?,UTC_TIMESTAMP(3),?)",
         MERCHANT, USER, agreementHash);
+  }
+
+  /** 2026-11-20 用户裁决：每次启动幂等确保 admin/admin 可用（不因重启/换库/种子跳过而变化）。 */
+  private static void ensureAdminAccount(JdbcTemplate jdbc, String database) {
+    try {
+      String lookupHex = "53544146463a61646d696e"; // STAFF:admin
+      Integer count = jdbc.queryForObject(
+          "SELECT COUNT(*) FROM admin_account WHERE account_display='admin'", Integer.class);
+      if (count != null && count > 0) {
+        jdbc.update("UPDATE admin_account SET password_hash=?, status='ENABLED', "
+            + "credential_version=credential_version+1, session_generation=session_generation+1 "
+            + "WHERE account_display='admin'", ADMIN_HASH);
+      } else {
+        // 需要同步角色/权限——复制已有账号的角色绑定
+        Long existingId = jdbc.queryForObject(
+            "SELECT id FROM admin_account LIMIT 1", Long.class);
+        if (existingId != null) {
+          // 重命名已有账号（保留角色绑定）
+          jdbc.update("UPDATE admin_account SET account_display='admin', "
+              + "account_lookup=UNHEX(?), password_hash=?, display_name='平台运营', "
+              + "status='ENABLED' WHERE id=?",
+              lookupHex, ADMIN_HASH, existingId);
+        }
+      }
+      System.out.println("E2E_ADMIN account=admin password=admin (idempotent upsert)");
+    } catch (Exception e) {
+      System.out.println("E2E_ADMIN upsert skipped: " + e.getMessage());
+    }
   }
 
   private static void seedMaterial(JdbcTemplate jdbc, SnowflakeIdGenerator ids, long application,
