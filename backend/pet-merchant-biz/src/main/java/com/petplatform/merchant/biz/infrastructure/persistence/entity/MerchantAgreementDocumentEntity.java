@@ -10,9 +10,18 @@ public final class MerchantAgreementDocumentEntity {
     private String contentSha256;
     private String acceptedContentSha256;
     private LocalDateTime acceptedAt;
+    /** 2026-11-20 运营端协议管理：发布时间与发布运营（版本历史展示用）。 */
+    private LocalDateTime publishedAt;
+    private Long publishedByOperatorId;
 
     public Long getVersionId() { return versionId; }
     public void setVersionId(Long versionId) { this.versionId = versionId; }
+    public LocalDateTime getPublishedAt() { return publishedAt; }
+    public void setPublishedAt(LocalDateTime publishedAt) { this.publishedAt = publishedAt; }
+    public Long getPublishedByOperatorId() { return publishedByOperatorId; }
+    public void setPublishedByOperatorId(Long publishedByOperatorId) {
+        this.publishedByOperatorId = publishedByOperatorId;
+    }
     public String getAgreementVersion() { return agreementVersion; }
     public void setAgreementVersion(String agreementVersion) { this.agreementVersion = agreementVersion; }
     public String getContent() { return content; }

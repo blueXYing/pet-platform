@@ -83,7 +83,20 @@
         FOR UPDATE
     </select>
 
-    <insert id="insertAcceptance">
+    <select id="selectAllVersions" resultType="com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantAgreementDocumentEntity">
+    SELECT id AS versionId, agreement_version, content, content_sha256, published_at, published_by_operator_id
+    FROM merchant_agreement_version ORDER BY id DESC
+  </select>
+  <insert id="insertVersion">
+    INSERT INTO merchant_agreement_version(id, agreement_version, content, content_sha256, published_at, published_by_operator_id)
+    VALUES(#{id}, #{agreementVersion}, #{content}, #{contentSha256}, #{now}, #{publishedByOperatorId})
+  </insert>
+  <insert id="upsertCurrentPointer">
+    INSERT INTO merchant_agreement_current(agreement_key, agreement_version_id, updated_at)
+    VALUES('MERCHANT', #{agreementVersionId}, #{now})
+    ON DUPLICATE KEY UPDATE agreement_version_id=VALUES(agreement_version_id), updated_at=VALUES(updated_at)
+  </insert>
+  <insert id="insertAcceptance">
         INSERT INTO merchant_agreement_acceptance
         (id,merchant_id,agreement_version_id,accepted_by_user_id,accepted_at,content_sha256)
         VALUES

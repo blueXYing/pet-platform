@@ -44,6 +44,7 @@ public final class AdminBearerAuthenticationFilter extends OncePerRequestFilter 
           || path.equals("/api/v1/admin/auth/activity")
           || path.equals("/api/v1/admin/merchant-applications")
           || path.startsWith("/api/v1/admin/merchant-applications/")
+          || path.equals("/api/v1/admin/merchant-agreements")
           || path.startsWith("/api/v1/admin/private-asset-read-grants/")
           || path.equals("/api/v1/admin/services")
           || path.startsWith("/api/v1/admin/services/")

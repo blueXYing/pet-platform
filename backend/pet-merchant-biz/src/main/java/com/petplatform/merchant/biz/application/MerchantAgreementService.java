@@ -155,12 +155,8 @@ public final class MerchantAgreementService {
             if (!accepted.isEmpty()) {
                 MerchantAgreementDocumentEntity original = accepted.getFirst();
                 validateDocument(original, true);
-                if (!original.getAgreementVersion().equals(validated.command().agreementVersion())) {
-                    conflict("the merchant already accepted a different agreement version");
-                }
-                if (!original.getContentSha256().equals(validated.command().contentSha256())) {
-                    conflict("agreement content hash does not match the accepted version");
-                }
+                // 松耦合（2026-11-20）：已签约商家重复确认一律幂等返回原签署回执——
+                // 运营发布新版协议后，客户端提示值与历史版本不一致也不再 409。
                 MerchantAgreementConsentDTO receipt = receipt(
                         validated.merchantId(), original.getAgreementVersion(), acceptedAt(original));
                 succeed(mapper, validated.requestKey(), receipt);
@@ -174,12 +170,8 @@ public final class MerchantAgreementService {
             MerchantAgreementDocumentEntity current = mapper.selectCurrentAgreementForUpdate();
             if (current == null) unavailable("current merchant agreement is unavailable");
             validateDocument(current, false);
-            if (!current.getAgreementVersion().equals(validated.command().agreementVersion())) {
-                conflict("agreement version is not current");
-            }
-            if (!current.getContentSha256().equals(validated.command().contentSha256())) {
-                conflict("agreement content hash does not match current content");
-            }
+            // 松耦合（2026-11-20）：首签以行锁取到的当前版本盖章；客户端版本提示不参与
+            // 强校验（运营在浏览与签署之间发布新版不再造成 409）。
             requireApprovedApplication(validated.merchantId());
 
             OffsetDateTime acceptedAt = OffsetDateTime.ofInstant(
@@ -194,6 +186,52 @@ public final class MerchantAgreementService {
             markSucceeded(mapper, validated.requestKey(), receiptJson);
             return new ConsentResult(receipt, true);
         });
+    }
+
+    // ===== 2026-11-20 用户裁决：运营端协议管理（纯文本协议、发布即生效、松耦合版本链） =====
+
+    /** 发布结果（版本号由服务端按时间生成，形如 v1732…，符合 VERSION 约束）。 */
+    public record PublishedAgreement(long versionId, String agreementVersion, String contentSha256) {}
+
+    public PublishedAgreement publish(String content, long operatorId) {
+        if (content == null || content.isBlank()) invalid("协议内容不能为空");
+        if (content.length() > 100_000) invalid("协议内容不能超过 100000 字");
+        String sha = sha256(content);
+        String version = "v" + clock.instant().toEpochMilli();
+        java.time.LocalDateTime now =
+                java.time.LocalDateTime.ofInstant(
+                        clock.instant().truncatedTo(java.time.temporal.ChronoUnit.MILLIS),
+                        java.time.ZoneOffset.UTC);
+        return store.execute(mapper -> {
+            long id = store.nextId();
+            if (mapper.insertVersion(id, version, content, sha, operatorId, now) != 1)
+                unavailable("agreement version insert failed");
+            // ON DUPLICATE KEY UPDATE：插入=1、更新=2 都算成功。
+            if (mapper.upsertCurrentPointer(id, now) < 1)
+                unavailable("agreement current pointer update failed");
+            return new PublishedAgreement(id, version, sha);
+        });
+    }
+
+    public java.util.List<MerchantAgreementDocumentEntity> listVersions() {
+        return store.read(MerchantAgreementMapper::selectAllVersions);
+    }
+
+    /** 当前生效的协议版本（运营端展示用；只读不加锁）。 */
+    public MerchantAgreementDocumentEntity getAgreementCurrent() {
+        return store.read(MerchantAgreementMapper::selectCurrentAgreement);
+    }
+
+    private static String sha256(String value) {
+        try {
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            StringBuilder hex = new StringBuilder();
+            for (byte b : digest.digest(value.getBytes(java.nio.charset.StandardCharsets.UTF_8)))
+                hex.append(String.format("%02x", b));
+            return hex.toString();
+        } catch (java.security.NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException(impossible);
+        }
     }
 
     private void requireApprovedApplication(long merchantId) {
@@ -279,10 +317,14 @@ public final class MerchantAgreementService {
     private static ValidatedConsent validateConsent(MerchantAgreementConsentCommand command) {
         if (command == null) invalid("command is required");
         long merchantId = targetId(command.merchantId(), "merchantId");
-        if (command.agreementVersion() == null || !VERSION.matcher(command.agreementVersion()).matches()) {
+        // 2026-11-20 用户裁决：版本链松耦合——版本号与哈希降级为可选的客户端提示值，
+        // 服务端以签署那一刻的当前版本为准盖章，不再因版本漂移拒绝签约。
+        if (command.agreementVersion() != null
+            && !VERSION.matcher(command.agreementVersion()).matches()) {
             invalid("agreementVersion is invalid");
         }
-        if (command.contentSha256() == null || !SHA256.matcher(command.contentSha256()).matches()) {
+        if (command.contentSha256() != null
+            && !SHA256.matcher(command.contentSha256()).matches()) {
             invalid("contentSha256 is invalid");
         }
         if (!Boolean.TRUE.equals(command.accepted())) invalid("accepted must be true");

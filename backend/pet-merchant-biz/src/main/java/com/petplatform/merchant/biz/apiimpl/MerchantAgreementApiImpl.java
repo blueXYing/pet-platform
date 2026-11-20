@@ -55,6 +55,21 @@ public final class MerchantAgreementApiImpl
     }
 
     /** Allows a future HTTP adapter to distinguish first creation (201) from replay/existing (200). */
+    // ===== 2026-11-20 运营端协议管理透出（发布/历史/当前版本） =====
+    public MerchantAgreementService.PublishedAgreement publishAgreement(String content, long operatorId) {
+        return service.publish(content, operatorId);
+    }
+
+    public java.util.List<com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantAgreementDocumentEntity>
+        listAgreementVersions() {
+        return service.listVersions();
+    }
+
+    public com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantAgreementDocumentEntity
+        currentAgreementForAdmin() {
+        return service.getAgreementCurrent();
+    }
+
     public ConsentOutcome consentOutcome(MerchantAgreementConsentCommand command) {
         MerchantAgreementService.ConsentResult result = service.consent(command);
         return new ConsentOutcome(result.receipt(), result.created());

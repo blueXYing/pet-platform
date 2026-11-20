@@ -36,6 +36,7 @@ import CouponTemplatePage from './pages/CouponTemplatePage';
 import CouponInstanceLedgerPage from './pages/CouponInstanceLedgerPage';
 import PointsLedgerPage from './pages/PointsLedgerPage';
 import SettingsRuntimePage from './pages/SettingsRuntimePage';
+import AgreementAdminPage, { createAgreementAdminClient } from './pages/AgreementAdminPage';
 import TradeOrderListPage from './pages/TradeOrderListPage';
 import TradeOrderDetailPage from './pages/TradeOrderDetailPage';
 import TradeRefundListPage from './pages/TradeRefundListPage';
@@ -64,6 +65,7 @@ const staffGovernance = createStaffGovernanceClient();
 const encyclopedia = createEncyclopediaAdminClient();
 const couponAdmin = createCouponAdminClient();
 const ledgerAdmin = createLedgerAdminClient();
+  const agreementAdmin = createAgreementAdminClient();
 const marketingAdmin = createMarketingAdminClient();
 const communityAdmin = createCommunityAdminClient();
 const serviceCategories = createServiceCategoryAdminClient();
@@ -245,6 +247,7 @@ export function App() {
     ].filter(Boolean) as NonNullable<MenuProps['items']> },
     { type: 'group', label: '系统', children: [
       menuItem('/ops/settings/runtime', '系统设置', canReadSettings),
+      menuItem('/ops/settings/agreement', '协议管理', canReadSettings),
     ].filter(Boolean) as NonNullable<MenuProps['items']> },
   ];
   const routes = <Routes>
@@ -275,6 +278,7 @@ export function App() {
     <Route path="/ops/coupons/instances" element={guard(<CouponInstanceLedgerPage client={couponAdmin} canVoid={permissions?.actionCodes.includes('coupon.instance.void') === true} onAuthLost={signOut} />, 'coupon.instance.read')} />
     <Route path="/ops/ledger/points" element={guard(<PointsLedgerPage client={ledgerAdmin} onAuthLost={signOut} />, 'points.ledger.read')} />
     <Route path="/ops/settings/runtime" element={guard(<SettingsRuntimePage client={ledgerAdmin} onAuthLost={signOut} />, 'system.parameter.read')} />
+    <Route path="/ops/settings/agreement" element={guard(<AgreementAdminPage client={agreementAdmin} canWrite={permissions?.actionCodes.includes('merchant.application.decide') === true} onAuthLost={signOut} />, 'system.parameter.read')} />
     <Route path="/ops/service-categories" element={guard(<ServiceCategoryAdminPage client={serviceCategories} canWrite={canManageServiceCategories} onAuthLost={signOut} />, 'service.category.read')} />
     <Route path="/ops/community" element={guard(<CommunityModerationPage client={communityAdmin} canModerate={canModerateCommunity} canHandleReports={canHandleCommunityReports} onAuthLost={signOut} />, 'community.post.read')} />
     <Route path="/ops/marketing" element={guard(<MarketingCenterPage client={marketingAdmin} couponClient={couponAdmin} categoryClient={serviceCategories} canManage={canManageMarketing} canPublish={canPublishMarketing} canReview={canReviewMarketing} canCouponManage={canManageCouponCampaigns} canCouponPublish={canPublishCouponCampaigns} onAuthLost={signOut} />, 'marketing.campaign.read')} />
