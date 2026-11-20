@@ -20,6 +20,7 @@ import {
 } from '../../order/model'
 import { businessStatusLabel, deltaLabel } from '../../storefront/model'
 import { MerchantTabBar } from '../../components/tab-bar'
+import { writeWorkspaceMemory } from '../../../shared/workspace-memory'
 import navBack from '../aftersale/assets/nav-back@3x.png'
 import bell from './assets/bell.svg'
 import paper from './assets/paper-grid.jpg'
@@ -216,6 +217,7 @@ export default function MerchantWorkbenchPage() {
   }, [dashboardKey, ready, owner, canProfile, canOrders, canRefunds, dashboard])
 
   async function back() {
+    writeWorkspaceMemory(null) // 2026-11-20 用户裁决：显式返回用户端时清除商家角色记忆
     controller.leave()
     await Taro.switchTab({ url: '/consumer/pages/home/index' })
   }
