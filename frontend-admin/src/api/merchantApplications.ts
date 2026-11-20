@@ -3,7 +3,7 @@ import { RequestFailure, createWebClient, type Transport } from '../request';
 // Field sets mirror the approved application/private-asset projections verbatim (CONTRACT.md §3).
 export type SubjectVerification = 'PENDING' | 'VERIFIED';
 export type ApplicationStatus = 'REVIEWING' | 'APPROVED' | 'REJECTED';
-export type ReviewTaskStatus = 'AVAILABLE' | 'CLAIMED';
+export type ReviewTaskStatus = 'AVAILABLE' | 'CLAIMED' | 'CLOSED';
 export type DecisionType = 'APPROVE' | 'REJECT' | 'REQUEST_CORRECTION';
 
 export type ApplicationSummary = {
