@@ -206,8 +206,9 @@ class PointsTaskHttpTest {
     db.jdbc.update(
         "INSERT INTO pet_order(id, order_no, user_id, merchant_id, store_id, service_id, pet_id,"
             + " reservation_id, order_stage, payment_status, fulfillment_type, original_amount,"
+            + " original_price, flash_discount, price_source,"
             + " pay_amount, appointment_start_at, appointment_end_at, paid_at, created_at, updated_at)"
-            + " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
+            + " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,0.00,'LIST',99.00,?,?,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
         9_400_000_000_002_001L, 9_400_000_000_002_001L, Long.parseLong(str(invitee, "userId")),
         1L, 1L, 1L, 1L, 9_400_000_000_002_099L, "PENDING_SERVICE", "PAID", "IN_STORE",
         new java.math.BigDecimal("99.00"), new java.math.BigDecimal("99.00"),
@@ -262,9 +263,10 @@ class PointsTaskHttpTest {
       LocalDateTime paidAt) {
     db.jdbc.update("INSERT INTO pet_order(id, order_no, user_id, merchant_id, store_id,"
             + " service_id, pet_id, reservation_id, order_stage, payment_status,"
-            + " fulfillment_type, original_amount, pay_amount, appointment_start_at,"
+            + " fulfillment_type, original_amount, original_price, flash_discount, price_source,"
+            + " pay_amount, appointment_start_at,"
             + " appointment_end_at, paid_at, created_at, updated_at) VALUES"
-            + "(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,COALESCE(?, UTC_TIMESTAMP(3)),"
+            + "(?,?,?,?,?,?,?,?,?,?,?,?,66.00,0.00,'LIST',?,?,?,COALESCE(?, UTC_TIMESTAMP(3)),"
             + "UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
         orderId, orderId, userId, 1L, 1L, 1L, 1L, 9_400_000_000_003_000L + (orderId % 1000),
         stage, paymentStatus, "IN_STORE", new java.math.BigDecimal("66.00"),

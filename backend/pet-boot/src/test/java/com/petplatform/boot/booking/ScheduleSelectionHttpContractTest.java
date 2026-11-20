@@ -186,7 +186,8 @@ class ScheduleSelectionHttpContractTest {
                 "3", "4", "2", true, List.of()));
         when(services.getServiceSnapshot(any())).thenReturn(new ServiceSnapshotDTO(
                 "3", "4", "2", "Pickup", null, null, null, 35,
-                FulfillmentType.PICKUP_DELIVERY, null, null, null, null));
+                FulfillmentType.PICKUP_DELIVERY, null, null, null, null,
+                null, null, null, null, null, null));
         return new SelectionWindowQueryService(store, services, (storeId, serviceId, from, to) -> 2,
                 Clock.fixed(Instant.parse("2029-12-31T00:00:00Z"), ZoneOffset.UTC));
     }

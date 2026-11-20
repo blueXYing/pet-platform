@@ -100,6 +100,12 @@ public class COrderQueryController {
                         new QueryContext(trace(req), OperatorType.USER, session.userId())));
         Map<String, Object> body =
                 com.petplatform.order.biz.application.OrderSnapshotWire.fields(value);
+        // Contract 77 §6.5 flash-price snapshot tail (CCR-SVC-FLASH-PRICE-001): detail-only raw
+        // facts; LIST orders also report the fields (originalPrice = effective price, zero
+        // discount) so the C face never guesses whether a column is absent or unflashable.
+        body.put("priceSource", value.priceSource());
+        body.put("originalPrice", amount(value.originalPrice()));
+        body.put("flashDiscount", amount(value.flashDiscount()));
         // §3.7 contact supplement (2026-10-19 ruling, PRD 5.1.17 "联系电话唤起拨号"): the
         // store's business line joins the owner-scoped detail projection. Enrichment only —
         // a missing/ineligible contact source degrades to a null section; order facts never
@@ -124,6 +130,12 @@ public class COrderQueryController {
             // already succeeded and must never fail because merchant facts failed.
             return null;
         }
+    }
+
+    /** Two-decimal money string, the same rendering rule as the order module's wire projection. */
+    private static String amount(java.math.BigDecimal value) {
+        return value == null ? null
+                : value.setScale(2, java.math.RoundingMode.UNNECESSARY).toPlainString();
     }
 
     private static MiniSessionView session(HttpServletRequest req) {

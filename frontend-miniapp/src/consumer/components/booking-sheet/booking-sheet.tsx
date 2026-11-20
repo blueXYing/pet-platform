@@ -5,7 +5,7 @@ import { useWorkspace } from '../../../shared/workspace-react'
 import { consumerApi } from '../../../shared/consumer-runtime'
 import { ApiError } from '../../../shared/request'
 import { runCatalogRead, RealStoreRepository } from '../../store/repository'
-import { PreviewServiceRepository, type ServiceDetailView } from '../../service/model'
+import { PreviewServiceRepository, flashDiscountAmount, type ServiceDetailView } from '../../service/model'
 import { usableCoverUrl } from '../../service/cover'
 import { RealServiceRepository } from '../../api/repositories'
 import { PreviewStoreRepository } from '../../store/model'
@@ -310,6 +310,11 @@ export function BookingSheet({ serviceId, storeId: storeIdParam, preview, scenar
   const payableEstimate = service === null || chosenCoupon === null ? service?.salePrice ?? null
     : discountedAmount(service.salePrice, chosenCoupon)
   const badge = receipt === null ? null : receiptBadge(receipt)
+  // 77号 §5/§6.5：闪价时 salePrice 即生效价（后端已回闪价值）；限时优惠=原价−生效价，
+  // 前端按读侧字段计算，仅展示——提交订单不传价格（服务端权威复算）。
+  const flashDiscount = service !== null && service.priceSource === 'FLASH' && service.listPrice
+    ? flashDiscountAmount(service.listPrice, service.salePrice)
+    : null
   const dateView = dates.find(item => item.iso === date) || null
   const coverUrl = service === null ? null : usableCoverUrl(service.cover, coverNow)
   const sheetTitle = service === null ? '立即预约' : bookingSheetTitle(service.fulfillmentType)
@@ -477,6 +482,10 @@ export function BookingSheet({ serviceId, storeId: storeIdParam, preview, scenar
                 {pickupFlow && <View className='bks-fact-row'><Text className='bks-fact-label'>送回时段</Text><Text className='bks-fact-value'>{returnItem ? windowLabel(returnItem.start, returnItem.end) : '—'}</Text></View>}
                 {pickupFlow && <View className='bks-fact-row'><Text className='bks-fact-label'>服务地址</Text><Text className='bks-fact-value'>{serviceAddress.trim() || '—'}</Text></View>}
                 <View className='bks-fact-row'><Text className='bks-fact-label'>预约费用</Text><Text className='bks-fact-value bks-fact-amount'>¥{service.salePrice}</Text></View>
+                {flashDiscount !== null && <View className='bks-fact-row'>
+                  <Text className='bks-fact-label'>限时优惠</Text>
+                  <Text className='bks-fact-value bks-fact-amount'>-¥{flashDiscount}</Text>
+                </View>}
                 {chosenCoupon !== null && <View className='bks-fact-row'>
                   <Text className='bks-fact-label'>优惠券</Text>
                   <Text className='bks-fact-value'>{chosenCoupon.name} -¥{chosenCoupon.amountOff}</Text>

@@ -231,9 +231,10 @@ class OrderAfterSaleDisplayLabelsMySqlTest {
                     (id,order_no,user_id,merchant_id,store_id,service_id,pet_id,reservation_id,
                      order_stage,payment_status,verification_status,fulfillment_type,
                      original_amount,discount_amount,pay_amount,refunded_amount,
+                     original_price,flash_discount,price_source,
                      appointment_start_at,appointment_end_at,paid_at,created_at,updated_at)
                     VALUES(?,?,?,?,?,?,?,?, 'COMPLETED','PAID','VERIFIED','IN_STORE',
-                           ?,0.00,?,0.00, '2030-01-01 09:00:00','2030-01-01 10:00:00','2026-11-01 08:00:00',
+                           ?,0.00,?,0.00,60.00,0.00,'LIST', '2030-01-01 09:00:00','2030-01-01 10:00:00','2026-11-01 08:00:00',
                            UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))
                     """, id, id, BUYER, MERCHANT, storeId, 8_801L, 8_701L, id + 5000,
                     new BigDecimal("60.00"), new BigDecimal("60.00"));

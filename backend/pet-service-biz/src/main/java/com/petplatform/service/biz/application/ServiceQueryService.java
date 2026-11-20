@@ -72,24 +72,43 @@ public final class ServiceQueryService {
     private final MerchantDisplayEligibilityApi merchantFacts;
     private final MerchantDisplayStoreIdsApi displayStoreIds;
     private final ServiceWriteDependencies.ServiceCoverUrlPort coverUrls;
+    private final FlashPriceEffectiveResolver flashPrices;
 
     public ServiceQueryService(
             ServiceReadStore store,
             MerchantDisplayEligibilityApi merchantFacts,
             MerchantDisplayStoreIdsApi displayStoreIds,
             ServiceWriteDependencies.ServiceCoverUrlPort coverUrls) {
+        this(store, merchantFacts, displayStoreIds, coverUrls, null);
+    }
+
+    /**
+     * Contract 77 §5 read-side wiring: the resolver is nullable — an absent bean (switch off)
+     * keeps every projection byte-identical to the pre-flash slice; an enabled resolver joins
+     * this read transaction and re-prices live windows (salePrice = flash price).
+     */
+    public ServiceQueryService(
+            ServiceReadStore store,
+            MerchantDisplayEligibilityApi merchantFacts,
+            MerchantDisplayStoreIdsApi displayStoreIds,
+            ServiceWriteDependencies.ServiceCoverUrlPort coverUrls,
+            FlashPriceEffectiveResolver flashPrices) {
         this.store = Objects.requireNonNull(store, "store is required");
         this.merchantFacts = Objects.requireNonNull(merchantFacts, "merchantFacts is required");
         this.displayStoreIds = Objects.requireNonNull(displayStoreIds, "displayStoreIds is required");
         this.coverUrls = coverUrls; // nullable on purpose: internal reads never sign a cover URL
+        this.flashPrices = flashPrices; // nullable on purpose: switch off = LIST everywhere
     }
 
     /** Internal projection: any stored row by id; the returned copy never tracks later changes. */
     public ServiceSnapshotDTO snapshot(ServiceSnapshotQuery query) {
         if (query == null) invalid("query is required");
-        ServiceItemReadEntity row = store.read(mapper -> mapper.selectServiceById(targetId(query.serviceId())));
-        if (row == null) notFound();
-        return toSnapshot(row);
+        // The flash resolution must run inside the same read snapshot: build inside store.read.
+        return store.read(mapper -> {
+            ServiceItemReadEntity row = mapper.selectServiceById(targetId(query.serviceId()));
+            if (row == null) notFound();
+            return toSnapshot(row);
+        });
     }
 
     /** Internal aggregation with reasonCodes; basic eligibility only (no slots, no order). */
@@ -510,7 +529,13 @@ public final class ServiceQueryService {
                 snapshot.coverAssetId(),
                 signed.url(),
                 java.time.Instant.ofEpochSecond(signed.expiresAtEpochSeconds())
-                        .toString());
+                        .toString(),
+                snapshot.priceSource(),
+                snapshot.listPrice(),
+                snapshot.flashPrice(),
+                snapshot.flashStartAt(),
+                snapshot.flashEndAt(),
+                snapshot.flashRemaining());
     }
 
     private MerchantDisplayEligibilityDTO displayFacts(
@@ -524,7 +549,8 @@ public final class ServiceQueryService {
         }
     }
 
-    private static ServiceSnapshotDTO toSnapshot(ServiceItemReadEntity row) {
+    /** Wire projection with fail-closed stored-fact validation; applies the flash resolution. */
+    private ServiceSnapshotDTO toSnapshot(ServiceItemReadEntity row) {
         if (row.getId() == null || row.getId() <= 0
                 || row.getMerchantId() == null || row.getStoreId() == null
                 || row.getCategoryId() == null) unavailable("service identity facts are invalid");
@@ -540,6 +566,29 @@ public final class ServiceQueryService {
         } catch (RuntimeException unknown) {
             throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE, "service fulfillment type is unknown");
         }
+        // Contract 77 §5: a live window re-prices salePrice to the flash price and fills the
+        // tail; everything else (no flash / switch off / flash not beating the price) is LIST
+        // with null tail fields — never blocking the service read.
+        BigDecimal salePrice = row.getPrice();
+        String priceSource = "LIST";
+        BigDecimal listPrice = null;
+        BigDecimal flashPrice = null;
+        java.time.OffsetDateTime flashStartAt = null;
+        java.time.OffsetDateTime flashEndAt = null;
+        Integer flashRemaining = null;
+        if (flashPrices != null && flashPrices.enabled()) {
+            FlashPriceEffectiveResolver.Effective effective =
+                    flashPrices.resolve(row.getId(), salePrice);
+            if ("FLASH".equals(effective.priceSource())) {
+                priceSource = "FLASH";
+                flashPrice = effective.flashPrice();
+                listPrice = salePrice;
+                salePrice = flashPrice;
+                flashStartAt = effective.startAt();
+                flashEndAt = effective.endAt();
+                flashRemaining = effective.remaining();
+            }
+        }
         return new ServiceSnapshotDTO(
                 IDS.toApi(row.getId()),
                 IDS.toApi(row.getMerchantId()),
@@ -547,13 +596,19 @@ public final class ServiceQueryService {
                 row.getServiceName(),
                 IDS.toApi(row.getCategoryId()),
                 row.getCategoryName(),
-                row.getPrice(),
+                salePrice,
                 row.getDurationMinutes(),
                 fulfillment,
                 row.getDescription(),
                 row.getCoverAssetId() == null ? null : IDS.toApi(row.getCoverAssetId()),
                 null,
-                null);
+                null,
+                priceSource,
+                listPrice,
+                flashPrice,
+                flashStartAt,
+                flashEndAt,
+                flashRemaining);
     }
 
     private static long targetId(String value) {

@@ -56,6 +56,10 @@ export default defineAppConfig({
       'pages/marketing/platform/index',
       'pages/marketing/campaigns/index',
       'pages/marketing/campaigns/edit',
+      // Service flash price P2 (77号/CCR-SVC-FLASH-PRICE-001): per-service flash-price
+      // list + create/edit pages (Figma 18:9537/18:9694); submit-for-review only.
+      'pages/marketing/flash/index',
+      'pages/marketing/flash/edit',
       // 2026-11-04 user-approved merchant bottom tab (Figma 149:926): the "mine" hub
       // aggregates only already-approved M entries; funds/settings stay out of scope.
       'pages/mine/index'] },

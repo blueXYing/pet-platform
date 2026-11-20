@@ -17,6 +17,7 @@ SSOT §24；Figma `97:7825`（热门服务）、`110:480`（服务 tab）、`690
 |---|---|---|
 | v0.1 | 2026-10-30 | 初版：服务分类字典、分类筛选、优质商家聚合读、营销投影增量 |
 | v0.2 | 2026-11-03 | `/c/stores/featured` 增加 `sort=COMPREHENSIVE|RATING|SALES`；综合/评分/销量三键，距离不做（CCR-SVC-SORT-001） |
+| v0.3 | 2026-11-18 | §3.8 服务卡/详情闪价展示增量（契约 77 / CCR-SVC-FLASH-PRICE-001） |
 
 ## 1. 范围与开关
 
@@ -298,6 +299,26 @@ DDL 见 [CCR-SVC-CAT-001 §3](../../planning/ccr/CCR-SVC-CAT-001.md)。
 - 失败：503 时整块隐藏；不阻塞分类卡。
 - 契约 71 v0.3 §2.3/§3.1/§4.2 已同步；详见
   [71 号营销活动中心契约 v0.3](71-Marketing-Center-Contract-v0.1.md) §2.3/§3.1/§4.2。
+
+### 3.8 服务卡/详情闪价展示增量（契约 77 / CCR-SVC-FLASH-PRICE-001，2026-11-18）
+
+服务限时价格（闪价）生效时，本契约 §3.4 优质商家服务卡、`/api/v1/c/services` 搜索、`/api/v1/c/services/{serviceId}` 详情及 07 号 `ServiceSnapshotDTO` 增加以下可空字段（无闪价/开关 `pet.service.flash-price.enabled=false` 时字段为 null、`priceSource=LIST`，行为与 v0.2 完全一致）：
+
+| 字段 | 类型 | 约束 |
+|---|---|---|
+| priceSource | String | `LIST` / `FLASH` |
+| listPrice | String/null | 闪价生效时的服务原价（划线价）；两位小数字符串 |
+| flashPrice | String/null | 生效闪价；`salePrice` 同值 |
+| flashStartAt/flashEndAt | ISO-8601/null | 窗口起止 |
+| flashRemaining | int/null | `totalQuota−soldCount`；无总量 null |
+
+展示规则：
+
+- 生效判定（服务端）：闪价状态语义为 SCHEDULED/ACTIVE 且 `startAt<=now<endAt` 且 `flashPrice<服务当前价`；否则按 LIST 返回，不展示闪价、不阻断读取。
+- 闪价生效时 `salePrice` 返回闪价值；`listPrice` 为原价（前端划线展示）。
+- 窗口结束/暂停/售罄后恢复原价展示；售罄（`flashRemaining=0`）仍可展示「已抢完」标签但价格回 LIST 语义由前端按 `flashRemaining` 判断，服务端不虚构价格。
+- 订单确认/下单不传价格（38 号）；倒计时由前端按 `flashEndAt−now` 渲染。
+- 读取失败降级沿用 §6：闪价事实不可用时按 LIST 展示，不整页失败。
 
 ## 4. 运营端接口
 

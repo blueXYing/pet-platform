@@ -96,7 +96,7 @@ class FavoriteFootprintMySqlTest {
             return new ServiceSnapshotDTO(query.serviceId(), "9400000000000831",
                     "9400000000000821", "宠物洗澡美容全套", "9400000000000841", "宠物美容",
                     new BigDecimal("80.00"), 60, null, null, null, "https://cover/s1.jpg",
-                    null);
+                    null, null, null, null, null, null, null);
         }
 
         @Override

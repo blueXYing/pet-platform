@@ -26,7 +26,7 @@ public final class OrderCreationApiImpl implements OrderCreationApi {
             ReservationHoldApi reservations, OrderCreationInputProtection protection,
             OrderCreationRemarkPolicy remarkPolicy, Clock clock) {
         this(source, ids, users, merchants, services, guard, reservations, protection,
-                remarkPolicy, null, clock);
+                remarkPolicy, null, null, clock);
     }
 
     /** Contract 61 slice: coupon freeze provider rides along when the lifecycle switch is on. */
@@ -35,8 +35,23 @@ public final class OrderCreationApiImpl implements OrderCreationApi {
             BookingServiceFactsApi services, ScheduleCapacityGuardApi guard,
             ReservationHoldApi reservations, OrderCreationInputProtection protection,
             OrderCreationRemarkPolicy remarkPolicy, CouponCommandApi coupons, Clock clock) {
+        this(source, ids, users, merchants, services, guard, reservations, protection,
+                remarkPolicy, coupons, null, clock);
+    }
+
+    /**
+     * Contract 77 §6.1 slice: the flash-price reservation provider rides along when
+     * {@code pet.service.flash-price.enabled} assembles it (real or fail-closed stub).
+     */
+    public OrderCreationApiImpl(DataSource source, SnowflakeIdGenerator ids,
+            BookingUserFactsApi users, BookingMerchantFactsApi merchants,
+            BookingServiceFactsApi services, ScheduleCapacityGuardApi guard,
+            ReservationHoldApi reservations, OrderCreationInputProtection protection,
+            OrderCreationRemarkPolicy remarkPolicy, CouponCommandApi coupons,
+            com.petplatform.service.api.command.ServiceFlashPriceReservationApi flashPrices,
+            Clock clock) {
         this.service = new OrderCreationService(source, ids, users, merchants, services,
-                guard, reservations, protection, remarkPolicy, coupons, clock);
+                guard, reservations, protection, remarkPolicy, coupons, flashPrices, clock);
     }
 
     @Override public CreateOrderResult create(CreateOrderCommand command) {

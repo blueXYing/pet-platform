@@ -91,7 +91,7 @@ class CFavoriteFootprintHttpTest {
             return new ServiceSnapshotDTO(query.serviceId(), "9400000000000931",
                     "9400000000000921", "宠物洗澡美容全套", "9400000000000941", "宠物美容",
                     new BigDecimal("80.00"), 60, null, null, null, "https://cover/s1.jpg",
-                    null);
+                    null, null, null, null, null, null, null);
         }
 
         @Override

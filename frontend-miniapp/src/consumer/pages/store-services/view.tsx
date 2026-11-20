@@ -1,7 +1,7 @@
 import { Button, Image, Text, View } from '@tarojs/components'
-import type { CSSProperties, ReactNode } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { SubpageHeader } from '../../components/navigation/subpage-header'
-import { designSamples, formatSalePrice, type ServiceItemView, type ServiceCoverView } from '../../service/model'
+import { designSamples, flashCountdownText, flashOfferOf, formatSalePrice, type ServiceItemView, type ServiceCoverView } from '../../service/model'
 import { ServiceCover } from './cover'
 import type { StoreDetailView } from '../../store/model'
 import bgFlower from './assets/690-6661-bg-huaban@2x.png'
@@ -38,23 +38,56 @@ export type ServiceCardLine = {
   description?: string
 }
 
+/** 秒级倒计时心跳：仅闪价行激活（字段缺失/关闭开关时不计时，渲染与现状完全一致）。 */
+function useTicker(active: boolean): number {
+  const [now, setNow] = useState(Date.now)
+  useEffect(() => {
+    if (!active) return
+    setNow(Date.now())
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [active])
+  return now
+}
+
 export function ServiceRow({ line, idPrefix, onOpen, onBook }: { line: ServiceCardLine; idPrefix: string; onOpen?: () => void; onBook: () => void }) {
   const sold = designSamples.sold[line.service.serviceId]
   // 行根节点用 View:微信原生 button 不允许嵌套,内层「预约」Button 在 button 里不渲染
   // (2026-10-08 真机验收发现)。第三行设计稿是"已售",列表契约无该字段:夹具行显示样例,
   // 真实行显示分类/服务时长/履约方式,不虚构销量。列表契约也没有 description，真实列表
   // 行用 categoryName 填第二行；详情页传入的 description 优先。
+  // 77号 §5 闪价增量：生效窗口内价格区第三行改呈限时价/原价划线/倒计时/剩余名额
+  // （冻结的 81.5 行高无第四行空间，闪价信息占用元信息行——登记偏差）；售罄显示
+  // 「已抢完」并按原价（listPrice）语义回落；窗口已过按无闪价渲染。字段缺失时与
+  // P2 前输出逐字节一致，不新增任何分支外改动。
+  const flashTicking = line.service.priceSource === 'FLASH' && line.service.flashEndAt != null
+  const now = useTicker(flashTicking)
+  const offer = flashOfferOf(line.service, now)
+  const countdown = offer !== null && !offer.soldOut ? flashCountdownText(now, offer.endAt) : null
   const description = line.description ?? line.service.categoryName
   const fulfillment = line.service.fulfillmentType === 'PICKUP_DELIVERY' ? '接送服务' : '到店服务'
   const meta = sold ?? (line.service.durationMinutes > 0 ? `约 ${line.service.durationMinutes} 分钟 · ${fulfillment}` : fulfillment)
-  return <View id={`${idPrefix}-${line.service.serviceId}`} className='svc-service-row' ariaLabel={`${line.service.serviceName}，价格${formatSalePrice(line.service.salePrice)}元`} onClick={onOpen}>
+  const displayPrice = offer === null ? line.service.salePrice : offer.soldOut ? offer.listPrice : offer.flashPrice
+  return <View id={`${idPrefix}-${line.service.serviceId}`} className='svc-service-row' ariaLabel={`${line.service.serviceName}，价格${formatSalePrice(displayPrice)}元`} onClick={onOpen}>
     <View className='svc-service-main'>
       <Text className='svc-service-name'>{line.service.serviceName}</Text>
       <Text className='svc-service-desc'>{description}</Text>
-      <Text className='svc-service-sold'>{meta}</Text>
+      {offer === null
+        ? <Text className='svc-service-sold'>{meta}</Text>
+        : offer.soldOut
+          ? <View className='svc-service-sold svc-service-flash'>
+              <Text className='svc-flash-pill svc-flash-pill-out'>已抢完</Text>
+              <Text className='svc-flash-text svc-flash-text-out'>已恢复原价 ¥{formatSalePrice(offer.listPrice)}</Text>
+            </View>
+          : <View className='svc-service-sold svc-service-flash'>
+              {offer.remaining !== null ? <Text className='svc-flash-pill'>剩 {offer.remaining} 份</Text> : null}
+              <Text className='svc-flash-text'>限时价 ¥{formatSalePrice(offer.flashPrice)}</Text>
+              <Text className='svc-flash-strike'>¥{formatSalePrice(offer.listPrice)}</Text>
+              {countdown !== null ? <Text className='svc-flash-text'>距结束 {countdown}</Text> : null}
+            </View>}
     </View>
     <View className='svc-service-side' onClick={event => { event.stopPropagation(); onBook() }}>
-      <Text className='svc-service-price'>¥{formatSalePrice(line.service.salePrice)}</Text>
+      <Text className='svc-service-price'>¥{formatSalePrice(displayPrice)}</Text>
       <Button id={`${idPrefix}-book-${line.service.serviceId}`} className='svc-service-book' ariaLabel={`预约${line.service.serviceName}`} onClick={onBook}><Text>预约</Text></Button>
     </View>
   </View>
