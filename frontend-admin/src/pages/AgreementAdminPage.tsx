@@ -91,8 +91,8 @@ export default function AgreementAdminPage({ client, canWrite, onAuthLost }: {
     { title: '版本号', dataIndex: 'agreementVersion', key: 'agreementVersion', render: (v, row) => (
       <span>{v} {row.current ? <Tag color="green" style={{ marginInlineStart: 6 }}>当前生效</Tag> : null}</span>
     )},
-    { title: '内容摘要', dataIndex: 'content', key: 'content', ellipsis: true, render: (v: string) => (
-      <span title={v}>{v.length > 60 ? v.slice(0, 60) + '…' : v}</span>
+    { title: '内容', dataIndex: 'content', key: 'content', render: (v: string) => (
+      <AgreementMarkdownPreview source={v} compact />
     )},
     { title: '发布时间', dataIndex: 'publishedAt', key: 'publishedAt', render: (v: string | null) => v ? v.replace('T', ' ').slice(0, 19) : '—' },
     { title: '内容哈希(前12位)', dataIndex: 'contentSha256', key: 'contentSha256', render: (v: string) => v.slice(0, 12) + '…' },

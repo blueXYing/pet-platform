@@ -37,18 +37,22 @@ function Bold({ text }: { text: string }) {
     : <span key={i}>{part}</span>)}</>;
 }
 
-export function AgreementMarkdownPreview({ source }: { source: string }) {
+export function AgreementMarkdownPreview({ source, compact }: { source: string; compact?: boolean }) {
   const blocks = useMemo(() => markdownToBlocks(source), [source]);
   return (
-    <div className="agreement-md-preview" style={{
+    <div style={compact ? {
+      padding: 8, maxHeight: 120, overflowY: 'auto',
+      display: 'flex', flexDirection: 'column', gap: 4,
+      fontSize: 12, lineHeight: 1.5, color: '#374151',
+    } : {
       marginTop: 12, padding: 16, border: '1px solid #e5e7eb', borderRadius: 8,
       background: '#fafbfd', maxHeight: 360, overflowY: 'auto',
       display: 'flex', flexDirection: 'column', gap: 8,
       fontSize: 13.5, lineHeight: 1.7, color: '#1f2937',
     }}>
-      <div style={{ fontSize: 12, color: '#8a94a6', marginBottom: 4 }}>—— 小程序端展示效果预览 ——</div>
+      {!compact && <div style={{ fontSize: 12, color: '#8a94a6', marginBottom: 4 }}>—— 小程序端展示效果预览 ——</div>}
       {blocks.map((block, i) => block.kind === 'heading'
-        ? <div key={i} style={{ fontWeight: 700, fontSize: block.level === 1 ? 17 : block.level === 2 ? 15.5 : 14.2, color: '#111827' }}><Bold text={block.text} /></div>
+        ? <div key={i} style={{ fontWeight: 700, fontSize: compact ? (block.level === 1 ? 13.5 : block.level === 2 ? 12.5 : 12) : (block.level === 1 ? 17 : block.level === 2 ? 15.5 : 14.2), color: '#111827' }}><Bold text={block.text} /></div>
         : block.kind === 'list'
           ? <ol key={i} style={block.ordered ? { paddingLeft: 20, margin: 0 } : { paddingLeft: 16, margin: 0, listStyle: 'disc' }}>
               {block.items.map((item, j) => <li key={j}><Bold text={item} /></li>)}

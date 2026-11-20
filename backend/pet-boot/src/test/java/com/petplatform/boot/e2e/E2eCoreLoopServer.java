@@ -144,6 +144,54 @@ public final class E2eCoreLoopServer {
   private static final String ADMIN_ACCOUNT = "admin";
   private static final String ADMIN_PASSWORD = "admin";
   // argon2id hash of "admin"——启动时幂等 upsert，不因重启/换库而变化。
+  /** 2026-11-20 用户裁决：正式商家入驻协议模板（Markdown），首次部署自动初始化。 */
+  private static final String DEFAULT_AGREEMENT_CONTENT = """
+# 宠物生活服务平台商家入驻服务协议
+
+## 第一章 总则
+
+**本协议**是宠物生活服务平台（以下简称"平台"）与入驻商家（以下简称"商家"）之间就平台服务的使用所订立的合约。商家通过签署本协议，确认已充分阅读、理解并接受本协议全部条款。
+
+## 第二章 服务内容
+
+1. 平台为商家提供门店信息展示、服务发布、在线预约、订单管理等技术服务。
+2. 平台为消费者提供商家信息浏览、服务预约、在线支付等消费服务。
+3. 平台不对商家与消费者之间的服务质量和履约结果承担担保责任。
+
+## 第三章 商家权利与义务
+
+1. **如实经营**：商家须保证提交的营业执照、法人身份等资质信息真实、有效、完整。
+2. **合规服务**：商家须按照发布的服务描述、价格和时间提供服务，不得虚假宣传。
+3. **及时履约**：商家应在约定时间内确认订单并提供服务，遇到特殊情况应主动与消费者协商。
+4. **售后配合**：对于消费者的投诉和退款申请，商家应积极配合平台处理。
+
+## 第四章 平台权利与义务
+
+1. 平台有权对商家资质进行核验，对不符合要求的商家有权拒绝入驻或下架处理。
+2. 平台有权制定和调整平台规则，调整前将提前通知商家。
+3. 平台有义务保障平台系统的稳定运行和数据安全。
+
+## 第五章 费用与结算
+
+1. 平台按商家实际成交订单金额收取一定比例的技术服务费。
+2. 结算周期和方式以平台后台公示的结算规则为准。
+
+## 第六章 违约责任
+
+1. 商家提供虚假资质信息的，平台有权立即终止合作并追究相关责任。
+2. 商家严重违反服务承诺的，平台有权对商家进行警告、限流、下架等处罚。
+3. 因不可抗力导致协议无法履行的，双方互不承担违约责任。
+
+## 第七章 协议期限与终止
+
+1. 本协议自商家签署之日起生效，有效期至商家主动退出或平台终止合作。
+2. 协议终止后，商家已接受的订单仍应按约履行完毕。
+
+## 第八章 争议解决
+
+本协议适用中华人民共和国法律。双方因本协议产生争议的，应友好协商解决；协商不成的，可向平台所在地人民法院提起诉讼。
+""";
+
   private static final String ADMIN_HASH = "$argon2id$v=19$m=65536,t=3,p=1$ddsefv7TWTFiTPLuGD9dRg$HMKW3nZcQipCemiAkE0sdNzgqXqtRGenx4cZhNtZ/QI";
   private static final String ADMIN_ORIGIN = "https://e2e.example.invalid";
 
@@ -1279,7 +1327,8 @@ public final class E2eCoreLoopServer {
         + "merchant_type_code,city_code,source_kind,version,created_at,updated_at)"
         + " VALUES(?,?,?,'PET_SHOP','chengdu','APPLICATION',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
         MERCHANT, application, revision);
-    String agreementContent = "E2E验收服务协议";
+    // 2026-11-20 用户裁决：正式协议模板（Markdown 轻标记，首次部署自动初始化）
+    String agreementContent = DEFAULT_AGREEMENT_CONTENT;
     String agreementHash = sha(agreementContent);
     jdbc.update("INSERT INTO merchant_agreement_version(id,agreement_version,content,content_sha256,"
         + "published_at,published_by_operator_id) VALUES(710800,'e2e-v1',?,?,"
