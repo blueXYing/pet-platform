@@ -168,7 +168,6 @@ export default function ReviewDetailPage({ client, canOperate, onAuthLost }: { c
   const previewUrlsRef = useRef<Record<string, string>>({});
   const [lightboxAssetId, setLightboxAssetId] = useState<string | null>(null);
   const [highlightedAssetId, setHighlightedAssetId] = useState<string | null>(null);
-  const [viewReason, setViewReason] = useState('商家入驻申请人工审核，逐项核对申请材料内容');
   const [decisionType, setDecisionType] = useState<DecisionTypeValue>('REQUEST_CORRECTION');
   const [opinion, setOpinion] = useState('');
   const [internalNote, setInternalNote] = useState('');
@@ -262,14 +261,15 @@ export default function ReviewDetailPage({ client, canOperate, onAuthLost }: { c
     return attemptWrite(kind, crypto.randomUUID(), invoke, successText, reload);
   }
 
+  // 2026-11-20 用户裁决：材料随时可看（不限审核期、无"一次性查看"门槛）——每次点击自动
+  // 申请授权并自动填写合规理由；读取仍带水印且逐次记入审计（安全红线不变）。
   const viewMaterial = (assetId: string) => {
     if (!detail) return;
     void runWrite('grant', async requestId => {
-      if (viewReason.trim().length < 10) throw new RequestFailure('REASON_REQUIRED', 0);
       const grant = await client.issueReadGrant(applicationId, assetId, {
         submissionRevisionId: detail.submittedRevisionId,
         purposeCode: 'MERCHANT_APPLICATION_REVIEW',
-        reason: viewReason.trim(),
+        reason: '运营查阅商家入驻申请材料（随时查看）',
         confirmed: true,
       }, requestId);
       const content = await client.consumeReadGrant(grant.readUrl);
@@ -277,7 +277,7 @@ export default function ReviewDetailPage({ client, canOperate, onAuthLost }: { c
       if (previewUrlsRef.current[assetId]) URL.revokeObjectURL(previewUrlsRef.current[assetId]);
       previewUrlsRef.current[assetId] = objectUrl;
       setPreviews(current => ({ ...current, [assetId]: objectUrl }));
-    }, '材料已通过一次性水印读取展示；如需再次查看须重新申请', false);
+    }, '材料已展示（读取带水印并已记入审计）', false);
   };
 
   const focusMaterial = (assetId: string) => {
@@ -607,25 +607,8 @@ export default function ReviewDetailPage({ client, canOperate, onAuthLost }: { c
           >
             <div className="review-audit-reason-bar">
               <p className="hint" style={{ margin: '0 0 8px' }}>
-                查看材料会记入审计；每次授权仅可读取一次并带水印，重复查看需再次说明理由。点击已加载图片可放大/旋转核对细节。
+                点击材料卡片上的「查看」即可核对原件，审核期与审结后均可随时查看；每次读取带水印并记入审计。点击已加载图片可放大/旋转核对细节。
               </p>
-              {canOperate && (
-                <label className="filter-item" style={{ marginBottom: 0 }}>
-                  <span className="review-field-header">
-                    <span>查看理由（10～500字）</span>
-                    <span className={`review-char-count${viewReason.trim().length < 10 ? ' is-invalid' : ''}`}>
-                      {viewReason.trim().length} / 500
-                    </span>
-                  </span>
-                  <Input
-                    maxLength={500}
-                    value={viewReason}
-                    status={viewReason.trim().length < 10 ? 'error' : undefined}
-                    onChange={event => setViewReason(event.target.value)}
-                    placeholder="请填写查看敏感材料的合规用途（至少 10 字）"
-                  />
-                </label>
-              )}
             </div>
 
             <ul className="materials">
@@ -649,9 +632,11 @@ export default function ReviewDetailPage({ client, canOperate, onAuthLost }: { c
                         <Tag color={item.category === 'credential' ? 'blue' : 'default'} style={{ marginInlineEnd: 0 }}>
                           {item.category === 'credential' ? '必核证件' : '门店照片'}
                         </Tag>
-                        <Tag color={previewUrl ? 'green' : 'default'} style={{ marginInlineEnd: 0 }}>
-                          {previewUrl ? '已查看' : '未查看'}
-                        </Tag>
+                        {isReviewing && (
+                          <Tag color={previewUrl ? 'green' : 'default'} style={{ marginInlineEnd: 0 }}>
+                            {previewUrl ? '已查看' : '未查看'}
+                          </Tag>
+                        )}
                       </Space>
                     </div>
 
@@ -682,10 +667,10 @@ export default function ReviewDetailPage({ client, canOperate, onAuthLost }: { c
                               type="primary"
                               ghost
                               icon={<EyeOutlined aria-hidden="true" />}
-                              disabled={busy || retry !== null || viewReason.trim().length < 10}
+                              disabled={busy || retry !== null}
                               onClick={() => viewMaterial(item.assetId)}
                             >
-                              申请一次性查看
+                              查看
                             </Button>
                           </div>
                         )
