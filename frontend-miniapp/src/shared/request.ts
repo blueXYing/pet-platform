@@ -7,7 +7,7 @@ export type RequestSpec = Readonly<{
 export type WireRequest = RequestSpec & { headers: Record<string, string> }
 export type Transport = (request: WireRequest) => Promise<{ statusCode: number; data: unknown }>
 export class ApiError extends Error {
-  constructor(readonly code: string, readonly statusCode: number) { super(code) }
+  constructor(readonly code: string, readonly statusCode: number, readonly serverMessage?: string) { super(code) }
 }
 export function createClient(scope: WorkspaceScope, transport: Transport) {
   return {
@@ -21,9 +21,10 @@ export function createClient(scope: WorkspaceScope, transport: Transport) {
       // No implicit retries: callers preserve a write's requestId across explicit retries.
       return scope.run(undefined, async () => {
         const response = await transport({ ...spec, headers })
-        const body = response.data as { success?: boolean; code?: string; data?: unknown } | null
+        const body = response.data as { success?: boolean; code?: string; message?: string; data?: unknown } | null
         if (response.statusCode < 200 || response.statusCode >= 300 || body?.success !== true) {
-          throw new ApiError(typeof body?.code === 'string' ? body.code : 'INVALID_RESPONSE', response.statusCode)
+          throw new ApiError(typeof body?.code === 'string' ? body.code : 'INVALID_RESPONSE', response.statusCode,
+            typeof body?.message === 'string' ? body.message : undefined)
         }
         return decode(body.data)
       })

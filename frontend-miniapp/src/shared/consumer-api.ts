@@ -150,7 +150,10 @@ export function isMerchantStaffMemberPath(spec: RequestSpec): boolean {
 // coordinates, re-proven under the store guard server-side per call and replay.
 export function isMerchantCustomerPath(spec: RequestSpec): boolean {
   if (spec.method === 'GET' && spec.path === '/api/v1/merchant/customers') return true
-  return spec.method === 'GET' && /^\/api\/v1\/merchant\/customers\/[1-9][0-9]{0,18}$/.test(spec.path)
+  if (spec.method === 'GET' && /^\/api\/v1\/merchant\/customers\/[1-9][0-9]{0,18}$/.test(spec.path)) return true
+  // 2026-10-19 备注扩展写面：漏注册导致 saveNote 在客户端就被 INVALID_PATH 拦下（零网络请求），
+  // 且该客户端异常不属于明确拒绝、幂等日志不清除，失败一次后同槽位永远 PENDING_WRITE_CHANGED。
+  return spec.method === 'PUT' && /^\/api\/v1\/merchant\/customers\/[1-9][0-9]{0,18}\/note$/.test(spec.path)
 }
 export function isMerchantStatsPath(spec: RequestSpec): boolean {
   // Contract 70 also exposes the schedule-utilization aggregate and the per-service
@@ -485,6 +488,7 @@ export class ConsumerApi {
         // 跨恢复保留（恢复后按缺口合并回写）：恢复重试已按原 command 在服务端执行，页面侧
         // 重放必须沿用原 X-Request-Id，不得二次创建；恢复期间新入日志的槽位以新值为准。
         const pendingSnapshot = this.pending
+        const ticketContext = ticket.context
         this.clear()
         let recovered = false
         try { recovered = await this.recoverAccess() } catch { recovered = false }
@@ -493,6 +497,18 @@ export class ConsumerApi {
         this.pending = merged
         if (Object.keys(this.pending).length) this.store.set(WRITE_KEY, this.pending)
         else this.store.remove(WRITE_KEY)
+        // 会话过期静默重登不应把商家工作台坐标冲掉：clear()/restore() 会把 scope 复位成
+        // 消费者默认态，导致商家坐标请求永远无法按原样重试（2026-11-17 客户备注保存失败
+        // 根因）。恢复后若 scope 仍是复位默认态且用户未变，则还原原请求的工作区坐标再重试；
+        // 期间任何用户主动切换（非默认态）一律以最新为准，不回写。
+        if (recovered && this.scope.current) {
+          const now = this.scope.current
+          const resetDefault = now.workspace === 'consumer' && now.merchantId === null && now.storeId === null
+          const hadCoordinates = ticketContext.workspace !== 'consumer' || ticketContext.merchantId !== null
+          if (resetDefault && hadCoordinates && now.userId === ticketContext.userId) {
+            this.scope.replace(ticketContext)
+          }
+        }
         if (recovered && this.scope.current && this.scope.capture().key === ticket.key) {
           return await this.request(spec, decode, true)
         }
@@ -599,7 +615,7 @@ export class ConsumerApi {
       ticket.assertCurrent()
       if (this.credential !== credential || this.currentSession?.sessionId !== credential.sessionId) throw new StaleContextError()
       const body = object(typeof response.data === 'string' ? JSON.parse(response.data) : response.data)
-      if (![200, 201].includes(response.statusCode) || body.code !== 'SUCCESS') throw new ApiError(typeof body.code === 'string' ? body.code : 'INVALID_RESPONSE', response.statusCode)
+      if (![200, 201].includes(response.statusCode) || body.code !== 'SUCCESS') throw new ApiError(typeof body.code === 'string' ? body.code : 'INVALID_RESPONSE', response.statusCode, typeof body.message === 'string' ? body.message : undefined)
       if (body.success !== true) throw new Error('INVALID_RESPONSE')
       return decodePrivateAsset(body.data)
     } catch (error) {
@@ -655,7 +671,7 @@ export class ConsumerApi {
     this.store.set(WRITE_KEY, this.pending)
   }
   /** Same operation survives page remount and app restart. Unknown results lock payload/key. */
-  write<T>(slot: string, spec: Omit<RequestSpec, 'requestId'>, decode: (data: unknown) => T, checkpoint?: { slot: string; value: (result: T) => unknown }, rejected?: (error: unknown, command: Command) => void): Promise<T> {
+  write<T>(slot: string, spec: Omit<RequestSpec, 'requestId'>, decode: (data: unknown) => T, checkpoint?: { slot: string; value: (result: T) => unknown }, rejected?: (error: unknown, command: Command) => void, options?: { settleDrift?: boolean }): Promise<T> {
     // Snapshot before UUID allocation: caller edits must not change an in-flight intent.
     spec = JSON.parse(JSON.stringify(spec)) as Omit<RequestSpec, 'requestId'>
     const existing = this.writes.get(slot)
@@ -664,7 +680,23 @@ export class ConsumerApi {
     const ticket = this.scope.capture()
     const operation = (async () => {
       let command = this.pendingCommand(slot)
-      if (command && (command.path !== spec.path || command.method !== spec.method || JSON.stringify(command.data) !== JSON.stringify(spec.data))) throw new Error('PENDING_WRITE_CHANGED')
+      if (command && (command.path !== spec.path || command.method !== spec.method || JSON.stringify(command.data) !== JSON.stringify(spec.data))) {
+        // 幂等纪律默认不变：结果未知的旧命令不许换参数重试（核销码/售后等安全面钉死）。
+        // settleDrift（opt-in，2026-11-18 客户备注启用）：同 path/method 仅数据漂移（典型=
+        // 未确认成功后服务器版本已前进）时，先按原 command 重放领回收据——同 requestId 在
+        // 服务端去重，已执行场景直接回原收据；从未到达场景按原参执行，版本冲突走 409 →
+        // 既有 retireNoteConflict 解锁。结算明确后清槽位继续新意图。
+        if (!options?.settleDrift) throw new Error('PENDING_WRITE_CHANGED')
+        try {
+          await this.request(command, value => value, true)
+        } catch (settled) {
+          if (settled instanceof ApiError && settled.statusCode === 409) throw settled
+          if (!definiteRejection(settled)) throw new Error('PENDING_WRITE_CHANGED')
+        }
+        delete this.pending[slot]
+        this.store.set(WRITE_KEY, this.pending)
+        command = undefined
+      }
       if (!command) {
         const requestId = await this.uuid(); ticket.assertCurrent()
         command = { ...spec, requestId }

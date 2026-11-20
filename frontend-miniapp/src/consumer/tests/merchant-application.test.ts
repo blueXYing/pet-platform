@@ -63,3 +63,8 @@ test('permission, conflict and unavailable errors remain distinct from success',
   assert.match(applicationMessage(new ApiError('CONFLICT', 409)), /版本或状态已变化/)
   assert.match(applicationMessage(new ApiError('UNAVAILABLE', 503)), /重试原操作/)
 })
+test('private asset rejection shows the concrete server reason and preserves the legacy fallback', () => {
+  const detailed = new ApiError('PRIVATE_ASSET_REJECTED', 422, '照片总像素超过 1600 万，请缩小到 1600 万像素以内后重新上传')
+  assert.equal(applicationMessage(detailed), '照片总像素超过 1600 万，请缩小到 1600 万像素以内后重新上传，请点击原材料上传入口重新选择图片。')
+  assert.equal(applicationMessage(new ApiError('PRIVATE_ASSET_REJECTED', 422)), '该材料已被安全检查拒绝，请点击原材料上传入口重新选择图片。')
+})

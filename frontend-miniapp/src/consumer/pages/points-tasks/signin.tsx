@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 import { useWorkspace } from '../../../shared/workspace-react'
 import { consumerApi } from '../../../shared/consumer-runtime'
 import { ConsumerPageLayout } from '../../components/page-layout'
+import { SubpageHeader } from '../../components/navigation/subpage-header'
 import { weekCells, type SignInStatusView } from '../../points-tasks/model'
 import { RealPointsTaskRepository, isPointsTaskUnauthorized } from '../../points-tasks/repository'
 import './points-tasks.css'
@@ -82,6 +83,8 @@ export default function SignInPage() {
     if (url) await Taro.navigateTo({ url })
     else await Taro.showToast({ title: '功能暂未开放', icon: 'none' })
   }
+  // 2026-11-19 用户裁决：二级页接入统一 SubpageHeader（标题左对齐+返回，baike 同款静态头部）。
+  const goBack = () => { Taro.navigateBack().catch(() => Taro.switchTab({ url: '/consumer/pages/mine/index' })) }
   const ready = phase === 'ready' && status !== null
   const streak = ready ? status.streak : 0
   const dailyPoints = ready ? status.dailyPoints : '5'
@@ -89,7 +92,7 @@ export default function SignInPage() {
   return <ConsumerPageLayout page='pointsPage' unit={unit} className='ptk-page'
     navigation={preview ? { idPrefix: 'ptk', disabled: !ready, onSelect: () => {} } : undefined} style={style}>
     <View className='ptk-design'>
-      <View className='ptk-status-area' />
+      <SubpageHeader title='每日签到' backId='ptk-back' titleId='ptk-navtitle' fixed={false} height={46} onBack={goBack} />
       {phase === 'loading' && <View className='ptk-state' role='status'><Text>正在读取签到状态…</Text></View>}
       {phase === 'expired' && <View className='ptk-state' role='status'>
         <Text id='ptk-login-hint'>登录后可以每日签到赚积分。</Text>

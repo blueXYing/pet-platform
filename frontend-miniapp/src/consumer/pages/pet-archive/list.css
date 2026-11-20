@@ -38,3 +38,14 @@
 .pet-list-identity .pet-list-sex { position: static; flex-shrink: 0; }
 .pet-list-breed { width: calc(var(--pet-unit) * 127); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pet-list-avatar { left: calc(var(--pet-unit) * 7); top: calc(var(--pet-unit) * 12); width: calc(var(--pet-unit) * 55); height: calc(var(--pet-unit) * 46); border-radius: calc(var(--pet-unit) * 8); }
+/* 2026-11-18 用户裁决：列表页接入统一 SubpageHeader（标题左对齐+返回，高 86，同 detail/form）。
+   原稿仅是首页模块区域、无头部，故正常模式内容整体下移 86 设计px，模块内重复标题交由统一头部承载；
+   参考画布（referenceCanvas）保持原稿坐标，不套用以下变体。 */
+.pet-list-with-header .pet-list-design { height: calc(var(--pet-unit) * 398 + var(--pet-list-extra, 0px)); }
+.pet-list-with-header .pet-list-blob-backing { top: calc(var(--pet-unit) * 96); }
+.pet-list-with-header .pet-list-blob-sheet { top: calc(var(--pet-unit) * 86); }
+.pet-list-with-header .pet-list-tape { top: calc(var(--pet-unit) * 86); }
+.pet-list-with-header .pet-list-state { top: calc(var(--pet-unit) * 176); }
+.pet-list-with-header .pet-list-head { top: calc(var(--pet-unit) * 86); }
+.pet-list-with-header .pet-list-count { left: calc(var(--pet-unit) * 52); }
+.pet-list-with-header .pet-list-notice { top: calc(var(--pet-unit) * 374 + var(--pet-list-extra, 0px)); }

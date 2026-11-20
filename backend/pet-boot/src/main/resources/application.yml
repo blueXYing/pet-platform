@@ -45,6 +45,14 @@ logging:
 # application-local.yml (copy application-local.yml.example) or via the environment
 # variables below at deployment time. Never commit real credentials.
 pet:
+  # 2026-11-19 用户裁决：所有环境统一真实 OSS；只从环境变量读取，真实密钥永不入库。
+  oss:
+    endpoint: ${OSS_ENDPOINT:}
+    region: ${OSS_REGION:}
+    bucket: ${OSS_BUCKET:}
+    access-key-id: ${OSS_ACCESS_KEY_ID:}
+    secret-access-key: ${OSS_SECRET_ACCESS_KEY:}
+    public-base-url: ${OSS_PUBLIC_BASE_URL:}
   private-assets:
     enabled: ${PRIVATE_ASSETS_ENABLED:false}
   auth:

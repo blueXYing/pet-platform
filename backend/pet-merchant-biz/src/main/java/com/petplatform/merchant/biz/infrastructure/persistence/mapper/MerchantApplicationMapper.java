@@ -165,6 +165,15 @@ public interface MerchantApplicationMapper {
 
   int releaseClaim(@Param("id") long id, @Param("now") LocalDateTime now);
 
+  /** 2026-11-20：重复人工核验治理——删除该申请已释放（RELEASED）的 claim 行，为其后
+   *  清理无 ACTIVE claim 引用的旧 VERIFIED 证据行扫清外键（claim→evidence）。 */
+  int deleteReleasedClaims(@Param("applicationId") long applicationId);
+
+  /** 2026-11-20：删除同版本同状态下无 ACTIVE claim 引用的 VERIFIED 证据行，保证
+   *  决定期"恰好一条已核验证据"闸门在重复核验后依然成立（decision 引用的行有外键保护不会被删）。 */
+  int deleteStaleVerifiedEvidence(
+      @Param("applicationId") long applicationId, @Param("revisionId") long revisionId);
+
   int markVerified(
       @Param("applicationId") long applicationId,
       @Param("creditClaimId") long creditClaimId,

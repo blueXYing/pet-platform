@@ -115,7 +115,6 @@ public final class MerchantCustomerNoteService implements MerchantCustomerNoteCo
             String changed;
             long toVersion;
             if (row == null) {
-                if (intent.expectedVersion != 0) conflict("customer note version changed");
                 if (mapper.customerHasStoreOrder(intent.merchantId, intent.storeId,
                         intent.userId) != 1) notFound();
                 if (mapper.insertNote(intent.storeId, intent.merchantId, intent.userId, note,
@@ -125,14 +124,15 @@ public final class MerchantCustomerNoteService implements MerchantCustomerNoteCo
             } else {
                 if (!Objects.equals(row.merchantId, intent.merchantId))
                     throw unavailable("customer note merchant ownership is damaged");
-                if (row.version == null || row.version != intent.expectedVersion)
-                    conflict("customer note version changed");
-                if (row.version == Long.MAX_VALUE) conflict("customer note version exhausted");
+                if (row.version == null || row.version == Long.MAX_VALUE)
+                    conflict("customer note version exhausted");
+                // 2026-11-18 用户裁决：直接覆盖（last-write-wins），不再做乐观版本 CAS；
+                // version 仅作为行内单调修订号继续自增（回执/审计仍携带）。
                 if (mapper.updateNote(intent.storeId, intent.merchantId, intent.userId, note,
-                        intent.expectedVersion, now) != 1)
-                    conflict("customer note write lost a concurrent version race");
+                        now) != 1)
+                    throw unavailable("customer note overwrite failed");
                 changed = "note";
-                toVersion = intent.expectedVersion + 1;
+                toVersion = row.version + 1;
             }
             NoteView view = new NoteView(note, Long.toString(toVersion),
                     now.atOffset(ZoneOffset.UTC));
@@ -198,9 +198,6 @@ public final class MerchantCustomerNoteService implements MerchantCustomerNoteCo
         if (note == null || note.codePointCount(0, note.length()) > MAX_NOTE_CODE_POINTS
                 || hasUnpairedSurrogate(note)) invalid();
         String storedNote = note.isEmpty() ? null : note;
-        if (command.expectedVersion() == null
-                || !command.expectedVersion().matches("(0|[1-9][0-9]{0,18})")) invalid();
-        long expectedVersion = Long.parseLong(command.expectedVersion());
         String trace = context.traceId();
         if (trace != null && (trace.isBlank() || trace.getBytes(StandardCharsets.UTF_8).length > 128
                 || trace.codePoints().anyMatch(Character::isISOControl))) invalid();
@@ -212,7 +209,6 @@ public final class MerchantCustomerNoteService implements MerchantCustomerNoteCo
         fields.put("storeId", command.storeId());
         fields.put("userId", command.userId());
         fields.put("note", storedNote);
-        fields.put("expectedVersion", command.expectedVersion());
         final byte[] canonical;
         try {
             canonical = new com.fasterxml.jackson.databind.ObjectMapper()
@@ -220,7 +216,7 @@ public final class MerchantCustomerNoteService implements MerchantCustomerNoteCo
         } catch (Exception failure) {
             throw unavailable("customer note parameters are not canonicalizable");
         }
-        return new Intent(merchant, store, userId, actor, storedNote, expectedVersion,
+        return new Intent(merchant, store, userId, actor, storedNote,
                 context.requestId(), trace, canonical);
     }
 
@@ -289,7 +285,7 @@ public final class MerchantCustomerNoteService implements MerchantCustomerNoteCo
     }
 
     private record Intent(long merchantId, long storeId, long userId, long actor, String note,
-            long expectedVersion, String requestId, String trace, byte[] canonical) {}
+            String requestId, String trace, byte[] canonical) {}
 
     private static long coordinate(String value) {
         try {

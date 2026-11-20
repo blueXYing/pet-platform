@@ -381,15 +381,15 @@ export class MerchantCustomerNoteClient {
     return { merchantId: c.merchantId, storeId: c.storeId }
   }
 
-  save(userId: string, note: string, expectedVersion: string): Promise<{ userId: string; note: CustomerNote }> {
+  save(userId: string, note: string): Promise<{ userId: string; note: CustomerNote }> {
     const { merchantId, storeId } = this.coordinates()
     const target = id(userId)
     if (Array.from(note).length > 200) throw new Error('INVALID_NOTE')
-    if (!/^(0|[1-9][0-9]{0,18})$/.test(expectedVersion)) throw new Error('INVALID_VERSION')
     const slot = `merchant-customer-note:${this.api.scope.capture().context.userId}:${merchantId}:${storeId}:${target}`
+    // 2026-11-18 用户裁决：备注直接覆盖（last-write-wins），不再携带 expectedVersion。
     const spec: RequestSpec = {
       path: `/api/v1/merchant/customers/${target}/note`, method: 'PUT',
-      data: { merchantId, storeId, note, expectedVersion },
+      data: { merchantId, storeId, note },
     }
     return this.api.write(slot, spec, value => {
       const result = decodeCustomerNote(value)
@@ -399,7 +399,7 @@ export class MerchantCustomerNoteClient {
       if (isDefiniteProfileConflict(error) && error && typeof error === 'object') {
         this.rejectionProofs.set(error, { slot, command })
       }
-    })
+    }, { settleDrift: true })
   }
 
   retireConflict(error: unknown): void {

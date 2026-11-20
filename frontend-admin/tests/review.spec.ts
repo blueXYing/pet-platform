@@ -27,10 +27,20 @@ const MATERIAL_REFERENCES = [
   { materialId: '9001000000000000001', assetId: '6011000000000000001', materialSha256: SHA('aa'), materialType: 'STORE_PHOTO', position: 1 },
   { materialId: '9001000000000000002', assetId: '6011000000000000002', materialSha256: SHA('bb'), materialType: 'STORE_PHOTO', position: 2 },
 ];
-function detail(options: { taskStatus?: 'AVAILABLE' | 'CLAIMED'; taskVersion?: string; verification?: 'PENDING' | 'VERIFIED'; materialReferences?: unknown[]; omitReferences?: boolean } = {}) {
+function detail(options: {
+  status?: 'REVIEWING' | 'APPROVED' | 'REJECTED';
+  taskStatus?: 'AVAILABLE' | 'CLAIMED' | 'CLOSED';
+  taskVersion?: string;
+  verification?: 'PENDING' | 'VERIFIED';
+  materialReferences?: unknown[];
+  omitReferences?: boolean;
+  latestDecision?: { reviewDecisionId: string; submittedRevisionId: string; decisionType: string; opinion: string; decidedAt: string } | null;
+} = {}) {
   const references = 'materialReferences' in options ? options.materialReferences : options.omitReferences ? undefined : MATERIAL_REFERENCES;
   return {
-    ...SUMMARY, subjectVerificationStatus: options.verification ?? 'PENDING',
+    ...SUMMARY,
+    status: options.status ?? SUMMARY.status,
+    subjectVerificationStatus: options.verification ?? 'PENDING',
     submittedRevision: {
       revisionId: SUMMARY.submittedRevisionId, revisionNo: 1, createdAt: '2026-09-20T09:30:00.000Z',
       ...(references === undefined ? {} : { materialReferences: references }),
@@ -46,7 +56,7 @@ function detail(options: { taskStatus?: 'AVAILABLE' | 'CLAIMED'; taskVersion?: s
       applicationId: APPLICATION_ID, taskId: '7012345678901234567', submittedRevisionId: SUMMARY.submittedRevisionId,
       status: options.taskStatus ?? 'AVAILABLE', version: options.taskVersion ?? '2', claimedByOperatorId: null,
     },
-    latestDecision: null,
+    latestDecision: options.latestDecision ?? null,
   };
 }
 const RECEIPT = { applicationId: APPLICATION_ID, applicationNo: SUMMARY.applicationNo, reservedMerchantId: SUMMARY.reservedMerchantId, status: 'REJECTED', version: '5', currentRevisionId: SUMMARY.submittedRevisionId };
@@ -480,4 +490,73 @@ test('version conflict on claim surfaces a refresh hint instead of silent overwr
   await page.getByRole('link', { name: '打开' }).click();
   await page.getByRole('button', { name: '领取任务' }).click();
   await expect(page.getByRole('alert').first()).toContainText('版本冲突');
+});
+
+test('terminal approved application shows closed summary banner without broken claim or edit controls', async ({ page }) => {
+  await grantLogin(page);
+  await page.route('**/api/v1/admin/merchant-applications**', route => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === '/api/v1/admin/merchant-applications') route.fulfill(unified({ items: [{ ...SUMMARY, status: 'APPROVED', subjectVerificationStatus: 'VERIFIED' }], page: 1, pageSize: 20, total: 1 }));
+    else route.fulfill(unified(detail({
+      status: 'APPROVED',
+      taskStatus: 'CLOSED',
+      verification: 'VERIFIED',
+      latestDecision: {
+        reviewDecisionId: '8012345678901234567',
+        submittedRevisionId: SUMMARY.submittedRevisionId,
+        decisionType: 'APPROVE',
+        opinion: '主体与资质核验全部一致，准予通过',
+        decidedAt: '2026-09-20T12:00:00.000Z',
+      },
+    })));
+  });
+
+  await login(page);
+  await page.getByRole('link', { name: '打开' }).click();
+  await expect(page.getByRole('link', { name: '返回申请列表' })).toBeVisible();
+  await expect(page.getByText('本申请已审结：已通过（通过）')).toBeVisible();
+  await expect(page.getByText(/任务状态：已关闭/)).toBeVisible();
+  await expect(page.getByRole('button', { name: '领取任务' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '释放任务' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: '人工核验（主体/证件）' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: '审核决定' })).toHaveCount(0);
+});
+
+test('enterprise workbench supports material lightbox zoom/rotate and quick-opinion 10-char guardrails', async ({ page }) => {
+  await grantLogin(page);
+  await page.route('**/api/v1/admin/merchant-applications**', route => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === '/api/v1/admin/merchant-applications') route.fulfill(unified({ items: [SUMMARY], page: 1, pageSize: 20, total: 1 }));
+    else route.fulfill(unified(detail({ taskStatus: 'CLAIMED' })));
+  });
+  await page.route(/\/private-assets\/6011\d+\/read-grants$/, route =>
+    route.fulfill(unified({ readUrl: `/api/v1/admin/private-asset-read-grants/token_lb_${'a'.repeat(32)}`, expiresAt: '2026-09-20T17:00:00.000Z' })));
+  await page.route(/\/private-asset-read-grants\/.+/, route =>
+    route.fulfill({ status: 200, headers: { 'Content-Type': 'image/png' }, body: PNG_BYTES }));
+
+  await login(page);
+  await page.getByRole('link', { name: '打开' }).click();
+
+  // View business license and inspect in Lightbox modal with zoom + rotate
+  const licenseCard = page.locator('ul.materials li', { hasText: '营业执照' });
+  await licenseCard.getByRole('button', { name: '申请一次性查看' }).click();
+  await expect(licenseCard.getByRole('img')).toBeVisible();
+  await licenseCard.getByRole('button', { name: '放大/旋转核对' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: '放大图片' }).click();
+  await expect(dialog.getByText('125%')).toBeVisible();
+  await dialog.getByRole('button', { name: '右旋图片' }).click();
+  await expect(dialog.getByText('90°')).toBeVisible();
+  await dialog.getByRole('button', { name: '重置视图' }).click();
+  await expect(dialog.getByText('100%')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+
+  // Decision opinion < 10 chars keeps submit disabled; quick-opinion preset fills >= 10 chars and unlocks
+  await page.getByLabel(/审核意见/).fill('太模糊');
+  await page.getByLabel('我确认本决定基于已查看的材料与核验结果').check();
+  await expect(page.getByRole('button', { name: '提交审核决定' })).toBeDisabled();
+  await page.getByRole('button', { name: '营业执照模糊' }).click();
+  await expect(page.getByRole('button', { name: '提交审核决定' })).toBeEnabled();
 });

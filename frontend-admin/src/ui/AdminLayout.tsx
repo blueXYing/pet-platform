@@ -17,6 +17,14 @@ export function AdminLayout({ menuItems, identity, signOut, pathname, children }
 }) {
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
+  const allKeys = (menuItems ?? []).flatMap(item =>
+    item && 'children' in item && Array.isArray(item.children)
+      ? item.children.map(child => (child && 'key' in child ? String(child.key) : ''))
+      : item && 'key' in item ? [String(item.key)] : [],
+  ).filter(Boolean);
+  const activeKey = allKeys
+    .filter(key => pathname === key || pathname.startsWith(`${key}/`))
+    .sort((a, b) => b.length - a.length)[0] ?? pathname;
   return <Layout style={{ minHeight: '100vh' }}>
     <Sider collapsible collapsed={collapsed} onCollapse={setCollapsed} theme="light" width={216}
       style={{ position: 'sticky', top: 0, height: '100vh', overflowY: 'auto' }}>
@@ -24,7 +32,7 @@ export function AdminLayout({ menuItems, identity, signOut, pathname, children }
       <Menu
         mode="inline"
         items={menuItems}
-        selectedKeys={[pathname]}
+        selectedKeys={[activeKey]}
         onClick={({ key }) => { if (key !== pathname) void navigate(key); }}
         style={{ borderInlineEnd: 'none', paddingBottom: 48 }}
       />

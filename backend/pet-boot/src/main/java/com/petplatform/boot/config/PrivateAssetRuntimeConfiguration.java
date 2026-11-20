@@ -40,8 +40,21 @@ public class PrivateAssetRuntimeConfiguration {
 
   @Bean
   @ConditionalOnMissingBean({OssConnection.class, PrivateObjectStore.class})
-  OssConnection privateAssetOssConnection() {
-    return OssConnection.fromEnv();
+  OssConnection privateAssetOssConnection(
+      @Value("${pet.oss.endpoint:}") String endpoint,
+      @Value("${pet.oss.region:}") String region,
+      @Value("${pet.oss.bucket:}") String bucket,
+      @Value("${pet.oss.access-key-id:}") String accessKeyId,
+      @Value("${pet.oss.secret-access-key:}") String secretAccessKey,
+      @Value("${pet.oss.public-base-url:}") String publicBaseUrl) {
+    // 2026-11-19 用户裁决：所有环境统一真实 OSS；配置缺失直接失败，不回退本地/内存存储。
+    if (endpoint.isBlank() || region.isBlank() || bucket.isBlank()
+        || accessKeyId.isBlank() || secretAccessKey.isBlank()) {
+      throw new IllegalStateException(
+          "OSS configuration required: OSS_ENDPOINT, OSS_REGION, OSS_BUCKET, "
+              + "OSS_ACCESS_KEY_ID and OSS_SECRET_ACCESS_KEY must all be configured");
+    }
+    return new OssConnection(endpoint, region, bucket, accessKeyId, secretAccessKey, publicBaseUrl);
   }
 
   @Bean(destroyMethod = "close")

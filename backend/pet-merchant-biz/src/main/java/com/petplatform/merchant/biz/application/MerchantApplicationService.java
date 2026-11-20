@@ -390,6 +390,10 @@ public final class MerchantApplicationService {
           Map<String, MerchantClaimEntity> active = new HashMap<>();
           old.forEach(x -> active.put(x.getClaimType(), x));
           List<Long> replacedClaimIds = new ArrayList<>();
+          // 2026-11-20 重复核验治理：先清已释放 claim 与其引用的旧 VERIFIED 证据，再插入
+          // 新证据，保证同一版本同一证件类型始终只有一条已核验证据（决定期"恰好一条"闸门）。
+          m.deleteReleasedClaims(id);
+          m.deleteStaleVerifiedEvidence(id, revisionId);
           for (PreparedEvidence e : evidence) {
             if (!policy.equals(e.keyVersion()) || e.policySlot() != 1)
               unavailable("credential HMAC policy does not match the persisted policy");
@@ -398,6 +402,13 @@ public final class MerchantApplicationService {
             if (!e.materialId().equals(IDS.toApi(mat.getId()))
                 || !e.materialSha256().equals(mat.getSha256()))
               conflict("evidence material reference does not match the submitted revision");
+            if ("INDUSTRY_LICENSE".equals(e.credentialType())) continue;
+            MerchantClaimEntity existing = active.get(e.credentialType());
+            // 2026-11-20 幂等重提：同一证件类型、同一摘要、同一密钥版本的重复核验直接跳过，
+            // 不再插入新证据行（旧实现每次都插行，重复提交堆叠后撞决定期"恰好一条"闸门）。
+            if (existing != null
+                && Arrays.equals(existing.getLookupDigest(), e.digest())
+                && existing.getLookupKeyVersion().equals(e.keyVersion())) continue;
             long evidenceId = store.nextId();
             one(
                 m.insertEvidence(
@@ -420,11 +431,6 @@ public final class MerchantApplicationService {
                     principal(ctx),
                     c.reason(),
                     now));
-            if ("INDUSTRY_LICENSE".equals(e.credentialType())) continue;
-            MerchantClaimEntity existing = active.get(e.credentialType());
-            if (existing != null
-                && Arrays.equals(existing.getLookupDigest(), e.digest())
-                && existing.getLookupKeyVersion().equals(e.keyVersion())) continue;
             long claimId = store.nextId();
             try {
               one(
@@ -461,6 +467,10 @@ public final class MerchantApplicationService {
           // Acquire both new claims first; swap pointers, then release old claims in this
           // transaction.
           for (Long replacedClaimId : replacedClaimIds) one(m.releaseClaim(replacedClaimId, now));
+          // 本轮被替换的旧 claim（已指向新 claim）连同其旧证据一并清理：本轮结束即恢复
+          // "每类型恰好一条已核验证据"，无需等到下一轮核验。
+          m.deleteReleasedClaims(id);
+          m.deleteStaleVerifiedEvidence(id, revisionId);
           one(
               m.insertAudit(
                   store.nextId(),
@@ -1696,7 +1706,7 @@ public final class MerchantApplicationService {
     if (t.getVersion() != version
         || !"CLAIMED".equals(t.getStatus())
         || !Objects.equals(t.getClaimedByOperatorId(), principal(ctx)))
-      conflict("review task is not claimed by the current operator at the expected version");
+      conflict("审核任务未被当前运营领取（或版本已变化），请刷新页面后按最新状态操作");
   }
 
   private static MerchantEvidenceEntity uniqueEvidence(
@@ -1704,7 +1714,13 @@ public final class MerchantApplicationService {
     List<MerchantEvidenceEntity> matched =
         es.stream().filter(x -> type.equals(x.getCredentialType())).toList();
     if (matched.size() != 1)
-      conflict("submitted revision requires exactly one verified " + type + " evidence");
+      // 2026-11-20 用户裁决：运营端错误必须说清卡在哪一步、下一步做什么。
+      conflict(matched.isEmpty()
+          ? "批准前需先完成人工核验：缺少已核验的"
+              + ("CREDIT_CODE".equals(type) ? "统一社会信用代码" : "身份证") + "证据"
+          : "存在多条已核验的"
+              + ("CREDIT_CODE".equals(type) ? "统一社会信用代码" : "身份证")
+              + "证据（重复核验导致），请重新提交一次人工核验以收敛为单条");
     return matched.getFirst();
   }
 

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useRef, useState, type ReactNode, useEffect } from 'react';
 import { BrowserRouter, Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { Button, type MenuProps } from 'antd';
 import { AdminProviders } from './ui/providers';
@@ -91,8 +91,11 @@ const FORBIDDEN_TITLES: Record<string, string> = {
   'marketing.campaign.read': '403 · 无营销活动权限',
 };
 
+// 2026-11-20 用户裁决：运营端刷新不再丢登录态——token 持久化到 localStorage（登出/失效即清除）。
+const TOKEN_STORAGE_KEY = 'pet.admin.accessToken';
+
 export function App() {
-  const [token, setToken] = useState<string>();
+  const [token, setToken] = useState<string | undefined>(() => localStorage.getItem(TOKEN_STORAGE_KEY) ?? undefined);
   const [session, setSession] = useState<AdminSession>();
   const [permissions, setPermissions] = useState<AdminPermissions>();
   const [bootstrap, setBootstrap] = useState<'idle' | 'loading' | 'failed'>('idle');
@@ -101,6 +104,7 @@ export function App() {
 
   async function signIn(nextToken: string) {
     const started = ++identityEpoch.current;
+    localStorage.setItem(TOKEN_STORAGE_KEY, nextToken);
     setBootstrap('loading');
     setSession(undefined);
     setPermissions(undefined);
@@ -133,12 +137,24 @@ export function App() {
     } catch {
       if (started !== identityEpoch.current) return;
       // Session/permission queries fail closed: no business page renders on doubt.
+      localStorage.removeItem(TOKEN_STORAGE_KEY);
       setBootstrap('failed');
     }
   }
 
+  // 刷新/重开恢复：用持久化 token 重新接线并做服务端会话校验（失效则回登录页）。
+  const restoredRef = useRef(false);
+  useEffect(() => {
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+    const stored = localStorage.getItem(TOKEN_STORAGE_KEY);
+    if (stored) void signIn(stored);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const signOut = useCallback(() => {
     identityEpoch.current++;
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
     if (token) void sessions.logout(token).catch(() => undefined);
     setToken(undefined);
     setSession(undefined);

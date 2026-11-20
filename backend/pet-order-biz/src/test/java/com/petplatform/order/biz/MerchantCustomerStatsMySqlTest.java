@@ -331,7 +331,7 @@ class MerchantCustomerStatsMySqlTest {
             String requestId = UUID.randomUUID().toString();
             var saved = notes.updateNote(new com.petplatform.order.api.query.MerchantCustomerNoteCommandApi.UpdateNoteCommand(
                     Long.toString(MERCHANT), Long.toString(STORE), ALICE_STR, "对猫毛过敏，注意戴手套",
-                    "0", new com.petplatform.common.CommandContext(requestId, "test",
+                    new com.petplatform.common.CommandContext(requestId, "test",
                             OperatorType.USER, "8300000000000099", "MINIAPP")));
             assertEquals("1", saved.version());
             // The detail face carries the note.
@@ -339,44 +339,43 @@ class MerchantCustomerStatsMySqlTest {
                     Long.toString(MERCHANT), Long.toString(STORE), ALICE_STR, context()));
             assertEquals("对猫毛过敏，注意戴手套", detail.note().content());
             assertEquals("1", detail.note().version());
-            // CAS: a stale expectedVersion is 409.
-            assertEquals(CommonApiCodes.CONFLICT, assertThrows(ApiException.class,
-                    () -> notes.updateNote(new com.petplatform.order.api.query.MerchantCustomerNoteCommandApi.UpdateNoteCommand(
-                            Long.toString(MERCHANT), Long.toString(STORE), ALICE_STR, "旧版本",
-                            "0", new com.petplatform.common.CommandContext(UUID.randomUUID().toString(),
-                                    "test", OperatorType.USER, "8300000000000099", "MINIAPP")))).code());
-            // Second write rides the version; the audit keeps the field name only.
+            // 2026-11-18 用户裁决：放弃乐观版本保护，直接覆盖（last-write-wins）——旧 CAS-409 场景改为成功覆盖。
+            var overwritten = notes.updateNote(new com.petplatform.order.api.query.MerchantCustomerNoteCommandApi.UpdateNoteCommand(
+                    Long.toString(MERCHANT), Long.toString(STORE), ALICE_STR, "旧版本",
+                    new com.petplatform.common.CommandContext(UUID.randomUUID().toString(),
+                            "test", OperatorType.USER, "8300000000000099", "MINIAPP")));
+            assertEquals("2", overwritten.version());
             notes.updateNote(new com.petplatform.order.api.query.MerchantCustomerNoteCommandApi.UpdateNoteCommand(
-                    Long.toString(MERCHANT), Long.toString(STORE), ALICE_STR, "第二版备注", "1",
+                    Long.toString(MERCHANT), Long.toString(STORE), ALICE_STR, "第二版备注",
                     new com.petplatform.common.CommandContext(UUID.randomUUID().toString(), "test",
                             OperatorType.USER, "8300000000000099", "MINIAPP")));
             assertEquals("第二版备注", db.jdbc.queryForObject(
                     "SELECT note FROM merchant_customer_note WHERE store_id=" + STORE, String.class));
-            assertEquals(2, db.jdbc.queryForObject(
+            assertEquals(3, db.jdbc.queryForObject(
                     "SELECT COUNT(*) FROM merchant_customer_note_audit", Integer.class));
             // Same requestId + same payload replays without a second write.
             var replay = notes.updateNote(new com.petplatform.order.api.query.MerchantCustomerNoteCommandApi.UpdateNoteCommand(
                     Long.toString(MERCHANT), Long.toString(STORE), ALICE_STR, "对猫毛过敏，注意戴手套",
-                    "0", new com.petplatform.common.CommandContext(requestId, "test",
+                    new com.petplatform.common.CommandContext(requestId, "test",
                             OperatorType.USER, "8300000000000099", "MINIAPP")));
             assertEquals("1", replay.version());
-            assertEquals(2, db.jdbc.queryForObject(
+            assertEquals(3, db.jdbc.queryForObject(
                     "SELECT COUNT(*) FROM merchant_customer_note_audit", Integer.class));
             // A user with no store order is the anti-enumeration NOT_FOUND.
             assertEquals(CommonApiCodes.NOT_FOUND, assertThrows(ApiException.class,
                     () -> notes.updateNote(new com.petplatform.order.api.query.MerchantCustomerNoteCommandApi.UpdateNoteCommand(
                             Long.toString(MERCHANT), Long.toString(STORE), "8300000000000103",
-                            "无订单客户", "0", new com.petplatform.common.CommandContext(
+                            "无订单客户", new com.petplatform.common.CommandContext(
                                     UUID.randomUUID().toString(), "test", OperatorType.USER,
                                     "8300000000000099", "MINIAPP")))).code());
             // Foreign coordinate is 403; the empty string clears the note (stored NULL).
             assertEquals(CommonApiCodes.FORBIDDEN, assertThrows(ApiException.class,
                     () -> notes.updateNote(new com.petplatform.order.api.query.MerchantCustomerNoteCommandApi.UpdateNoteCommand(
                             Long.toString(MERCHANT), Long.toString(OTHER_STORE), ALICE_STR, "越权",
-                            "2", new com.petplatform.common.CommandContext(UUID.randomUUID().toString(),
+                            new com.petplatform.common.CommandContext(UUID.randomUUID().toString(),
                                     "test", OperatorType.USER, "8300000000000099", "MINIAPP")))).code());
             notes.updateNote(new com.petplatform.order.api.query.MerchantCustomerNoteCommandApi.UpdateNoteCommand(
-                    Long.toString(MERCHANT), Long.toString(STORE), ALICE_STR, "", "2",
+                    Long.toString(MERCHANT), Long.toString(STORE), ALICE_STR, "",
                     new com.petplatform.common.CommandContext(UUID.randomUUID().toString(), "test",
                             OperatorType.USER, "8300000000000099", "MINIAPP")));
             assertNull(db.jdbc.queryForObject(

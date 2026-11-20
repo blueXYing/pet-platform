@@ -2,6 +2,7 @@ package com.petplatform.thirdparty.biz.infrastructure.provider.assetimage;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.petplatform.thirdparty.biz.application.port.PrivateAssetImageValidationException;
 import com.petplatform.thirdparty.biz.application.port.PrivateAssetWatermarkRenderer.Watermark;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
@@ -156,6 +157,34 @@ class PrivateImageProvidersTest {
     hugeHeader[17] = (byte) 0xff;
     assertThrows(
         IllegalArgumentException.class, () -> normalizer.normalize(hugeHeader, "image/png"));
+  }
+
+
+  @Test
+  void rejectionReasonsDistinguishFileSizeDimensionsPixelsAndMetadata() throws Exception {
+    var normalizer = new ImageIoPrivateAssetImageNormalizer();
+    var tooLarge = assertThrows(
+        PrivateAssetImageValidationException.class,
+        () -> normalizer.normalize(new byte[10 * 1024 * 1024 + 1], "image/png"));
+    assertEquals("IMAGE_FILE_TOO_LARGE", tooLarge.reasonCode());
+
+    byte[] dimensions = image("png", 9000, 1);
+    var dimensionFailure = assertThrows(
+        PrivateAssetImageValidationException.class,
+        () -> normalizer.normalize(dimensions, "image/png"));
+    assertEquals("IMAGE_DIMENSIONS_EXCEEDED", dimensionFailure.reasonCode());
+
+    byte[] pixels = image("png", 5000, 3335);
+    var pixelFailure = assertThrows(
+        PrivateAssetImageValidationException.class,
+        () -> normalizer.normalize(pixels, "image/png"));
+    assertEquals("IMAGE_PIXELS_EXCEEDED", pixelFailure.reasonCode());
+
+    byte[] metadata = withOrientation(image("jpeg", 32, 16), 0, true);
+    var metadataFailure = assertThrows(
+        PrivateAssetImageValidationException.class,
+        () -> normalizer.normalize(metadata, "image/jpeg"));
+    assertEquals("IMAGE_METADATA_INVALID", metadataFailure.reasonCode());
   }
 
   @Test

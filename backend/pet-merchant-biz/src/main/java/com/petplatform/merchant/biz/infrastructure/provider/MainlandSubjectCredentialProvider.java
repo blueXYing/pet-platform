@@ -139,7 +139,7 @@ public final class MainlandSubjectCredentialProvider implements SubjectCredentia
     if (!"IDENTITY_NUMBER".equals(credentialType)
         && !"CREDIT_CODE".equals(credentialType)
         && !"INDUSTRY_LICENSE".equals(credentialType)) {
-      throw invalid("credential type is unsupported");
+      throw invalid("证件类型不支持：仅支持统一社会信用代码（企业）或居民身份证号码（个体户）");
     }
     return credentialType;
   }
@@ -150,36 +150,36 @@ public final class MainlandSubjectCredentialProvider implements SubjectCredentia
       case "IDENTITY_NUMBER" -> normalizeIdentity(normalized);
       case "CREDIT_CODE" -> normalizeCreditCode(normalized);
       case "INDUSTRY_LICENSE" -> normalizeIndustryLicense(normalized);
-      default -> throw invalid("credential type is unsupported");
+      default -> throw invalid("证件类型不支持：仅支持统一社会信用代码（企业）或居民身份证号码（个体户）");
     };
   }
 
   private static String normalizeIdentifierText(String value) {
-    if (value == null) throw invalid("credential identifier is required");
+    if (value == null) throw invalid("证件编号不能为空");
     String normalized =
         trimAsciiWhitespace(Normalizer.normalize(value, Normalizer.Form.NFKC))
             .toUpperCase(Locale.ROOT);
     if (normalized.isEmpty()
         || normalized.chars().anyMatch(MainlandSubjectCredentialProvider::isAsciiWhitespace)) {
-      throw invalid("credential identifier format is invalid");
+      throw invalid("证件编号格式不正确：统一社会信用代码为18位（数字与大写字母，不含 I/O/S/V/Z）；身份证号为18位数字（末位可为 X）");
     }
     return normalized;
   }
 
   private static String normalizeIdentity(String value) {
     if (value.length() < 2 || !MAINLAND_PREFIXES.contains(value.substring(0, 2)))
-      throw invalid("identity address prefix is outside the mainland scope");
+      throw invalid("身份证地址前缀非大陆地区");
     if (value.matches("[0-9]{15}")) {
       String body = value.substring(0, 6) + "19" + value.substring(6);
       validateDate(body.substring(6, 14));
       return body + identityCheck(body);
     }
     if (!value.matches("[0-9]{17}[0-9X]")) {
-      throw invalid("mainland identity number format is invalid");
+      throw invalid("身份证号码格式不正确：应为18位数字（末位可为 X）");
     }
     validateDate(value.substring(6, 14));
     if (identityCheck(value.substring(0, 17)) != value.charAt(17)) {
-      throw invalid("mainland identity number checksum is invalid");
+      throw invalid("身份证号码校验位不正确，请核对证件原件上的18位号码");
     }
     return value;
   }
@@ -200,23 +200,23 @@ public final class MainlandSubjectCredentialProvider implements SubjectCredentia
               Integer.parseInt(yyyyMMdd.substring(4, 6)),
               Integer.parseInt(yyyyMMdd.substring(6, 8)));
       if (birth.isAfter(LocalDate.now(java.time.ZoneId.of("Asia/Shanghai"))))
-        throw invalid("mainland identity birth date is invalid");
+        throw invalid("身份证号码中的出生日期无效");
     } catch (DateTimeException | NumberFormatException failure) {
-      throw invalid("mainland identity birth date is invalid");
+      throw invalid("身份证号码中的出生日期无效");
     }
   }
 
   private static String normalizeCreditCode(String value) {
-    if (value.length() != 18) throw invalid("unified social credit code format is invalid");
+    if (value.length() != 18) throw invalid("统一社会信用代码格式不正确：应为18位（数字与大写字母，不含 I/O/S/V/Z）");
     int sum = 0;
     for (int i = 0; i < 17; i++) {
       int index = USCC_ALPHABET.indexOf(value.charAt(i));
-      if (index < 0) throw invalid("unified social credit code format is invalid");
+      if (index < 0) throw invalid("统一社会信用代码格式不正确：应为18位（数字与大写字母，不含 I/O/S/V/Z）");
       sum += index * USCC_WEIGHTS[i];
     }
     int expected = (31 - sum % 31) % 31;
     if (USCC_ALPHABET.indexOf(value.charAt(17)) != expected) {
-      throw invalid("unified social credit code checksum is invalid");
+      throw invalid("统一社会信用代码校验位不正确，请核对营业执照上的18位编码后重试");
     }
     return value;
   }

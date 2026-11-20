@@ -13,6 +13,8 @@ public interface MerchantCustomerNoteCommandApi {
 
     MerchantCustomerQueryApi.NoteView updateNote(UpdateNoteCommand command);
 
+    // 2026-11-18 用户裁决：商家客户备注放弃乐观版本保护，直接覆盖（last-write-wins）；
+    // requestId 幂等（防重复提交）与 OWNER 鉴权不变。
     record UpdateNoteCommand(String merchantId, String storeId, String userId, String note,
-            String expectedVersion, CommandContext context) {}
+            CommandContext context) {}
 }

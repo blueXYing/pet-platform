@@ -26,7 +26,7 @@ export type MerchantStorefrontDeps = {
   customers(filter: { nickname?: string; orderNoSuffix?: string }, page: number,
     pageSize: number): Promise<CustomerPage>
   customerDetail(userId: string): Promise<CustomerDetail>
-  saveCustomerNote(userId: string, note: string, expectedVersion: string):
+  saveCustomerNote(userId: string, note: string):
     Promise<{ userId: string; note: CustomerNote }>
   retireNoteConflict(error: unknown): void
   statsOverview(range: StatsRange, custom?: StatsWindow): Promise<StatsOverview>
@@ -55,7 +55,7 @@ export function merchantStorefrontDeps(api: ConsumerApi, _store: LocalStore): Me
     storeAvatarUrl: () => avatarUrl.get(),
     customers: (filter, page, pageSize) => customers.list(filter, page, pageSize),
     customerDetail: userId => customers.detail(userId),
-    saveCustomerNote: (userId, note, expectedVersion) => notes.save(userId, note, expectedVersion),
+    saveCustomerNote: (userId, note) => notes.save(userId, note),
     retireNoteConflict: error => notes.retireConflict(error),
     statsOverview: (range, custom) => stats.overview(range, custom),
     statsServiceTop: (range, custom) => stats.serviceTop(range, custom),

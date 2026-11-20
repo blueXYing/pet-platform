@@ -39,6 +39,8 @@ function ApplicationScreen({ preview, reference, scope, initialType }: { preview
   const [cities, setCities] = useState<City[] | null>(null)
   const [cityName, setCityName] = useState('')
   const [locked, setLocked] = useState(false)
+  const [previews, setPreviews] = useState<Record<string, string>>({})
+  const previewPaths = useRef<Record<string, string>>({})
   const pending = useRef<{ submit: boolean; current: ApplicationResult | null; draft: DraftInput; saved?: ApplicationResult } | null>(null)
   const mounted = useRef(true)
   const running = useRef(false)
@@ -55,6 +57,32 @@ function ApplicationScreen({ preview, reference, scope, initialType }: { preview
     running.current = true; setBusy(true); setNotice('')
     try { await action() } catch (error) { if (live()) setNotice(applicationMessage(error)) }
     finally { running.current = false; if (live()) setBusy(false) }
+  }
+  function retainPreview(assetId: string) {
+    const pendingUpload = uploads?.pending()
+    if (!pendingUpload?.receipt || pendingUpload.receipt.assetId !== assetId) return
+    const extension = pendingUpload.filePath.endsWith('.png') ? '.png' : '.jpg'
+    const target = `${Taro.env.USER_DATA_PATH}/pet-material-preview-${assetId}${extension}`
+    try {
+      Taro.getFileSystemManager().copyFileSync(pendingUpload.filePath, target)
+      previewPaths.current[assetId] = target
+      setPreviews(previous => ({ ...previous, [assetId]: target }))
+    } catch { /* upload succeeds even when the local thumbnail cannot be retained */ }
+  }
+  function discardPreview(assetId?: string) {
+    if (!assetId) return
+    const path = previewPaths.current[assetId]
+    if (path) {
+      try { Taro.getFileSystemManager().unlinkSync(path) } catch { /* local cleanup is best effort */ }
+    }
+    delete previewPaths.current[assetId]
+    setPreviews(previous => { const next = { ...previous }; delete next[assetId]; return next })
+  }
+  function cleanupPreviews() {
+    for (const path of Object.values(previewPaths.current)) {
+      try { Taro.getFileSystemManager().unlinkSync(path) } catch { /* local cleanup is best effort */ }
+    }
+    previewPaths.current = {}
   }
   async function load() {
     if (running.current) return
@@ -92,7 +120,7 @@ function ApplicationScreen({ preview, reference, scope, initialType }: { preview
       catch { /* session/loading error is already surfaced by perform */ }
     }
   }
-  useEffect(() => { mounted.current = true; if (!preview) void load(); return () => { mounted.current = false } }, [])
+  useEffect(() => { mounted.current = true; if (!preview) void load(); return () => { mounted.current = false; cleanupPreviews() } }, [])
   function edit(key: keyof DraftInput, value: DraftInput[keyof DraftInput]) {
     if (running.current || pending.current || !editableApplication(result) || (!preview && !loggedIn)) return
     setDraft(previous => ({ ...previous, [key]: value })); dirty.current = true
@@ -148,9 +176,15 @@ function ApplicationScreen({ preview, reference, scope, initialType }: { preview
       if (!asset || !live()) return
       const assetId = id(asset.assetId)
       setDraft(previous => kind === 'storePhotoAssetIds' ? { ...previous, storePhotoAssetIds: [...new Set([...(previous.storePhotoAssetIds || []), assetId])].slice(0, 6) } : { ...previous, [kind]: assetId }); dirty.current = true
+      retainPreview(assetId)
       await uploads?.acknowledge(assetId)
       if (live()) setNotice('材料已上传，请保存草稿。')
     })
+  }
+  function removeMaterial(kind: MaterialKind, assetId?: string) {
+    if (running.current || pending.current || !editableApplication(result) || (!preview && !loggedIn)) return
+    edit(kind, kind === 'storePhotoAssetIds' ? (draft.storePhotoAssetIds || []).filter(value => value !== assetId) : null)
+    discardPreview(assetId)
   }
   async function leave() {
     if (running.current) return
@@ -160,11 +194,11 @@ function ApplicationScreen({ preview, reference, scope, initialType }: { preview
     else await Taro.switchTab({ url: '/consumer/pages/mine/index' })
   }
   return <ConsumerPageLayout page='merchantApplication' unit={unit} className={`application-page${reference ? ' application-reference' : ''}`} style={style} navigation={preview ? { idPrefix: 'application', disabled: busy, onSelect: key => void switchConsumerTab(key) } : undefined}>
-    <MerchantApplicationView draft={draft} result={result} errors={errors} notice={notice} busy={busy} loading={loading} preview={preview} loggedIn={loggedIn} locked={locked} opinion={opinion} cityName={cityName} cities={cities} typeOpen={typeOpen} edit={edit}
+    <MerchantApplicationView draft={draft} result={result} errors={errors} notice={notice} busy={busy} loading={loading} preview={preview} loggedIn={loggedIn} locked={locked} opinion={opinion} cityName={cityName} cities={cities} typeOpen={typeOpen} edit={edit} previews={previews}
       onBack={() => void leave()} onTypes={() => setTypeOpen(value => !value)} onCity={() => void perform(async () => { const values = await deps.cities(); if (live()) setCities(values) })}
       onCitySelect={city => { if (running.current || pending.current || !editableApplication(result)) return; edit('cityCode', city.code); setCityName(city.name); setCities(null) }}
       onLocation={() => void perform(async () => { const value = await deps.location(); if (value && live()) { setDraft(previous => ({ ...previous, ...value })); dirty.current = true } })}
-      onUpload={kind => void upload(kind)} onRemove={(kind, assetId) => edit(kind, kind === 'storePhotoAssetIds' ? (draft.storePhotoAssetIds || []).filter(value => value !== assetId) : null)}      onSave={() => void write(false)} onSubmit={() => void write(true)} onReload={() => void load()} onLogin={() => void Taro.switchTab({ url: '/consumer/pages/mine/index' })}
+      onUpload={kind => void upload(kind)} onRemove={removeMaterial}      onSave={() => void write(false)} onSubmit={() => void write(true)} onReload={() => void load()} onLogin={() => void Taro.switchTab({ url: '/consumer/pages/mine/index' })}
       onSigning={() => {
         if (running.current || pending.current) { setNotice('当前有操作结果尚未确认，请先重试原操作后再进入签署。'); return }
         if (result?.status !== 'APPROVED' || !result.reservedMerchantId) return

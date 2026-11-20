@@ -30,6 +30,9 @@ import org.springframework.dao.DuplicateKeyException;
 
 /** Real Web authentication only. No business CRUD, miniapp proof or signing provider shortcuts. */
 public final class AdminAuthService implements AdminSessionQueryApi {
+  /** 2026-11-20 用户裁决：运营端会话无操作窗口 30 分钟 → 12 小时（太短频繁掉线）。 */
+  private static final int ADMIN_SESSION_IDLE_SECONDS = 43_200;
+
   private static final ThreadLocal<String> REQUEST_TRACE = new ThreadLocal<>();
 
   public static void bindTrace(String trace) {
@@ -644,7 +647,7 @@ public final class AdminAuthService implements AdminSessionQueryApi {
                 }
                 if (proofOk) m.markCaptchaProofConsumed(now, proof.id);
                 long generation = Math.addExact(a.sessionGeneration, 1);
-                Instant expires = now.plusSeconds(1800);
+                Instant expires = now.plusSeconds(ADMIN_SESSION_IDLE_SECONDS);
                 m.updateLoginSession(generation, now, now, a.id);
                 m.insertSession(sid, a.id, AdminSecretCodec.digest(access), generation, now, now, expires);
                 m.completeAttempt(a.id, a.credentialVersion, sid, aid);
@@ -931,7 +934,7 @@ public final class AdminAuthService implements AdminSessionQueryApi {
             WebSession s = m.selectSessionForUpdate(observed.id);
             if (s == null) throw AdminAuthFailure.unavailable();
             Instant now = tx.now(),
-                expiry = logout ? s.idleExpiresAt : now.plusSeconds(1800);
+                expiry = logout ? s.idleExpiresAt : now.plusSeconds(ADMIN_SESSION_IDLE_SECONDS);
             if (logout) m.revokeSession(now, s.id);
             else m.refreshSessionIdle(now, expiry, s.id);
             complete(tx, cid, logout ? "LOGGED_OUT" : "ACTIVITY", s.id, expiry, null);

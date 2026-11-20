@@ -51,7 +51,6 @@
     UPDATE merchant_customer_note
     SET note=#{note},version=version+1,updated_at=#{now}
     WHERE store_id=#{storeId} AND merchant_id=#{merchantId} AND user_id=#{userId}
-      AND version=#{expectedVersion}
   </update>
 
   <insert id="insertAudit">

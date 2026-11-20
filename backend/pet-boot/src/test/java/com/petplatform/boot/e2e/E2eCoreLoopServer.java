@@ -7,13 +7,13 @@ import com.petplatform.id.core.SnowflakeProviderSettings;
 import com.petplatform.admin.biz.application.AdminAuthService;
 import com.petplatform.aftersale.biz.application.AfterSalePorts;
 import com.petplatform.merchant.biz.application.ApplicationValidationPorts;
-import com.petplatform.merchant.biz.application.PrivateAssetQueryPort;
+
 import com.petplatform.merchant.biz.application.SubjectCredentialPort;
 import com.petplatform.merchant.biz.infrastructure.provider.AesGcmProtectedValueProvider;
 import com.petplatform.merchant.biz.infrastructure.provider.MainlandSubjectCredentialProvider;
-import com.petplatform.thirdparty.api.PetAvatarSigningApi;
+
 import com.petplatform.thirdparty.biz.application.port.PrivateAssetScanner;
-import com.petplatform.thirdparty.biz.application.port.PrivateObjectStore;
+
 import com.petplatform.payment.biz.application.PaymentChannel;
 import com.petplatform.payment.biz.application.PaymentMerchantBindings;
 import com.petplatform.payment.biz.application.PaymentReceiptVerifier;
@@ -32,6 +32,7 @@ import com.petplatform.refund.biz.application.RefundApplicationPorts;
 import com.petplatform.service.biz.application.ServiceWriteDependencies.ServiceCoverAssetPort;
 import com.petplatform.service.biz.application.ServiceWriteDependencies.ServiceCoverUrlPort;
 import com.petplatform.user.biz.application.WechatSessionProvider;
+import com.petplatform.user.biz.infrastructure.provider.WechatMiniApiProvider;
 import com.petplatform.user.api.query.UserIdQuery;
 import com.petplatform.user.api.query.UserPhoneVerificationApi;
 import com.zaxxer.hikari.HikariConfig;
@@ -72,7 +73,9 @@ import tools.jackson.databind.json.JsonMapper;
  * the real WeChat DevTools simulator walkthrough (merchant workbench admission -> C browse ->
  * booking create -> sandbox payment initiation -> merchant confirm -> C order list/detail ->
  * verification credential -> merchant verify -> C refund application). Same QA seams as the
- * in-repo acceptance servers: any real wx.login code maps to the seeded WeChat identity, the
+ * in-repo acceptance servers: with PET_WX_APPID/PET_WX_APP_SECRET set (2026-11-18 用户裁决,
+ * 本地开发默认) real WeChat jscode2session/phone APIs run against real credentials; without
+ * them any real wx.login code maps to the seeded WeChat identity, the
  * payment channel is a deterministic sandbox (a poller feeds a verified SUCCESS notification so
  * initiated payments complete like a sandbox callback), refund/moderation/cover/private-asset
  * ports are permissive fixtures. Every business rule still runs against real Spring + MySQL +
@@ -272,6 +275,18 @@ public final class E2eCoreLoopServer {
                     });
                 beans.registerBean("e2eDataSource", DataSource.class, () -> pool);
                 beans.registerBean("e2eIds", SnowflakeIdGenerator.class, () -> finalIds);
+                // 2026-11-18 用户裁决：本地/开发环境一律真实微信登录（真实 jscode2session +
+                // getuserphonenumber），不再把任意 code 映射到种子账号。PET_WX_APPID /
+                // PET_WX_APP_SECRET 环境变量存在时走真实 Provider；两变量都缺失时才回落到
+                // 下面的种子映射（CI 与无凭据环境依赖该路径，登录身份仍为种子账号）。
+                String realWxAppId = System.getenv("PET_WX_APPID");
+                String realWxAppSecret = System.getenv("PET_WX_APP_SECRET");
+                boolean realWechat = realWxAppId != null && !realWxAppId.isBlank()
+                    && realWxAppSecret != null && !realWxAppSecret.isBlank();
+                if (realWechat) {
+                    beans.registerBean("e2eWechat", WechatSessionProvider.class, () ->
+                        new WechatMiniApiProvider(WechatMiniApiProvider.Settings.production(realWxAppId, realWxAppSecret)));
+                } else {
                 // Any real wx.login code from the DevTools simulator maps to the seeded identity;
                 // the seeded account already carries a verified phone so login completes in one shot.
                 beans.registerBean("e2eWechat", WechatSessionProvider.class, () ->
@@ -289,8 +304,11 @@ public final class E2eCoreLoopServer {
                         throw new ProofRejected();
                       }
                     });
+                }
                 // Contract 54 phone-equality channel: the seeded account's verified phone is
-                // the fixture's single purpose-bound fact (test-domain only).
+                // the fixture's single purpose-bound fact (test-domain only). 真实模式下
+                // （2026-11-18）不注册该假件，让生产实现按用户手机存储判定。
+                if (!realWechat) {
                 beans.registerBean("e2eUserPhones", UserPhoneVerificationApi.class, () ->
                     new UserPhoneVerificationApi() {
                       private final String phone = "13800000100";
@@ -301,6 +319,7 @@ public final class E2eCoreLoopServer {
                         return query != null && Long.toString(USER).equals(query.userId()) ? phone : null;
                       }
                     });
+                }
                 beans.registerBean("e2ePaymentBindings", PaymentMerchantBindings.class, () ->
                     (merchantId, storeId) -> {
                       if (!Long.toString(STORE).equals(storeId)
@@ -344,11 +363,10 @@ public final class E2eCoreLoopServer {
                 beans.registerBean("e2eRemarkPolicy",
                     com.petplatform.order.biz.application.OrderCreationRemarkPolicy.class,
                     () -> remark -> { });
-                beans.registerBean("e2ePrivateAssets", PrivateAssetQueryPort.class,
-                    () -> (owner, assetIds) -> assetIds.stream()
-                        .map(id -> new PrivateAssetQueryPort.PrivateAssetRef(
-                            id, owner, sha("e2e-asset-" + id), "image/jpeg", 512, "READY"))
-                        .toList());
+                // Private asset facts stay on the production composition
+                // (MerchantPrivateAssetQueryAdapter -> PrivateAssetApi). The former stub returned
+                // sha("e2e-asset-"+id)/512 bytes, which diverged from the real OSS object and made
+                // every admin read-grant fail its fact proof with COMMON_FORBIDDEN.
                 beans.registerBean("e2eMap", ApplicationValidationPorts.MapValidationPort.class,
                     () -> (city, address, lng, lat) -> "chengdu".equals(city));
                 beans.registerBean("e2eSubjects", SubjectCredentialPort.class,
@@ -363,67 +381,15 @@ public final class E2eCoreLoopServer {
                         assetId,
                         "https://cover.example.invalid/signed/" + assetId + "?e2e=1",
                         Instant.now().getEpochSecond() + 3600));
-                // Round 2: aftersale workflow QA seams (same shape as AfterSaleHttpFixture) —
-                // permissive moderation plus an in-memory private object store/scanner so the
-                // aftersale evidence pipeline boots without OSS/ClamAV. No evidence is uploaded
-                // in this walkthrough, so the store stays empty; it exists only so the real
-                // composition starts.
+                // Round 2: aftersale moderation remains a QA seam. Object bytes and avatar
+                // signing use the production S3PrivateObjectStore/S3 signer composition
+                // (2026-11-19 user ruling: real OSS in every environment, no local fallback).
+                // ClamAV alone stays a deterministic CLEAN test seam so no antivirus daemon
+                // is required on the developer host.
                 beans.registerBean("e2eAfterSaleModeration", AfterSalePorts.Moderation.class,
                     () -> value -> new AfterSalePorts.Approval(
                         sha(value), "E2E_ONLY_MODERATION", true));
-                var e2eAssetObjects = new PrivateObjectStore() {
-                      private final Map<String, PrivateObjectStore.StoredContent> objects =
-                          new ConcurrentHashMap<>();
-                      @Override public PrivateObjectStore.StoredObject putIfAbsent(
-                          String objectKey, byte[] content, String mediaType, String sha256) {
-                        var candidate = new PrivateObjectStore.StoredContent(
-                            content, mediaType, sha256);
-                        var previous = objects.putIfAbsent(objectKey, candidate);
-                        var stored = previous == null ? candidate : previous;
-                        if (!sha256.equals(stored.sha256())
-                            || !Objects.deepEquals(stored.content(), content)) {
-                          throw new IllegalStateException("Immutable E2E object differs");
-                        }
-                        return new PrivateObjectStore.StoredObject(
-                            "e2e-only-version", sha256, content.length, mediaType);
-                      }
-                      @Override public PrivateObjectStore.StoredContent get(
-                          String objectKey, String versionRef) {
-                        if (!"e2e-only-version".equals(versionRef)) {
-                          throw new IllegalStateException("Wrong object version");
-                        }
-                        return Objects.requireNonNull(objects.get(objectKey));
-                      }
-                      @Override public java.util.Optional<PrivateObjectStore.StoredObject> head(
-                          String objectKey) {
-                        var stored = objects.get(objectKey);
-                        return stored == null ? java.util.Optional.empty()
-                            : java.util.Optional.of(new PrivateObjectStore.StoredObject(
-                                "e2e-only-version", stored.sha256(),
-                                stored.content().length, stored.mediaType()));
-                      }
-                    };
-                beans.registerBean("e2eAssetObjects", PrivateObjectStore.class, () -> e2eAssetObjects);
-                // CCR-C-PET-AVATAR-001 local E2E seam: no OSS in this fixture; return a data URL
-                // for the owner's READY PET_AVATAR object so the real upload/save path is testable.
-                beans.registerBean("e2ePetAvatarSigner", PetAvatarSigningApi.class,
-                    () -> (ownerUserId, assetId) -> {
-                      var row = new JdbcTemplate(pool).queryForMap(
-                          "SELECT owner_user_id,purpose,status,object_key,object_version_ref,media_type"
-                              + " FROM private_asset WHERE id=?", Long.parseLong(assetId));
-                      String media = (String) row.get("media_type");
-                      if (!"PET_AVATAR".equals(row.get("purpose")) || !"READY".equals(row.get("status"))
-                          || ((Number) row.get("owner_user_id")).longValue() != Long.parseLong(ownerUserId)
-                          || (!"image/jpeg".equals(media) && !"image/png".equals(media))) {
-                        throw new IllegalStateException("E2E pet avatar asset is not owned READY PET_AVATAR");
-                      }
-                      var stored = e2eAssetObjects.get(
-                          (String) row.get("object_key"), (String) row.get("object_version_ref"));
-                      return new PetAvatarSigningApi.SignedPetAvatar(assetId,
-                          "data:" + stored.mediaType() + ";base64,"
-                              + Base64.getEncoder().encodeToString(stored.content()),
-                          Instant.now().plusSeconds(3600));
-                    });
+
                 beans.registerBean("e2eAssetScanner", PrivateAssetScanner.class,
                     () -> bytes -> new PrivateAssetScanner.ScanResult(
                         true, "E2E_ONLY_SCANNER", "CLEAN"));
@@ -1237,7 +1203,7 @@ public final class E2eCoreLoopServer {
     long identityClaim = 710607L, task = 710608L, decision = 710609L, audit = 710610L;
     byte[] creditDigest = digest(1), identityDigest = digest(2);
     jdbc.update("INSERT INTO merchant_subject_lookup_policy(policy_slot,key_version,algorithm,created_at)"
-        + " VALUES(1,'e2e-v1','HMAC-SHA-256',UTC_TIMESTAMP(3))");
+        + " VALUES(1,'e2e-only-v1','HMAC-SHA-256',UTC_TIMESTAMP(3))");
     jdbc.update("INSERT INTO merchant_application(id,owner_user_id,reserved_merchant_id,status,"
         + "subject_verification_status,created_at,updated_at)"
         + " VALUES(?,?,?,'DRAFT','NOT_STARTED',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))",
@@ -1289,8 +1255,8 @@ public final class E2eCoreLoopServer {
         + "identity_evidence_key_version,credit_claim_id,credit_claim_type,credit_claim_status,"
         + "identity_claim_id,identity_claim_type,identity_claim_status) VALUES(?,?,?,?,"
         + "'APPROVE',9001,UTC_TIMESTAMP(3),'e2e-authz','e2e-scope',?,"
-        + "?,'CREDIT_CODE','VERIFIED',?,1,'e2e-v1',"
-        + "?,'IDENTITY_NUMBER','VERIFIED',?,1,'e2e-v1',"
+        + "?,'CREDIT_CODE','VERIFIED',?,1,'e2e-only-v1',"
+        + "?,'IDENTITY_NUMBER','VERIFIED',?,1,'e2e-only-v1',"
         + "?,'CREDIT_CODE','ACTIVE',?,'IDENTITY_NUMBER','ACTIVE')",
         decision, application, revision, task, "e2e-decision".getBytes(StandardCharsets.UTF_8),
         creditEvidence, creditDigest, identityEvidence, identityDigest, creditClaim, identityClaim);
@@ -1340,7 +1306,7 @@ public final class E2eCoreLoopServer {
         + "credential_type,subject_name_protected,identifier_protected,identifier_lookup_digest,"
         + "lookup_policy_slot,lookup_key_version,valid_from,valid_to,validity_kind,"
         + "verified_by_operator_id,verification_reason,observed_at)"
-        + " VALUES(?,?,?,?,?,?,'MANUAL','VERIFIED',?,?,?, ?,1,'e2e-v1',"
+        + " VALUES(?,?,?,?,?,?,'MANUAL','VERIFIED',?,?,?, ?,1,'e2e-only-v1',"
         + "'2020-01-01','2035-01-01','DATED',9001,'E2E人工核验原件与主体一致',UTC_TIMESTAMP(3))",
         evidence, application, revision, material, materialType, hash, credentialType,
         new byte[] {1}, new byte[] {2}, digest);
@@ -1350,7 +1316,7 @@ public final class E2eCoreLoopServer {
       long evidence, long claim, String type, byte[] digest) {
     jdbc.update("INSERT INTO merchant_subject_claim(id,claim_type,lookup_digest,"
         + "lookup_policy_slot,lookup_key_version,application_id,revision_id,evidence_id,"
-        + "evidence_status,status,claimed_at) VALUES(?,?,?,1,'e2e-v1',?,?,?,'VERIFIED',"
+        + "evidence_status,status,claimed_at) VALUES(?,?,?,1,'e2e-only-v1',?,?,?,'VERIFIED',"
         + "'ACTIVE',UTC_TIMESTAMP(3))", claim, type, digest, application, revision, evidence);
   }
 
@@ -1461,9 +1427,16 @@ public final class E2eCoreLoopServer {
   }
 
   private static byte[] key(int seed) {
-    byte[] value = new byte[32];
-    new SecureRandom(String.valueOf(seed).getBytes(StandardCharsets.UTF_8)).nextBytes(value);
-    return value;
+    // 2026-11-20：改为跨重启稳定的确定性派生（SHA-256(seed 字面量)，恰 32 字节）。
+    // 旧实现 SecureRandom(种子) 在 JDK21/Linux 上不可复现——每次重启密钥都变，
+    // 钉死库复用时上一进程写入的受保护数据（证件号等）新进程解不开，决定流程
+    // 报 "protected value provider is unavailable"。确定性密钥让受保护数据跨重启可读。
+    try {
+      return java.security.MessageDigest.getInstance("SHA-256")
+          .digest(String.valueOf(seed).getBytes(StandardCharsets.UTF_8));
+    } catch (java.security.NoSuchAlgorithmException impossible) {
+      throw new IllegalStateException(impossible);
+    }
   }
 
   private static String base64(int seed) {

@@ -3,7 +3,12 @@ export type Transport = (input: Request) => Promise<Response>;
 // /auth/* predates the unified wrapper and omits `success`; see A-002-review-page/CONTRACT.md §4.1.
 type Envelope<T> = { success?: boolean; code: string; message: string; data: T; traceId: string };
 export class RequestFailure extends Error {
-  constructor(public code: string, public status: number) { super(code); }
+  /** 服务器信封里的具体 message（参数校验原因等）；无则 undefined。2026-11-20 用户裁决：校验失败必须展示具体原因，不再笼统"操作失败"。 */
+  serverMessage?: string;
+  constructor(public code: string, public status: number, serverMessage?: string) {
+    super(serverMessage ? `${code}: ${serverMessage}` : code);
+    this.serverMessage = serverMessage;
+  }
 }
 export function createWebClient(transport: Transport = fetch) {
   let epoch = 0;
@@ -49,7 +54,7 @@ export function createWebClient(transport: Transport = fetch) {
       if (started !== epoch) throw new RequestFailure('STALE_CONTEXT', 0);
       if (!payload || (typeof payload.success !== 'boolean' && typeof payload.code !== 'string')) throw new RequestFailure('INVALID_RESPONSE', response.status);
       const ok = typeof payload.success === 'boolean' ? payload.success : payload.code === 'SUCCESS';
-      if (!response.ok || !ok) throw new RequestFailure(payload.code || 'REQUEST_FAILED', response.status);
+      if (!response.ok || !ok) throw new RequestFailure(payload.code || 'REQUEST_FAILED', response.status, typeof payload.message === 'string' && payload.message ? payload.message : undefined);
       return payload.data; // No ID/amount coercion or client-side display-state derivation.
     },
   };

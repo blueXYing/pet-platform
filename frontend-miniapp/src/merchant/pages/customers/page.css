@@ -7,8 +7,10 @@
 .mcu-page button[disabled] { opacity: .65; color: inherit; }
 .mcu-status-area { height: var(--mcu-status-top); flex: none; }
 .mcu-header { position: relative; flex: none; height: calc(var(--mcu-unit) * 86); background: #fff6e5; display: flex; align-items: center; }
-.mcu-back { margin-left: calc(var(--mcu-unit) * 14); padding: calc(var(--mcu-unit) * 8) calc(var(--mcu-unit) * 14); border-radius: calc(var(--mcu-unit) * 100); border: calc(var(--mcu-unit) * 1.5) solid #c0ecff; color: #3185ba; font-size: calc(var(--mcu-unit) * 13); }
-.mcu-back image { width: calc(var(--mcu-unit) * 16); height: calc(var(--mcu-unit) * 16); }
+/* 返回箭头对齐 M 端家族样式（25×42 热区 + 8.9×14.5 箭头，匹配素材 27×44 真实比例）；
+   复合类 0,2,0 压过 .mcu-page button 重置，同 aftersale .mas-page .mas-back 先例。 */
+.mcu-page .mcu-back { margin-left: calc(var(--mcu-unit) * 8); width: calc(var(--mcu-unit) * 25); height: calc(var(--mcu-unit) * 42); display: flex; align-items: center; justify-content: center; }
+.mcu-back image { display: block; width: calc(var(--mcu-unit) * 8.9); height: calc(var(--mcu-unit) * 14.5); }
 .mcu-title { position: absolute; left: 0; right: 0; text-align: center; font-size: calc(var(--mcu-unit) * 16); line-height: calc(var(--mcu-unit) * 24); font-weight: 700; color: #3c3c3c; font-family: Outfit, Roboto, 'Noto Sans SC', sans-serif; pointer-events: none; }
 .mcu-state { padding: calc(var(--mcu-unit) * 48) calc(var(--mcu-unit) * 29); font-size: calc(var(--mcu-unit) * 14); line-height: calc(var(--mcu-unit) * 24); color: #577683; display: flex; flex-direction: column; gap: calc(var(--mcu-unit) * 14); }
 .mcu-page .mcu-primary { align-self: flex-start; padding: calc(var(--mcu-unit) * 10) calc(var(--mcu-unit) * 24); border-radius: calc(var(--mcu-unit) * 12); background: #5baae8; color: #fff; font-size: calc(var(--mcu-unit) * 13.5); font-weight: 600; }
@@ -57,3 +59,45 @@
 .mcu-page .mcu-note-save { align-self: flex-end; }
 
 .mcu-tab-space { height: calc(var(--mcu-unit) * 96); flex: none; }
+
+/* ============ 客户详情（mcud-，一比一帧 23:13478；独立类族，不回灌列表页 23:12738 样式） ============ */
+/* DIV-14：左右 15.39 内边距，卡间距 15.39，首卡上距 11.54，底部留白 38.47。
+   scroll-view 不在 .mcu-page 的 border-box 重置名单（view/button/text/input）里——
+   默认 content-box 会让左右 padding 加在宽度外，内容横向溢出、右 padding 被顶出屏幕
+   （2026-11-17 用户截图实测：左距 17px/右距 1px）。此处显式 border-box 修正。 */
+.mcud-scroll { box-sizing: border-box; flex: 1; padding: 0 calc(var(--mcu-unit) * 15.39); }
+/* 卡片：白底 + 1px #C0ECFF 描边 + r15.39 + 内边距 15.39（DIV-15/52/140 共同规格）。 */
+.mcud-card { margin-top: calc(var(--mcu-unit) * 15.39); padding: calc(var(--mcu-unit) * 15.39); background: #fff; border: calc(var(--mcu-unit) * 1) solid #c0ecff; border-radius: calc(var(--mcu-unit) * 15.39); }
+.mcud-card:first-child { margin-top: calc(var(--mcu-unit) * 11.54); }
+/* 卡1 头行（DIV-16）：gap 11.54，头像 53.9 圆，名 15.39/700/23.08，手机号与到店 11.54/400/15.39 #9CA3AF。 */
+.mcud-head { display: flex; align-items: center; gap: calc(var(--mcu-unit) * 11.54); }
+.mcud-avatar { flex: none; width: calc(var(--mcu-unit) * 53.9); height: calc(var(--mcu-unit) * 53.9); border-radius: 50%; background: #e5f6fd; display: flex; align-items: center; justify-content: center; }
+.mcud-avatar text { font-size: calc(var(--mcu-unit) * 18); line-height: calc(var(--mcu-unit) * 24); font-weight: 600; color: #5baae8; }
+.mcud-identity { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: calc(var(--mcu-unit) * 1.92); }
+.mcud-name { font-size: calc(var(--mcu-unit) * 15.39); line-height: calc(var(--mcu-unit) * 23.08); font-weight: 700; color: #111827; }
+.mcud-phone { font-size: calc(var(--mcu-unit) * 11.54); line-height: calc(var(--mcu-unit) * 15.39); color: #9ca3af; }
+.mcud-visit { flex: none; font-size: calc(var(--mcu-unit) * 11.54); line-height: calc(var(--mcu-unit) * 15.39); color: #9ca3af; }
+/* 指标块（DIV-30）：mt15.39，gap7.69，块 #F0FBFF r11.54 pad11.54，左对齐，值15.39/700，标签10.58/400 #9CA3AF。 */
+.mcud-metrics { margin-top: calc(var(--mcu-unit) * 15.39); display: flex; gap: calc(var(--mcu-unit) * 7.69); }
+.mcud-metric { flex: 1; min-width: 0; padding: calc(var(--mcu-unit) * 11.54); border-radius: calc(var(--mcu-unit) * 11.54); background: #f0fbff; display: flex; flex-direction: column; align-items: flex-start; }
+.mcud-metric-value { font-size: calc(var(--mcu-unit) * 15.39); line-height: calc(var(--mcu-unit) * 23.08); font-weight: 700; color: #111827; }
+.mcud-metric-label { margin-top: calc(var(--mcu-unit) * 1.92); font-size: calc(var(--mcu-unit) * 10.58); line-height: calc(var(--mcu-unit) * 15.87); color: #9ca3af; }
+/* 卡2/卡3 标题：13.46/700/19.23 #111827，mb15.39（H3-54/H3-142）。 */
+.mcud-card-title { display: block; margin-bottom: calc(var(--mcu-unit) * 15.39); font-size: calc(var(--mcu-unit) * 13.46); line-height: calc(var(--mcu-unit) * 19.23); font-weight: 700; color: #111827; }
+.mcud-empty { font-size: calc(var(--mcu-unit) * 11.54); line-height: calc(var(--mcu-unit) * 15.39); color: #9ca3af; }
+/* 宠物行（DIV-62）：gap11.54，头像 46.2 圆；名 13.46/600/19.23，品种 11.54/400/15.39 #9CA3AF。 */
+.mcud-pet-row { display: flex; align-items: center; gap: calc(var(--mcu-unit) * 11.54); }
+.mcud-pet-row + .mcud-pet-row { margin-top: calc(var(--mcu-unit) * 15.39); }
+.mcud-pet-avatar { flex: none; width: calc(var(--mcu-unit) * 46.2); height: calc(var(--mcu-unit) * 46.2); border-radius: 50%; background: #e5f6fd; display: flex; align-items: center; justify-content: center; }
+.mcud-pet-avatar text { font-size: calc(var(--mcu-unit) * 15.39); line-height: calc(var(--mcu-unit) * 19.23); font-weight: 600; color: #5baae8; }
+.mcud-pet-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: calc(var(--mcu-unit) * 1.92); }
+.mcud-pet-name { font-size: calc(var(--mcu-unit) * 13.46); line-height: calc(var(--mcu-unit) * 19.23); font-weight: 600; color: #111827; }
+.mcud-pet-breed { font-size: calc(var(--mcu-unit) * 11.54); line-height: calc(var(--mcu-unit) * 15.39); color: #9ca3af; }
+/* 卡3 备注区（DIV-148）：正文 13.46/400/19.23（占位 #6B7280），上 7.69 下 8.66，无描边（源稿 stroke 权重 0）。 */
+.mcud-note-wrap { padding: calc(var(--mcu-unit) * 7.69) 0 calc(var(--mcu-unit) * 8.66); }
+.mcud-note-input { width: 100%; min-height: calc(var(--mcu-unit) * 57.7); background: transparent; font-size: calc(var(--mcu-unit) * 13.46); line-height: calc(var(--mcu-unit) * 19.23); color: #111827; }
+.mcud-note-foot { margin-top: calc(var(--mcu-unit) * 7.69); display: flex; align-items: center; justify-content: space-between; }
+.mcud-note-count { font-size: calc(var(--mcu-unit) * 10.58); line-height: calc(var(--mcu-unit) * 15.87); color: #9ca3af; }
+/* 保存按钮：复合类 0,2,0 压过 .mcu-page button 重置（同 .mcu-page .mcu-primary 铁律）。 */
+.mcu-page .mcud-note-save { padding: calc(var(--mcu-unit) * 7.69) calc(var(--mcu-unit) * 19.23); border-radius: calc(var(--mcu-unit) * 100); background: #5baae8; color: #fff; font-size: calc(var(--mcu-unit) * 11.54); font-weight: 600; }
+.mcud-bottom-space { height: calc(var(--mcu-unit) * 38.47); flex: none; }
