@@ -896,20 +896,33 @@ public final class MerchantApplicationService {
         m -> {
           MerchantApplicationEntity a = required(m.selectByIdForUpdate(applicationId));
           strict(a);
+          // 2026-11-20 用户裁决：材料随时可查——审结（通过/拒绝）后运营仍可申请读取，
+          // 不再限 REVIEWING 期。提交版本与任务必须匹配的防错配约束不变；
+          // 读取仍走一次性水印 token 并逐次记入审计。
           if (a.getSubmittedRevisionId() == null
               || a.getSubmittedRevisionId() != revisionId
               || a.getCurrentReviewTaskId() == null
-              || !"REVIEWING".equals(a.getStatus())) {
+              || !("REVIEWING".equals(a.getStatus())
+                  || "APPROVED".equals(a.getStatus())
+                  || "REJECTED".equals(a.getStatus()))) {
             conflict("submitted application facts changed; reload before reading the material");
           }
           MerchantReviewTaskEntity task =
               m.selectTaskForUpdate(applicationId, a.getCurrentReviewTaskId());
-          if (task == null
-              || !"CLAIMED".equals(task.getStatus())
-              || task.getSubmittedRevisionId() == null
-              || task.getSubmittedRevisionId() != revisionId
-              || task.getClaimedByOperatorId() == null
-              || task.getClaimedByOperatorId() != operatorId) {
+          // 2026-11-20 用户裁决：审结（APPROVED/REJECTED）后材料随时可查——任务归属校验仅对
+          // 审核中（CLAIMED 任务）生效；终态任务已关闭，任何有 reveal 权限的运营都可申请读取
+          //（读取仍带水印并逐次记入审计）。
+          boolean decidedApplication =
+              "APPROVED".equals(a.getStatus()) || "REJECTED".equals(a.getStatus());
+          if (decidedApplication
+              ? task == null || task.getSubmittedRevisionId() == null
+                  || task.getSubmittedRevisionId() != revisionId
+              : task == null
+                  || !"CLAIMED".equals(task.getStatus())
+                  || task.getSubmittedRevisionId() == null
+                  || task.getSubmittedRevisionId() != revisionId
+                  || task.getClaimedByOperatorId() == null
+                  || task.getClaimedByOperatorId() != operatorId) {
             throw new ApiException(
                 CommonApiCodes.FORBIDDEN, "the review task is not claimed by this operator");
           }
