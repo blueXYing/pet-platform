@@ -469,7 +469,11 @@ export default function ReviewDetailPage({ client, canOperate, onAuthLost }: { c
             },
             {
               title: '查阅资质材料',
-              description: `${viewedCredentialCount}/${credentialMaterials.length} 份核心证件已看`,
+              // 2026-11-20 用户裁决：已审结的单子不再显示"0/3 份已看"这类进行中口吻的计数——
+              // 未看全时显示"已审结归档"，看全了保留完整记录。
+              description: !isReviewing && viewedCredentialCount < credentialMaterials.length
+                ? '已审结归档'
+                : `${viewedCredentialCount}/${credentialMaterials.length} 份核心证件已看`,
               status: !isReviewing || detail.subjectVerificationStatus === 'VERIFIED' || (credentialMaterials.length > 0 && viewedCredentialCount === credentialMaterials.length)
                 ? 'finish'
                 : taskClaimed ? 'process' : 'wait',
@@ -591,7 +595,10 @@ export default function ReviewDetailPage({ client, canOperate, onAuthLost }: { c
             title="申请材料"
             extra={
               <Space size={8}>
-                <Tag color={viewedCredentialCount === credentialMaterials.length && credentialMaterials.length > 0 ? 'green' : 'blue'}>
+                <Tag color={
+                  !isReviewing ? 'default'
+                    : viewedCredentialCount === credentialMaterials.length && credentialMaterials.length > 0 ? 'green' : 'blue'
+                }>
                   核心证件 {viewedCredentialCount}/{credentialMaterials.length}
                 </Tag>
                 <Tag>全部材料 {viewedTotalCount}/{materials.length}</Tag>
