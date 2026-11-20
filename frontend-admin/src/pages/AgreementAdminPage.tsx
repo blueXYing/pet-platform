@@ -23,6 +23,7 @@ type AgreementVersion = {
 export function createAgreementAdminClient(transport: Transport = fetch) {
   const base = createWebClient(transport);
   return {
+    resetContext: base.resetContext,
     list: () => base.request<{ items: AgreementVersion[]; total: number }>('/api/v1/admin/merchant-agreements'),
     publish: (content: string, requestId: string) =>
       base.request<{ versionId: string; agreementVersion: string; contentSha256: string }>(

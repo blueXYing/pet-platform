@@ -126,6 +126,7 @@ export function App() {
     marketingAdmin.resetContext(nextToken);
     communityAdmin.resetContext(nextToken);
     serviceCategories.resetContext(nextToken);
+    agreementAdmin.resetContext(nextToken);
     try {
       const nextSession = await sessions.session(nextToken);
       const nextPermissions = await sessions.permissions(nextToken);
@@ -177,6 +178,7 @@ export function App() {
     marketingAdmin.resetContext();
     communityAdmin.resetContext();
     serviceCategories.resetContext();
+    agreementAdmin.resetContext();
   }, [token]);
 
   if (location.pathname !== '/login' && !token) return <Navigate to="/login" replace />;
