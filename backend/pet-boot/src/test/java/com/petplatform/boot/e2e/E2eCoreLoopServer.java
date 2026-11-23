@@ -1401,7 +1401,7 @@ public final class E2eCoreLoopServer {
           + "version,created_by_type,created_by_id,created_at,updated_at) "
           + "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
           Long.parseLong(cp[0]), cp[1], cp[2], "MERCHANT", MERCHANT, STORE,
-          cp[3], "MERCHANT_ENROLL", "ONLINE", cp[4], cp[5], cp[6], cp[6],
+          cp[3], "MERCHANT_ENROLL", "ONLINE", cp[4], cp[5], cp[6], cp[6].equals("beauty") ? "限时5折" : "新客专享",
           cp[7], "[\"chengdu\"]", "2026-11-01 00:00:00", "2027-12-31 23:59:59",
           Integer.parseInt(cp[8]), 1, "ADMIN", 9001, now, now);
       jdbc.update("INSERT IGNORE INTO marketing_campaign_store(campaign_id,store_id,status,created_at) "
