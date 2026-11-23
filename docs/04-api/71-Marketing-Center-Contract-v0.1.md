@@ -1,10 +1,13 @@
-# 营销活动中心契约 v0.3（MKT-001）
+# 营销活动中心契约 v0.4（MKT-001）
 
 > 文件名沿用 `71-Marketing-Center-Contract-v0.1.md` 以兼容既有链接；契约版本以本标题和
 > 下方版本记录为准。
 
 状态：v0.3 契约（2026-10-30）。既有 v0.1 部分 IMPLEMENTED_INTERNAL_DEFAULT_OFF；
 v0.3 新增部分随服务目录实现 PR 落地（IMPLEMENTED_INTERNAL_DEFAULT_OFF），F-C-05 视觉验收待补。
+v0.4 随商家营销工具 P1 落地（[41 号补充](../01-prd/41-商家营销工具与会员卡裁决补充-v1.0.md)、
+[CCR-MKT-TOOLS-001](../../planning/ccr/CCR-MKT-TOOLS-001.md)、
+[76 号商家营销工具契约](76-Merchant-Marketing-Tools-Contract-v0.1.md)）。
 依据：[38 号裁决补充](../01-prd/38-营销活动中心裁决补充-v1.0.md)、
 [CCR-MKT-001](../../planning/ccr/CCR-MKT-001.md)、C 端 PRD 5.1.2/5.1.13/5.1.14/5.1.21、
 商家端 PRD 5.7、运营端 PRD 6.4.2/6.11.5、
@@ -23,6 +26,7 @@ v0.3 关联：[CCR-SVC-CAT-001](../../planning/ccr/CCR-SVC-CAT-001.md)、
 | v0.1 | 2026-10-27 | 初版（活动/投放位/报名/页面 Schema/券活动） |
 | v0.2 | 2026-10-28 | §10 首页运营内容位（CCR-MKT-003） |
 | v0.3 | 2026-10-30 | `HOT_SERVICE_TOP` 投放位；首页 `HOT_SERVICE` 落地；商家钜惠图片；活动分类字典校验 |
+| v0.4 | 2026-11-17 | 商家自建活动字段（description/themeCode/highlightText/playType/coverAssetId）、商家封面素材、审核展示；P1 不改变交易规则 |
 
 ## 1. 范围与边界
 
@@ -352,6 +356,16 @@ Schema 为发布快照并 `pageVersion+1`；商家发起活动只有 `PENDING_RE
 | POST `/api/v1/merchant/marketing/my-campaigns/{id}/submit` | `{ expectedVersion }` | status/version |
 | POST `/api/v1/merchant/marketing/my-campaigns/{id}/cancel` | `{ expectedVersion }` | status/version |
 
+v0.4 增补（商家营销工具 P1）：创建/编辑请求与列表/详情响应新增
+`description/themeCode/highlightText/playType/coverAssetId` 字段，约束按
+[76 号契约](76-Merchant-Marketing-Tools-Contract-v0.1.md)：`themeCode` 必填白名单
+（`SPRING_FESTIVAL/MID_AUTUMN/NATIONAL_DAY/CHRISTMAS/NEW_YEAR/DOUBLE_11/OTHER`）；
+`playType` P1 仅 `THEME`；`coverAssetId` 须指向本人/本店 ACTIVE 营销素材；
+`coverUrl` 由服务端按 `coverAssetId` 派生，商家不可直传。商家不可发布；详细字段规定以
+76 号契约为商家字段增量。对应 Schema 变更落地为
+`marketing-migration/V37__merchant_marketing_tools.sql`（CCR 原计划编号 V34，因 V34–V36
+已被 marketing_assets / marketing_home_blocks / hot_service_placement 占用顺延为 V37）。
+
 规则：商家活动 `campaignType=DISPLAY`、`participationMode=PLATFORM_SELECTED`、只绑定本人门店；
 `DRAFT/REJECTED` 可编辑，提交后 `PENDING_REVIEW` 不可编辑；C 端展示由运营发布控制；
 商家不可设置 `couponCampaignId`、不可设置参与门店列表、不可发布。
@@ -398,6 +412,8 @@ Schema 为发布快照并 `pageVersion+1`；商家发起活动只有 `PENDING_RE
 秒杀/拼团/裂变/会员卡/直播、个性化推荐、活动曝光/成交归因报表、被动发券自动触发。
 `HOT_SERVICE_TOP` 不做轮播/多条，全平台最多 1 条；热门服务页内的分类不做运营精选，
 由服务分类字典自动生成，首页内容位只作为入口。
+P1 仅营销工具 hub/商家自建活动，不放开商家券/秒杀/裂变/会员卡（见
+[41 号补充](../01-prd/41-商家营销工具与会员卡裁决补充-v1.0.md)分期）。
 
 ## 10. v0.2 补充：首页运营内容位（2026-10-28，CCR-MKT-003）
 

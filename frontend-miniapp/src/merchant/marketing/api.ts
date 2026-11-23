@@ -1,4 +1,10 @@
-import { id, object, type ConsumerApi } from '../../shared/consumer-api'
+import { id, object, type ConsumerApi, type MarketingAssetReceipt } from '../../shared/consumer-api'
+
+// Contract-76 (P1) merchant marketing tools: the theme/playType whitelists are the decode
+// source of truth; the view layer (model.ts) only maps codes to product copy.
+export type CampaignThemeCode = 'SPRING_FESTIVAL' | 'MID_AUTUMN' | 'NATIONAL_DAY' | 'CHRISTMAS' | 'NEW_YEAR' | 'DOUBLE_11' | 'OTHER'
+export const CAMPAIGN_THEME_CODES: readonly CampaignThemeCode[] = ['SPRING_FESTIVAL', 'MID_AUTUMN', 'NATIONAL_DAY', 'CHRISTMAS', 'NEW_YEAR', 'DOUBLE_11', 'OTHER']
+export type CampaignPlayType = 'THEME'
 
 export type MerchantCampaign = Readonly<{
   campaignId: string; name: string; title: string; subtitle: string | null
@@ -13,11 +19,23 @@ export type MerchantEnrollment = Readonly<{
 }>
 export type MyCampaign = Readonly<{
   campaignId: string; name: string; title: string; subtitle: string | null
+  description: string | null; themeCode: CampaignThemeCode | null; themeLabel: string | null
+  highlightText: string | null; playType: CampaignPlayType | null
+  coverAssetId: string | null; coverUrl: string | null; rejectReason: string | null
   status: string; startAt: string; endAt: string; version: string
+}>
+export type Overview = Readonly<{
+  totalCampaignCount: number; activeCampaignCount: number
+  pendingReviewCount: number; enrolledCampaignCount: number
 }>
 export type Receipt = Readonly<{ id: string; status: string; version: string; occurredAt: string }>
 export type EnrollInput = Readonly<{ offerTag?: string; offerTitle?: string; offerCopy?: string }>
-export type CampaignInput = Readonly<{ name: string; title: string; subtitle?: string; startAt: string; endAt: string }>
+export type CampaignInput = Readonly<{
+  name: string; title: string; subtitle?: string
+  description?: string; themeCode: CampaignThemeCode
+  highlightText?: string; playType: CampaignPlayType
+  coverAssetId?: string; startAt: string; endAt: string
+}>
 
 const fail = (): never => { throw new Error('INVALID_RESPONSE') }
 const text = (value: unknown, max: number): string =>
@@ -32,6 +50,11 @@ const nullableInstant = (value: unknown): string | null => value === null || val
 const version = (value: unknown): string => typeof value === 'string' && /^(0|[1-9][0-9]{0,18})$/.test(value) ? value : fail()
 const integer = (value: unknown, min: number, max: number): number =>
   typeof value === 'number' && Number.isInteger(value) && value >= min && value <= max ? value : fail()
+const nullableId = (value: unknown): string | null => value === null || value === undefined ? null : id(value)
+const themeCode = (value: unknown): CampaignThemeCode | null =>
+  value === null || value === undefined ? null : typeof value === 'string' && (CAMPAIGN_THEME_CODES as readonly string[]).includes(value) ? value as CampaignThemeCode : fail()
+const playType = (value: unknown): CampaignPlayType | null =>
+  value === null || value === undefined ? null : value === 'THEME' ? 'THEME' : fail()
 
 function campaignOf(value: unknown): MerchantCampaign {
   const v = object(value)
@@ -59,8 +82,22 @@ function myCampaignOf(value: unknown): MyCampaign {
   const v = object(value)
   return {
     campaignId: id(v.campaignId), name: text(v.name, 100), title: text(v.title, 100),
-    subtitle: nullableText(v.subtitle, 200), status: text(v.status, 24),
+    subtitle: nullableText(v.subtitle, 200), description: nullableText(v.description, 300),
+    themeCode: themeCode(v.themeCode), themeLabel: nullableText(v.themeLabel, 32),
+    highlightText: nullableText(v.highlightText, 100), playType: playType(v.playType),
+    coverAssetId: nullableId(v.coverAssetId), coverUrl: nullableText(v.coverUrl, 512),
+    rejectReason: nullableText(v.rejectReason, 500),
+    status: text(v.status, 24),
     startAt: instant(v.startAt), endAt: instant(v.endAt), version: version(v.version),
+  }
+}
+function overviewOf(value: unknown): Overview {
+  const v = object(value)
+  return {
+    totalCampaignCount: integer(v.totalCampaignCount, 0, 1000000000),
+    activeCampaignCount: integer(v.activeCampaignCount, 0, 1000000000),
+    pendingReviewCount: integer(v.pendingReviewCount, 0, 1000000000),
+    enrolledCampaignCount: integer(v.enrolledCampaignCount, 0, 1000000000),
   }
 }
 function receiptOf(value: unknown): Receipt {
@@ -95,6 +132,17 @@ export class MerchantMarketingApi {
 
   myCampaigns(merchantId: string, storeId: string) {
     return this.api.request({ method: 'GET', path: '/api/v1/merchant/marketing/my-campaigns', data: { merchantId, storeId, page: 1, pageSize: 50 } }, value => pageOf(value, myCampaignOf))
+  }
+
+  /** Contract-76 §4.1: only the four provable counts; no order/revenue attribution fields. */
+  overview(merchantId: string, storeId: string) {
+    return this.api.request({ method: 'GET', path: '/api/v1/merchant/marketing/overview', data: { merchantId, storeId } }, overviewOf)
+  }
+
+  /** One-shot cover upload without a journal; the editor flow uses MarketingCoverUpload instead. */
+  async uploadMarketingAsset(filePath: string): Promise<MarketingAssetReceipt> {
+    const requestId = await this.api.uuid()
+    return this.api.uploadMarketingAsset({ filePath, requestId })
   }
 
   createCampaign(merchantId: string, storeId: string, input: CampaignInput) {

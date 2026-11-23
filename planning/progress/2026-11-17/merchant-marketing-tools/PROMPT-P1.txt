@@ -1,0 +1,24 @@
+你负责执行本仓库的 Phase 1（营销工具 hub + 节日营销 + 商家封面素材）。
+
+工作区（必须确认）：/mnt/d/wt-marketing-tools
+分支（必须确认）：codex/merchant-marketing-tools-20261117
+开工前运行并核对：
+  git -C /mnt/d/wt-marketing-tools rev-parse --show-toplevel
+  git -C /mnt/d/wt-marketing-tools branch --show-current
+必须分别输出上述路径与分支；不一致就停止并报告，不要切换 worktree、不要在其他 worktree 开工。
+不要操作 /mnt/d/wt-* 下的其他 worktree。
+以下相对路径均相对于该 worktree；先 cd 到该目录再执行。
+
+先按顺序完整阅读：
+1. AGENTS.md
+2. docs/01-prd/41-商家营销工具与会员卡裁决补充-v1.0.md
+3. planning/ccr/CCR-MKT-TOOLS-001.md
+4. docs/04-api/76-Merchant-Marketing-Tools-Contract-v0.1.md
+5. docs/04-api/71-Marketing-Center-Contract-v0.1.md
+6. planning/progress/2026-11-17/merchant-marketing-tools/HANDOFF.md（执行手册）
+7. planning/progress/2026-11-17/merchant-marketing-tools/PLAN.md（背景参考）
+
+然后按 HANDOFF.md §4 执行 WP-00 到 WP-05。所有决策已固定，不要向用户提问，不要做 Phase 2–P5 的功能。
+不要修改订单/支付/退款/售后/核销规则；不要伪造统计；不要用 Docker；不要 push main/develop。
+提交时只 stage 本阶段相关文件，不要 git add -A，不要提交无关的未跟踪文件（如 74-draft、planning/progress/2026-10-23/devtools-api/）。
+每完成一个工作包跑对应测试；最后按 HANDOFF.md §10 模板报告变更文件、契约/Schema 变更、测试命令与结果、遗留风险。

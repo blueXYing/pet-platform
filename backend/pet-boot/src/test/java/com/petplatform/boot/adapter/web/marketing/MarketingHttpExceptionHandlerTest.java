@@ -20,6 +20,8 @@ class MarketingHttpExceptionHandlerTest {
         assertStatus(409, "CAMPAIGN_LANDING_INVALID");
         assertStatus(409, "PLACEMENT_LIMIT_EXCEEDED");
         assertStatus(400, "SERVICE_CATEGORY_INVALID");
+        assertStatus(400, "CAMPAIGN_THEME_INVALID");
+        assertStatus(400, "CAMPAIGN_PLAY_TYPE_INVALID");
         assertStatus(409, "ENROLLMENT_ALREADY_EXISTS");
         assertStatus(409, "ENROLLMENT_STATE_NOT_ALLOWED");
         assertStatus(400, "CAMPAIGN_PAGE_INVALID");

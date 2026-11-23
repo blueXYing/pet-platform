@@ -1,0 +1,8 @@
+你负责执行本仓库的 Phase 4a（裂变拉新/返券）。
+
+工作区（必须确认）：/mnt/d/wt-marketing-tools
+分支：以用户本条消息为准；若未指定，沿用当前 worktree 的当前分支。开工前核对 `git -C /mnt/d/wt-marketing-tools rev-parse --show-toplevel` 与 `git -C /mnt/d/wt-marketing-tools branch --show-current`；不一致就停止并报告，不要切换 worktree、不要操作 /mnt/d/wt-*。
+
+先读 HANDOFF.md §7 与 PLAN.md §9、41 号补充 §6；先确认 P3 可用。不存在就停止报告。
+存在则第一步创建 CCR-MKT-REFERRAL-001、79 号契约，然后实现。奖励只发商家券；不做现金/拼团；不要向用户提问；不要改交易规则；不要用 Docker；不要 push main/develop。
+完成后按 HANDOFF.md §10 模板报告。

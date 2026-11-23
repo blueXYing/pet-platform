@@ -33,6 +33,15 @@ public interface MarketingMerchantApi {
 
     MarketingViews.Receipt cancelMyCampaign(MerchantCampaignStatusCommand command);
 
+    /**
+     * Contract 76 §4.1: P1 marketing hub overview. Only the four provable counters are
+     * returned; no order/revenue/conversion figures are ever computed here.
+     */
+    MarketingViews.MerchantOverview overview(MerchantOverviewQuery query);
+
+    /** Contract 76 §4.2: merchant campaign-cover artwork upload (PNG/JPEG, sniffed server-side). */
+    MarketingViews.AssetView uploadAsset(UploadMerchantAssetCommand command);
+
     record MerchantScope(long userId, long merchantId, long storeId) {}
 
     record MerchantCampaignListQuery(
@@ -54,13 +63,32 @@ public interface MarketingMerchantApi {
     record MerchantCreateCampaignCommand(
             MerchantScope scope, String name, String title, String subtitle,
             String tagCode, String tagName, String coverUrl,
+            String description, String themeCode, String highlightText,
+            String playType, String coverAssetId,
             OffsetDateTime startAt, OffsetDateTime endAt, CommandContext context) {}
 
     record MerchantUpdateCampaignCommand(
             String campaignId, String name, String title, String subtitle,
             String tagCode, String tagName, String coverUrl,
+            String description, String themeCode, String highlightText,
+            String playType, String coverAssetId,
             OffsetDateTime startAt, OffsetDateTime endAt, long expectedVersion,
             MerchantScope scope, CommandContext context) {}
+
+    record MerchantOverviewQuery(MerchantScope scope, QueryContext context) {}
+
+    record UploadMerchantAssetCommand(
+            MerchantScope scope, byte[] content, String contentType, CommandContext context) {
+
+        public UploadMerchantAssetCommand {
+            content = content == null ? null : content.clone();
+        }
+
+        @Override
+        public byte[] content() {
+            return content == null ? null : content.clone();
+        }
+    }
 
     record MerchantCampaignStatusCommand(
             String campaignId, long expectedVersion, MerchantScope scope, CommandContext context) {}

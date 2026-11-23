@@ -77,6 +77,11 @@ assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
     'pages/stats/service-orders',
     // Contract 71 merchant marketing center (2026-10-27 CCR-MKT-001).
     'pages/marketing/index',
+    // Contract 76 merchant marketing tools P1 (CCR-MKT-TOOLS-001): platform enrollments,
+    // festival-campaign list and editor (Figma 12:7982/18:11090/18:11706).
+    'pages/marketing/platform/index',
+    'pages/marketing/campaigns/index',
+    'pages/marketing/campaigns/edit',
     // 2026-11-04 Figma restore PR #211 batch 1: user-approved minimal "我的" hub above the tab bar.
     'pages/mine/index'] },
   { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form', 'vaccine-form', 'deworm-form'] },

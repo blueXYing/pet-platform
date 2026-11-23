@@ -1,0 +1,31 @@
+/* 创建/编辑节日活动页专属（共享基础在 ../index.css；Figma 18:11706）*/
+.mmk-edit { padding: 10rpx 30rpx 40rpx; }
+.mmk-edit-banner { margin-top: 24rpx; padding: 24rpx; border-radius: 24rpx; background: #ffffff; border: 2rpx solid #c0ecff; }
+.mmerk-edit-reject { border-color: #fecaca; background: #fef2f2; }
+.mmk-edit-banner-title { display: block; font-size: 25rpx; font-weight: 600; color: #dc2626; }
+.mmk-edit-banner-text { display: block; margin-top: 8rpx; font-size: 23rpx; color: #6b7280; }
+.mmk-cover { position: relative; margin-top: 14rpx; height: 308rpx; border-radius: 31rpx; background: #f1f5f9; border: 2rpx dashed #c0ecff; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.mmk-cover-image { width: 100%; height: 100%; }
+.mmk-cover-placeholder { font-size: 23rpx; color: #9ca3af; text-align: center; padding: 0 40rpx; }
+.mmk-cover-badge { position: absolute; right: 20rpx; bottom: 20rpx; display: flex; align-items: center; padding: 8rpx 20rpx; border-radius: 999rpx; background: rgba(0, 0, 0, 0.55); }
+.mmk-cover-badge text { font-size: 21rpx; color: #ffffff; }
+.mmk-cover-camera { width: 24rpx; height: 23rpx; margin-right: 8rpx; }
+.mmk-chips { display: flex; flex-wrap: wrap; gap: 16rpx; margin-top: 14rpx; }
+.mmk-chip { display: flex; align-items: center; padding: 0 30rpx; height: 74rpx; border-radius: 999rpx; background: #ffffff; border: 2rpx solid #e5e7eb; }
+.mmk-chip text { font-size: 27rpx; color: #4b5563; }
+.mmk-chip-active { background: #5baae8; border-color: #5baae8; }
+.mmk-chip-active text { color: #ffffff; }
+.mmk-chip-locked { opacity: 0.85; }
+.mmk-chip-disabled { background: #f3f4f6; border-color: #f3f4f6; }
+.mmk-chip-disabled text { color: #9ca3af; }
+.mmk-chip-hint { margin-left: 8rpx; font-size: 19rpx; color: #9ca3af; }
+.mmk-chip-active .mmk-chip-hint { color: rgba(255, 255, 255, 0.9); }
+.mmedit-textarea { height: 204rpx; margin-top: 14rpx; }
+.mmk-edit-actions { display: flex; gap: 22rpx; margin-top: 36rpx; }
+.mmk-edit-action { flex: 1; height: 92rpx; border-radius: 24rpx; background: #5baae8; display: flex; align-items: center; justify-content: center; }
+.mmk-edit-action-secondary { background: #ffffff; border: 2rpx solid #c0ecff; }
+.mmk-edit-action-secondary .mmk-edit-action-text { color: #5baae8; }
+.mmk-edit-action-text { font-size: 27rpx; font-weight: 600; color: #ffffff; }
+.mmk-edit-action-disabled { opacity: 0.55; }
+.mmedit-cancel { margin-top: 20rpx; color: #6b7280; }
+.mmedit-tail { margin-top: 28rpx; text-align: center; }

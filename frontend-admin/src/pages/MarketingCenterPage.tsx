@@ -5,8 +5,8 @@ import type { AdminTemplateSummary, CouponAdminClient } from '../api/couponAdmin
 import { RequestFailure } from '../request';
 import type { ServiceCategoryAdminClient } from '../api/serviceCategoryAdmin';
 import {
-  describeMarketingFailure, HOME_BLOCK_TARGET_TYPES, isMarketingStale, PLACEMENT_POSITIONS,
-  targetNeedsValue,
+  campaignThemeLabel, CAMPAIGN_PLAY_TYPES, CAMPAIGN_THEMES, describeMarketingFailure,
+  HOME_BLOCK_TARGET_TYPES, isMarketingStale, PLACEMENT_POSITIONS, targetNeedsValue,
   type Campaign, type CampaignDetail, type CampaignInput, type CouponCampaign, type CouponClaim,
   type Enrollment, type HomeBlock, type MarketingAdminClient, type Placement, type StoreLink, type StoreOption,
 } from '../api/marketingAdmin';
@@ -77,6 +77,44 @@ function AssetPicker({ name, label, defaultValue, client, canManage, onFailure }
     {busy && <InlineStatus>上传中…</InlineStatus>}
     {url && <img src={url} alt="素材预览" style={{ maxWidth: 180, maxHeight: 100, display: 'block', marginTop: 8 }} />}
   </div>;
+}
+
+// Contract 76 v0.1 §5: campaign cover preview. coverUrl is a server-derived read-only URL
+// and may be null (no cover) or unreachable (asset base offline) — a load failure degrades
+// to an em dash instead of surfacing an error, so lists/details never stop rendering.
+function CoverPreview({ url, alt, width = 120, height = 60 }: { url: string | null; alt: string; width?: number; height?: number }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => { setFailed(false); }, [url]);
+  if (!url || failed) return <>—</>;
+  return <img src={url} alt={alt} loading="lazy" style={{ maxWidth: width, maxHeight: height, display: 'block' }} onError={() => setFailed(true)} />;
+}
+
+// Contract 76 v0.1 §3.1/§5: theme label prefers the server-derived themeLabel; a missing
+// label falls back to the frontend code→display-name mapping (raw code for unknown codes).
+function themeText(campaign: Pick<Campaign, 'themeLabel' | 'themeCode'>) {
+  return (campaign.themeLabel ?? campaignThemeLabel(campaign.themeCode)) || '—';
+}
+
+// Contract 76 v0.1 §5: merchant-marketing extension fields on the operator campaign
+// create/edit forms. All optional — an untouched edit of a pre-P1 campaign submits none of
+// them (undefined keys never reach the wire), and empty values stay empty rather than
+// fabricating defaults. Constraints: description ≤300, highlightText ≤100, themeCode from
+// the backend whitelist, playType THEME only (P1).
+function CampaignExtensionFields({ campaign }: { campaign?: Campaign }) {
+  return <>
+    <p className="hint">以下为节日营销扩展字段（契约 76，均可空）：商家提交的「节日主题」玩法活动在发布前会校验封面素材有效。</p>
+    <label className="filter-item">说明（≤300）<Input.TextArea name="description" defaultValue={campaign?.description ?? ''} maxLength={300} rows={3} placeholder="活动规则与参与方式" /></label>
+    <label className="filter-item">节日主题<select name="themeCode" defaultValue={campaign?.themeCode ?? ''}>
+      <option value="">未设置</option>
+      {CAMPAIGN_THEMES.map(([value, label]) => <option key={value} value={value}>{label}（{value}）</option>)}
+    </select></label>
+    <label className="filter-item">主打项目（≤100）<Input name="highlightText" defaultValue={campaign?.highlightText ?? ''} maxLength={100} placeholder="如 宠物月饼礼盒" /></label>
+    <label className="filter-item">玩法<select name="playType" defaultValue={campaign?.playType ?? ''}>
+      <option value="">未设置（后端按 THEME 处理）</option>
+      {CAMPAIGN_PLAY_TYPES.map(([value, label]) => <option key={value} value={value}>{label}（{value}）</option>)}
+    </select></label>
+    <label className="filter-item">封面素材 ID（商家上传的封面资产，可空）<Input name="coverAssetId" defaultValue={campaign?.coverAssetId ?? ''} maxLength={32} /></label>
+  </>;
 }
 
 function PlacementForm({ placement, client, canManage, busy, onSubmit, onFailure, onCancel }: {
@@ -441,6 +479,11 @@ export default function MarketingCenterPage({ client, couponClient, categoryClie
             tagCode: String(form.get('tagCode') ?? '').trim() || undefined,
             tagName: String(form.get('tagName') ?? '').trim() || undefined,
             coverUrl: String(form.get('coverUrl') ?? '').trim() || undefined,
+            description: String(form.get('description') ?? '').trim() || undefined,
+            themeCode: String(form.get('themeCode') ?? '').trim() || undefined,
+            highlightText: String(form.get('highlightText') ?? '').trim() || undefined,
+            playType: String(form.get('playType') ?? '').trim() || undefined,
+            coverAssetId: String(form.get('coverAssetId') ?? '').trim() || undefined,
             cityCodes: csv(String(form.get('cityCodes') ?? '')),
             serviceCategoryCodes: form.getAll('serviceCategoryCode').map(String),
             startAt: iso(String(form.get('startAt') ?? '')),
@@ -461,6 +504,7 @@ export default function MarketingCenterPage({ client, couponClient, categoryClie
           <label className="filter-item">标签编码<Input name="tagCode" placeholder="new-user / beauty / boarding" maxLength={32} /></label>
           <label className="filter-item">标签名称<Input name="tagName" placeholder="新客专享 / 美容优惠" maxLength={32} /></label>
           <AssetPicker name="coverUrl" label="活动封面" client={client} canManage={canManage} onFailure={caught => authOrError(caught, '素材上传失败')} />
+          <CampaignExtensionFields />
           <label className="filter-item">城市编码（逗号分隔，空=全部）<Input name="cityCodes" placeholder="shanghai,chengdu" /></label>
           <CategoryField state={categoryState} options={categoryOptions} defaultCodes={[]}
             failureText={categoryFailure} onRetry={() => void loadCategoryOptions()} />
@@ -475,10 +519,15 @@ export default function MarketingCenterPage({ client, couponClient, categoryClie
         </form>
       </section>}
       {campaigns === undefined ? <InlineStatus>加载中</InlineStatus> : <table>
-        <thead><tr><th>ID</th><th>名称</th><th>类型</th><th>状态</th><th>时间</th><th>门店</th><th>版本</th><th>操作</th></tr></thead>
+        <thead><tr><th>ID</th><th>名称</th><th>类型</th><th>主题</th><th>玩法</th><th>主打项目</th><th>说明</th><th>封面</th><th>状态</th><th>时间</th><th>门店</th><th>版本</th><th>操作</th></tr></thead>
         <tbody>{campaigns.map(campaign => <tr key={campaign.campaignId}>
           <td>{campaign.campaignId}</td><td>{campaign.name}</td>
           <td>{campaign.campaignType} / {campaign.participationMode}</td>
+          <td>{themeText(campaign)}</td>
+          <td>{campaign.playType ?? '—'}</td>
+          <td>{campaign.highlightText ?? '—'}</td>
+          <td><span title={campaign.description ?? undefined} style={{ display: 'inline-block', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', verticalAlign: 'bottom' }}>{campaign.description ?? '—'}</span></td>
+          <td><CoverPreview url={campaign.coverUrl} alt={`活动封面 ${campaign.name}`} /></td>
           <td><StatusTag label={STATUS_TEXT[campaign.status] ?? campaign.status} status={campaign.status} /></td>
           <td>{campaign.startAt.slice(0, 10)} ~ {campaign.endAt.slice(0, 10)}</td>
           <td>{campaign.storeCount}</td><td>{campaign.version}</td>
@@ -500,11 +549,19 @@ export default function MarketingCenterPage({ client, couponClient, categoryClie
             {canPublish && ['DRAFT', 'PENDING_REVIEW', 'SCHEDULED', 'PAUSED'].includes(campaign.status) &&
               <Button danger disabled={busy} onClick={() => void run(() => client.campaignAction(campaign.campaignId, 'cancel', campaign.version), '活动已取消')}>取消</Button>}
           </td>
-        </tr>)}{campaigns.length === 0 && <tr><td colSpan={8}>无活动</td></tr>}</tbody>
+        </tr>)}{campaigns.length === 0 && <tr><td colSpan={13}>无活动</td></tr>}</tbody>
       </table>}
       {detail && <section className="detail-card" aria-label="活动详情">
         <h3>{detail.campaign.title}（{STATUS_TEXT[detail.campaign.status] ?? detail.campaign.status} · v{detail.campaign.version}）</h3>
         <p>ID {detail.campaign.campaignId} · 页面版本 {detail.campaign.pageVersion} · 门店 {detail.campaign.storeCount}</p>
+        <dl style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '2px 12px', margin: '8px 0' }}>
+          <dt>说明</dt><dd style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{detail.campaign.description ?? '—'}</dd>
+          <dt>主题</dt><dd style={{ margin: 0 }}>{themeText(detail.campaign)}</dd>
+          <dt>主打项目</dt><dd style={{ margin: 0 }}>{detail.campaign.highlightText ?? '—'}</dd>
+          <dt>玩法</dt><dd style={{ margin: 0 }}>{detail.campaign.playType ?? '—'}</dd>
+          <dt>封面素材</dt><dd style={{ margin: 0 }}>{detail.campaign.coverAssetId ?? '—'}</dd>
+          <dt>封面</dt><dd style={{ margin: 0 }}><CoverPreview url={detail.campaign.coverUrl} alt="活动封面预览" width={240} height={120} /></dd>
+        </dl>
         {canManage && <details key={detail.campaign.version}>
           <summary>编辑活动基础信息</summary>
           <form onSubmit={event => {
@@ -519,6 +576,11 @@ export default function MarketingCenterPage({ client, couponClient, categoryClie
               tagCode: String(form.get('tagCode') ?? '').trim() || undefined,
               tagName: String(form.get('tagName') ?? '').trim() || undefined,
               coverUrl: String(form.get('coverUrl') ?? '').trim() || undefined,
+              description: String(form.get('description') ?? '').trim() || undefined,
+              themeCode: String(form.get('themeCode') ?? '').trim() || undefined,
+              highlightText: String(form.get('highlightText') ?? '').trim() || undefined,
+              playType: String(form.get('playType') ?? '').trim() || undefined,
+              coverAssetId: String(form.get('coverAssetId') ?? '').trim() || undefined,
               cityCodes: csv(String(form.get('cityCodes') ?? '')),
               serviceCategoryCodes: form.getAll('serviceCategoryCode').map(String),
               startAt: iso(String(form.get('startAt') ?? '')),
@@ -539,6 +601,7 @@ export default function MarketingCenterPage({ client, couponClient, categoryClie
             <label className="filter-item">标签编码<Input name="tagCode" defaultValue={detail.campaign.tagCode ?? ''} maxLength={32} /></label>
             <label className="filter-item">标签名称<Input name="tagName" defaultValue={detail.campaign.tagName ?? ''} maxLength={32} /></label>
             <AssetPicker name="coverUrl" label="活动封面" defaultValue={detail.campaign.coverUrl} client={client} canManage={canManage} onFailure={caught => authOrError(caught, '素材上传失败')} />
+            <CampaignExtensionFields campaign={detail.campaign} />
             <label className="filter-item">城市编码（逗号分隔，空=全部）<Input name="cityCodes" defaultValue={detail.campaign.cityCodes.join(',')} /></label>
             <CategoryField state={categoryState} options={campaignCategoryOptions(detail.campaign.serviceCategoryCodes)}
               defaultCodes={detail.campaign.serviceCategoryCodes} failureText={categoryFailure}

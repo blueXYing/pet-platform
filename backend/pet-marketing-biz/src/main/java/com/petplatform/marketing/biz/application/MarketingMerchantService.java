@@ -1,9 +1,12 @@
 package com.petplatform.marketing.biz.application;
 
+import com.petplatform.common.ApiException;
 import com.petplatform.common.CommandContext;
 import com.petplatform.marketing.api.MarketingMerchantApi;
 import com.petplatform.marketing.api.dto.MarketingViews;
+import com.petplatform.marketing.biz.application.port.MarketingAssetObjectStore;
 import com.petplatform.marketing.biz.infrastructure.persistence.MarketingStore;
+import com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities;
 import com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities.CampaignRow;
 import com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities.CampaignStoreRow;
 import com.petplatform.marketing.biz.infrastructure.persistence.entity.MarketingEntities.EnrollmentRow;
@@ -17,11 +20,18 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-/** Merchant-facing enrollment / merchant-initiated campaign flows (contract 71 §5). */
+/** Merchant-facing enrollment / merchant-initiated campaign flows (contract 71 §5, 76 §4). */
 public final class MarketingMerchantService extends MarketingSupport implements MarketingMerchantApi {
 
-    public MarketingMerchantService(MarketingStore store, MarketingStoreFactsPort storeFacts, Clock clock) {
+    private final MarketingAssetWriter assetWriter;
+    private final String assetPublicBaseUrl;
+
+    public MarketingMerchantService(MarketingStore store, MarketingStoreFactsPort storeFacts,
+            Clock clock, MarketingAssetObjectStore assetObjectStore, String assetPublicBaseUrl) {
         super(store, null, Objects.requireNonNull(storeFacts), null, clock);
+        this.assetWriter = new MarketingAssetWriter(store,
+                Objects.requireNonNull(assetObjectStore, "assetObjectStore is required"));
+        this.assetPublicBaseUrl = assetPublicBaseUrl == null ? "" : assetPublicBaseUrl.strip();
     }
 
     @Override
@@ -238,7 +248,12 @@ public final class MarketingMerchantService extends MarketingSupport implements 
         String subtitle = optionalText(command.subtitle(), 200, "subtitle");
         String tagCode = optionalTagCode(command.tagCode());
         String tagName = optionalText(command.tagName(), 32, "tagName");
-        String coverUrl = optionalUrl(command.coverUrl(), "coverUrl");
+        String description = optionalText(command.description(), 300, "description");
+        String highlightText = optionalText(command.highlightText(), 100, "highlightText");
+        String themeCode = requireThemeCode(command.themeCode(), true);
+        String playType = requirePlayType(command.playType(), true);
+        Long coverAssetId = optionalAssetId(command.coverAssetId());
+        requireCoverUrlAbsent(command.coverUrl());
         requireWindow(command.startAt(), command.endAt());
         String key = requestKey("marketing.campaign.merchant.create", command.context(),
                 scope.merchantId() + ":" + scope.storeId());
@@ -250,15 +265,25 @@ public final class MarketingMerchantService extends MarketingSupport implements 
         params.put("subtitle", subtitle);
         params.put("tagCode", tagCode);
         params.put("tagName", tagName);
-        params.put("coverUrl", coverUrl);
+        params.put("description", description);
+        params.put("themeCode", themeCode);
+        params.put("highlightText", highlightText);
+        params.put("playType", playType);
+        params.put("coverAssetId", coverAssetId);
         params.put("startAt", command.startAt());
         params.put("endAt", command.endAt());
         return idempotent(key, "marketing.campaign.merchant.create", params, MarketingSupport::parseReceipt,
                 () -> store.execute(mapper -> {
                     MarketingStoreFactsPort.StoreFacts facts = requireVisibleStore(scope.storeId());
+                    String coverUrl = null;
+                    if (coverAssetId != null) {
+                        requireOwnedAsset(mapper, scope, coverAssetId);
+                        coverUrl = coverUrlFor(coverAssetId);
+                    }
                     long id = store.nextId();
-                    CampaignRow row = merchantCampaignRow(id, scope, name, title, subtitle, tagCode,
-                            tagName, coverUrl, command.startAt(), command.endAt(), facts);
+                    CampaignRow row = merchantCampaignRow(id, scope, name, title, subtitle,
+                            tagCode, tagName, description, themeCode, highlightText, playType,
+                            coverAssetId, coverUrl, command.startAt(), command.endAt(), facts);
                     row.pageSchemaJson = MarketingPageSchema.defaultSchema(row);
                     row.pageDraftVersion = 1;
                     if (mapper.insertCampaign(row) != 1) unavailable("campaign insert failed");
@@ -280,7 +305,12 @@ public final class MarketingMerchantService extends MarketingSupport implements 
         String subtitle = optionalText(command.subtitle(), 200, "subtitle");
         String tagCode = optionalTagCode(command.tagCode());
         String tagName = optionalText(command.tagName(), 32, "tagName");
-        String coverUrl = optionalUrl(command.coverUrl(), "coverUrl");
+        String description = optionalText(command.description(), 300, "description");
+        String highlightText = optionalText(command.highlightText(), 100, "highlightText");
+        String themeCode = requireThemeCode(command.themeCode(), true);
+        String playType = requirePlayType(command.playType(), true);
+        Long coverAssetId = optionalAssetId(command.coverAssetId());
+        requireCoverUrlAbsent(command.coverUrl());
         requireWindow(command.startAt(), command.endAt());
         String key = requestKey("marketing.campaign.merchant.update", command.context(),
                 scope.merchantId() + ":" + scope.storeId() + ":" + campaignId);
@@ -292,7 +322,11 @@ public final class MarketingMerchantService extends MarketingSupport implements 
         params.put("subtitle", subtitle);
         params.put("tagCode", tagCode);
         params.put("tagName", tagName);
-        params.put("coverUrl", coverUrl);
+        params.put("description", description);
+        params.put("themeCode", themeCode);
+        params.put("highlightText", highlightText);
+        params.put("playType", playType);
+        params.put("coverAssetId", coverAssetId);
         params.put("startAt", command.startAt());
         params.put("endAt", command.endAt());
         return idempotent(key, "marketing.campaign.merchant.update", params, MarketingSupport::parseReceipt,
@@ -308,11 +342,21 @@ public final class MarketingMerchantService extends MarketingSupport implements 
                     if (current.version == null || current.version != command.expectedVersion()) {
                         conflict("活动版本已变化");
                     }
+                    String coverUrl = null;
+                    if (coverAssetId != null) {
+                        requireOwnedAsset(mapper, scope, coverAssetId);
+                        coverUrl = coverUrlFor(coverAssetId);
+                    }
                     current.name = name;
                     current.title = title;
                     current.subtitle = subtitle;
                     current.tagCode = tagCode;
                     current.tagName = tagName;
+                    current.description = description;
+                    current.themeCode = themeCode;
+                    current.highlightText = highlightText;
+                    current.playType = playType;
+                    current.coverAssetId = coverAssetId;
                     current.coverUrl = coverUrl;
                     current.startAt = utc(command.startAt());
                     current.endAt = utc(command.endAt());
@@ -351,6 +395,48 @@ public final class MarketingMerchantService extends MarketingSupport implements 
                 Set.of("DRAFT", "REJECTED", "PENDING_REVIEW"), "CANCEL");
     }
 
+    @Override
+    public MarketingViews.MerchantOverview overview(MerchantOverviewQuery query) {
+        Objects.requireNonNull(query, "query is required");
+        requireMerchantQuery(query.context());
+        MerchantScope scope = requireScope(query.scope(), false);
+        return store.read(mapper -> {
+            long total = mapper.countMerchantCampaigns(
+                    scope.merchantId(), scope.storeId(), null, false, null);
+            long active = mapper.countMerchantCampaigns(
+                    scope.merchantId(), scope.storeId(), "ONLINE", true, nowUtc());
+            long pendingReview = mapper.countMerchantCampaigns(
+                    scope.merchantId(), scope.storeId(), "PENDING_REVIEW", false, null);
+            long enrolled = mapper.countMerchantEnrollmentsByStatus(
+                    scope.merchantId(), scope.storeId(),
+                    List.of("SUBMITTED", "UNDER_REVIEW", "APPROVED"));
+            return new MarketingViews.MerchantOverview(total, active, pendingReview, enrolled);
+        });
+    }
+
+    @Override
+    public MarketingViews.AssetView uploadAsset(UploadMerchantAssetCommand command) {
+        Objects.requireNonNull(command, "command is required");
+        requireMerchantCommand(command.context());
+        MerchantScope scope = requireScope(command.scope(), true);
+        if (assetPublicBaseUrl.isEmpty()) unavailable("素材公开地址未配置");
+        MarketingAssetWriter.Validated asset = MarketingAssetWriter.validate(command.content());
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put("sha256", asset.sha256());
+        params.put("contentType", asset.contentType());
+        params.put("width", asset.width());
+        params.put("height", asset.height());
+        params.put("bytes", asset.content().length);
+        String key = requestKey("marketing.merchant.asset.upload", command.context(),
+                scope.merchantId() + ":" + scope.storeId());
+        return idempotent(key, "marketing.merchant.asset.upload", params,
+                MarketingAssetWriter::parseAsset,
+                () -> store.execute(mapper -> assetWriter.persist(mapper, asset, "MERCHANT",
+                        scope.merchantId(), scope.storeId(), "CAMPAIGN_COVER",
+                        operatorId(command.context()), command.context())),
+                MarketingAssetWriter::assetJson);
+    }
+
     private MarketingViews.Receipt merchantCampaignStatus(
             MerchantCampaignStatusCommand command, String toStatus,
             java.util.Set<String> fromStatuses, String action) {
@@ -374,9 +460,23 @@ public final class MarketingMerchantService extends MarketingSupport implements 
                         conflict("活动版本已变化");
                     }
                     if (!fromStatuses.contains(current.status)) conflict("CAMPAIGN_STATE_NOT_ALLOWED", "当前状态不能变更");
-                    if ("PENDING_REVIEW".equals(toStatus)
-                            && mapper.countCampaignStores(campaignId) == 0) {
-                        conflict("CAMPAIGN_LANDING_INVALID", "活动至少需要一家参与门店");
+                    if ("PENDING_REVIEW".equals(toStatus)) {
+                        // Contract 76 §4.5 pre-submit gate: owned ACTIVE cover, valid theme and
+                        // play type, and an end still in the future.
+                        if (current.coverAssetId == null) {
+                            throw new ApiException("MARKETING_ASSET_INVALID", "提交审核前必须上传封面");
+                        }
+                        requireOwnedAsset(mapper, scope, current.coverAssetId);
+                        requireThemeCode(current.themeCode, true);
+                        if (current.playType != null && !"THEME".equals(current.playType)) {
+                            throw new ApiException("CAMPAIGN_PLAY_TYPE_INVALID", "P1 仅支持 THEME 玩法");
+                        }
+                        if (current.endAt == null || !current.endAt.isAfter(nowUtc())) {
+                            conflict("CAMPAIGN_STATE_NOT_ALLOWED", "活动已过期，不能提交审核");
+                        }
+                        if (mapper.countCampaignStores(campaignId) == 0) {
+                            conflict("CAMPAIGN_LANDING_INVALID", "活动至少需要一家参与门店");
+                        }
                     }
                     if (mapper.updateCampaignStatus(campaignId, current.status, toStatus,
                             command.expectedVersion(), null, nowUtc()) != 1) {
@@ -412,6 +512,41 @@ public final class MarketingMerchantService extends MarketingSupport implements 
         return facts;
     }
 
+    /** Contract 76 §3.1: merchants never supply a cover URL; it is always derived from the asset. */
+    private static void requireCoverUrlAbsent(String coverUrl) {
+        if (coverUrl != null && !coverUrl.isBlank()) {
+            throw new ApiException("MARKETING_ASSET_INVALID", "封面必须通过素材上传获得，不能直接填写 URL");
+        }
+    }
+
+    private static Long optionalAssetId(String value) {
+        if (value == null || value.isBlank()) return null;
+        return id(value.strip());
+    }
+
+    /**
+     * Contract 76 §3.1: the cover must be an ACTIVE merchant-owned artwork of the same
+     * merchant, bound to this store or store-less, with purpose CAMPAIGN_COVER. Every failure
+     * (including a foreign-store or platform asset) answers 400 MARKETING_ASSET_INVALID.
+     */
+    private static void requireOwnedAsset(MarketingMapper mapper, MerchantScope scope, long assetId) {
+        MarketingEntities.AssetRow asset = mapper.selectAssetById(assetId);
+        if (asset == null
+                || !"MERCHANT".equals(asset.ownerType)
+                || asset.ownerMerchantId == null || asset.ownerMerchantId != scope.merchantId()
+                || (asset.ownerStoreId != null && asset.ownerStoreId != scope.storeId())
+                || !"CAMPAIGN_COVER".equals(asset.purpose)) {
+            throw new ApiException("MARKETING_ASSET_INVALID", "封面素材不属于本门店或不可用");
+        }
+    }
+
+    /** Derived, read-only cover URL; a campaign without a public base never lands coverless. */
+    private String coverUrlFor(long assetId) {
+        if (assetPublicBaseUrl.isEmpty()) unavailable("素材公开地址未配置");
+        return assetPublicBaseUrl.replaceAll("/$", "")
+                + "/api/v1/c/marketing/assets/" + Long.toUnsignedString(assetId);
+    }
+
     private static boolean cityAllowed(CampaignRow row, String city) {
         List<String> cities = parseJsonList(row.cityCodes);
         return cities.isEmpty() || (city != null && cities.contains(city));
@@ -425,7 +560,8 @@ public final class MarketingMerchantService extends MarketingSupport implements 
     }
 
     private CampaignRow merchantCampaignRow(long id, MerchantScope scope, String name, String title,
-            String subtitle, String tagCode, String tagName, String coverUrl,
+            String subtitle, String tagCode, String tagName, String description, String themeCode,
+            String highlightText, String playType, Long coverAssetId, String coverUrl,
             java.time.OffsetDateTime startAt, java.time.OffsetDateTime endAt,
             MarketingStoreFactsPort.StoreFacts facts) {
         LocalDateTime now = nowUtc();
@@ -441,9 +577,14 @@ public final class MarketingMerchantService extends MarketingSupport implements 
         row.status = "DRAFT";
         row.title = title;
         row.subtitle = subtitle;
+        row.description = description;
         row.tagCode = tagCode;
         row.tagName = tagName;
+        row.themeCode = themeCode;
+        row.highlightText = highlightText;
+        row.playType = playType;
         row.coverUrl = coverUrl;
+        row.coverAssetId = coverAssetId;
         row.cityCodes = jsonList(facts.cityCode() == null ? List.of() : List.of(facts.cityCode()));
         row.serviceCategoryCodes = jsonList(List.of());
         row.startAt = utc(startAt);

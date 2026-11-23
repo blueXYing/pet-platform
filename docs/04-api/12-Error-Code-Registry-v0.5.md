@@ -704,6 +704,8 @@ CCR-AFS-PAGE-OPTIONS-001 已批准目录读取：目录不完整/代码名称不
 | CAMPAIGN_STATE_NOT_ALLOWED | 当前活动状态不允许该动作 | 409 |
 | CAMPAIGN_LANDING_INVALID | 活动/投放落地页无效 | 409 |
 | CAMPAIGN_PAGE_INVALID | 页面 Schema 不合法 | 400 |
+| CAMPAIGN_THEME_INVALID | themeCode 缺失/不在白名单（商家营销工具 P1，[76号](76-Merchant-Marketing-Tools-Contract-v0.1.md) §6） | 400 |
+| CAMPAIGN_PLAY_TYPE_INVALID | playType 非 THEME（P1）（商家营销工具 P1，[76号](76-Merchant-Marketing-Tools-Contract-v0.1.md) §6） | 400 |
 | SERVICE_CATEGORY_INVALID | 活动创建/编辑时 `serviceCategoryCodes` 含未知/停用/词法非法的分类 code | 400 |
 | PLACEMENT_LIMIT_EXCEEDED | 复用码：首页 Banner 同时启用超过 3 个，或 `HOT_SERVICE_TOP` 全平台启用超过 1 个 | 409 |
 | ENROLLMENT_NOT_OPEN | 不在报名窗口 | 409 |

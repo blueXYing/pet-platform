@@ -9,6 +9,12 @@ export type Command = RequestSpec & { requestId: string }
 export type PrivateUploadTransport = (input: { filePath: string; requestId: string; authorization: string; purpose?: 'MERCHANT_APPLICATION_MATERIAL' | 'SERVICE_COVER' | 'STORE_PHOTO' | 'FEEDBACK_ATTACHMENT' | 'PET_AVATAR' }) => Promise<{ statusCode: number; data: unknown }>
 export type CommunityMediaTransport = (input: { filePath: string; requestId: string; authorization: string }) => Promise<{ statusCode: number; data: unknown }>
 export type CommunityMediaReceipt = { mediaId: string; url: string; contentType: 'image/jpeg' | 'image/png'; bytes: number; width: number; height: number; sha256: string }
+// Contract-76 §4.2 merchant marketing cover upload (pet.marketing.merchant.http switch):
+// multipart POST /api/v1/merchant/marketing/assets via a dedicated transport — api.request
+// never speaks multipart, mirroring the private/community upload channels. The scope
+// (merchantId/storeId) rides the query string because the multipart body carries only `file`.
+export type MarketingAssetTransport = (input: { filePath: string; requestId: string; authorization: string; merchantId: string; storeId: string }) => Promise<{ statusCode: number; data: unknown }>
+export type MarketingAssetReceipt = { assetId: string; url: string; contentType: 'image/jpeg' | 'image/png'; bytes: number; width: number; height: number; sha256: string }
 export type PrivateAssetReceipt = { assetId: string; status: 'READY'; objectSha256: string; mediaType: 'image/jpeg' | 'image/png'; bytes: number }
 export type AfterSaleAssetTransport = {
   upload(input: { filePath: string; requestId: string; authorization: string }): Promise<{ statusCode: number; data: unknown }>
@@ -182,6 +188,19 @@ export function decodePrivateAsset(value: unknown): PrivateAssetReceipt {
   if (Object.keys(v).sort().join(',') !== 'assetId,bytes,mediaType,objectSha256,status' || v.status !== 'READY' || typeof v.objectSha256 !== 'string' || !/^[a-f0-9]{64}(?![\s\S])/.test(v.objectSha256) || !['image/jpeg', 'image/png'].includes(v.mediaType) || !Number.isSafeInteger(v.bytes) || v.bytes < 1 || v.bytes > 10485760) throw new Error('INVALID_RESPONSE')
   return { assetId: id(v.assetId), status: 'READY', objectSha256: v.objectSha256, mediaType: v.mediaType, bytes: v.bytes }
 }
+export function decodeMarketingAsset(value: unknown): MarketingAssetReceipt {
+  const v = object(value)
+  // URL shape per 76号 §3.1: public base + /api/v1/c/marketing/assets/{assetId} (relative form
+  // allowed for local origin deployments); no whitespace, bounded length.
+  if (typeof v.url !== 'string' || v.url.length < 1 || v.url.length > 2048
+    || !/^(https?:\/\/[^\s]+|\/api\/v1\/c\/marketing\/assets\/[1-9][0-9]{0,18})$/.test(v.url)
+    || !['image/jpeg', 'image/png'].includes(v.contentType)
+    || !Number.isSafeInteger(v.bytes) || v.bytes < 1 || v.bytes > 2097152
+    || !Number.isSafeInteger(v.width) || v.width < 1 || v.width > 2000
+    || !Number.isSafeInteger(v.height) || v.height < 1 || v.height > 2000
+    || typeof v.sha256 !== 'string' || !/^[a-f0-9]{64}(?![\s\S])/.test(v.sha256)) throw new Error('INVALID_RESPONSE')
+  return { assetId: id(v.assetId), url: v.url, contentType: v.contentType, bytes: v.bytes, width: v.width, height: v.height, sha256: v.sha256 }
+}
 const SESSION_KEY = 'pet.c.session.v1'
 const WRITE_KEY = 'pet.c.pending.v1'
 const LOGOUT_KEY = 'pet.c.logout.v1'
@@ -226,7 +245,7 @@ export class ConsumerApi {
   private autoLogin?: () => Promise<unknown>
   private loggedOutByUser = false
   private recoveryFlight: Promise<boolean> | null = null
-  constructor(private transport: Transport, private store: LocalStore, readonly uuid: () => Promise<string>, private uploadTransport?: PrivateUploadTransport, private afterSaleAssets?: AfterSaleAssetTransport, autoLogin?: () => Promise<unknown>, private communityMedia?: CommunityMediaTransport) {
+  constructor(private transport: Transport, private store: LocalStore, readonly uuid: () => Promise<string>, private uploadTransport?: PrivateUploadTransport, private afterSaleAssets?: AfterSaleAssetTransport, autoLogin?: () => Promise<unknown>, private communityMedia?: CommunityMediaTransport, private marketingAssetTransport?: MarketingAssetTransport) {
     this.autoLogin = autoLogin
     try { const saved = store.get(SESSION_KEY); if (saved) this.credential = grant(saved) } catch { store.remove(SESSION_KEY) }
     // Persistent pending commands never authorize a user. They are selected only after GET session.
@@ -638,6 +657,34 @@ export class ConsumerApi {
       ownerUserId: ticket.context.userId,
       purpose: 'STORE_PHOTO',
     })
+  }
+  /** Contract-76 §4.2 merchant campaign-cover upload: merchant-workspace scoped (the journal
+   *  isolation by userId/merchantId/storeId lives in MarketingCoverUpload, not here), Bearer
+   *  credential, terminal X-Request-Id, and the same fail-closed envelope discipline as the
+   *  other multipart channels. The credential never becomes a page prop or URL. */
+  async uploadMarketingAsset(input: { filePath: string; requestId: string }): Promise<MarketingAssetReceipt> {
+    const ticket = this.scope.capture()
+    const credential = this.credential
+    if (!credential || !this.currentSession || credential.userId !== this.currentSession.userId
+      || credential.sessionId !== this.currentSession.sessionId || ticket.context.userId !== credential.userId) throw new ApiError('COMMON_UNAUTHORIZED', 401)
+    const merchantId = ticket.context.merchantId
+    const storeId = ticket.context.storeId
+    if (ticket.context.workspace !== 'merchant' || !merchantId || !storeId) throw new Error('WORKSPACE_PATH_MISMATCH')
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.requestId)) throw new Error('REQUEST_ID_REQUIRED')
+    if (!this.marketingAssetTransport) throw new Error('UPLOAD_NOT_CONNECTED')
+    try {
+      const response = await this.marketingAssetTransport({ filePath: input.filePath, requestId: input.requestId, authorization: `Bearer ${credential.accessToken}`, merchantId, storeId })
+      ticket.assertCurrent()
+      if (this.credential !== credential || this.currentSession?.sessionId !== credential.sessionId) throw new StaleContextError()
+      const body = object(typeof response.data === 'string' ? JSON.parse(response.data) : response.data)
+      if (![200, 201].includes(response.statusCode) || body.code !== 'SUCCESS') throw new ApiError(typeof body.code === 'string' ? body.code : 'INVALID_RESPONSE', response.statusCode)
+      if (body.success !== true) throw new Error('INVALID_RESPONSE')
+      return decodeMarketingAsset(body.data)
+    } catch (error) {
+      ticket.assertCurrent()
+      if (error instanceof ApiError && error.statusCode === 401) this.clear()
+      throw error
+    }
   }
   pendingDeletes() { return Object.keys(this.pending).filter(key => key.startsWith('delete:') && this.pendingCommand(key)).map(key => key.slice(7)) }
   pendingCommands(prefix: string) {

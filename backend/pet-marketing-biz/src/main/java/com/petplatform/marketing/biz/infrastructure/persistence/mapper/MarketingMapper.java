@@ -39,6 +39,18 @@ public interface MarketingMapper {
     long countMyCampaigns(@Param("merchantId") long merchantId,
             @Param("storeId") long storeId, @Param("status") String status);
 
+    /**
+     * Contract 76 §4.1 overview counters for one merchant store. {@code activeOnly} restricts
+     * to ONLINE campaigns whose window contains {@code now}; {@code status} narrows further.
+     */
+    long countMerchantCampaigns(@Param("merchantId") long merchantId,
+            @Param("storeId") long storeId, @Param("status") String status,
+            @Param("activeOnly") boolean activeOnly, @Param("now") LocalDateTime now);
+
+    /** Overview enrolled counter: enrollments of this store currently in the given statuses. */
+    long countMerchantEnrollmentsByStatus(@Param("merchantId") long merchantId,
+            @Param("storeId") long storeId, @Param("statuses") List<String> statuses);
+
     int insertCampaign(CampaignRow row);
 
     int updateCampaign(CampaignRow row);
