@@ -7,6 +7,9 @@ test.use({ baseURL: 'http://127.0.0.1:4174' });
 
 const TOKEN = 'test-admin-token';
 const ATTEMPT_TOKEN = 'at-test-binding';
+// 2026-11-20 用户裁决：材料随时可看（无"一次性查看"门槛）——卡片按钮为「查看」；读取授权仍逐次
+// 申请、逐次审计，授权令牌仍是一次性的。antd 可能给两字按钮插入空格，故用正则匹配按钮名。
+const VIEW_MATERIAL = { name: /^查\s*看$/ } as const;
 
 const APPLICATION_ID = '3012345678901234567';
 const SUMMARY = {
@@ -173,10 +176,11 @@ test('claim, single-use reads, manual verification quotes authoritative referenc
   expect(claim?.body).toEqual({ expectedTaskVersion: '2' });
   expect(claim?.requestId).toBeTruthy();
 
-  // Single-use watermarked reads: identity requires BOTH sides viewed before the row unlocks.
+  // Watermarked reads (2026-11-20 用户裁决：随时可看，无一次性查看门槛；每次读取仍单独申请
+  // 一次性授权): identity requires BOTH sides viewed before the row unlocks.
   await expect(page.getByRole('heading', { name: '人工核验（主体/证件）' })).toBeVisible();
   for (const label of ['营业执照', '身份证（人像面）', '身份证（国徽面）', '行业许可证']) {
-    await page.locator('ul.materials li', { hasText: label }).getByRole('button', { name: '申请一次性查看' }).click();
+    await page.locator('ul.materials li', { hasText: label }).getByRole('button', VIEW_MATERIAL).click();
     await expect(page.locator('ul.materials li', { hasText: label }).getByRole('img')).toBeVisible();
   }
   const grant = calls.find(call => call.path.includes('/private-assets/6011000000000000003/read-grants'));
@@ -320,7 +324,7 @@ test('503 dependency-unavailable is unknown outcome: retry kept, new writes bloc
 
   // While the intent is unresolved, conflicting writes stay disabled…
   await expect(page.getByRole('button', { name: '领取任务' })).toBeDisabled();
-  await expect(page.locator('ul.materials li').first().getByRole('button', { name: '申请一次性查看' })).toBeDisabled();
+  await expect(page.locator('ul.materials li').first().getByRole('button', VIEW_MATERIAL)).toBeDisabled();
   // …and resolving via retry reuses the SAME requestId.
   await page.getByRole('button', { name: /重试原操作/ }).click();
   await expect(page.getByText('任务已领取')).toBeVisible();
@@ -398,7 +402,7 @@ test('LONG_TERM evidence follows backend date rules: validFrom required, validTo
   await page.getByRole('link', { name: '打开' }).click();
   await page.getByRole('button', { name: '领取任务' }).click();
   for (const label of ['营业执照', '身份证（人像面）', '身份证（国徽面）', '行业许可证']) {
-    await page.locator('ul.materials li', { hasText: label }).getByRole('button', { name: '申请一次性查看' }).click();
+    await page.locator('ul.materials li', { hasText: label }).getByRole('button', VIEW_MATERIAL).click();
     await expect(page.locator('ul.materials li', { hasText: label }).getByRole('img')).toBeVisible();
   }
 
@@ -449,7 +453,7 @@ test('grant issuance stays pending: snapshot cannot determine it, only idempoten
 
   await login(page);
   await page.getByRole('link', { name: '打开' }).click();
-  await page.locator('ul.materials li', { hasText: '营业执照' }).getByRole('button', { name: '申请一次性查看' }).click();
+  await page.locator('ul.materials li', { hasText: '营业执照' }).getByRole('button', VIEW_MATERIAL).click();
   await expect(page.getByRole('alert').first()).toContainText('结果未知');
   await expect(page.getByText(/材料授权结果无法由申请快照判定/)).toBeVisible();
 
@@ -522,6 +526,43 @@ test('terminal approved application shows closed summary banner without broken c
   await expect(page.getByRole('heading', { name: '审核决定' })).toHaveCount(0);
 });
 
+test('审结后材料仍可随时查看（2026-11-20 用户裁决）：无"未查看"标签，读取仍单独申请授权', async ({ page }) => {
+  const calls = recorder(page);
+  await grantLogin(page);
+  await page.route('**/api/v1/admin/merchant-applications**', (route: Route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === '/api/v1/admin/merchant-applications') route.fulfill(unified({ items: [{ ...SUMMARY, status: 'APPROVED', subjectVerificationStatus: 'VERIFIED' }], page: 1, pageSize: 20, total: 1 }));
+    else route.fulfill(unified(detail({
+      status: 'APPROVED',
+      taskStatus: 'CLOSED',
+      verification: 'VERIFIED',
+      latestDecision: {
+        reviewDecisionId: '8012345678901234567',
+        submittedRevisionId: SUMMARY.submittedRevisionId,
+        decisionType: 'APPROVE',
+        opinion: '主体与资质核验全部一致，准予通过',
+        decidedAt: '2026-09-20T12:00:00.000Z',
+      },
+    })));
+  });
+  await page.route(/\/private-assets\/6011\d+\/read-grants$/, route =>
+    route.fulfill(unified({ readUrl: `/api/v1/admin/private-asset-read-grants/token_closed_${'a'.repeat(32)}`, expiresAt: '2026-09-20T17:00:00.000Z' })));
+  await page.route(/\/private-asset-read-grants\/.+/, route =>
+    route.fulfill({ status: 200, headers: { 'Content-Type': 'image/png' }, body: PNG_BYTES }));
+
+  await login(page);
+  await page.getByRole('link', { name: '打开' }).click();
+  await expect(page.getByText('本申请已审结：已通过（通过）')).toBeVisible();
+  // 审结后不再显示"未查看"标签，但材料卡片的「查看」入口保留。
+  await expect(page.getByText('未查看', { exact: true })).toHaveCount(0);
+  const licenseCard = page.locator('ul.materials li', { hasText: '营业执照' });
+  await licenseCard.getByRole('button', VIEW_MATERIAL).click();
+  await expect(licenseCard.getByRole('img')).toBeVisible();
+  const grant = calls.find(call => call.path.includes('/private-assets/6011000000000000003/read-grants'));
+  expect(grant?.body).toMatchObject({ submissionRevisionId: SUMMARY.submittedRevisionId, purposeCode: 'MERCHANT_APPLICATION_REVIEW', confirmed: true });
+  expect(grant?.requestId).toBeTruthy();
+});
+
 test('enterprise workbench supports material lightbox zoom/rotate and quick-opinion 10-char guardrails', async ({ page }) => {
   await grantLogin(page);
   await page.route('**/api/v1/admin/merchant-applications**', route => {
@@ -539,7 +580,7 @@ test('enterprise workbench supports material lightbox zoom/rotate and quick-opin
 
   // View business license and inspect in Lightbox modal with zoom + rotate
   const licenseCard = page.locator('ul.materials li', { hasText: '营业执照' });
-  await licenseCard.getByRole('button', { name: '申请一次性查看' }).click();
+  await licenseCard.getByRole('button', VIEW_MATERIAL).click();
   await expect(licenseCard.getByRole('img')).toBeVisible();
   await licenseCard.getByRole('button', { name: '放大/旋转核对' }).click();
   const dialog = page.getByRole('dialog');

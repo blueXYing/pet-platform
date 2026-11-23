@@ -25,7 +25,8 @@ function detail(status: CaseStatus = 'PENDING', version = '0', p4 = false): Case
 function receipt(status: CaseStatus, version: string) { return { commandId: '10001', orderId: ORDER, afterSaleId: CASE, status, version, occurredAt: '2026-10-01T03:00:00.000Z', evidenceBatchId: null, supplementRequestId: null, decisionId: status === 'RESOLVED' ? '10002' : null, refundOrderId: null }; }
 function envelope(data: unknown, status = 200) { return { status, json: { code: 'SUCCESS', message: 'ok', data, traceId: 'fixture-aftersale' } }; }
 function failed(code: string, status: number) { return { status, json: { code, message: code, data: null, traceId: 'fixture-aftersale-error' } }; }
-async function signIn(page: Page, actions = ACTIONS, operatorId = '901', sessionId = 's1') {
+/** Auth stubs for one operator session. Re-registering (the later handler wins) models a new session. */
+async function stubAuth(page: Page, actions = ACTIONS, operatorId = '901', sessionId = 's1') {
   await page.route('**/api/v1/admin/auth/**', route => {
     const path = new URL(route.request().url()).pathname;
     if (path.endsWith('/attempts')) return route.fulfill(envelope({ attemptId: '801', attemptToken: 'fixture-binding', expiresAt: '2026-10-02T02:00:00.000Z', nextStep: 'PROVE_IDENTITY' }, 201));
@@ -35,6 +36,9 @@ async function signIn(page: Page, actions = ACTIONS, operatorId = '901', session
     if (path.endsWith('/permissions')) return route.fulfill(envelope({ operatorId, authzVersion: 'v1', checkedAt: '2026-10-01T02:00:00.000Z', roles: ['OPERATOR'], dataScope: 'ALL', actionCodes: actions }));
     return route.fulfill(envelope(null));
   });
+}
+async function signIn(page: Page, actions = ACTIONS, operatorId = '901', sessionId = 's1') {
+  await stubAuth(page, actions, operatorId, sessionId);
   await page.goto('/login');
   await page.getByLabel('账号', { exact: true }).fill('fixture-ops');
   await page.getByLabel('密码', { exact: true }).fill('fixture-password');
@@ -48,8 +52,11 @@ function captures(page: Page) {
 }
 async function setupCases(page: Page, initial = detail(), handle?: (route: Route, path: string) => Promise<void>) {
   await page.route('**/api/v1/admin/aftersales**', async route => {
-    const path = new URL(route.request().url()).pathname;
-    if (path === '/api/v1/admin/aftersales') return route.fulfill(envelope({ page: 1, pageSize: 20, total: 1, items: [summary(initial.status, initial.version)] }));
+    const url = new URL(route.request().url());
+    // Echo the requested paging: after a full reload the detail view re-proves its store scope by
+    // listing with the scope + orderId at pageSize 50, and the client checks the echoed page size.
+    if (url.pathname === '/api/v1/admin/aftersales') return route.fulfill(envelope({ page: Number(url.searchParams.get('page')), pageSize: Number(url.searchParams.get('pageSize')), total: 1, items: [summary(initial.status, initial.version)] }));
+    const path = url.pathname;
     if (handle && route.request().method() === 'POST') return handle(route, path);
     if (path === ROOT) return route.fulfill(envelope(initial));
     const priorIndex = PRIOR.findIndex(id => path.endsWith(`/${id}`));
@@ -233,9 +240,10 @@ for (const action of ['accept', 'supplement-requests', 'close-duplicate', 'decis
     await signIn(page); await openCase(page); await fillBusiness(page, action); await expect(page.getByRole('alert')).toContainText('结果未知');
     const stored = await page.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith('pet.admin.aftersale.command.v1:')).map(k => ({ key: k, raw: localStorage.getItem(k)! })));
     expect(stored).toHaveLength(1); expect(stored[0].key).toBe(`pet.admin.aftersale.command.v1:901:${MERCHANT}:${STORE}:${CASE}`); expect(stored[0].raw).not.toContain('fixture-admin-token'); expect(stored[0].raw).not.toContain('readUrl'); expect(stored[0].raw).not.toContain('blob:');
-    await page.reload(); await expect(page.getByRole('heading', { name: '运营登录' })).toBeVisible();
-    await signIn(page, ACTIONS, '901', 's2'); await expect(page.getByRole('heading', { name: '售后工单', exact: true })).toBeVisible(); expect(writes).toBe(1);
-    await openCase(page); await expect(page.getByRole('button', { name: '重试原操作' })).toBeVisible(); expect(writes).toBe(1);
+    // 2026-11-20 用户裁决：刷新不再丢登录态（token 持久化）。整页刷新后同一运营以新会话直接恢复，
+    // 未确认的原操作仍在且不会被自动重放；重试复用原请求标识与原请求体。
+    await stubAuth(page, ACTIONS, '901', 's2'); await page.reload();
+    await expect(page.getByRole('button', { name: '重试原操作' })).toBeVisible(); expect(writes).toBe(1);
     await page.getByRole('button', { name: '重试原操作' }).click(); await expect(page.getByRole('button', { name: '重试原操作' })).toHaveCount(0);
     const sent = calls.filter(c => c.path.endsWith(`/${action}`)); expect(sent).toHaveLength(2); expect(sent[1].requestId).toBe(sent[0].requestId); expect(sent[1].body).toEqual(sent[0].body);
     expect(await page.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith('pet.admin.aftersale.command.v1:')))).toEqual([]);
@@ -252,22 +260,28 @@ test('A-004 401 on an unknown command preserves the business journal through rea
   const sent = calls.filter(c => c.path.endsWith('/decisions')); expect(sent).toHaveLength(3); for (const call of sent) { expect(call.requestId).toBe(sent[0].requestId); expect(call.body).toEqual(sent[0].body); }
 });
 
-test('A-004 closing the browser context retains the original command in persisted origin storage', async ({ page, context, browser }) => {
+test('A-004 closing the browser context retains the original command and the operator session in persisted origin storage', async ({ page, context, browser }) => {
   const originalCalls = captures(page);
   await setupCases(page, detail('PROCESSING', '4'), async route => { await route.abort('connectionreset'); });
   await signIn(page); await openCase(page); await fillBusiness(page, 'decisions'); await expect(page.getByRole('button', { name: '重试原操作' })).toBeVisible();
-  // The saved origin state models the browser's persistent profile; no auth token
-  // or session state is persisted by the application. The next context must log in.
+  // The saved origin state models the browser's persistent profile. 2026-11-20 用户裁决：登录态
+  // （token）随业务日志一起持久化——重开浏览器后仍是同一运营、无需重新登录；日志本身不混入
+  // token、读取地址或图片对象地址。
   const persistedOrigin = await context.storageState();
-  expect(persistedOrigin.origins[0]?.localStorage).toHaveLength(1);
-  expect(JSON.stringify(persistedOrigin)).not.toContain('fixture-admin-token');
+  const persisted = persistedOrigin.origins[0]?.localStorage ?? [];
+  expect(persisted.map(item => item.name).sort()).toEqual(['pet.admin.accessToken', `pet.admin.aftersale.command.v1:901:${MERCHANT}:${STORE}:${CASE}`].sort());
+  const journal = persisted.find(item => item.name.startsWith('pet.admin.aftersale.command.v1:'))?.value ?? '';
+  expect(journal).not.toContain('fixture-admin-token'); expect(journal).not.toContain('readUrl'); expect(journal).not.toContain('blob:');
   await page.close(); await context.close();
   const restarted = await browser.newContext({ baseURL: 'http://127.0.0.1:4174', storageState: persistedOrigin });
   try {
     const fresh = await restarted.newPage(); const replayCalls = captures(fresh); let writes = 0;
     await setupCases(fresh, detail('PROCESSING', '4'), async route => { writes++; await route.fulfill(envelope(receipt('RESOLVED', '5'))); });
-    await fresh.goto('/aftersales'); await expect(fresh.getByRole('heading', { name: '运营登录' })).toBeVisible();
-    await signIn(fresh, ACTIONS, '901', 'new-session'); await openCase(fresh);
+    // 重开后应用用持久化 token 重新向服务端校验会话与权限（同一运营的新会话），通过才渲染业务页。
+    await stubAuth(fresh, ACTIONS, '901', 'new-session');
+    await fresh.goto('/aftersales'); await expect(fresh.getByRole('heading', { name: '售后工单', exact: true })).toBeVisible();
+    await expect(fresh.getByRole('heading', { name: '运营登录' })).toHaveCount(0);
+    await openCase(fresh);
     await expect(fresh.getByRole('button', { name: '重试原操作' })).toBeVisible(); expect(writes).toBe(0);
     await fresh.getByRole('button', { name: '重试原操作' }).click(); await expect(fresh.getByRole('button', { name: '重试原操作' })).toHaveCount(0);
     const original = originalCalls.find(c => c.path.endsWith('/decisions'))!; const replay = replayCalls.find(c => c.path.endsWith('/decisions'))!;
@@ -275,6 +289,26 @@ test('A-004 closing the browser context retains the original command in persiste
     expect(replayCalls.filter(c => c.method === 'GET' && c.path === '/api/v1/admin/aftersales')).toHaveLength(1);
     expect(replayCalls.some(c => c.method === 'GET' && c.path === ROOT)).toBe(true);
   } finally { await restarted.close(); }
+});
+
+test('A-004 a persisted session the server rejects on reload fails closed and keeps the business journal', async ({ page }) => {
+  const calls = captures(page); let writes = 0;
+  await setupCases(page, detail('PROCESSING', '4'), async route => { writes++; if (writes === 1) await route.abort('connectionreset'); else await route.fulfill(envelope(receipt('RESOLVED', '5'))); });
+  await signIn(page); await openCase(page); await fillBusiness(page, 'decisions'); await expect(page.getByRole('button', { name: '重试原操作' })).toBeVisible();
+  // 2026-11-20 用户裁决：登录态持久化。其安全边界：刷新后会话/权限必须重新经服务端校验——被拒
+  // 即关闭访问，不渲染业务页、不自动重放、清除持久化 token；业务日志保留给重新登录后的同一运营。
+  await page.route('**/api/v1/admin/auth/**', route => route.fulfill(failed('COMMON_UNAUTHORIZED', 401)));
+  await page.reload();
+  await expect(page.getByRole('heading', { name: '会话或权限查询失败，访问已关闭' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '重试原操作' })).toHaveCount(0);
+  await expect(page.getByText(/原运营未确认的处理说明，仅本人可以恢复/)).toHaveCount(0); expect(writes).toBe(1);
+  expect(await page.evaluate(() => localStorage.getItem('pet.admin.accessToken'))).toBeNull();
+  expect(await page.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith('pet.admin.aftersale.command.v1:')))).toHaveLength(1);
+  await page.getByRole('button', { name: '返回登录' }).click(); await expect(page.getByRole('heading', { name: '运营登录' })).toBeVisible();
+  await signIn(page, ACTIONS, '901', 's2'); await openCase(page);
+  await expect(page.getByRole('button', { name: '重试原操作' })).toBeVisible(); expect(writes).toBe(1);
+  await page.getByRole('button', { name: '重试原操作' }).click(); await expect(page.getByRole('button', { name: '重试原操作' })).toHaveCount(0);
+  const sent = calls.filter(c => c.path.endsWith('/decisions')); expect(sent).toHaveLength(2); expect(sent[1].requestId).toBe(sent[0].requestId); expect(sent[1].body).toEqual(sent[0].body);
 });
 
 test('A-004 another operator cannot see or replay the original operator journal', async ({ page }) => {
@@ -320,7 +354,11 @@ test('A-004 a lost read-grant ACK is ephemeral and never stored with business jo
   await page.route(`**${GRANT}`, route => route.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
   await signIn(page); await openCase(page); await page.getByRole('button', { name: '申请查看证据' }).click(); await expect(page.getByRole('button', { name: '重试原操作' })).toBeVisible();
   expect(await page.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith('pet.admin.aftersale.command.v1:')))).toEqual([]);
-  await page.reload(); await signIn(page, ACTIONS, '901', 's2'); await openCase(page); await expect(page.getByRole('button', { name: '重试原操作' })).toHaveCount(0); expect(grants).toBe(1);
+  // 登录态随刷新保留（2026-11-20 用户裁决），但丢失回执的读取授权是一次性的：不随刷新恢复，
+  // 必须重新申请（新请求标识），也从不写进业务日志。
+  await stubAuth(page, ACTIONS, '901', 's2'); await page.reload();
+  await expect(page.getByText('用户提交的本次服务现场情况和凭证。')).toBeVisible();
+  await expect(page.getByRole('button', { name: '重试原操作' })).toHaveCount(0); expect(grants).toBe(1);
   await page.getByRole('button', { name: '申请查看证据' }).click(); await expect(page.getByRole('img', { name: `售后证据 ${ASSET}` })).toBeVisible();
   const sent = calls.filter(c => c.path.endsWith('/read-grants')); expect(sent).toHaveLength(2); expect(sent[1].requestId).not.toBe(sent[0].requestId);
 });

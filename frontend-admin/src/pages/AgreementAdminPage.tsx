@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import dayjs from 'dayjs';
 import { Button, Input, Tag } from 'antd';
 import { AgreementMarkdownPreview } from './agreement-markdown';
 import type { TableColumnsType } from 'antd';
@@ -95,7 +96,8 @@ export default function AgreementAdminPage({ client, canWrite, onAuthLost }: {
     { title: '内容', dataIndex: 'content', key: 'content', render: (v: string) => (
       <AgreementMarkdownPreview source={v} compact />
     )},
-    { title: '发布时间', dataIndex: 'publishedAt', key: 'publishedAt', render: (v: string | null) => v ? v.replace('T', ' ').slice(0, 19) : '—' },
+    // 服务端给的是 ISO-8601 UTC 时刻；这里换算成本地时间，避免直接显示 UTC 字符串比实际少 8 小时。
+    { title: '发布时间', dataIndex: 'publishedAt', key: 'publishedAt', render: (v: string | null) => v ? dayjs(v).format('YYYY-MM-DD HH:mm:ss') : '—' },
     { title: '内容哈希(前12位)', dataIndex: 'contentSha256', key: 'contentSha256', render: (v: string) => v.slice(0, 12) + '…' },
     { title: '操作', key: 'actions', render: (_, row) => (
       <Button size="small" onClick={() => setDraft(row.content)} disabled={!canWrite}>复制到编辑框</Button>

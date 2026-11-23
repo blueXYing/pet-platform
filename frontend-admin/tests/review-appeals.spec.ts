@@ -147,21 +147,31 @@ test('REV-002 conflict on a decided appeal surfaces the finality rule without jo
   await page.getByRole('button', { name: '申诉未成立（维持展示）' }).click();
   await expect(page.getByText('该申诉已裁决，不可改判；请重新打开确认最新状态。')).toBeVisible();
   // The journaled command survives an unknown outcome: re-entering the detail view restores
-  // the pending intent instead of minting a new UUID silently (no full reload — the session
-  // is in-memory state; the journal itself lives in localStorage across sessions).
+  // the pending intent instead of minting a new UUID silently (the journal itself lives in
+  // localStorage; 登录态自 2026-11-20 用户裁决起同样随刷新保留).
   await page.getByRole('link', { name: '返回申诉列表', exact: true }).click();
   await page.getByRole('link', { name: '打开', exact: true }).click();
   await expect(page.getByText('检测到未确认的裁决命令，请重试原操作（不会重复裁决）。')).toBeVisible();
 });
 
-test('REV-002 missing action code hides the entry and deep links fail closed to login', async ({ page }) => {
+test('REV-002 missing action code hides the entry and deep links fail closed on permission (session survives reload)', async ({ page }) => {
   // Without review.appeal.read the workbench never offers the entry (the route guard itself
   // is the shared action-guard branch already exercised by the merchant-application pages).
   await signIn(page, ['aftersale.read']);
+  // 登录态自 2026-11-20 用户裁决起随整页加载保留，深链前必须等登录真正完成（会话与权限已加载）。
+  await expect(page.getByText(/会话至/)).toBeVisible();
   await expect(page.getByRole('link', { name: '评价申诉', exact: true })).toHaveCount(0);
-  // A deep link is a full page load: the in-memory session is gone, and the anonymous
-  // visitor lands on the login page — never on the appeal surface.
+  // 用户裁决 2026-11-20：登录态随刷新保留。A deep link is a full page load; the restored session
+  // and its permissions are re-checked with the server, so an operator without review.appeal.read
+  // lands on the 403 page — never on the appeal surface.
   await page.goto('/review-appeals');
+  await expect(page.getByRole('heading', { name: '403 · 无评价申诉权限' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '评价申诉', exact: true })).toHaveCount(0);
+});
+
+test('REV-002 anonymous deep link lands on the login page, never on the appeal surface', async ({ page }) => {
+  await page.goto('/review-appeals');
+  await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByRole('heading', { name: '运营登录', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: '评价申诉', exact: true })).toHaveCount(0);
 });

@@ -176,12 +176,28 @@ test('A-002 员工治理：档案/成员/邀请三视图，手机号恒掩码', 
   await expect(page.getByText('136****3333')).toBeVisible();
 });
 
-test('A-002 fail-closed：未授予动作则入口隐藏，深链回登录（token 仅内存）', async ({ page }) => {
+test('A-002 fail-closed：未授予动作则入口隐藏，深链按权限拦截（刷新保留登录态）', async ({ page }) => {
   await signIn(page, ['order.read']);
+  // 登录态自 2026-11-20 用户裁决起随整页加载保留，深链前必须等登录真正完成（会话与权限已加载）。
+  await expect(page.getByText(/会话至/)).toBeVisible();
   await expect(page.getByRole('link', { name: '商家台账' })).toHaveCount(0);
   await expect(page.getByRole('link', { name: '排期查看' })).toHaveCount(0);
   await expect(page.getByRole('link', { name: '员工治理' })).toHaveCount(0);
-  // Deep link with no in-memory session fails closed to the login page.
+  // 深链是整页加载。2026-11-20 用户裁决：刷新保留登录态——恢复后的会话与权限由服务端重新校验，
+  // 未授予 merchant.read 的运营落到 403 页：不发起任何治理查询，也看不到台账内容。
+  const calls = captureGovernance(page);
   await page.goto('/governance/merchants');
+  await expect(page.getByRole('heading', { name: '403 · 无商家台账权限' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '运营登录' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '查询商家' })).toHaveCount(0);
+  expect(calls).toEqual([]);
+});
+
+test('A-002 匿名深链（本机没有登录态）回登录页，不发起治理查询', async ({ page }) => {
+  const calls = captureGovernance(page);
+  await page.goto('/governance/merchants');
+  await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByRole('heading', { name: '运营登录' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '查询商家' })).toHaveCount(0);
+  expect(calls).toEqual([]);
 });
