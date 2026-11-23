@@ -28,6 +28,10 @@
   position: relative; display: inline-block; width: calc(var(--home-unit) * 222);
   height: calc(var(--home-unit) * 107); margin-right: calc(var(--home-unit) * 15);
   vertical-align: top; overflow: visible;
+  /* 2026-11-23：Figma 61-599 卡片底色 #F8F5EE（暖米色）——纸片素材太浅不可见，加底色让卡片可见 */
+  background: #F8F5EE;
+  border-radius: calc(var(--home-unit) * 8);
+  box-shadow: 0 calc(var(--home-unit) * 2) calc(var(--home-unit) * 6) rgba(87,118,131,.12);
 }
 .mkt-home-card-paper-left,
 .mkt-home-card-paper-right {
