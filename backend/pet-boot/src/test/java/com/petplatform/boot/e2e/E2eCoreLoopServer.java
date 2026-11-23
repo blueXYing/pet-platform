@@ -632,7 +632,7 @@ public final class E2eCoreLoopServer {
       // database reuse — the account already exists from the first process.
       boolean reused = reuseDatabase != null && !reuseDatabase.isBlank();
       // 2026-11-20 用户裁决：admin/admin 固定可用——每次启动都幂等 upsert（不管新库旧库）。
-      ensureAdminAccount(jdbc, name);
+      ensureAdminAccount(jdbc, name, context);
       seedMarketing(jdbc);
       PaymentNotificationService notifications =
           context.getBean(PaymentNotificationService.class);
@@ -1343,7 +1343,7 @@ public final class E2eCoreLoopServer {
   }
 
   /** 2026-11-20 用户裁决：每次启动幂等确保 admin/admin 可用（不因重启/换库/种子跳过而变化）。 */
-  private static void ensureAdminAccount(JdbcTemplate jdbc, String database) {
+  private static void ensureAdminAccount(JdbcTemplate jdbc, String database, org.springframework.context.ConfigurableApplicationContext context) {
     try {
       String lookupHex = "53544146463a61646d696e"; // STAFF:admin
       Integer count = jdbc.queryForObject(
@@ -1354,14 +1354,26 @@ public final class E2eCoreLoopServer {
             + "WHERE account_display='admin'", ADMIN_HASH);
       } else {
         // 需要同步角色/权限——复制已有账号的角色绑定
-        Long existingId = jdbc.queryForObject(
+        var existingIds = jdbc.queryForList(
             "SELECT id FROM admin_account LIMIT 1", Long.class);
-        if (existingId != null) {
+        if (!existingIds.isEmpty()) {
+          Long existingId = existingIds.getFirst();
           // 重命名已有账号（保留角色绑定）
           jdbc.update("UPDATE admin_account SET account_display='admin', "
               + "account_lookup=UNHEX(?), password_hash=?, display_name='平台运营', "
               + "status='ENABLED' WHERE id=?",
               lookupHex, ADMIN_HASH, existingId);
+        } else {
+          // 全新库：先走 bootstrap（建角色/权限/初始账号），再改成 admin/admin
+          try {
+            context.getBean(AdminAuthService.class).bootstrap(
+                "e2e-init-operator", "平台运营", "Init#Pass99".toCharArray(), "E2E fresh boot");
+            jdbc.update("UPDATE admin_account SET account_display='admin', "
+                + "account_lookup=UNHEX(?), password_hash=?, display_name='平台运营' WHERE account_display='e2e-init-operator'",
+                lookupHex, ADMIN_HASH);
+          } catch (RuntimeException bootstrapFail) {
+            System.out.println("E2E_ADMIN bootstrap fallback failed: " + bootstrapFail.getMessage());
+          }
         }
       }
       System.out.println("E2E_ADMIN account=admin password=admin (idempotent upsert)");
@@ -1375,19 +1387,19 @@ public final class E2eCoreLoopServer {
     String now = java.time.LocalDateTime.now(java.time.ZoneOffset.UTC)
         .truncatedTo(java.time.temporal.ChronoUnit.SECONDS).toString().replace('T', ' ');
     String[][] campaigns = {
-        {"720100", "MKT-NEW-50", "新客专享·限时5折", "DISPLAY", "新客专享 · 限时 5 折", "新用户下单即享优惠", "NEW_USER",
-            "marketing/seed/new-user-banner.png", "300"},
-        {"720101", "MKT-FIRST-30", "首单立减¥30", "COUPON", "首单立减 ¥30", "新用户下单即享优惠", "NEW_USER",
-            "marketing/seed/first-order-30.png", "200"},
-        {"720102", "MKT-GROOM-50", "宠物美容狂欢", "DISPLAY", "宠物美容狂欢", "洗澡美容低至 5 折起", "LIMITED_TIME",
-            "marketing/seed/grooming-carnival.png", "100"},
+        {"720100", "MKT-NEW-50", "新客专享·限时5折", "DISPLAY", "新客专享 · 限时 5 折", "新用户下单即享优惠", "new_user",
+            "marketing/illust/new-user.png", "300"},
+        {"720101", "MKT-FIRST-30", "首单立减¥30", "COUPON", "首单立减 ¥30", "新用户下单即享优惠", "new_user",
+            "marketing/illust/first-order.png", "200"},
+        {"720102", "MKT-GROOM-50", "宠物美容狂欢", "DISPLAY", "宠物美容狂欢", "洗澡美容低至 5 折起", "beauty",
+            "marketing/illust/grooming.png", "100"},
     };
     for (String[] cp : campaigns) {
       jdbc.update("INSERT IGNORE INTO marketing_campaign(id,campaign_code,name,owner_type,"
           + "owner_merchant_id,owner_store_id,campaign_type,participation_mode,status,title,"
           + "subtitle,tag_code,tag_name,cover_url,city_codes,start_at,end_at,sort_weight,"
           + "version,created_by_type,created_by_id,created_at,updated_at) "
-          + "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+          + "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
           Long.parseLong(cp[0]), cp[1], cp[2], "MERCHANT", MERCHANT, STORE,
           cp[3], "MERCHANT_ENROLL", "ONLINE", cp[4], cp[5], cp[6], cp[6],
           cp[7], "[\"chengdu\"]", "2026-11-01 00:00:00", "2027-12-31 23:59:59",
