@@ -13,6 +13,7 @@ public class PrivateAssetEntity {
   private String mediaType;
   private Long bytes;
   private String status;
+  private String scanResultCode;
   private long version;
 
   public long getId() {
@@ -109,6 +110,14 @@ public class PrivateAssetEntity {
 
   public void setStatus(String status) {
     this.status = status;
+  }
+
+  public String getScanResultCode() {
+    return scanResultCode;
+  }
+
+  public void setScanResultCode(String scanResultCode) {
+    this.scanResultCode = scanResultCode;
   }
 
   public long getVersion() {

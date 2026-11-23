@@ -8,11 +8,17 @@ import { useWorkspace } from '../../../shared/workspace-react'
 import { SigningController } from '../../merchant-application/signing'
 import { signingRuntime } from '../../merchant-application/signing-runtime'
 import { SubpageHeader, SubpageHeaderSpacer } from '../../components/navigation/subpage-header'
+import { parseMarkdownLite } from '../../../shared/markdown-lite'
 import './index.scss'
 import './signing.scss'
 
 // No Figma original exists for the agreement signing screen (design registry §4); this page
 // reuses the delivered application-page language and is not a 1:1 restoration or VIS pass.
+/** 把 **加粗** 标记剥成纯文字（小程序 Text 不支持行内混排加粗；层级由标题/列表承担）。 */
+function stripBold(text: string): string {
+  return text.replace(/\*\*(.+?)\*\*/g, '$1')
+}
+
 export default function MerchantSigningPage() {
   const route = useRouter()
   const preview = route.params.preview === '1'
@@ -56,7 +62,17 @@ function SigningScreen({ preview, merchantParam, scope }: { preview: boolean; me
         </View>}
         {(state.phase === 'unsigned' || state.phase === 'signed') && state.agreement && <View className='signing-agreement'>
           <View className='signing-agreement-meta'><Text>版本 {state.agreement.agreementVersion}</Text><Text className='signing-agreement-hash'>SHA-256 {state.agreement.contentSha256}</Text></View>
-          <View className='signing-agreement-content' ariaLabel='协议正文'>{state.agreement.content}</View>
+          {/* 2026-11-20 用户裁决：协议采用 Markdown 轻标记（标题、加粗、列表），运营端纯文本编辑，此处渲染层次；纯文本旧协议自动按段落展示。 */}
+          <View className='signing-agreement-content' ariaLabel='协议正文'>
+            {parseMarkdownLite(state.agreement.content).map((block, index) =>
+              block.kind === 'heading'
+                ? <Text key={index} className={`md-heading md-heading-${block.level}`}>{stripBold(block.text)}</Text>
+                : block.kind === 'list'
+                  ? <View key={index} className='md-list'>
+                      {block.items.map((item, i) => <View key={i} className='md-list-item'><Text className='md-list-marker'>{block.ordered ? `${i + 1}.` : '•'}</Text><Text className='md-list-text'>{stripBold(item)}</Text></View>)}
+                    </View>
+                  : <Text key={index} className='md-paragraph'>{stripBold(block.text)}</Text>)}
+          </View>
         </View>}
         {state.phase === 'unsigned' && !state.agreement && <View className='signing-agreement'><View className='signing-agreement-content'>协议内容以服务端为准。</View></View>}
         {state.phase === 'unsigned' && <View className='signing-check-row'>

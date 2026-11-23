@@ -2,6 +2,7 @@ import { StaleContextError, WorkspaceScope, type Workspace } from '../shared/wor
 import type { MerchantAdmission, MerchantMembership } from '../shared/merchant-repositories'
 import { ApiError } from '../shared/request'
 import type { AdmissionDeps } from './admission'
+import { writeWorkspaceMemory } from '../shared/workspace-memory'
 
 export type MerchantState = Readonly<{
   status: 'idle' | 'checking' | 'no-stores' | 'choose-store' | 'allowed' | 'limited' | 'denied' | 'error';
@@ -117,6 +118,8 @@ export class MerchantWorkspace {
       ticket.assertCurrent()
       if (!this.active || run !== this.run) return
       const status = view.admission === 'ALLOWED' ? 'allowed' : view.admission === 'LIMITED' ? 'limited' : 'denied'
+      // 2026-11-20 用户裁决：准入通过时写入商家角色记忆，下次启动直达商家端
+      if (status === 'allowed') writeWorkspaceMemory('merchant')
       this.publish({ status, revision: this.scope.revision, view })
     } catch (error) {
       this.settle(error, run, ticket)

@@ -1,5 +1,7 @@
 package com.petplatform.thirdparty.biz.infrastructure.provider.assetimage;
 
+import com.petplatform.thirdparty.biz.application.port.PrivateAssetImageValidationException;
+
 /** Reads only the bounded IFD0 orientation SHORT; no thumbnail, GPS or arbitrary TIFF values. */
 final class JpegExifOrientation {
   private JpegExifOrientation() {}
@@ -72,6 +74,7 @@ final class JpegExifOrientation {
   }
 
   private static IllegalArgumentException invalid() {
-    return new IllegalArgumentException("Malformed JPEG orientation metadata");
+    return new PrivateAssetImageValidationException(
+        "IMAGE_METADATA_INVALID", "Malformed JPEG orientation metadata");
   }
 }

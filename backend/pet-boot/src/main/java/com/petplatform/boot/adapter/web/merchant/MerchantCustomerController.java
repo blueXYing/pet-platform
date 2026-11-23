@@ -113,7 +113,7 @@ public final class MerchantCustomerController {
         JsonNode body = StrictNoteBody.parse(raw);
         var view = notes.updateNote(new com.petplatform.order.api.query.MerchantCustomerNoteCommandApi.UpdateNoteCommand(
                 id(text(body, "merchantId")), id(text(body, "storeId")), id(userId),
-                text(body, "note"), text(body, "expectedVersion"), userCommand(request)));
+                text(body, "note"), userCommand(request)));
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("userId", id(userId));
         Map<String, Object> note = new LinkedHashMap<>();
@@ -162,7 +162,8 @@ public final class MerchantCustomerController {
 
     /** Strict note body: every key present exactly once, explicit nulls rejected. */
     private static final class StrictNoteBody {
-        private static final Set<String> KEYS = Set.of("merchantId", "storeId", "note", "expectedVersion");
+        // 2026-11-18 用户裁决：备注直接覆盖，body 不再要求 expectedVersion。
+        private static final Set<String> KEYS = Set.of("merchantId", "storeId", "note");
 
         private static JsonNode parse(String raw) {
             JsonNode body;

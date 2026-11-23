@@ -61,6 +61,22 @@ export function mineEntryNavMethod(url: string): 'reLaunch' | 'navigateTo' {
 }
 // 成为服务者入口（32号 §2 七页批次）：落地页半屏面板，接既有商家入驻申请流程。
 export const MINE_BECOME_PROVIDER_URL = '/consumer/pages/become-provider/index'
+// 既有入驻申请页：已有申请时直达（跳过 become-provider 服务类型选择前置）。
+export const MINE_MERCHANT_APPLICATION_URL = '/consumer/pages/merchant-application/index'
+export type MineApplicationStatus = 'DRAFT' | 'REVIEWING' | 'APPROVED' | 'REJECTED'
+// 商家横幅入口（2026-11-19 用户裁决）：已是商家（merchant-memberships 非空）显示「商家控制台」
+// 直达工作台；已提交过入驻申请（current 非空）直接进申请页查看/继续，跳过服务类型选择前置
+// （2026-11-19 二次裁决："提交后就应该无需选择了"）；从未申请才进入 become-provider 选类型流程。
+// 未登录/查询失败按无申请处理，申请页与工作台各有准入兜底，文案与落点始终一致。
+export type MineMerchantEntry = Readonly<{ title: string; subtitle: string; url: string }>
+export function mineMerchantEntry(isMerchant: boolean | null, applicationStatus: MineApplicationStatus | null = null): MineMerchantEntry {
+  if (isMerchant === true) return { title: '商家控制台', subtitle: '管理门店、订单与服务', url: MINE_MERCHANT_WORKSPACE_URL }
+  if (applicationStatus === 'REVIEWING') return { title: '入驻审核中', subtitle: '点击查看申请进度与单号', url: MINE_MERCHANT_APPLICATION_URL }
+  if (applicationStatus === 'APPROVED') return { title: '入驻申请已通过', subtitle: '点击查看后续办理', url: MINE_MERCHANT_APPLICATION_URL }
+  if (applicationStatus === 'REJECTED') return { title: '申请需修改', subtitle: '补充资料后可重新提交', url: MINE_MERCHANT_APPLICATION_URL }
+  if (applicationStatus === 'DRAFT') return { title: '继续入驻申请', subtitle: '完善资料后提交审核', url: MINE_MERCHANT_APPLICATION_URL }
+  return { title: '成为商家', subtitle: '入驻开店，让更多宠友找到你', url: MINE_BECOME_PROVIDER_URL }
+}
 // 「工程验证」壳降级为调试入口（direct path 保留，preview 夹具通道原样保留）。
 export const MINE_DEVELOPER_SHELL_URL = '/consumer/pages/shell/index'
 // 地址管理（契约 59 切片，32号第二批）：mine 网格「地址管理」格位的真实入口。

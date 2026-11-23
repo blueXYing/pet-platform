@@ -25,7 +25,12 @@ class AdminAuthPrimitivesTest {
     @Test void initialStrengthAndLengthRemainRequiredWithoutMfa() {
         assertDoesNotThrow(()->AdminPasswordHasher.requireInitialStrength("Abcdef12".toCharArray()));
         assertThrows(AdminAuthFailure.class,()->AdminPasswordHasher.requireInitialStrength("abcdefgh".toCharArray()));
-        assertThrows(AdminAuthFailure.class,()->AdminPasswordHasher.require("short".toCharArray()));
+        // 2026-11-20 用户裁决：登录验证（require）不再设最短长度——存量密码的强度以创建时为准；
+        // 创建/修改密码（requireInitialStrength）仍必须至少 8 位，且 3 类字符规则不变。
+        assertDoesNotThrow(()->AdminPasswordHasher.require("short".toCharArray()));
+        assertThrows(AdminAuthFailure.class,()->AdminPasswordHasher.requireInitialStrength("Abc12xy".toCharArray()));
+        assertThrows(AdminAuthFailure.class,()->AdminPasswordHasher.require(null));
+        assertThrows(AdminAuthFailure.class,()->AdminPasswordHasher.require(new char[0]));
         assertThrows(AdminAuthFailure.class,()->AdminPasswordHasher.require("X".repeat(65).toCharArray()));
     }
     @Test void secretEncryptionAuthenticatesContextAndDoesNotExposePayload() {

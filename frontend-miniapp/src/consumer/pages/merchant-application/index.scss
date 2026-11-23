@@ -36,6 +36,8 @@
 .application-error { display: block; color: #a83232; font-size: calc(var(--application-unit) * 12); line-height: 1.6; }
 .application-secondary { display: flex; gap: calc(var(--application-unit) * 16); justify-content: center; margin-top: calc(var(--application-unit) * 16); }
 .application-secondary button, .application-state button, .application-material button, .application-city-options button { color: #3185ba; background: transparent; font-size: calc(var(--application-unit) * 13); padding: calc(var(--application-unit) * 6); }
-.application-material { background: white; border: 1px solid #c0ecff; padding: calc(var(--application-unit) * 8); font-size: calc(var(--application-unit) * 11); }
+.application-material { display: flex; align-items: center; gap: calc(var(--application-unit) * 8); background: white; border: 1px solid #c0ecff; border-radius: calc(var(--application-unit) * 8); padding: calc(var(--application-unit) * 6); font-size: calc(var(--application-unit) * 11); }
+.application-thumbnail { flex: none; width: calc(var(--application-unit) * 56); height: calc(var(--application-unit) * 56); border-radius: calc(var(--application-unit) * 6); background: #eaf7fb; }
+.application-material-meta { display: flex; align-items: center; gap: calc(var(--application-unit) * 4); }
 .application-preview-label { display: block; text-align: center; color: #577683; font-size: calc(var(--application-unit) * 11); margin-top: calc(var(--application-unit) * 12); }
 .application-reference { width: 402px; min-height: 1142px; }

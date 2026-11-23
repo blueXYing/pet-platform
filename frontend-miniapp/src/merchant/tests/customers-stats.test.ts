@@ -50,7 +50,8 @@ function fixture() {
     availableMinutes: 600, bookedMinutes: 90, utilizationRate: '15.0',
   }
   let searches: Array<{ nickname?: string; orderNoSuffix?: string }> = []
-  let detailIds: string[] = [], ranges: StatsRange[] = [], notes: Array<{ userId: string; note: string; version: string }> = []
+  let noteSeq = 0
+  let detailIds: string[] = [], ranges: StatsRange[] = [], notes: Array<{ userId: string; note: string; seq: number }> = []
   let savedNote: { userId: string; note: CustomerNote } = { userId: '201', note: copy(note) }
   const deps: MerchantStorefrontDeps = {
     scope, admission: async () => copy(owner),
@@ -61,9 +62,10 @@ function fixture() {
     storeAvatarUrl: async () => ({ assetId: null, url: null, expiresAt: null }),
     customers: (filter, page2, pageSize) => { searches.push({ ...filter }); return Promise.resolve({ page: page2, pageSize, total: page.total, items: copy(page.items) }) },
     customerDetail: userId => { detailIds.push(userId); return Promise.resolve(copy(detail)) },
-    saveCustomerNote: (userId, value, version) => {
-      notes.push({ userId, note: value, version })
-      savedNote = { userId, note: { content: value === '' ? null : value, version: String(Number(version) + 1), updatedAt: '2026-10-19T09:30:00.000Z' } }
+    saveCustomerNote: (userId: string, value: string) => {
+      noteSeq += 1
+      notes.push({ userId, note: value, seq: noteSeq })
+      savedNote = { userId, note: { content: value === '' ? null : value, version: String(noteSeq), updatedAt: '2026-10-19T09:30:00.000Z' } }
       return Promise.resolve(copy(savedNote))
     },
     retireNoteConflict: () => { throw new Error('unused') },
@@ -150,13 +152,12 @@ test('客户详情备注（2026-10-19 扩展）：读取带入草稿，保存走
   await controller.load()
   await detailReady(controller)
   assert.equal(controller.getSnapshot().detail?.note?.content, '对猫毛过敏，注意戴手套')
-  assert.equal(controller.getSnapshot().noteVersion, '1')
+  // 2026-11-18 用户裁决：直接覆盖契约，控制器不再维护 noteVersion 发送态（回执版本仅回填 detail）。
   controller.editNote('改口：需戴手套')
   await controller.saveNote()
   assert.equal(fx.notes.length, 1)
-  assert.deepEqual(fx.notes[0], { userId: '201', note: '改口：需戴手套', version: '1' })
-  assert.equal(controller.getSnapshot().noteVersion, '2')
-  assert.equal(controller.getSnapshot().detail?.note?.version, '2')
+  assert.deepEqual(fx.notes[0], { userId: '201', note: '改口：需戴手套', seq: 1 })
+  assert.equal(controller.getSnapshot().detail?.note?.version, '1')
   // 空串=清空，照常走写路径。
   controller.editNote('')
   await controller.saveNote()

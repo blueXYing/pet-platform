@@ -54,6 +54,16 @@ public final class MerchantAgreementApiImpl
         return service.consent(command).receipt();
     }
 
+    // ===== 2026-11-20 用户裁决：运营端协议管理透出（发布/版本历史）。
+    // 只返回应用层投影，持久化实体不出本模块（ARCH-002 / ARCH-004）。 =====
+    public MerchantAgreementService.PublishedAgreement publishAgreement(String content, long operatorId) {
+        return service.publish(content, operatorId);
+    }
+
+    public java.util.List<MerchantAgreementService.AgreementVersionView> listAgreementVersions() {
+        return service.listVersionsForAdmin();
+    }
+
     /** Allows a future HTTP adapter to distinguish first creation (201) from replay/existing (200). */
     public ConsentOutcome consentOutcome(MerchantAgreementConsentCommand command) {
         MerchantAgreementService.ConsentResult result = service.consent(command);

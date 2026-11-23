@@ -33,6 +33,21 @@ public interface MerchantAgreementMapper {
 
     MerchantAgreementDocumentEntity selectCurrentAgreementForUpdate();
 
+    /** 2026-11-20 用户裁决：运营端协议管理——版本历史/发布新版本/切换当前指针。 */
+    List<MerchantAgreementDocumentEntity> selectAllVersions();
+
+    int insertVersion(
+            @Param("id") long id,
+            @Param("agreementVersion") String agreementVersion,
+            @Param("content") String content,
+            @Param("contentSha256") String contentSha256,
+            @Param("publishedByOperatorId") long publishedByOperatorId,
+            @Param("now") LocalDateTime now);
+
+    int upsertCurrentPointer(
+            @Param("agreementVersionId") long agreementVersionId,
+            @Param("now") LocalDateTime now);
+
     int insertAcceptance(
             @Param("id") long id,
             @Param("merchantId") long merchantId,

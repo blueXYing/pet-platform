@@ -2,6 +2,7 @@ import { Image, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { readOnboardingDone } from '../onboarding/model'
+import { readWorkspaceMemory } from '../../../shared/workspace-memory'
 import splashArt from '../../assets/splash/splash@2x.jpg'
 import './splash.css'
 
@@ -25,10 +26,15 @@ export default function SplashPage() {
     const route = setTimeout(() => {
       if (routed.current) return
       routed.current = true
-      if (readOnboardingDone()) {
-        void Taro.switchTab({ url: '/consumer/pages/home/index' })
-      } else {
+      if (!readOnboardingDone()) {
         void Taro.redirectTo({ url: '/consumer/pages/onboarding/index' })
+        return
+      }
+      // 2026-11-20 用户裁决：商家角色记忆——上次在商家端的话，启动直达商家工作台
+      if (readWorkspaceMemory() === 'merchant') {
+        void Taro.reLaunch({ url: '/merchant/pages/workspace/index' })
+      } else {
+        void Taro.switchTab({ url: '/consumer/pages/home/index' })
       }
     }, SHOW_MS)
     return () => { clearTimeout(fade); clearTimeout(route) }

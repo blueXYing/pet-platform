@@ -46,7 +46,11 @@ export function unavailableDependencies(): ApplicationDependencies {
 }
 export function applicationMessage(error: unknown): string {
   if (error instanceof ApiError) {
-    if (error.statusCode === 422 && error.code === 'PRIVATE_ASSET_REJECTED') return '该材料已被安全检查拒绝，请点击原材料上传入口重新选择图片。'
+    if (error.statusCode === 422 && error.code === 'PRIVATE_ASSET_REJECTED') {
+      // 2026-11-19 用户裁决：展示后端细分原因（大小/尺寸/像素/格式/EXIF），不再只报笼统安全拒绝。
+      const detail = error.serverMessage?.trim()
+      return detail ? `${detail}，请点击原材料上传入口重新选择图片。` : '该材料已被安全检查拒绝，请点击原材料上传入口重新选择图片。'
+    }
     const statusMessages: Record<number, string> = {
       401: '登录已失效，请重新登录。', 403: '当前账号没有此操作权限。',
       404: '申请记录或服务暂不可用，请重新读取申请。',

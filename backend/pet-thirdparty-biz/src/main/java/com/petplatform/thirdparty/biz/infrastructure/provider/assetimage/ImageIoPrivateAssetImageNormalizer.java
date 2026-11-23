@@ -1,6 +1,7 @@
 package com.petplatform.thirdparty.biz.infrastructure.provider.assetimage;
 
 import com.petplatform.thirdparty.biz.application.port.PrivateAssetImageNormalizer;
+import com.petplatform.thirdparty.biz.application.port.PrivateAssetImageValidationException;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
@@ -68,7 +69,8 @@ public final class ImageIoPrivateAssetImageNormalizer implements PrivateAssetIma
   }
 
   static BufferedImage decode(byte[] source, String mediaType) {
-    if (source == null || source.length == 0 || source.length > MAX_BYTES) throw invalid();
+    if (source == null || source.length == 0) throw invalid();
+    if (source.length > MAX_BYTES) throw invalid("IMAGE_FILE_TOO_LARGE");
     boolean png =
         source.length >= 8
             && source[0] == (byte) 137
@@ -93,11 +95,9 @@ public final class ImageIoPrivateAssetImageNormalizer implements PrivateAssetIma
       try {
         reader.setInput(input, true, true);
         int width = reader.getWidth(0), height = reader.getHeight(0);
-        if (width <= 0
-            || height <= 0
-            || width > 8192
-            || height > 8192
-            || (long) width * height > 16_000_000L) throw invalid();
+        if (width <= 0 || height <= 0) throw invalid();
+        if (width > 8192 || height > 8192) throw invalid("IMAGE_DIMENSIONS_EXCEEDED");
+        if ((long) width * height > 16_000_000L) throw invalid("IMAGE_PIXELS_EXCEEDED");
         // Truncated JPEG decoders sometimes return a partial image with only a warning.
         reader.addIIOReadWarningListener(
             (ignored, warning) -> {
@@ -109,6 +109,8 @@ public final class ImageIoPrivateAssetImageNormalizer implements PrivateAssetIma
       } finally {
         reader.dispose();
       }
+    } catch (PrivateAssetImageValidationException failure) {
+      throw failure;
     } catch (IOException | RuntimeException failure) {
       throw invalid();
     }
@@ -162,12 +164,19 @@ public final class ImageIoPrivateAssetImageNormalizer implements PrivateAssetIma
       }
       return bytes.toByteArray();
     } catch (IOException | IndexOutOfBoundsException failure) {
+      if ("Normalized image exceeds byte limit".equals(failure.getMessage())) {
+        throw invalid("IMAGE_FILE_TOO_LARGE");
+      }
       throw invalid();
     }
   }
 
   private static IllegalArgumentException invalid() {
-    return new IllegalArgumentException(
-        "Private material must be a complete bounded JPEG or PNG image");
+    return invalid("IMAGE_FORMAT_INVALID");
+  }
+
+  private static PrivateAssetImageValidationException invalid(String reasonCode) {
+    return new PrivateAssetImageValidationException(
+        reasonCode, "Private material must be a complete bounded JPEG or PNG image");
   }
 }

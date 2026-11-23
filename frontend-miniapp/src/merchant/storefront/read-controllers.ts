@@ -25,15 +25,14 @@ export type CustomersState = Readonly<{
   detail: CustomerDetail | null
   detailLoading: boolean
   noteDraft: string
-  noteSaving: boolean
-  noteVersion: string | null
+  noteSaving: boolean, noteSaved: number
 }>
 
 const initialCustomers = (): CustomersState => ({
   phase: 'idle', notice: '', frozen: false, page: 1, pageSize: 20, total: 0,
   items: [], loadingMore: false, search: '', committedSearch: '',
   searchMode: 'nickname', detail: null, detailLoading: false,
-  noteDraft: '', noteSaving: false, noteVersion: null,
+  noteDraft: '', noteSaving: false, noteSaved: 0,
 })
 
 export class MerchantCustomersController {
@@ -178,7 +177,6 @@ export class CustomerDetailController {
       this.publish({
         ...this.state, phase: 'ready', detail,
         noteDraft: detail.note?.content ?? '',
-        noteVersion: detail.note?.version ?? '0',
       })
     } catch (error) {
       if (!this.live(epoch) || run !== this.reads) return
@@ -201,13 +199,14 @@ export class CustomerDetailController {
     this.publish({ ...this.state, noteSaving: true, notice: '' })
     const epoch = this.epoch
     try {
-      const saved = await this.deps.saveCustomerNote(this.userId, note, this.state.noteVersion ?? '0')
+      const saved = await this.deps.saveCustomerNote(this.userId, note)
       if (!this.live(epoch)) return
       const detail = this.state.detail
       this.publish({
         ...this.state, noteSaving: false,
-        noteVersion: saved.note.version, noteDraft: saved.note.content ?? '',
+        noteDraft: saved.note.content ?? '',
         detail: detail ? { ...detail, note: saved.note } : detail,
+        noteSaved: this.state.noteSaved + 1,
       })
     } catch (error) {
       if (!this.live(epoch)) return

@@ -43,6 +43,11 @@ public interface MerchantApplicationMapper {
   MerchantDecisionEntity selectDecision(
       @Param("applicationId") long applicationId, @Param("decisionId") long decisionId);
 
+  /**
+   * 当前有效的已核验证据（行锁）：被非 ACTIVE（已释放）登记（claim）引用的旧证据是历史，不返回；
+   * 没有登记的行业许可证证据照常返回。批准闸门与人工核验的"内容未变"判断共用这一口径——
+   * 2026-11-20 重复核验治理：同一版本上改值重核后旧登记转为 RELEASED，批准不再因"证据多条"被卡。
+   */
   List<MerchantEvidenceEntity> selectVerifiedEvidenceForUpdate(
       @Param("applicationId") long applicationId, @Param("revisionId") long revisionId);
 

@@ -1971,7 +1971,7 @@ OpenAPI新增仅表达已接受外部schema；Web绑定cookie传输名__Host-pet
 |---|---|
 | SessionGrant.accessToken | 256位以上随机opaque凭据，仅认证端通过HTTPS发给持有效认证尝试的客户端；示例只用不可用占位符 |
 | tokenType | 固定Bearer |
-| expiresAt | 服务端时钟计算；小程序建议15分钟，Web受30分钟无操作及账号session generation约束 |
+| expiresAt | 服务端时钟计算；小程序7天（2026-11-18 用户裁决，原建议15分钟；`pet.auth.c.access-ttl-seconds` 默认 604800），Web受30分钟无操作及账号session generation约束 |
 | refreshToken / refreshExpiresAt | 仅小程序有；随机独立秘密，建议30天绝对有效期、不因刷新延长；Web无此字段 |
 | sessionId / userId | String；会话记录及完成验证的用户账号ID；Web改为operatorId且不返回userId |
 | audience | MINIAPP或ADMIN_WEB，来自服务端配置，不接受请求指定以升级 |

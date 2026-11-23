@@ -8,6 +8,7 @@ import { RealProfileRepository } from '../../api/repositories'
 import { RealCouponPointsRepository } from '../../coupon-points/repository'
 import { RealPointsTaskRepository } from '../../points-tasks/repository'
 import { RealOrderReadRepository } from '../../orders/repository'
+import { MerchantAdmissionRepository, MerchantApplicationRepository } from '../../../shared/merchant-repositories'
 import { RootTabBarSpacer } from '../../components/navigation/root-tab-bar-spacer'
 import { TabBar } from '../../components/navigation/tab-bar'
 import { deltaLabel, formatLedgerTime, pointsBizTypeLabels, type PointsLedgerView } from '../../coupon-points/model'
@@ -15,8 +16,8 @@ import avatar from '../../assets/profile/avatar.png'
 import stripTop from './assets/strip-top.jpg'
 import clipTop from './assets/clip-top.png'
 import {
-  MINE_ADDRESS_BOOK_URL, MINE_BAIKE_URL, MINE_BECOME_PROVIDER_URL, MINE_DEVELOPER_SHELL_URL, MINE_FEEDBACK_URL, MINE_HELP_URL, MINE_MERCHANT_WORKSPACE_URL, MINE_POINTS_MALL_URL, MINE_SETTINGS_URL, mineCard, mineEntryNavMethod, mineHubEntries, phoneGuideCopy,
-  type MineCard, type MineStats,
+  MINE_ADDRESS_BOOK_URL, MINE_BAIKE_URL, MINE_DEVELOPER_SHELL_URL, MINE_FEEDBACK_URL, MINE_HELP_URL, MINE_POINTS_MALL_URL, MINE_SETTINGS_URL, mineCard, mineEntryNavMethod, mineHubEntries, mineMerchantEntry, phoneGuideCopy,
+  type MineApplicationStatus, type MineCard, type MineStats,
 } from './model'
 import './mine.css'
 
@@ -64,6 +65,13 @@ export default function MinePage() {
   const [couponPointsRepository] = useState(() => new RealCouponPointsRepository(consumerApi))
   const [pointsTaskRepository] = useState(() => new RealPointsTaskRepository(consumerApi))
   const [orderReadRepository] = useState(() => new RealOrderReadRepository(consumerApi))
+  const [admissionRepository] = useState(() => new MerchantAdmissionRepository(consumerApi))
+  const [applicationRepository] = useState(() => new MerchantApplicationRepository(consumerApi))
+  // 商家横幅（2026-11-19 用户裁决）：merchant-memberships 判定身份，已是商家显示「商家控制台」
+  // 直达工作台；已提交过入驻申请直接进申请页（跳过服务类型选择前置）；否则「成为商家」进入
+  // become-provider 入驻流程；查询失败按非商家/无申请处理。
+  const [isMerchant, setIsMerchant] = useState<boolean | null>(null)
+  const [applicationStatus, setApplicationStatus] = useState<MineApplicationStatus | null>(null)
   // 58 号签到切片：连签数接真实 status；读取失败软降级保持 0 占位语义（不阻塞卡片）。
   // 2026-10-30：同回执的 dailyPoints 用于签到按钮面额文案（对齐原稿「立即签到 · 得 N 积分」）。
   const [signInStreak, setSignInStreak] = useState(0)
@@ -101,8 +109,8 @@ export default function MinePage() {
       let phoneMasked: string | null = consumerApi.currentSession?.phoneMasked ?? null
       let stats: MineStats = { coupons: null, points: null }
       if (outcome === 'authenticated') {
-        // 五路读取失败均软降级（卡片仍可用）；会话过期由 ConsumerApi 401 自动恢复兜底。
-        const [profile, coupons, points, signIn, counts] = await Promise.all([
+        // 六路读取失败均软降级（卡片仍可用）；会话过期由 ConsumerApi 401 自动恢复兜底。
+        const [profile, coupons, points, signIn, counts, membership, application] = await Promise.all([
           profileRepository.load().catch(() => null),
           couponPointsRepository.listCoupons('AVAILABLE', 1, 1).then(page => page.total).catch(() => null),
           couponPointsRepository.balance().then(value => value.balance).catch(() => null),
@@ -110,7 +118,14 @@ export default function MinePage() {
           // 五状态角标：pageSize=1 只取 total；单状态失败为 null（该格角标隐藏）。
           Promise.all(orderStatusEntries.map(entry =>
             orderReadRepository.list(entry.status, 1, 1).then(page => page.total).catch(() => null))),
+          // 商家身份：pageSize=1 只取 total，非空即已是商家；失败按非商家处理。
+          admissionRepository.memberships(1, 1).then(page => page.total > 0).catch(() => null),
+          // 入驻申请状态：已有申请（含审核中/已通过/需修改）时入口直达申请页，跳过服务类型
+          // 选择前置；404（无申请）与读取失败均按无申请处理，申请页有准入兜底。
+          applicationRepository.current().then(detail => detail.status).catch(() => null),
         ])
+        setIsMerchant(membership)
+        setApplicationStatus(application)
         setSignInStreak(signIn?.streak ?? 0)
         setSignInPoints(signIn?.dailyPoints ?? null)
         if (mounted.current) {
@@ -121,6 +136,9 @@ export default function MinePage() {
         nickname = profile?.nickname || ''
         if (profile?.phoneMasked) phoneMasked = profile.phoneMasked
         stats = { coupons, points }
+      } else {
+        setIsMerchant(null)
+        setApplicationStatus(null)
       }
       if (!mounted.current) return
       setCard(mineCard({ outcome, nickname, phoneMasked, guideDismissed: readDismissed(), stats }))
@@ -208,6 +226,8 @@ export default function MinePage() {
       .catch(() => setSheetPhase('error'))
   }
   function closePointsSheet() { setSheetPhase('closed') }
+  // 商家横幅与「成为服务者」格位共用同一分发：已是商家→工作台；有申请→申请页；否则→选类型。
+  const merchantEntry = mineMerchantEntry(isMerchant, applicationStatus)
 
   return <View className='mine-page' style={style}>
     <View className='mine-status-area' />
@@ -371,7 +391,7 @@ export default function MinePage() {
             {/* 成为服务者为真实入口（32号 §2 七页批次：become-provider 落地页）；帮助与客服/意见反馈：
                 无工程页面，视觉占位；宠物档案（自「我的服务」商城格位迁入，原稿本行 4 格现 5 格）与
                 通知偏好为真实入口。 */}
-            <Button id='mine-become-provider' className='mine-cell' hoverClass='none' onClick={() => open(MINE_BECOME_PROVIDER_URL)}>
+            <Button id='mine-become-provider' className='mine-cell' hoverClass='none' onClick={() => open(merchantEntry.url)}>
               <View className='mine-cell-chip'><View className='mi-svc-provider' /></View>
               <Text className='mine-cell-label'>成为服务者</Text>
             </Button>
@@ -398,12 +418,14 @@ export default function MinePage() {
             </Button>
           </View>
         </View>
-        {/* 文案对齐原稿（成为商家/入驻开店…）；落点沿既有工作台路径（model.ts 既有裁决，不新造导航层级）。 */}
-        <Button id='mine-merchant' className='mine-banner' hoverClass='none' onClick={() => open(MINE_MERCHANT_WORKSPACE_URL)}>
+        {/* 2026-11-19 用户裁决：已是商家显示「商家控制台」直达工作台（reLaunch 沿既有裁决）；
+            已提交入驻申请直达申请页（跳过服务类型选择前置）；从未申请才进入 become-provider
+            入驻流程。文案与落点一致。 */}
+        <Button id='mine-merchant' className='mine-banner' hoverClass='none' onClick={() => open(merchantEntry.url)}>
           <View className='mine-banner-chip'><View className='mi-banner-shop' /></View>
           <View className='mine-banner-main'>
-            <Text className='mine-banner-title'>成为商家</Text>
-            <Text className='mine-banner-sub'>入驻开店，让更多宠友找到你</Text>
+            <Text className='mine-banner-title'>{merchantEntry.title}</Text>
+            <Text className='mine-banner-sub'>{merchantEntry.subtitle}</Text>
           </View>
           <View className='mine-banner-go'><View className='mi-chev-banner' /></View>
         </Button>

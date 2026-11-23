@@ -606,7 +606,9 @@ public class MarketingAdminController {
         out.put("highlightText", c.highlightText());
         out.put("playType", c.playType());
         out.put("coverAssetId", c.coverAssetId());
-        out.put("coverUrl", c.coverUrl());
+        // 封面地址在输出口统一解析（存 OSS Key 时拼成完整网址；已是完整网址的原样返回），
+        // 兼容商家封面上传派生出的素材接口地址。
+        out.put("coverUrl", MarketingCoverUrlResolver.resolve(c.coverUrl()));
         out.put("tagCode", c.tagCode());
         out.put("tagName", c.tagName());
         out.put("cityCodes", c.cityCodes());

@@ -1,5 +1,6 @@
 import { ConsumerPageLayout } from '../../components/page-layout'
 import { switchConsumerTab } from '../../components/navigation/switch'
+import { SubpageHeader } from '../../components/navigation/subpage-header'
 import { Button, Image, Text, View } from '@tarojs/components'
 import Taro, { useRouter, useDidShow } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
@@ -124,9 +125,10 @@ export default function PetArchiveList() {
   }
   const extraRows = Math.max(0, pets.length - 2) * 85
   const ready = phase === 'ready'
-  return <ConsumerPageLayout page='petList' unit={unit} navigation={preview ? { idPrefix: 'pet', disabled: phase !== 'ready', onSelect: key => void switchConsumerTab(key), referencePlacement: undefined } : undefined} className={`pet-page pet-list-page${referenceCanvas ? ' pet-reference-canvas' : ''}`} style={style}>
+  return <ConsumerPageLayout page='petList' unit={unit} navigation={preview ? { idPrefix: 'pet', disabled: phase !== 'ready', onSelect: key => void switchConsumerTab(key), referencePlacement: undefined } : undefined} className={`pet-page pet-list-page${referenceCanvas ? ' pet-reference-canvas' : ' pet-list-with-header'}`} style={style}>
     <View className='pet-status-area' />
     <View className='pet-design pet-list-design' data-phase={phase} style={{ '--pet-list-extra': `${extraRows * unit}px` } as CSSProperties}>
+      {!referenceCanvas && <SubpageHeader title='宠物档案' backId='pet-list-back' titleId='pet-list-navtitle' height={86} background='cream' />}
       <Image className='pet-list-strip' src={stripMain} mode='scaleToFill' />
       <Image className='pet-list-blob pet-list-blob-backing' src={backing} mode='scaleToFill' />
       <Image className='pet-list-blob pet-list-blob-sheet' src={sheet} mode='scaleToFill' />
@@ -144,7 +146,7 @@ export default function PetArchiveList() {
         <Button id='pet-retry-delete' className='pet-state-action' onClick={() => void retryDelete()}>重试原删除请求</Button>
       </View>}
       {ready && <View className='pet-list-head'>
-        <Text className='pet-list-title'>宠物档案</Text>
+        {referenceCanvas && <Text className='pet-list-title'>宠物档案</Text>}
         <Button id='pet-list-count' className='pet-list-count' ariaLabel='添加宠物' onClick={openForm}><Text space='nbsp'>{pets.length} 只萌宠     +</Text></Button>
         <Button id='pet-list-encyc' className='pet-list-encyc' ariaLabel='宠物百科' onClick={() => notWired('宠物百科')}>
           <Image className='pet-list-encyc-paw' src={paw} mode='scaleToFill' />
@@ -156,7 +158,7 @@ export default function PetArchiveList() {
         const photo = (preview ? petPhotos[pet.petId] : undefined)
         const defaultPhoto = pet.petType === 'DOG' ? defaultDogAvatar : pet.petType === 'CAT' ? defaultCatAvatar : null
         const tag = previewSupplement(preview ? pet.petId : undefined).tag
-        const top = 95 + index * 85
+        const top = (referenceCanvas ? 95 : 181) + index * 85
         return <Button key={pet.petId} id={`pet-card-${pet.petId}`} className='pet-list-card' style={{ top: `calc(var(--pet-unit) * ${top})` }} ariaLabel={`${pet.name}的档案`} onClick={() => openDetail(pet)} onLongPress={() => void removePet(pet)}>
           {pet.avatarUrl ? <Image className='pet-list-photo pet-list-avatar' src={pet.avatarUrl} mode='aspectFill' /> : photo ? <Image className='pet-list-photo' src={photo.src} mode='scaleToFill' style={{ left: `calc(var(--pet-unit) * ${photo.x})`, top: `calc(var(--pet-unit) * ${photo.y})`, width: `calc(var(--pet-unit) * ${photo.w})`, height: `calc(var(--pet-unit) * ${photo.h})` }} /> : defaultPhoto ? <Image className='pet-list-photo pet-list-avatar' src={defaultPhoto} mode='aspectFill' /> : <View className='pet-list-photo pet-list-avatar pet-avatar-empty'><Text>{pet.name.slice(0, 1)}</Text></View>}
           <View className='pet-list-identity'><Text className='pet-list-name'>{pet.name}</Text>

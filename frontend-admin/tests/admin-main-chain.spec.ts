@@ -11,8 +11,9 @@ import { expect, test } from '@playwright/test';
 //   npx playwright test tests/admin-main-chain.spec.ts
 //
 // Disclosed mock boundary: NONE — every page loads through the real backend. Navigation stays
-// INSIDE the SPA (header links + row links) because the admin token is in-memory only; a full
-// page.goto would drop the session by design. Known findings surface as their real UI states:
+// INSIDE the SPA (header links + row links). Since the 2026-11-20 用户裁决 the admin token is
+// persisted and re-validated with the server on every full page load: a page.goto keeps the
+// session only while the server still accepts it. Known findings surface as their real UI states:
 // FA-5 (status-logs/verification reads 400) and FA-3 (ops reads 403 behind the security chain).
 const base = process.env.LIVE_JOINT_BASE;
 test.skip(!base, 'LIVE_JOINT_BASE not configured; admin main-chain live is opt-in');

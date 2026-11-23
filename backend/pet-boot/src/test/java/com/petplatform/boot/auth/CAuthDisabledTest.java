@@ -21,7 +21,8 @@ class CAuthDisabledTest {
         assertFalse(defaults.isEnabled());
         assertEquals("auth001c:", defaults.getCachePrefix());
         assertEquals(600, defaults.getAttemptTtlSeconds());
-        assertEquals(900, defaults.getAccessTtlSeconds());
+        // 2026-11-18 用户裁决：小程序 access 会话默认 7 天（原 15 分钟导致频繁静默重登）。
+        assertEquals(604_800, defaults.getAccessTtlSeconds());
         new ApplicationContextRunner()
                 .withUserConfiguration(CAuthConfiguration.class)
                 .run(context -> {

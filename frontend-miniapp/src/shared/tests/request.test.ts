@@ -47,7 +47,8 @@ test('MINI-004 real mode blocked by unapproved CCR; errors use code rather than 
   for (const statusCode of [401, 403, 500]) {
     const { client } = setup(async () => ({ statusCode, data: { success: false, code: 'REMOTE_CODE', message: 'arbitrary' } }))
     await assert.rejects(client.request({ path: '/api/v1/c/orders', method: 'GET' }, v => v),
-      (error: unknown) => error instanceof ApiError && error.code === 'REMOTE_CODE' && error.statusCode === statusCode)
+      (error: unknown) => error instanceof ApiError && error.code === 'REMOTE_CODE' && error.statusCode === statusCode
+        && error.message === 'REMOTE_CODE' && error.serverMessage === 'arbitrary')
   }
 })
 test('MINI-004 platform request port mock captures URL, headers, data, timeout; network failure propagates', async () => {

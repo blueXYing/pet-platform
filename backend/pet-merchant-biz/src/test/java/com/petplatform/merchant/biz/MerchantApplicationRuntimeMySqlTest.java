@@ -28,8 +28,131 @@ class MerchantApplicationRuntimeMySqlTest {
   static final Clock CLOCK = Clock.fixed(Instant.parse("2026-09-17T08:00:00Z"), ZoneOffset.UTC);
   private final AtomicLong ids = new AtomicLong(9_400_000_000_000_000L);
 
-  @Test
-  void completeApprovalIsAtomicReplayableAndLeavesAgreementUnsigned() throws Exception {
+    @Test
+    void repeatedVerificationDoesNotStackEvidenceKeepsHistoryAndStillAllowsApproval()
+        throws Exception {
+      try (var db = new MySqlMerchantApplicationSchemaTestDatabase()) {
+        seedPolicy(db);
+        MerchantApplicationApiImpl api = new Fixture(db, true).api();
+        MerchantApplicationResult created =
+            api.createDraft(
+                new CreateMerchantApplicationCommand(draft(), user(UUID.randomUUID().toString())));
+        MerchantApplicationResult submitted =
+            api.submit(
+                new SubmitMerchantApplicationCommand(
+                    created.applicationId(),
+                    created.version(),
+                    created.currentRevision().revisionId(),
+                    user(UUID.randomUUID().toString())));
+        ReviewTaskResult task =
+            api.getForReview(
+                    new MerchantApplicationReviewQuery(
+                        submitted.applicationId(), auth(), queryOperator()))
+                .task();
+        ReviewTaskResult claimed =
+            api.claim(
+                new ClaimMerchantApplicationCommand(
+                    submitted.applicationId(),
+                    task.version(),
+                    auth(),
+                    operator(UUID.randomUUID().toString())));
+        MerchantApplicationResult first =
+            api.recordManualVerification(
+                new VerifyMerchantSubjectCommand(
+                    submitted.applicationId(),
+                    submitted.currentRevision().revisionId(),
+                    submitted.version(),
+                    claimed.version(),
+                    bindEvidence(db, submitted.applicationId(), evidence()),
+                    "首次核验",
+                    true,
+                    auth(),
+                    operator(UUID.randomUUID().toString())));
+        // 2026-11-20 重复核验治理：内容未变的重复提交不再堆叠证据（旧实现每提交一次多 3 行，
+        // 批准时撞"恰好一条已核验证据"闸门）。
+        MerchantApplicationResult repeated =
+            api.recordManualVerification(
+                new VerifyMerchantSubjectCommand(
+                    submitted.applicationId(),
+                    submitted.currentRevision().revisionId(),
+                    first.version(),
+                    claimed.version(),
+                    bindEvidence(db, submitted.applicationId(), evidence()),
+                    "内容未变的重复提交",
+                    true,
+                    auth(),
+                    operator(UUID.randomUUID().toString())));
+        assertEquals(
+            3,
+            db.jdbc()
+                .queryForObject(
+                    "SELECT COUNT(*) FROM merchant_credential_evidence", Integer.class));
+        // 同一版本上改值重核：新登记生效，旧登记转为 RELEASED 并连同旧证据保留为历史，不删除。
+        List<ManualEvidenceItem> changed =
+            bindEvidence(db, submitted.applicationId(), evidence()).stream()
+                .map(
+                    e ->
+                        new ManualEvidenceItem(
+                            e.materialType(),
+                            e.subjectName(),
+                            e.identifier() + "-NEW",
+                            e.validityKind(),
+                            e.validFrom(),
+                            e.validTo(),
+                            e.validityBasis(),
+                            e.materialId(),
+                            e.materialSha256()))
+                .toList();
+        MerchantApplicationResult reverified =
+            api.recordManualVerification(
+                new VerifyMerchantSubjectCommand(
+                    submitted.applicationId(),
+                    submitted.currentRevision().revisionId(),
+                    repeated.version(),
+                    claimed.version(),
+                    changed,
+                    "改值重核",
+                    true,
+                    auth(),
+                    operator(UUID.randomUUID().toString())));
+        assertEquals("VERIFIED", reverified.subjectVerificationStatus());
+        assertEquals(
+            2,
+            db.jdbc()
+                .queryForObject(
+                    "SELECT COUNT(*) FROM merchant_subject_claim WHERE status='RELEASED'",
+                    Integer.class));
+        assertEquals(
+            2,
+            db.jdbc()
+                .queryForObject(
+                    "SELECT COUNT(*) FROM merchant_subject_claim WHERE status='ACTIVE'",
+                    Integer.class));
+        assertEquals(
+            6,
+            db.jdbc()
+                .queryForObject(
+                    "SELECT COUNT(*) FROM merchant_credential_evidence", Integer.class));
+        // 批准闸门只认当前有效登记引用的证据（行业许可证取最近一次核验），不再被"证据多条"卡住。
+        MerchantApplicationResult approved =
+            api.decide(
+                new DecideMerchantApplicationCommand(
+                    submitted.applicationId(),
+                    "APPROVE",
+                    submitted.currentRevision().revisionId(),
+                    reverified.version(),
+                    claimed.version(),
+                    "核验通过",
+                    null,
+                    true,
+                    auth(),
+                    operator(UUID.randomUUID().toString())));
+        assertEquals("APPROVED", approved.status());
+      }
+    }
+
+    @Test
+    void completeApprovalIsAtomicReplayableAndLeavesAgreementUnsigned() throws Exception {
     try (var db = new MySqlMerchantApplicationSchemaTestDatabase()) {
       seedPolicy(db);
       Fixture fixture = new Fixture(db, true);

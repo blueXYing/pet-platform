@@ -35,7 +35,7 @@ public interface OrderCustomerNoteMapper {
 
     int updateNote(@Param("storeId") long storeId, @Param("merchantId") long merchantId,
             @Param("userId") long userId, @Param("note") String note,
-            @Param("expectedVersion") long expectedVersion, @Param("now") LocalDateTime now);
+            @Param("now") LocalDateTime now);
 
     int insertAudit(Map<String, Object> values);
 

@@ -137,8 +137,9 @@ public final class PrivateAssetApiImpl implements PrivateAssetApi {
     } catch (ApiException failure) {
       throw failure;
     } catch (IllegalArgumentException invalidImage) {
-      finishRejected(assetId, "REJECTED", "IMAGE_VALIDATION", "VALIDATOR");
-      throw rejected();
+      String reasonCode = rejectionCode(invalidImage);
+      finishRejected(assetId, "REJECTED", reasonCode, "VALIDATOR");
+      throw rejected(reasonCode);
     } catch (RuntimeException unavailable) {
       throw new ApiException(ASSET_NOT_READY, "私有材料正在安全处理，请使用相同 requestId 重试");
     }
@@ -470,7 +471,7 @@ public final class PrivateAssetApiImpl implements PrivateAssetApi {
           });
       return ReconcileResult.COMPLETE;
     } catch (IllegalArgumentException invalid) {
-      finishRejected(assetId, "REJECTED", "IMAGE_VALIDATION", "VALIDATOR");
+      finishRejected(assetId, "REJECTED", rejectionCode(invalid), "VALIDATOR");
       return ReconcileResult.COMPLETE;
     } catch (RuntimeException unavailable) {
       return ReconcileResult.RETRY;
@@ -693,7 +694,7 @@ public final class PrivateAssetApiImpl implements PrivateAssetApi {
   private static UploadPrivateAssetResult uploadResultOrFailure(
       PrivateAssetEntity asset, boolean created) {
     if ("REJECTED".equals(asset.getStatus()) || "QUARANTINED".equals(asset.getStatus())) {
-      throw rejected();
+      throw rejected(asset.getScanResultCode());
     }
     if (!"READY".equals(asset.getStatus())) throw dependency();
     return new UploadPrivateAssetResult(
@@ -889,8 +890,25 @@ public final class PrivateAssetApiImpl implements PrivateAssetApi {
     return new ApiException(GRANT_GONE, "读取授权已失效");
   }
 
-  private static ApiException rejected() {
-    return new ApiException(ASSET_REJECTED, "上传文件未通过安全检查");
+  private static String rejectionCode(IllegalArgumentException invalid) {
+    return invalid instanceof PrivateAssetImageValidationException image
+        ? image.reasonCode()
+        : "IMAGE_VALIDATION";
+  }
+
+  private static ApiException rejected(String reasonCode) {
+    // 2026-11-19 用户裁决：保留 PRIVATE_ASSET_REJECTED 契约错误码，message 给出可操作的具体原因。
+    String message =
+        switch (reasonCode == null ? "IMAGE_VALIDATION" : reasonCode) {
+          case "IMAGE_FILE_TOO_LARGE" -> "照片超过 10 MiB，请压缩到 10 MiB 以内后重新上传";
+          case "IMAGE_DIMENSIONS_EXCEEDED" -> "照片宽或高超过 8192 像素，请缩小照片后重新上传";
+          case "IMAGE_PIXELS_EXCEEDED" -> "照片总像素超过 1600 万，请缩小到 1600 万像素以内后重新上传";
+          case "IMAGE_METADATA_INVALID" -> "照片的方向信息（EXIF）异常，请重新导出为普通 JPG 后上传";
+          case "IMAGE_FORMAT_INVALID" -> "照片格式不支持或文件不完整，请使用完整的 JPG/PNG 照片后重新上传";
+          case "IMAGE_VALIDATION" -> "照片未通过图片校验，请更换完整的 JPG/PNG 照片后重新上传";
+          default -> "上传文件未通过安全检查";
+        };
+    return new ApiException(ASSET_REJECTED, message);
   }
 
   private record UploadInput(long ownerId, String purpose, String mediaType) {}

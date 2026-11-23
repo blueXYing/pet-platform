@@ -177,6 +177,8 @@ public class AdminAuthSecurityConfiguration {
                 .permitAll();
             if (merchantApplicationEnabled) {
               a.requestMatchers("/api/v1/admin/merchant-applications/**").permitAll();
+              // 2026-11-20 运营端协议管理（发布/历史）：Bearer+merchant.application.decide 由过滤器和控制器执行。
+              a.requestMatchers("/api/v1/admin/merchant-agreements").permitAll();
               a.requestMatchers("/api/v1/admin/merchant-applications").permitAll();
             }
             if (privateAssetsEnabled) {

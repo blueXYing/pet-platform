@@ -310,6 +310,14 @@ class PrivateAssetCoreMySqlTest {
           assertThrows(
               ApiException.class, () -> api.upload(upload("00000000-0000-0000-0000-000000000032")));
       assertEquals(PrivateAssetApiCodes.ASSET_REJECTED, rejected.code());
+      assertEquals("照片未通过图片校验，请更换完整的 JPG/PNG 照片后重新上传", rejected.getMessage());
+      ApiException replay =
+          assertThrows(
+              ApiException.class, () -> api.upload(upload("00000000-0000-0000-0000-000000000032")));
+      assertEquals(rejected.getMessage(), replay.getMessage());
+      assertEquals(
+          "IMAGE_VALIDATION",
+          db.jdbc().queryForObject("SELECT scan_result_code FROM private_asset", String.class));
       assertEquals(
           "REJECTED", db.jdbc().queryForObject("SELECT status FROM private_asset", String.class));
       assertEquals(
@@ -317,6 +325,35 @@ class PrivateAssetCoreMySqlTest {
           db.jdbc()
               .queryForObject(
                   "SELECT COUNT(*) FROM private_asset WHERE status='READY'", Integer.class));
+    }
+  }
+
+  @Test
+  void pixelOverflowKeepsDetailedReasonOnUploadAndRetry() throws Exception {
+    try (var db = new PrivateAssetMySqlTestDatabase()) {
+      var store = new MemoryStore();
+      var api =
+          fixture(
+              db,
+              store,
+              Clock.systemUTC(),
+              request -> proof(request, store),
+              (bytes, mediaType) -> {
+                throw new PrivateAssetImageValidationException(
+                    "IMAGE_PIXELS_EXCEEDED", "image exceeds pixel limit");
+              });
+      ApiException rejected =
+          assertThrows(
+              ApiException.class, () -> api.upload(upload("00000000-0000-0000-0000-000000000033")));
+      assertEquals(PrivateAssetApiCodes.ASSET_REJECTED, rejected.code());
+      assertEquals("照片总像素超过 1600 万，请缩小到 1600 万像素以内后重新上传", rejected.getMessage());
+      ApiException replay =
+          assertThrows(
+              ApiException.class, () -> api.upload(upload("00000000-0000-0000-0000-000000000033")));
+      assertEquals(rejected.getMessage(), replay.getMessage());
+      assertEquals(
+          "IMAGE_PIXELS_EXCEEDED",
+          db.jdbc().queryForObject("SELECT scan_result_code FROM private_asset", String.class));
     }
   }
 
