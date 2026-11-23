@@ -390,10 +390,9 @@ public final class MerchantApplicationService {
           Map<String, MerchantClaimEntity> active = new HashMap<>();
           old.forEach(x -> active.put(x.getClaimType(), x));
           List<Long> replacedClaimIds = new ArrayList<>();
-          // 2026-11-20 重复核验治理：先清已释放 claim 与其引用的旧 VERIFIED 证据，再插入
-          // 新证据，保证同一版本同一证件类型始终只有一条已核验证据（决定期"恰好一条"闸门）。
-          m.deleteReleasedClaims(id);
-          m.deleteStaleVerifiedEvidence(id, revisionId);
+          // 当前有效证据：与批准闸门同一口径（被 RELEASED 登记引用的旧证据是历史，不算现行）。
+          List<MerchantEvidenceEntity> currentEvidence =
+              m.selectVerifiedEvidenceForUpdate(id, revisionId);
           for (PreparedEvidence e : evidence) {
             if (!policy.equals(e.keyVersion()) || e.policySlot() != 1)
               unavailable("credential HMAC policy does not match the persisted policy");
@@ -402,13 +401,24 @@ public final class MerchantApplicationService {
             if (!e.materialId().equals(IDS.toApi(mat.getId()))
                 || !e.materialSha256().equals(mat.getSha256()))
               conflict("evidence material reference does not match the submitted revision");
-            if ("INDUSTRY_LICENSE".equals(e.credentialType())) continue;
+            // 2026-11-20 重复核验治理：内容未变的重复核验不再新增证据行。旧实现先插证据、再跳过
+            // 未变的登记，同一版本上证据逐条堆叠，批准时撞"恰好一条"闸门。有主体登记的类型按登记
+            // 判断；行业许可证没有登记，按同版本、同材料、同摘要的现行证据判断。
+            boolean industry = "INDUSTRY_LICENSE".equals(e.credentialType());
             MerchantClaimEntity existing = active.get(e.credentialType());
-            // 2026-11-20 幂等重提：同一证件类型、同一摘要、同一密钥版本的重复核验直接跳过，
-            // 不再插入新证据行（旧实现每次都插行，重复提交堆叠后撞决定期"恰好一条"闸门）。
-            if (existing != null
-                && Arrays.equals(existing.getLookupDigest(), e.digest())
-                && existing.getLookupKeyVersion().equals(e.keyVersion())) continue;
+            boolean unchanged =
+                industry
+                    ? currentEvidence.stream()
+                        .anyMatch(
+                            known ->
+                                "INDUSTRY_LICENSE".equals(known.getCredentialType())
+                                    && Objects.equals(known.getMaterialId(), mat.getId())
+                                    && Arrays.equals(known.getIdentifierLookupDigest(), e.digest())
+                                    && Objects.equals(known.getLookupKeyVersion(), e.keyVersion()))
+                    : existing != null
+                        && Arrays.equals(existing.getLookupDigest(), e.digest())
+                        && existing.getLookupKeyVersion().equals(e.keyVersion());
+            if (unchanged) continue;
             long evidenceId = store.nextId();
             one(
                 m.insertEvidence(
@@ -431,6 +441,8 @@ public final class MerchantApplicationService {
                     principal(ctx),
                     c.reason(),
                     now));
+            // 行业许可证只留证据、不建主体登记（沿用原规则）。
+            if (industry) continue;
             long claimId = store.nextId();
             try {
               one(
@@ -467,10 +479,9 @@ public final class MerchantApplicationService {
           // Acquire both new claims first; swap pointers, then release old claims in this
           // transaction.
           for (Long replacedClaimId : replacedClaimIds) one(m.releaseClaim(replacedClaimId, now));
-          // 本轮被替换的旧 claim（已指向新 claim）连同其旧证据一并清理：本轮结束即恢复
-          // "每类型恰好一条已核验证据"，无需等到下一轮核验。
-          m.deleteReleasedClaims(id);
-          m.deleteStaleVerifiedEvidence(id, revisionId);
+          // 被替换的旧 claim 保留为 RELEASED 历史（决定记录对其有外键引用），不删除。
+          // 2026-11-20 重复核验治理：同一版本上改值重核后，批准闸门只认"当前有效登记"引用的
+          // 那条证据（见 selectVerifiedEvidenceForUpdate），旧证据作为历史保留且不参与计数。
           one(
               m.insertAudit(
                   store.nextId(),
@@ -578,7 +589,11 @@ public final class MerchantApplicationService {
             valid(creditEvidence, today);
             valid(identityEvidence, today);
             if ("PET_HOSPITAL".equals(r.getMerchantTypeCode())) {
-              MerchantEvidenceEntity industryEvidence = uniqueEvidence(es, "INDUSTRY_LICENSE");
+              // 行业许可证没有可释放的主体登记：同一版本上改值重核后以最近一次核验为准，
+              // 更早的记录保留为历史（2026-11-20 重复核验治理）。
+              MerchantEvidenceEntity industryEvidence = latestEvidence(es, "INDUSTRY_LICENSE");
+              if (industryEvidence == null)
+                conflict("批准前需先完成人工核验：缺少已核验的行业许可证证据");
               valid(industryEvidence, today);
             }
             validateSubmission(r, m.selectRevisionMaterials(id, revisionId), a.getOwnerUserId());
@@ -1726,15 +1741,30 @@ public final class MerchantApplicationService {
       List<MerchantEvidenceEntity> es, String type) {
     List<MerchantEvidenceEntity> matched =
         es.stream().filter(x -> type.equals(x.getCredentialType())).toList();
+    String label = credentialLabel(type);
     if (matched.size() != 1)
       // 2026-11-20 用户裁决：运营端错误必须说清卡在哪一步、下一步做什么。
       conflict(matched.isEmpty()
-          ? "批准前需先完成人工核验：缺少已核验的"
-              + ("CREDIT_CODE".equals(type) ? "统一社会信用代码" : "身份证") + "证据"
-          : "存在多条已核验的"
-              + ("CREDIT_CODE".equals(type) ? "统一社会信用代码" : "身份证")
-              + "证据（重复核验导致），请重新提交一次人工核验以收敛为单条");
+          ? "批准前需先完成人工核验：缺少已核验的" + label + "证据"
+          : "存在多条当前有效的已核验" + label + "证据（核验数据异常），请联系技术支持核对后再批准");
     return matched.getFirst();
+  }
+
+  /** 没有主体登记的证据类型：同一版本上多次核验时取最近一次（证据行 id 递增）。 */
+  private static MerchantEvidenceEntity latestEvidence(
+      List<MerchantEvidenceEntity> es, String type) {
+    MerchantEvidenceEntity latest = null;
+    for (MerchantEvidenceEntity e : es) if (type.equals(e.getCredentialType())) latest = e;
+    return latest;
+  }
+
+  private static String credentialLabel(String type) {
+    return switch (type) {
+      case "CREDIT_CODE" -> "统一社会信用代码";
+      case "IDENTITY_NUMBER" -> "身份证";
+      case "INDUSTRY_LICENSE" -> "行业许可证";
+      default -> type;
+    };
   }
 
   private static MerchantClaimEntity uniqueClaim(List<MerchantClaimEntity> cs, String type) {

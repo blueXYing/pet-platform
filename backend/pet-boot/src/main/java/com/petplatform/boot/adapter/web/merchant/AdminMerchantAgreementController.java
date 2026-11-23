@@ -6,7 +6,6 @@ import com.petplatform.common.ApiException;
 import com.petplatform.common.CommonApiCodes;
 import com.petplatform.merchant.biz.apiimpl.MerchantAgreementApiImpl;
 import com.petplatform.merchant.biz.application.MerchantAgreementService;
-import com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantAgreementDocumentEntity;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.*;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -35,21 +34,21 @@ public final class AdminMerchantAgreementController {
   Map<String, Object> list(HttpServletRequest req) {
     onlyParameters(req);
     admin(req, "merchant.application.decide");
-    List<MerchantAgreementDocumentEntity> versions = agreements.listAgreementVersions();
-    MerchantAgreementDocumentEntity current = agreements.currentAgreementForAdmin();
-    String currentVersionId =
-        current == null ? null : String.valueOf(current.getVersionId());
+    // 只消费商家模块的应用层投影（AgreementVersionView），不触碰其持久化实体（ARCH-002/ARCH-004）。
+    List<MerchantAgreementService.AgreementVersionView> versions =
+        agreements.listAgreementVersions();
     List<Map<String, Object>> items = new ArrayList<>();
-    for (MerchantAgreementDocumentEntity v : versions) {
+    for (MerchantAgreementService.AgreementVersionView v : versions) {
       Map<String, Object> row = new LinkedHashMap<>();
-      row.put("versionId", String.valueOf(v.getVersionId()));
-      row.put("agreementVersion", v.getAgreementVersion());
-      row.put("content", v.getContent());
-      row.put("contentSha256", v.getContentSha256());
-      row.put("publishedAt", v.getPublishedAt() == null ? null : v.getPublishedAt().toString());
+      row.put("versionId", String.valueOf(v.versionId()));
+      row.put("agreementVersion", v.agreementVersion());
+      row.put("content", v.content());
+      row.put("contentSha256", v.contentSha256());
+      // ISO-8601 UTC 时刻（形如 2026-11-20T12:34:56.123Z），由前端换算成本地时间展示。
+      row.put("publishedAt", v.publishedAt() == null ? null : v.publishedAt().toString());
       row.put("publishedByOperatorId",
-          v.getPublishedByOperatorId() == null ? null : String.valueOf(v.getPublishedByOperatorId()));
-      row.put("current", String.valueOf(v.getVersionId()).equals(currentVersionId));
+          v.publishedByOperatorId() == null ? null : String.valueOf(v.publishedByOperatorId()));
+      row.put("current", v.current());
       items.add(row);
     }
     Map<String, Object> data = new LinkedHashMap<>();

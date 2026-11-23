@@ -43,6 +43,11 @@ public interface MerchantApplicationMapper {
   MerchantDecisionEntity selectDecision(
       @Param("applicationId") long applicationId, @Param("decisionId") long decisionId);
 
+  /**
+   * 当前有效的已核验证据（行锁）：被非 ACTIVE（已释放）登记（claim）引用的旧证据是历史，不返回；
+   * 没有登记的行业许可证证据照常返回。批准闸门与人工核验的"内容未变"判断共用这一口径——
+   * 2026-11-20 重复核验治理：同一版本上改值重核后旧登记转为 RELEASED，批准不再因"证据多条"被卡。
+   */
   List<MerchantEvidenceEntity> selectVerifiedEvidenceForUpdate(
       @Param("applicationId") long applicationId, @Param("revisionId") long revisionId);
 
@@ -164,15 +169,6 @@ public interface MerchantApplicationMapper {
       @Param("now") LocalDateTime now);
 
   int releaseClaim(@Param("id") long id, @Param("now") LocalDateTime now);
-
-  /** 2026-11-20：重复人工核验治理——删除该申请已释放（RELEASED）的 claim 行，为其后
-   *  清理无 ACTIVE claim 引用的旧 VERIFIED 证据行扫清外键（claim→evidence）。 */
-  int deleteReleasedClaims(@Param("applicationId") long applicationId);
-
-  /** 2026-11-20：删除同版本同状态下无 ACTIVE claim 引用的 VERIFIED 证据行，保证
-   *  决定期"恰好一条已核验证据"闸门在重复核验后依然成立（decision 引用的行有外键保护不会被删）。 */
-  int deleteStaleVerifiedEvidence(
-      @Param("applicationId") long applicationId, @Param("revisionId") long revisionId);
 
   int markVerified(
       @Param("applicationId") long applicationId,

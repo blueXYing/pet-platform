@@ -20,9 +20,11 @@ import com.petplatform.merchant.biz.infrastructure.persistence.entity.MerchantOw
 import com.petplatform.merchant.biz.infrastructure.persistence.mapper.MerchantAgreementMapper;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -213,13 +215,40 @@ public final class MerchantAgreementService {
         });
     }
 
-    public java.util.List<MerchantAgreementDocumentEntity> listVersions() {
-        return store.read(MerchantAgreementMapper::selectAllVersions);
-    }
+    /**
+     * 运营端版本历史的一行（应用层投影）。持久化实体不出本模块：HTTP 适配层只消费这个记录
+     * （ARCH-002 跨模块持久化 / ARCH-004 控制器边界）。publishedAt 恒为 UTC 时刻。
+     */
+    public record AgreementVersionView(
+            long versionId,
+            String agreementVersion,
+            String content,
+            String contentSha256,
+            OffsetDateTime publishedAt,
+            Long publishedByOperatorId,
+            boolean current
+    ) {}
 
-    /** 当前生效的协议版本（运营端展示用；只读不加锁）。 */
-    public MerchantAgreementDocumentEntity getAgreementCurrent() {
-        return store.read(MerchantAgreementMapper::selectCurrentAgreement);
+    /** 版本历史与“当前生效”标记在同一次只读事务内取齐，避免发布切换时读到错位的一对。 */
+    public List<AgreementVersionView> listVersionsForAdmin() {
+        return store.read(mapper -> {
+            List<MerchantAgreementDocumentEntity> versions = mapper.selectAllVersions();
+            MerchantAgreementDocumentEntity current = mapper.selectCurrentAgreement();
+            long currentVersionId = current == null ? 0L : positive(current.getVersionId(), "agreement version id");
+            List<AgreementVersionView> views = new ArrayList<>(versions.size());
+            for (MerchantAgreementDocumentEntity version : versions) {
+                LocalDateTime publishedAt = version.getPublishedAt();
+                views.add(new AgreementVersionView(
+                        positive(version.getVersionId(), "agreement version id"),
+                        version.getAgreementVersion(),
+                        version.getContent(),
+                        version.getContentSha256(),
+                        publishedAt == null ? null : publishedAt.atOffset(ZoneOffset.UTC),
+                        version.getPublishedByOperatorId(),
+                        version.getVersionId() == currentVersionId));
+            }
+            return List.copyOf(views);
+        });
     }
 
     private static String sha256(String value) {

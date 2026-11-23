@@ -16,7 +16,10 @@ public class CAuthProperties {
     private String cachePrefix = "auth001c:";
     private int redisPort = 6379;
     private int attemptTtlSeconds = 600;
-    /** 2026-11-18 用户裁决：小程序 access 会话 7 天（原 15 分钟导致频繁静默重登）；Web 运营端 30 分钟无操作策略不变。 */
+    /**
+     * 2026-11-18 用户裁决：小程序 access 会话 7 天（原 15 分钟导致频繁静默重登）。运营网页端的
+     * 空闲时长见 AdminAuthService（2026-11-20 用户裁决：12 小时）。
+     */
     private int accessTtlSeconds = 604_800;
     private int grantWindowSeconds = 60;
     private int attemptCreatePerMinute = 30;

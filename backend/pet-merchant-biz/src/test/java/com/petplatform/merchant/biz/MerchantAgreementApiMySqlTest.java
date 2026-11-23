@@ -184,16 +184,28 @@ class MerchantAgreementApiMySqlTest {
                     UUID.randomUUID().toString(), OWNER_ID, "商家-v1", hash, true))).code());
             assertEquals(CommonApiCodes.INVALID_ARGUMENT, failure(() -> api.consent(consent(
                     UUID.randomUUID().toString(), OWNER_ID, AGREEMENT_V1, "not-a-hash", true))).code());
-            assertEquals(CommonApiCodes.CONFLICT, failure(() -> api.consent(consent(
-                    UUID.randomUUID().toString(), OWNER_ID, AGREEMENT_V1, "0".repeat(64), true))).code());
             assertEquals(CommonApiCodes.INVALID_ARGUMENT, failure(() -> api.consent(consent(
                     UUID.randomUUID().toString(), OWNER_ID, AGREEMENT_V1, hash, false))).code());
             assertEquals(CommonApiCodes.INVALID_ARGUMENT, failure(() -> api.consent(consent(
                     UUID.randomUUID().toString(), OWNER_ID, AGREEMENT_V1, hash, null))).code());
-            assertEquals(CommonApiCodes.CONFLICT, failure(() -> api.consent(consent(
-                    UUID.randomUUID().toString(), OWNER_ID, "merchant-unknown", hash, true))).code());
             assertEquals(0, db.jdbc().queryForObject(
                     "SELECT COUNT(*) FROM merchant_agreement_acceptance", Integer.class));
+
+            // 2026-11-20 用户裁决：版本链松耦合。形态合法但与当前版本对不上的哈希/版本号只是
+            // 客户端提示值，不再 409：首签以服务端此刻的当前版本盖章，受理记录指向真实版本与真实哈希。
+            MerchantAgreementConsentDTO staleHash = api.consent(consent(
+                    UUID.randomUUID().toString(), OWNER_ID, AGREEMENT_V1, "0".repeat(64), true));
+            assertEquals("SIGNED", staleHash.signingStatus());
+            assertEquals(AGREEMENT_V1, staleHash.agreementVersion());
+            // 已签约商家带着不存在的版本号重复确认：幂等返回原回执，不新增受理记录。
+            assertEquals(staleHash, api.consent(consent(
+                    UUID.randomUUID().toString(), OWNER_ID, "merchant-unknown", hash, true)));
+            assertEquals(1, db.jdbc().queryForObject(
+                    "SELECT COUNT(*) FROM merchant_agreement_acceptance", Integer.class));
+            assertEquals(AGREEMENT_V1_ID, db.jdbc().queryForObject(
+                    "SELECT agreement_version_id FROM merchant_agreement_acceptance", Long.class));
+            assertEquals(hash, db.jdbc().queryForObject(
+                    "SELECT content_sha256 FROM merchant_agreement_acceptance", String.class));
         }
     }
 
@@ -225,7 +237,7 @@ class MerchantAgreementApiMySqlTest {
     }
 
     @Test
-    void firstConsentOfOldVersionAfterPublishSwitchIsRejected() throws Exception {
+    void firstConsentOfOldVersionHintAfterPublishSwitchStampsTheCurrentVersion() throws Exception {
         try (var db = new MySqlMerchantAgreementTestDatabase()) {
             db.seedMerchant(MERCHANT_ID, OWNER_ID, "ACTIVE");
             String hashV1 = db.seedAgreementVersion(AGREEMENT_V1_ID, AGREEMENT_V1, CONTENT_V1, OWNER_ID);
@@ -233,10 +245,15 @@ class MerchantAgreementApiMySqlTest {
             db.seedCurrent(AGREEMENT_V2_ID, 1);
             var api = api(db, id -> new ApplicationReviewFactsReader.Facts("APPROVED"));
 
-            assertEquals(CommonApiCodes.CONFLICT, failure(() -> api.consent(consent(
-                    UUID.randomUUID().toString(), OWNER_ID, AGREEMENT_V1, hashV1, true))).code());
-            assertEquals(0, db.jdbc().queryForObject(
-                    "SELECT COUNT(*) FROM merchant_agreement_acceptance", Integer.class));
+            // 2026-11-20 用户裁决：版本链松耦合——商家在浏览与签署之间遇到运营换版不再被拒（原 409）。
+            // 首签按盖章时刻的当前版本（V2）落库：受理记录指向 V2 及其真实哈希，V2 内容不被改写。
+            MerchantAgreementConsentDTO signed = api.consent(consent(
+                    UUID.randomUUID().toString(), OWNER_ID, AGREEMENT_V1, hashV1, true));
+            assertEquals("SIGNED", signed.signingStatus());
+            assertEquals(AGREEMENT_V2, signed.agreementVersion());
+            assertEquals(1, db.jdbc().queryForObject(
+                    "SELECT COUNT(*) FROM merchant_agreement_acceptance WHERE merchant_id=? AND agreement_version_id=?",
+                    Integer.class, MERCHANT_ID, AGREEMENT_V2_ID));
             assertEquals(hashV2, db.jdbc().queryForObject(
                     "SELECT content_sha256 FROM merchant_agreement_version WHERE id=?",
                     String.class, AGREEMENT_V2_ID));
