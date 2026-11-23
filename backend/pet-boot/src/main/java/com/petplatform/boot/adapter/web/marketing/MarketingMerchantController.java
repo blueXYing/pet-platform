@@ -37,10 +37,8 @@ public class MarketingMerchantController {
 
     private final MarketingMerchantApi marketing;
 
-    public MarketingMerchantController(MarketingMerchantApi marketing,
-            org.springframework.beans.factory.ObjectProvider<com.petplatform.thirdparty.biz.infrastructure.oss.OssConnection> ossProvider) {
+    public MarketingMerchantController(MarketingMerchantApi marketing) {
         this.marketing = marketing;
-        MarketingCoverUrlResolver.init(ossProvider.getIfAvailable());
     }
 
     @GetMapping(value = "/api/v1/merchant/marketing/campaigns",

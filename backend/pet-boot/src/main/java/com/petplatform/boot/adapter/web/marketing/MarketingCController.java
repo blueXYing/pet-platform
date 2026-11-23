@@ -59,15 +59,13 @@ public class MarketingCController {
             ObjectProvider<MerchantFeaturedStoreFactsApi> storeFacts,
             ObjectProvider<StorePhotoSigningApi> photoSigning,
             ObjectProvider<CouponCampaignQueryApi> coupons,
-            ObjectProvider<MerchantApplicationCityCatalog> cities,
-            org.springframework.beans.factory.ObjectProvider<com.petplatform.thirdparty.biz.infrastructure.oss.OssConnection> ossProvider) {
+            ObjectProvider<MerchantApplicationCityCatalog> cities) {
         this.marketing = marketing;
         this.stores = stores.getIfAvailable();
         this.storeFacts = storeFacts.getIfAvailable();
         this.photoSigning = photoSigning.getIfAvailable();
         this.coupons = coupons.getIfAvailable();
         this.cities = cities;
-        MarketingCoverUrlResolver.init(ossProvider.getIfAvailable());
     }
 
     @GetMapping(value = "/api/v1/c/marketing/placements", produces = MediaType.APPLICATION_JSON_VALUE)
