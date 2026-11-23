@@ -633,6 +633,7 @@ public final class E2eCoreLoopServer {
       boolean reused = reuseDatabase != null && !reuseDatabase.isBlank();
       // 2026-11-20 用户裁决：admin/admin 固定可用——每次启动都幂等 upsert（不管新库旧库）。
       ensureAdminAccount(jdbc, name);
+      seedMarketing(jdbc);
       PaymentNotificationService notifications =
           context.getBean(PaymentNotificationService.class);
       Thread payer = new Thread(() -> sandbox.completePaymentsForever(notifications), "e2e-sandbox-pay");
@@ -1367,6 +1368,45 @@ public final class E2eCoreLoopServer {
     } catch (Exception e) {
       System.out.println("E2E_ADMIN upsert skipped: " + e.getMessage());
     }
+  }
+
+  /** 2026-11-20 用户裁决：营销活动种子（Figma 61-599 活动钜惠区块），图片走 OSS。 */
+  private static void seedMarketing(JdbcTemplate jdbc) {
+    String now = java.time.LocalDateTime.now(java.time.ZoneOffset.UTC)
+        .truncatedTo(java.time.temporal.ChronoUnit.SECONDS).toString().replace('T', ' ');
+    String[][] campaigns = {
+        {"720100", "MKT-NEW-50", "新客专享·限时5折", "DISPLAY", "新客专享 · 限时 5 折", "新用户下单即享优惠", "NEW_USER",
+            "https://mtxoss2.oss-cn-hangzhou.aliyuncs.com/marketing/seed/new-user-banner.png", "300"},
+        {"720101", "MKT-FIRST-30", "首单立减¥30", "COUPON", "首单立减 ¥30", "新用户下单即享优惠", "NEW_USER",
+            "https://mtxoss2.oss-cn-hangzhou.aliyuncs.com/marketing/seed/first-order-30.png", "200"},
+        {"720102", "MKT-GROOM-50", "宠物美容狂欢", "DISPLAY", "宠物美容狂欢", "洗澡美容低至 5 折起", "LIMITED_TIME",
+            "https://mtxoss2.oss-cn-hangzhou.aliyuncs.com/marketing/seed/grooming-carnival.png", "100"},
+    };
+    for (String[] cp : campaigns) {
+      jdbc.update("INSERT IGNORE INTO marketing_campaign(id,campaign_code,name,owner_type,"
+          + "owner_merchant_id,owner_store_id,campaign_type,participation_mode,status,title,"
+          + "subtitle,tag_code,tag_name,cover_url,city_codes,start_at,end_at,sort_weight,"
+          + "version,created_by_type,created_by_id,created_at,updated_at) "
+          + "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+          Long.parseLong(cp[0]), cp[1], cp[2], "MERCHANT", MERCHANT, STORE,
+          cp[3], "MERCHANT_ENROLL", "ONLINE", cp[4], cp[5], cp[6], cp[6],
+          cp[7], "[\"chengdu\"]", "2026-11-01 00:00:00", "2027-12-31 23:59:59",
+          Integer.parseInt(cp[8]), 1, "ADMIN", 9001, now, now);
+      jdbc.update("INSERT IGNORE INTO marketing_campaign_store(campaign_id,store_id,status,created_at) "
+          + "VALUES(?,?,?,?)", Long.parseLong(cp[0]), STORE, "ACTIVE", now);
+    }
+    String[][] placements = {
+        {"720200", "720100", "300"}, {"720201", "720101", "200"}, {"720202", "720102", "100"},
+    };
+    for (String[] pl : placements) {
+      jdbc.update("INSERT IGNORE INTO marketing_placement(id,position_code,campaign_id,city_code,"
+          + "sort_weight,start_at,end_at,status,version,created_by_id,created_at,updated_at) "
+          + "VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+          Long.parseLong(pl[0]), "HOME_ACTIVITY", Long.parseLong(pl[1]), "chengdu",
+          Integer.parseInt(pl[2]), "2026-11-01 00:00:00", "2027-12-31 23:59:59",
+          "ENABLED", 1, 9001, now, now);
+    }
+    System.out.println("E2E_MARKETING 3 campaigns + 3 placements seeded (OSS images)");
   }
 
   private static void seedMaterial(JdbcTemplate jdbc, SnowflakeIdGenerator ids, long application,
