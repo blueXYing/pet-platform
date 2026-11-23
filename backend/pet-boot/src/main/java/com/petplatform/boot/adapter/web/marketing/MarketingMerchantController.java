@@ -37,8 +37,10 @@ public class MarketingMerchantController {
 
     private final MarketingMerchantApi marketing;
 
-    public MarketingMerchantController(MarketingMerchantApi marketing) {
+    public MarketingMerchantController(MarketingMerchantApi marketing,
+            org.springframework.beans.factory.ObjectProvider<com.petplatform.thirdparty.biz.infrastructure.oss.OssConnection> ossProvider) {
         this.marketing = marketing;
+        MarketingCoverUrlResolver.init(ossProvider.getIfAvailable());
     }
 
     @GetMapping(value = "/api/v1/merchant/marketing/campaigns",
@@ -238,7 +240,7 @@ public class MarketingMerchantController {
         out.put("subtitle", c.subtitle());
         out.put("tagCode", c.tagCode());
         out.put("tagName", c.tagName());
-        out.put("coverUrl", c.coverUrl());
+        out.put("coverUrl", MarketingCoverUrlResolver.resolve(c.coverUrl()));
         out.put("campaignType", c.campaignType());
         out.put("participationMode", c.participationMode());
         out.put("status", c.status());

@@ -599,7 +599,7 @@ public class MarketingAdminController {
         out.put("subtitle", c.subtitle());
         out.put("tagCode", c.tagCode());
         out.put("tagName", c.tagName());
-        out.put("coverUrl", c.coverUrl());
+        out.put("coverUrl", MarketingCoverUrlResolver.resolve(c.coverUrl()));
         out.put("cityCodes", c.cityCodes());
         out.put("serviceCategoryCodes", c.serviceCategoryCodes());
         out.put("startAt", time(c.startAt()));

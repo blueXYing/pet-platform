@@ -59,13 +59,15 @@ public class MarketingCController {
             ObjectProvider<MerchantFeaturedStoreFactsApi> storeFacts,
             ObjectProvider<StorePhotoSigningApi> photoSigning,
             ObjectProvider<CouponCampaignQueryApi> coupons,
-            ObjectProvider<MerchantApplicationCityCatalog> cities) {
+            ObjectProvider<MerchantApplicationCityCatalog> cities,
+            org.springframework.beans.factory.ObjectProvider<com.petplatform.thirdparty.biz.infrastructure.oss.OssConnection> ossProvider) {
         this.marketing = marketing;
         this.stores = stores.getIfAvailable();
         this.storeFacts = storeFacts.getIfAvailable();
         this.photoSigning = photoSigning.getIfAvailable();
         this.coupons = coupons.getIfAvailable();
         this.cities = cities;
+        MarketingCoverUrlResolver.init(ossProvider.getIfAvailable());
     }
 
     @GetMapping(value = "/api/v1/c/marketing/placements", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -217,7 +219,7 @@ public class MarketingCController {
                     card.put("source", "CAMPAIGN");
                     card.put("campaignId", placement.campaignId());
                     byStore.put((String) card.get("storeId"),
-                            dealCard(card, placement.coverUrl()));
+                            dealCard(card, MarketingCoverUrlResolver.resolve(placement.coverUrl())));
                 }
             }
         } catch (RuntimeException ignored) {
@@ -381,7 +383,7 @@ public class MarketingCController {
         out.put("subtitle", p.subtitle());
         out.put("tagCode", p.tagCode());
         out.put("tagName", p.tagName());
-        out.put("coverUrl", p.coverUrl());
+        out.put("coverUrl", MarketingCoverUrlResolver.resolve(p.coverUrl()));
         out.put("templateCode", p.templateCode());
         out.put("jumpType", p.jumpType());
         out.put("jumpParams", p.jumpParams());
@@ -397,7 +399,7 @@ public class MarketingCController {
         out.put("subtitle", c.subtitle());
         out.put("tagCode", c.tagCode());
         out.put("tagName", c.tagName());
-        out.put("coverUrl", c.coverUrl());
+        out.put("coverUrl", MarketingCoverUrlResolver.resolve(c.coverUrl()));
         out.put("startAt", time(c.startAt()));
         out.put("endAt", time(c.endAt()));
         out.put("storeCount", c.storeCount());

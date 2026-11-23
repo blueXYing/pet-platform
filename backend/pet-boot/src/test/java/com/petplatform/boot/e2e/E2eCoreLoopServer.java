@@ -1376,11 +1376,11 @@ public final class E2eCoreLoopServer {
         .truncatedTo(java.time.temporal.ChronoUnit.SECONDS).toString().replace('T', ' ');
     String[][] campaigns = {
         {"720100", "MKT-NEW-50", "新客专享·限时5折", "DISPLAY", "新客专享 · 限时 5 折", "新用户下单即享优惠", "NEW_USER",
-            "https://mtxoss2.oss-cn-hangzhou.aliyuncs.com/marketing/seed/new-user-banner.png", "300"},
+            "marketing/seed/new-user-banner.png", "300"},
         {"720101", "MKT-FIRST-30", "首单立减¥30", "COUPON", "首单立减 ¥30", "新用户下单即享优惠", "NEW_USER",
-            "https://mtxoss2.oss-cn-hangzhou.aliyuncs.com/marketing/seed/first-order-30.png", "200"},
+            "marketing/seed/first-order-30.png", "200"},
         {"720102", "MKT-GROOM-50", "宠物美容狂欢", "DISPLAY", "宠物美容狂欢", "洗澡美容低至 5 折起", "LIMITED_TIME",
-            "https://mtxoss2.oss-cn-hangzhou.aliyuncs.com/marketing/seed/grooming-carnival.png", "100"},
+            "marketing/seed/grooming-carnival.png", "100"},
     };
     for (String[] cp : campaigns) {
       jdbc.update("INSERT IGNORE INTO marketing_campaign(id,campaign_code,name,owner_type,"
