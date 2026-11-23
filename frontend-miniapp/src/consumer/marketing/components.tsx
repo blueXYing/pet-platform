@@ -49,8 +49,10 @@ export function HomeActivitySlot({ cityCode }: { cityCode?: string }) {
             <Image className='mkt-home-card-paper-img mkt-home-card-paper-right-img' src={activityCardPaper} mode='scaleToFill' />
           </View>
           {item.coverUrl
-            ? <Image className={`mkt-home-card-art${templateCode === 'generic' ? ' mkt-home-card-art-generic' : ''}`}
-                src={item.coverUrl} mode='aspectFit' />
+            ? <Image className={templateCode === 'full_card'
+                  ? 'mkt-home-card-art-full'
+                  : `mkt-home-card-art${templateCode === 'generic' ? ' mkt-home-card-art-generic' : ''}`}
+                src={item.coverUrl} mode={templateCode === 'full_card' ? 'aspectFill' : 'aspectFit'} />
             : null}
           {item.tagName
             ? <View className='mkt-home-badge'>

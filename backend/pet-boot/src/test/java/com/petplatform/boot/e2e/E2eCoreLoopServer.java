@@ -1387,12 +1387,12 @@ public final class E2eCoreLoopServer {
     String now = java.time.LocalDateTime.now(java.time.ZoneOffset.UTC)
         .truncatedTo(java.time.temporal.ChronoUnit.SECONDS).toString().replace('T', ' ');
     String[][] campaigns = {
-        {"720100", "MKT-NEW-50", "新客专享·限时5折", "DISPLAY", "新客专享 · 限时 5 折", "新用户下单即享优惠", "new_user",
-            "marketing/illust/new-user.png", "300"},
-        {"720101", "MKT-FIRST-30", "首单立减¥30", "COUPON", "首单立减 ¥30", "新用户下单即享优惠", "new_user",
-            "marketing/illust/first-order.png", "200"},
-        {"720102", "MKT-GROOM-50", "宠物美容狂欢", "DISPLAY", "宠物美容狂欢", "洗澡美容低至 5 折起", "beauty",
-            "marketing/illust/grooming.png", "100"},
+        {"720100", "MKT-NEW-50", "新客专享·限时5折", "DISPLAY", "新客专享 · 限时 5 折", "新用户下单即享优惠", "full_card",
+            "marketing/fullcard/new-user.png", "300"},
+        {"720101", "MKT-FIRST-30", "首单立减¥30", "COUPON", "首单立减 ¥30", "新用户下单即享优惠", "full_card",
+            "marketing/fullcard/first-order.png", "200"},
+        {"720102", "MKT-GROOM-50", "宠物美容狂欢", "DISPLAY", "宠物美容狂欢", "洗澡美容低至 5 折起", "full_card",
+            "marketing/fullcard/grooming.png", "100"},
     };
     for (String[] cp : campaigns) {
       jdbc.update("INSERT IGNORE INTO marketing_campaign(id,campaign_code,name,owner_type,"
@@ -1401,7 +1401,7 @@ public final class E2eCoreLoopServer {
           + "version,created_by_type,created_by_id,created_at,updated_at) "
           + "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
           Long.parseLong(cp[0]), cp[1], cp[2], "MERCHANT", MERCHANT, STORE,
-          cp[3], "MERCHANT_ENROLL", "ONLINE", cp[4], cp[5], cp[6], cp[6].equals("beauty") ? "限时5折" : "新客专享",
+          cp[3], "MERCHANT_ENROLL", "ONLINE", cp[4], cp[5], cp[6], "新客专享",
           cp[7], "[\"chengdu\"]", "2026-11-01 00:00:00", "2027-12-31 23:59:59",
           Integer.parseInt(cp[8]), 1, "ADMIN", 9001, now, now);
       jdbc.update("INSERT IGNORE INTO marketing_campaign_store(campaign_id,store_id,status,created_at) "

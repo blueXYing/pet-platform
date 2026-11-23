@@ -60,6 +60,11 @@
   left: calc(var(--home-unit) * 105); top: 0;
   width: calc(var(--home-unit) * 115); height: calc(var(--home-unit) * 107);
 }
+/* 2026-11-23 整卡图模式：coverUrl 即完整卡片视觉（纸框+插画），填满卡片 */
+.mkt-home-card-art-full {
+  position: absolute; left: 0; top: 0; width: 100%; height: 100%;
+  border-radius: calc(var(--home-unit) * 8); z-index: 0; overflow: hidden;
+}
 .mkt-home-card-art-generic {
   right: calc(var(--home-unit) * 8); bottom: calc(var(--home-unit) * 8);
   width: calc(var(--home-unit) * 76); height: calc(var(--home-unit) * 64);
