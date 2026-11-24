@@ -203,9 +203,11 @@ class AdminOrderQueryMySqlTest {
                 INSERT INTO pet_order(id, order_no, user_id, merchant_id, store_id, service_id, pet_id,
                     reservation_id, fulfillment_type, order_stage, payment_status, verification_status,
                     original_amount, pay_amount, refunded_amount, reschedule_count,
+                    original_price, flash_discount, price_source,
                     appointment_start_at, appointment_end_at, created_at, updated_at, version)
                 VALUES(?, ?, 42, ?, ?, 9, 5, ?, 'IN_STORE', ?, ?, 'UNVERIFIED',
-                    '128.00', '128.00', ?, ?, '2026-09-01 08:00:00', '2026-09-01 09:00:00',
+                    '128.00', '128.00', ?, ?, '128.00', 0.00, 'LIST',
+                    '2026-09-01 08:00:00', '2026-09-01 09:00:00',
                     '2026-09-01 07:00:00', '2026-09-01 07:00:00', 0)
                 """, (long) id, orderNo, merchant, store, (long) (100 + id), stage, payment, refunded, reschedules);
             sql.update("""

@@ -22009,6 +22009,17 @@ components:
           nullable: true
         payAmount:
           $ref: '#/components/schemas/DecimalAmountOutput'
+        priceSource:
+          type: string
+          enum:
+          - LIST
+          - FLASH
+          default: LIST
+          description: 下单价格来源（契约77 §6.5，CCR-SVC-FLASH-PRICE-001 2026-11-18）；旧客户端忽略。
+        originalPrice:
+          $ref: '#/components/schemas/DecimalAmountOutput'
+        flashDiscount:
+          $ref: '#/components/schemas/DecimalAmountOutput'
         appointmentStart:
           type: string
           format: date-time

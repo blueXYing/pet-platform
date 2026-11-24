@@ -195,6 +195,12 @@ public class AdminAuthSecurityConfiguration {
                       "/api/v1/admin/service-categories",
                       "/api/v1/admin/service-categories/**")
                   .permitAll();
+              // Service flash price review (MKT-TOOLS flash price): same switch and the
+              // service.flash-price.read/review action codes.
+              a.requestMatchers(
+                      "/api/v1/admin/service-flash-prices",
+                      "/api/v1/admin/service-flash-prices/**")
+                  .permitAll();
             }
             a.requestMatchers(
                     HttpMethod.GET,

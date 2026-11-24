@@ -55,5 +55,14 @@
             <groupId>com.petplatform</groupId>
             <artifactId>pet-schedule-api</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.petplatform</groupId>
+            <artifactId>pet-task-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 </project>

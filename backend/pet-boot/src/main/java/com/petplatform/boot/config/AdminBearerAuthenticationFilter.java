@@ -52,6 +52,10 @@ public final class AdminBearerAuthenticationFilter extends OncePerRequestFilter 
           // resolved here; service.category.read/manage are re-proved by the controller.
           || path.equals("/api/v1/admin/service-categories")
           || path.startsWith("/api/v1/admin/service-categories/")
+          // Service flash price review (MKT-TOOLS flash price): ADMIN_WEB Bearer is
+          // resolved here; service.flash-price.read/review are re-proved by the kernels.
+          || path.equals("/api/v1/admin/service-flash-prices")
+          || path.startsWith("/api/v1/admin/service-flash-prices/")
           // Review appeal governance (contract 56 / REV-002): ADMIN_WEB Bearer enforced;
           // the review.appeal.* action codes are re-checked by the kernel per call/replay.
           || path.equals("/api/v1/admin/review-appeals")

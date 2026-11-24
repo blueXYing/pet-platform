@@ -11,7 +11,10 @@ import java.time.OffsetDateTime;
  * display state computed only by the order domain (tech baseline §5); every fact field stays a
  * raw string so callers never re-derive business truth. {@code actions} is the order-domain
  * UI-entry projection (six booleans, OpenAPI11 OrderActions); the write kernels re-check
- * everything under their own guards.
+ * everything under their own guards. The flash-price snapshot tail (contract 77 §6.5,
+ * CCR-SVC-FLASH-PRICE-001) carries the list price the order was placed against, the flash
+ * discount and LIST/FLASH source as raw facts; LIST orders report the effective price as
+ * the original price and a zero discount.
  */
 public record OrderSnapshotDTO(
         String orderId,
@@ -32,6 +35,9 @@ public record OrderSnapshotDTO(
         BigDecimal discountAmount,
         BigDecimal payAmount,
         BigDecimal refundedAmount,
+        BigDecimal originalPrice,
+        BigDecimal flashDiscount,
+        String priceSource,
         OffsetDateTime appointmentStart,
         OffsetDateTime appointmentEnd,
         OffsetDateTime paidAt,

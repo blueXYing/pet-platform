@@ -68,6 +68,9 @@ class AdminAuthPrimitivesTest {
             "service.review.read", "service.review.decide", "service.force.offline",
             // CCR-SVC-CAT-001 B-SVC-02 service category dictionary face.
             "service.category.read", "service.category.manage",
+            // MKT-TOOLS service flash price review face (contract 77 §4): list and review
+            // enforcement points ship with the controller/kernel.
+            "service.flash-price.read", "service.flash-price.review",
             "aftersale.read", "aftersale.handle", "aftersale.decide",
             // REV-002 review appeal slice (contract 56): both enforcement points ship in it.
             "review.appeal.read", "review.appeal.decide",

@@ -551,14 +551,16 @@ class MerchantCustomerStatsMySqlTest {
                     (id,order_no,user_id,merchant_id,store_id,service_id,pet_id,reservation_id,
                      order_stage,payment_status,verification_status,fulfillment_type,
                      original_amount,discount_amount,pay_amount,refunded_amount,
+                     original_price,flash_discount,price_source,
                      appointment_start_at,appointment_end_at,paid_at,verified_at,
                      created_at,updated_at)
                     VALUES(?,?,?,?,?,?,?,?, 'COMPLETED','PAID',?,'IN_STORE',
-                           ?,0.00,?,?, '2030-01-01 09:00:00','2030-01-01 10:00:00',
+                           ?,0.00,?,?,?,0.00,'LIST', '2030-01-01 09:00:00','2030-01-01 10:00:00',
                            '2026-10-01 08:00:00',?, ?, UTC_TIMESTAMP(3))
                     """, id, id, userId, MERCHANT, STORE, serviceId, 7600L, id + 5000,
                     verified ? "VERIFIED" : "UNVERIFIED", new BigDecimal(pay), new BigDecimal(pay),
-                    new BigDecimal(refunded), verified ? createdAt : null, createdAt);
+                    new BigDecimal(refunded), new BigDecimal(pay),
+                    verified ? createdAt : null, createdAt);
         }
 
         /** A canceled order: the merchant-reject family paid and was fully refunded; a plain
@@ -570,10 +572,11 @@ class MerchantCustomerStatsMySqlTest {
                     (id,order_no,user_id,merchant_id,store_id,service_id,pet_id,reservation_id,
                      order_stage,payment_status,verification_status,fulfillment_type,cancel_reason,
                      original_amount,discount_amount,pay_amount,refunded_amount,
+                     original_price,flash_discount,price_source,
                      appointment_start_at,appointment_end_at,paid_at,
                      created_at,updated_at)
                     VALUES(?,?,?,?,?,?,?,?, 'CANCELED','PAID','UNVERIFIED','IN_STORE',?,
-                           ?,0.00,?,?, '2030-01-01 09:00:00','2030-01-01 10:00:00',?,
+                           ?,0.00,?,?,100.00,0.00,'LIST', '2030-01-01 09:00:00','2030-01-01 10:00:00',?,
                            ?, UTC_TIMESTAMP(3))
                     """, id, id, userId, MERCHANT, STORE, 7500L, 7600L, id + 5000,
                     cancelReason, new BigDecimal("100.00"), new BigDecimal("100.00"),
@@ -588,14 +591,16 @@ class MerchantCustomerStatsMySqlTest {
                     (id,order_no,user_id,merchant_id,store_id,service_id,pet_id,reservation_id,
                      order_stage,payment_status,verification_status,fulfillment_type,
                      original_amount,discount_amount,pay_amount,refunded_amount,
+                     original_price,flash_discount,price_source,
                      appointment_start_at,appointment_end_at,paid_at,verified_at,
                      created_at,updated_at)
                     VALUES(?,?,?,?,?,?,?,?, 'COMPLETED','PAID',?,'IN_STORE',
-                           ?,0.00,?,?, '2030-01-01 09:00:00','2030-01-01 10:00:00',
+                           ?,0.00,?,?,?,0.00,'LIST', '2030-01-01 09:00:00','2030-01-01 10:00:00',
                            '2026-10-01 08:00:00',?, ?, UTC_TIMESTAMP(3))
                     """, id, id, userId, MERCHANT, storeId, 7500L, 7600L, id + 5000,
                     verified ? "VERIFIED" : "UNVERIFIED", new BigDecimal(pay), new BigDecimal(pay),
-                    new BigDecimal(refunded), verified ? createdAt : null, createdAt);
+                    new BigDecimal(refunded), new BigDecimal(pay),
+                    verified ? createdAt : null, createdAt);
         }
 
         void petSnapshot(long orderId, long petId, String name, String type, String breed) {

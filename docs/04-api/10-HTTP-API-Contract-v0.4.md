@@ -489,6 +489,21 @@ pageSize
 
 以支持 UI 按权限决定按钮，而不是推导业务真相。
 
+订单详情/费用事实同时返回价格来源字段（契约 77 §6.5，2026-11-18 CCR-SVC-FLASH-PRICE-001；`priceSource=LIST` 时闪价字段为零值/null，旧前端忽略无影响）：
+
+```json
+{
+  "priceSource": "FLASH",
+  "originalPrice": "100.00",
+  "flashDiscount": "12.00",
+  "discountAmount": "0.00",
+  "payAmount": "88.00"
+}
+```
+
+- `priceSource`：`LIST/FLASH`；`originalPrice`=下单时服务原价；`flashDiscount`=原价−生效价；`discountAmount`=券抵扣（61 号）。金额为两位小数字符串。
+- 订单确认（下单前）读取服务详情的生效价与闪价字段（契约 74 §3.8）；下单请求不携带价格。
+
 ---
 
 ## 3.8 改期

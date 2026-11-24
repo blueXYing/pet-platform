@@ -68,6 +68,7 @@ public final class OrderCreationService {
     private final OrderCreationInputProtection protection;
     private final OrderCreationRemarkPolicy remarkPolicy;
     private final com.petplatform.coupon.api.command.CouponCommandApi coupons;
+    private final com.petplatform.service.api.command.ServiceFlashPriceReservationApi flashPrices;
     private final Clock clock;
     private final OrderCreationStore store;
     private final JdbcAsyncTaskSubmitter tasks;
@@ -80,7 +81,7 @@ public final class OrderCreationService {
             ReservationHoldApi reservations, OrderCreationInputProtection protection,
             OrderCreationRemarkPolicy remarkPolicy, Clock clock) {
         this(source, ids, users, merchants, services, guard, reservations, protection,
-                remarkPolicy, null, clock);
+                remarkPolicy, null, null, clock);
     }
 
     /** Contract 61 slice: the coupon freeze provider is optional and fail-closed when absent. */
@@ -90,6 +91,23 @@ public final class OrderCreationService {
             ReservationHoldApi reservations, OrderCreationInputProtection protection,
             OrderCreationRemarkPolicy remarkPolicy,
             com.petplatform.coupon.api.command.CouponCommandApi coupons, Clock clock) {
+        this(source, ids, users, merchants, services, guard, reservations, protection,
+                remarkPolicy, coupons, null, clock);
+    }
+
+    /**
+     * Contract 77 §6.1 slice (CCR-SVC-FLASH-PRICE-001): the flash-price reservation provider is
+     * optional and fail-closed when absent — a flash-bearing service fact without a provider is
+     * a DEPENDENCY_UNAVAILABLE, never a silent LIST fallback.
+     */
+    public OrderCreationService(DataSource source, SnowflakeIdGenerator ids,
+            BookingUserFactsApi users, BookingMerchantFactsApi merchants,
+            BookingServiceFactsApi services, ScheduleCapacityGuardApi guard,
+            ReservationHoldApi reservations, OrderCreationInputProtection protection,
+            OrderCreationRemarkPolicy remarkPolicy,
+            com.petplatform.coupon.api.command.CouponCommandApi coupons,
+            com.petplatform.service.api.command.ServiceFlashPriceReservationApi flashPrices,
+            Clock clock) {
         this.ids = Objects.requireNonNull(ids);
         this.users = Objects.requireNonNull(users);
         this.merchants = Objects.requireNonNull(merchants);
@@ -99,6 +117,7 @@ public final class OrderCreationService {
         this.protection = protection;
         this.remarkPolicy = remarkPolicy;
         this.coupons = coupons;
+        this.flashPrices = flashPrices;
         this.clock = Objects.requireNonNull(clock);
         this.store = new OrderCreationStore(Objects.requireNonNull(source));
         this.tasks = new JdbcAsyncTaskSubmitter(source, ids);
@@ -222,19 +241,68 @@ public final class OrderCreationService {
                 command.pickupStart(), command.returnStart(), command.selectedGeneralWindowId(),
                 command.selectedPickupWindowId(), command.selectedReturnWindowId()));
         verifyHold(input, held, orderId);
+        // Contract 77 §6.1 (CCR-SVC-FLASH-PRICE-001): the flash reservation is the price
+        // authority. It runs inside this same guarded transaction after the hold is proven and
+        // before the coupon freeze, so its reserved quota rows vanish with the transaction on
+        // any later failure. Without a flash fact the LIST path stays byte-identical to the
+        // pre-flash kernel.
+        BigDecimal effectivePrice;
+        BigDecimal originalPrice;
+        BigDecimal flashDiscount;
+        String priceSource;
+        String flashPriceId;
+        if (service.flashPriceId() != null) {
+            if (flashPrices == null) {
+                throw unavailable("flash price reservation provider is not implemented");
+            }
+            var reservation = flashPrices.reserve(
+                    new com.petplatform.service.api.command.ServiceFlashPriceReservationApi.ReserveCommand(
+                            command.context(), service.flashPriceId(), Long.toString(orderId),
+                            input.userId(), held.holdExpireAt()));
+            if (reservation == null || reservation.flashPriceId() == null
+                    || reservation.price() == null || reservation.price().signum() <= 0
+                    || reservation.listPrice() == null
+                    || reservation.listPrice().compareTo(reservation.price()) < 0
+                    || reservation.flashDiscount() == null) {
+                throw unavailable("flash price reservation result is incomplete");
+            }
+            if (reservation.flashDiscount().compareTo(
+                    reservation.listPrice().subtract(reservation.price())) != 0) {
+                throw unavailable("flash price reservation result is inconsistent");
+            }
+            try {
+                MONEY.format(reservation.price());
+                MONEY.format(reservation.listPrice());
+            } catch (IllegalArgumentException malformed) {
+                throw unavailable("flash price reservation result is invalid");
+            }
+            effectivePrice = reservation.price();
+            originalPrice = reservation.listPrice();
+            flashDiscount = reservation.flashDiscount();
+            priceSource = "FLASH";
+            flashPriceId = reservation.flashPriceId();
+        } else {
+            effectivePrice = service.price();
+            originalPrice = service.price();
+            flashDiscount = BigDecimal.ZERO;
+            priceSource = "LIST";
+            flashPriceId = null;
+        }
         // Contract 61 (CPN-001): freeze inside this same guarded transaction after the hold is
         // proven, then book the discounted payable. The freeze is a row-level CAS on the coupon
         // plus its ledger row; any failure here rolls the whole business transaction back.
+        // Contract 77 §6.6: the coupon discounts the flash-effective price, not the list price.
         BigDecimal discount = BigDecimal.ZERO;
         if (command.couponInstanceId() != null) {
             if (coupons == null) throw unavailable("coupon freeze provider is not implemented");
             discount = coupons.freeze(new com.petplatform.coupon.api.command.CouponCommandApi.CouponFreezeCommand(
                     command.context(), Long.toString(orderId), command.couponInstanceId(),
-                    input.userId(), command.storeId(), service.price(), held.holdExpireAt()))
+                    input.userId(), command.storeId(), effectivePrice, held.holdExpireAt()))
                     .discountAmount();
         }
-        BigDecimal payAmount = service.price().subtract(discount);
-        writeOrder(input, merchant, service, pet, held, orderId, orderNo, discount, payAmount);
+        BigDecimal payAmount = effectivePrice.subtract(discount);
+        writeOrder(input, merchant, service, pet, held, orderId, orderNo, discount, payAmount,
+                effectivePrice, originalPrice, flashDiscount, priceSource, flashPriceId);
         Receipt receipt = new Receipt(Long.toString(orderId), Long.toString(orderNo),
                 MONEY.format(payAmount), held.holdExpireAt().toString());
         store.succeed(input.key(), serializeReceipt(receipt));
@@ -560,8 +628,11 @@ public final class OrderCreationService {
 
     private void writeOrder(Prepared input, BookingMerchantFacts merchant,
             BookingServiceFacts service, PetSnapshotDTO pet, HoldResult held,
-            long orderId, long orderNo, BigDecimal discount, BigDecimal payAmount) {
+            long orderId, long orderNo, BigDecimal discount, BigDecimal payAmount,
+            BigDecimal effectivePrice, BigDecimal originalPrice, BigDecimal flashDiscount,
+            String priceSource, String flashPriceId) {
         CreateOrderCommand command = input.command();
+        Long flashPriceKey = flashPriceId == null ? null : IDS.fromApi(flashPriceId);
         Map<String, Object> order = values();
         order.put("id", orderId);
         order.put("orderNo", orderNo);
@@ -572,7 +643,14 @@ public final class OrderCreationService {
         order.put("petId", IDS.fromApi(command.petId()));
         order.put("reservationId", IDS.fromApi(held.reservationId()));
         order.put("fulfillmentType", command.fulfillmentType());
-        order.put("price", service.price());
+        // Contract 77 §6.5: `price` keys the legacy original_amount column and is the effective
+        // price (flash price under FLASH); the dedicated snapshot columns carry the list price,
+        // the flash discount and the source beside it.
+        order.put("price", effectivePrice);
+        order.put("originalPrice", originalPrice);
+        order.put("flashDiscount", flashDiscount);
+        order.put("priceSource", priceSource);
+        order.put("flashPriceId", flashPriceKey);
         order.put("discountAmount", discount);
         order.put("payAmount", payAmount);
         order.put("appointmentStart", utc(held.startAt()));
@@ -587,13 +665,17 @@ public final class OrderCreationService {
         serviceRow.put("serviceName", service.serviceName());
         serviceRow.put("categoryId", service.categoryId() == null ? null : IDS.fromApi(service.categoryId()));
         serviceRow.put("categoryName", service.categoryName());
-        serviceRow.put("servicePrice", service.price());
+        serviceRow.put("servicePrice", effectivePrice);
+        serviceRow.put("serviceListPrice", originalPrice);
+        serviceRow.put("servicePriceSource", priceSource);
+        serviceRow.put("serviceFlashPriceId", flashPriceKey);
         serviceRow.put("serviceDurationMinutes", service.durationMinutes());
         serviceRow.put("serviceDescription", service.description());
         serviceRow.put("merchantName", merchant.merchantName());
         serviceRow.put("storeName", merchant.storeName());
         serviceRow.put("storeAddress", merchant.storeAddress());
-        serviceRow.put("snapshotJson", serviceFactsJson(service));
+        serviceRow.put("snapshotJson", serviceFactsJson(service, originalPrice, flashDiscount,
+                priceSource, flashPriceId));
         store.serviceSnapshot(serviceRow);
 
         Map<String, Object> petRow = values();
@@ -639,10 +721,15 @@ public final class OrderCreationService {
     private static Map<String, Object> values() { return new HashMap<>(); }
     private static boolean blank(String value) { return value == null || value.isBlank(); }
 
-    private static String serviceFactsJson(BookingServiceFacts service) {
+    private static String serviceFactsJson(BookingServiceFacts service, BigDecimal listPrice,
+            BigDecimal flashDiscount, String priceSource, String flashPriceId) {
         Map<String, Object> extra = new TreeMap<>();
         extra.put("applicablePetTypes", service.applicablePetTypes().stream().sorted().toList());
+        extra.put("flashDiscount", flashDiscount);
+        extra.put("flashPriceId", flashPriceId);
         extra.put("fulfillmentType", service.fulfillmentType());
+        extra.put("listPrice", listPrice);
+        extra.put("priceSource", priceSource);
         extra.put("verificationRequired", service.verificationRequired());
         extra.put("serviceVersion", service.version());
         try { return JSON.writeValueAsString(extra); }

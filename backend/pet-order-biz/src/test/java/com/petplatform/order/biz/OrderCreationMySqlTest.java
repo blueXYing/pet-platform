@@ -65,6 +65,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.FileSystemResource;
@@ -698,6 +699,186 @@ class OrderCreationMySqlTest {
         };
     }
 
+    /** Contract 77 §6.6 evidence: records the amount the coupon freeze was asked to discount. */
+    private static com.petplatform.coupon.api.command.CouponCommandApi capturingCoupons(
+            com.petplatform.coupon.api.command.CouponCommandApi delegate,
+            AtomicReference<BigDecimal> frozenOrderAmount) {
+        return new com.petplatform.coupon.api.command.CouponCommandApi() {
+            @Override public CouponFreezeResult freeze(CouponFreezeCommand command) {
+                frozenOrderAmount.set(command.orderAmount());
+                return delegate.freeze(command);
+            }
+            @Override public CouponConsumeResult consume(CouponConsumeCommand command) {
+                return delegate.consume(command);
+            }
+            @Override public CouponReleaseResult release(CouponReleaseCommand command) {
+                return delegate.release(command);
+            }
+        };
+    }
+
+    @Test
+    void flashBearingCreateReservesAuthoritativePriceAndDiscountsCouponFromIt() throws Exception {
+        try (Database db = new Database()) {
+            db.flashPriceId = "61000";
+            db.flashListPrice = new BigDecimal("200.00");
+            long couponId = db.seedCoupon(
+                    "{\"amountOff\":\"20\",\"thresholdAmount\":\"100.00\"}",
+                    "2099-01-01 00:00:00.000");
+            var reserveCommands = new AtomicReference<com.petplatform.service.api.command.ServiceFlashPriceReservationApi.ReserveCommand>();
+            var frozenOrderAmount = new AtomicReference<BigDecimal>();
+            com.petplatform.service.api.command.ServiceFlashPriceReservationApi flash = command -> {
+                reserveCommands.set(command);
+                return new com.petplatform.service.api.command.ServiceFlashPriceReservationApi.ReservationResult(
+                        command.flashPriceId(), new BigDecimal("88.00"), new BigDecimal("200.00"),
+                        new BigDecimal("112.00"), "RESERVED");
+            };
+            var created = db.api(db.source, capturingCoupons(couponCommands(db), frozenOrderAmount), flash)
+                    .create(db.inStore("flash-" + UUID.randomUUID(), Long.toString(couponId)));
+            assertTrue(created.created());
+            // The local facts candidate stays 128.00; the reservation answer is the authority.
+            assertEquals("68.00", created.payAmount());
+            var reserved = reserveCommands.get();
+            assertEquals("61000", reserved.flashPriceId());
+            assertEquals("100", reserved.userId());
+            assertEquals(created.orderId(), reserved.orderId());
+            assertEquals(created.paymentExpireAt(), reserved.expireAt());
+            assertEquals(new BigDecimal("88.00"), frozenOrderAmount.get());
+            long orderId = Long.parseLong(created.orderId());
+            assertAll(
+                    () -> assertEquals(new BigDecimal("88.00"), db.jdbc.queryForObject(
+                            "SELECT original_amount FROM pet_order WHERE id=?", BigDecimal.class, orderId)),
+                    () -> assertEquals(new BigDecimal("200.00"), db.jdbc.queryForObject(
+                            "SELECT original_price FROM pet_order WHERE id=?", BigDecimal.class, orderId)),
+                    () -> assertEquals(new BigDecimal("112.00"), db.jdbc.queryForObject(
+                            "SELECT flash_discount FROM pet_order WHERE id=?", BigDecimal.class, orderId)),
+                    () -> assertEquals("FLASH", db.jdbc.queryForObject(
+                            "SELECT price_source FROM pet_order WHERE id=?", String.class, orderId)),
+                    () -> assertEquals(61000L, db.jdbc.queryForObject(
+                            "SELECT flash_price_id FROM pet_order WHERE id=?", Long.class, orderId)),
+                    () -> assertEquals(new BigDecimal("20.00"), db.jdbc.queryForObject(
+                            "SELECT discount_amount FROM pet_order WHERE id=?", BigDecimal.class, orderId)),
+                    () -> assertEquals(new BigDecimal("68.00"), db.jdbc.queryForObject(
+                            "SELECT pay_amount FROM pet_order WHERE id=?", BigDecimal.class, orderId)));
+            assertAll(
+                    () -> assertEquals(new BigDecimal("88.00"), db.jdbc.queryForObject(
+                            "SELECT service_price FROM order_service_snapshot WHERE order_id=?",
+                            BigDecimal.class, orderId)),
+                    () -> assertEquals(new BigDecimal("200.00"), db.jdbc.queryForObject(
+                            "SELECT service_list_price FROM order_service_snapshot WHERE order_id=?",
+                            BigDecimal.class, orderId)),
+                    () -> assertEquals("FLASH", db.jdbc.queryForObject(
+                            "SELECT service_price_source FROM order_service_snapshot WHERE order_id=?",
+                            String.class, orderId)),
+                    () -> assertEquals(61000L, db.jdbc.queryForObject(
+                            "SELECT service_flash_price_id FROM order_service_snapshot WHERE order_id=?",
+                            Long.class, orderId)));
+            String factsJson = db.jdbc.queryForObject(
+                    "SELECT snapshot_json FROM order_service_snapshot WHERE order_id=?",
+                    String.class, orderId);
+            var facts = new com.fasterxml.jackson.databind.ObjectMapper().readTree(factsJson);
+            assertEquals("FLASH", facts.path("priceSource").asText(), factsJson);
+            assertEquals("61000", facts.path("flashPriceId").asText(), factsJson);
+            assertEquals(0, new BigDecimal("200.00").compareTo(
+                    facts.path("listPrice").decimalValue()), factsJson);
+            assertEquals(0, new BigDecimal("112.00").compareTo(
+                    facts.path("flashDiscount").decimalValue()), factsJson);
+        }
+    }
+
+    @Test
+    void quotaConflictDuringFlashReserveRollsBackTheWholeBusinessTransaction() throws Exception {
+        try (Database db = new Database()) {
+            db.flashPriceId = "61000";
+            db.flashListPrice = new BigDecimal("200.00");
+            com.petplatform.service.api.command.ServiceFlashPriceReservationApi flash = command -> {
+                throw new ApiException("FLASH_PRICE_QUOTA_EXCEEDED", "quota exhausted");
+            };
+            ApiException rejected = assertThrows(ApiException.class,
+                    () -> db.api(db.source, null, flash)
+                            .create(db.inStore("flash-conflict-" + UUID.randomUUID())));
+            assertEquals("FLASH_PRICE_QUOTA_EXCEEDED", rejected.code());
+            assertEquals(0, db.count("pet_order"));
+            assertEquals(0, db.count("schedule_reservation"));
+            assertEquals(0, db.count("schedule_reservation_claim"));
+            assertEquals(0, db.count("order_creation_audit"));
+            assertEquals(0, db.count("async_task"));
+            assertEquals("RESERVED", db.jdbc.queryForObject(
+                    "SELECT status FROM order_creation_request", String.class));
+        }
+    }
+
+    @Test
+    void incompleteOrInconsistentFlashReservationFailsClosed() throws Exception {
+        try (Database db = new Database()) {
+            db.flashPriceId = "61000";
+            db.flashListPrice = new BigDecimal("200.00");
+            com.petplatform.service.api.command.ServiceFlashPriceReservationApi nonPositive =
+                    command -> new com.petplatform.service.api.command.ServiceFlashPriceReservationApi.ReservationResult(
+                            command.flashPriceId(), new BigDecimal("0.00"),
+                            new BigDecimal("200.00"), new BigDecimal("200.00"), "RESERVED");
+            assertEquals(CommonApiCodes.DEPENDENCY_UNAVAILABLE, assertThrows(ApiException.class,
+                    () -> db.api(db.source, null, nonPositive)
+                            .create(db.inStore("flash-zero-" + UUID.randomUUID()))).code());
+            com.petplatform.service.api.command.ServiceFlashPriceReservationApi inconsistent =
+                    command -> new com.petplatform.service.api.command.ServiceFlashPriceReservationApi.ReservationResult(
+                            command.flashPriceId(), new BigDecimal("88.00"),
+                            new BigDecimal("200.00"), new BigDecimal("999.00"), "RESERVED");
+            assertEquals(CommonApiCodes.DEPENDENCY_UNAVAILABLE, assertThrows(ApiException.class,
+                    () -> db.api(db.source, null, inconsistent)
+                            .create(db.inStore("flash-badmath-" + UUID.randomUUID()))).code());
+            assertEquals(0, db.count("pet_order"));
+            assertEquals(0, db.count("schedule_reservation"));
+            assertEquals(2, db.count("order_creation_request"));
+        }
+    }
+
+    @Test
+    void listCreateNeverCallsReserveAndKeepsLegacySnapshotSemantics() throws Exception {
+        try (Database db = new Database()) {
+            var calls = new AtomicInteger();
+            com.petplatform.service.api.command.ServiceFlashPriceReservationApi flash = command -> {
+                calls.incrementAndGet();
+                throw new AssertionError("LIST path must never call reserve");
+            };
+            var created = db.api(db.source, null, flash)
+                    .create(db.inStore("list-" + UUID.randomUUID()));
+            assertTrue(created.created());
+            assertEquals("128.00", created.payAmount());
+            assertEquals(0, calls.get());
+            long orderId = Long.parseLong(created.orderId());
+            assertAll(
+                    () -> assertEquals(new BigDecimal("128.00"), db.jdbc.queryForObject(
+                            "SELECT original_price FROM pet_order WHERE id=?", BigDecimal.class, orderId)),
+                    () -> assertEquals(db.jdbc.queryForObject(
+                            "SELECT original_amount FROM pet_order WHERE id=?", BigDecimal.class, orderId),
+                            db.jdbc.queryForObject(
+                                    "SELECT original_price FROM pet_order WHERE id=?",
+                                    BigDecimal.class, orderId)),
+                    () -> assertEquals(new BigDecimal("0.00"), db.jdbc.queryForObject(
+                            "SELECT flash_discount FROM pet_order WHERE id=?", BigDecimal.class, orderId)),
+                    () -> assertEquals("LIST", db.jdbc.queryForObject(
+                            "SELECT price_source FROM pet_order WHERE id=?", String.class, orderId)),
+                    () -> assertNull(db.jdbc.queryForObject(
+                            "SELECT flash_price_id FROM pet_order WHERE id=?", Long.class, orderId)),
+                    () -> assertEquals(new BigDecimal("128.00"), db.jdbc.queryForObject(
+                            "SELECT service_list_price FROM order_service_snapshot WHERE order_id=?",
+                            BigDecimal.class, orderId)),
+                    () -> assertEquals("LIST", db.jdbc.queryForObject(
+                            "SELECT service_price_source FROM order_service_snapshot WHERE order_id=?",
+                            String.class, orderId)),
+                    () -> assertNull(db.jdbc.queryForObject(
+                            "SELECT service_flash_price_id FROM order_service_snapshot WHERE order_id=?",
+                            Long.class, orderId)));
+            String factsJson = db.jdbc.queryForObject(
+                    "SELECT snapshot_json FROM order_service_snapshot WHERE order_id=?",
+                    String.class, orderId);
+            var facts = new com.fasterxml.jackson.databind.ObjectMapper().readTree(factsJson);
+            assertEquals("LIST", facts.path("priceSource").asText(), factsJson);
+            assertTrue(facts.path("flashPriceId").isNull(), factsJson);
+        }
+    }
+
     @Test
     void concurrentSameKeyProducesOneReceiptAndOneReservation() throws Exception {
         try (Database db = new Database(); var workers = Executors.newFixedThreadPool(2)) {
@@ -782,6 +963,9 @@ class OrderCreationMySqlTest {
         volatile boolean holdExpiryFails = false;
         volatile boolean holdConfirmFails = false;
         volatile String serviceVersion = "0";
+        // Contract 77 flash facts: null flashPriceId keeps the byte-identical LIST slice.
+        volatile String flashPriceId;
+        volatile java.math.BigDecimal flashListPrice;
 
         Database() throws Exception {
             String prefix = System.getenv().containsKey("ORDER_CREATE_MYSQL_URL") ? "ORDER_CREATE"
@@ -1019,6 +1203,12 @@ class OrderCreationMySqlTest {
 
         OrderCreationApiImpl api(DataSource transactionalSource,
                 com.petplatform.coupon.api.command.CouponCommandApi coupons) {
+            return api(transactionalSource, coupons, null);
+        }
+
+        OrderCreationApiImpl api(DataSource transactionalSource,
+                com.petplatform.coupon.api.command.CouponCommandApi coupons,
+                com.petplatform.service.api.command.ServiceFlashPriceReservationApi flashPrices) {
             JdbcTemplate transactionalJdbc = new JdbcTemplate(transactionalSource);
             ScheduleCapacityGuardApi guard = new TestGuard(transactionalJdbc);
             ReservationHoldApi hold = command -> {
@@ -1082,11 +1272,14 @@ class OrderCreationMySqlTest {
                     (storeId, serviceId, context) -> new BookingServiceFacts(serviceId, "200", storeId,
                             "Wash", null, null, new java.math.BigDecimal(price), 60,
                             serviceId.equals("401") ? "PICKUP_DELIVERY" : "IN_STORE",
-                            "Description", Set.of("ALL"), verificationRequired, serviceVersion),
+                            "Description", Set.of("ALL"), verificationRequired, serviceVersion,
+                            flashListPrice, flashPriceId == null ? "LIST" : "FLASH", flashPriceId,
+                            flashPriceId == null ? java.math.BigDecimal.ZERO
+                                    : flashListPrice.subtract(new java.math.BigDecimal(price))),
                     guard, hold, protection, remark -> {
                         if (!policyAvailable) throw new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
                                 "moderation unavailable");
-                    }, coupons, CLOCK);
+                    }, coupons, flashPrices, CLOCK);
         }
 
         private void claim(JdbcTemplate target, long reservationId, String kind, String windowId,

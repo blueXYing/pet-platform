@@ -75,6 +75,15 @@ button { padding: 0; margin: 0; border: 0; border-radius: 0; background: transpa
 .svc-service-book text { font-size: calc(var(--svc-unit) * 12); line-height: calc(var(--svc-unit) * 16); color: #f8f5ee; }
 .svc-list-empty { padding: calc(var(--svc-unit) * 12) 0 calc(var(--svc-unit) * 16); font-size: calc(var(--svc-unit) * 12); line-height: calc(var(--svc-unit) * 18); color: #577683; text-align: center; }
 
+/* 77号 §5 闪价行（P2）：限时价/原价划线/倒计时/剩余名额占用元信息行；
+   字段缺失时不渲染本组（输出与 P2 前一致）。 */
+.svc-service-flash { display: flex; align-items: center; gap: calc(var(--svc-unit) * 4); }
+.svc-flash-pill { flex-shrink: 0; padding: calc(var(--svc-unit) * 0.5) calc(var(--svc-unit) * 5); border-radius: calc(var(--svc-unit) * 9999); background: #ff9500; font-size: calc(var(--svc-unit) * 9); line-height: calc(var(--svc-unit) * 14); color: #ffffff; }
+.svc-flash-pill-out { background: #9ca3af; }
+.svc-flash-text { font-size: calc(var(--svc-unit) * 10); line-height: calc(var(--svc-unit) * 15); color: #ff9500; }
+.svc-flash-text-out { color: #577683; }
+.svc-flash-strike { font-size: calc(var(--svc-unit) * 10); line-height: calc(var(--svc-unit) * 15); color: #9ca3af; text-decoration: line-through; }
+
 /* 用户评价 (design sample region). */
 .svc-review-card { left: calc(var(--svc-unit) * 29); width: calc(var(--svc-unit) * 343); background: #f8f5ee; border: calc(var(--svc-unit) * 1) solid #c0ecff; border-radius: calc(var(--svc-unit) * 12); }
 .svc-review-head { position: absolute; left: calc(var(--svc-unit) * 18); top: calc(var(--svc-unit) * 18); display: flex; align-items: baseline; width: calc(var(--svc-unit) * 309); }

@@ -22,6 +22,8 @@ import com.petplatform.service.biz.apiimpl.ServiceQueryApiImpl;
 import com.petplatform.user.biz.application.UserAuthService.MiniSessionView;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatterBuilder;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -173,6 +175,15 @@ public class CServiceController {
         row.put("salePrice", item.salePrice().toPlainString());
         row.put("durationMinutes", item.durationMinutes());
         row.put("fulfillmentType", item.fulfillmentType().name());
+        // Contract 77 §5 flash view: null tail (priceSource LIST) when no live flash window,
+        // the switch is off, or the flash price no longer beats the service price.
+        row.put("priceSource", item.priceSource() == null ? "LIST" : item.priceSource());
+        row.put("listPrice", item.listPrice() == null ? null : item.listPrice().toPlainString());
+        row.put("flashPrice",
+                item.flashPrice() == null ? null : item.flashPrice().toPlainString());
+        row.put("flashStartAt", time(item.flashStartAt()));
+        row.put("flashEndAt", time(item.flashEndAt()));
+        row.put("flashRemaining", item.flashRemaining());
         // Cover display (2026-09-22 ruling #3): only consumer-visible reads carry the presigned
         // URL; hidden rows never reach here (404), rows without a cover binding keep cover null.
         if (item.coverAssetId() != null) {
@@ -185,6 +196,14 @@ public class CServiceController {
             row.put("cover", null);
         }
         return row;
+    }
+
+    /** Millisecond ISO-8601 wire time (null-safe), the shared C-face format. */
+    private static String time(OffsetDateTime value) {
+        return value == null
+                ? null
+                : new DateTimeFormatterBuilder().appendInstant(3).toFormatter()
+                        .format(value.toInstant());
     }
 
     /** STR-D8 optional session: anonymous stays anonymous; visibility never depends on it. */
