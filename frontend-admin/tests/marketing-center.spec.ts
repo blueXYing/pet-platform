@@ -646,19 +646,83 @@ test('契约 76：5 个扩展字段随活动表单提交；全部留空时一个
     themeCode: 'MID_AUTUMN', description: '活动期间到店消费满 199 元赠送宠物月饼礼盒一份。',
     highlightText: '宠物月饼礼盒', playType: 'THEME', coverAssetId: '7800000000000001',
   });
+});
 
-  // 全部留空：这 5 个键不进请求体（后端保持已存值的决定权），也不编造默认值。
-  const second = captureWrites(page, MARKETING);
+test('契约 76：扩展字段全部留空时，这 5 个键一个都不上送', async ({ page }) => {
+  // 留空即不提交（后端保持已存值的决定权），也不编造默认值。独立成一个用例：
+  // 不与上一个用例共享抽屉实例，避免「上一次提交后抽屉还在关闭」时把输入落进旧表单。
+  const writes = captureWrites(page, MARKETING);
+  await stubReads(page);
+  await page.route(`**${MARKETING}/campaigns`, route => route.fulfill(envelope(receipt('7100000000000021'))));
+  await signIn(page);
   await openCreate(page, '新建活动');
+  const form = section(page, '新建活动');
   await form.getByLabel('活动名称（2-100）').fill('普通平台活动');
   await form.getByLabel('标题（1-100）').fill('不填扩展字段');
   await form.getByLabel('开始时间').fill('2026-11-01T09:00');
   await form.getByLabel('结束时间').fill('2026-11-30T18:00');
   await form.getByRole('button', { name: '创建草稿' }).click();
-  await expect.poll(() => second.filter(w => w.method === 'POST').length).toBe(1);
-  const body = second.find(w => w.method === 'POST')?.body ?? {};
+  await expect(navStatus(page)).toContainText('活动草稿已创建');
+  const posts = writes.filter(w => w.method === 'POST' && w.path === `${MARKETING}/campaigns`);
+  expect(posts).toHaveLength(1);
   for (const key of ['description', 'themeCode', 'highlightText', 'playType', 'coverAssetId']) {
-    expect(body, `空字段 ${key} 不应上送`).not.toHaveProperty(key);
+    expect(posts[0].body, `空字段 ${key} 不应上送`).not.toHaveProperty(key);
+  }
+});
+
+test('连续两次新建：第二次提交不会带上第一次填的扩展字段', async ({ page }) => {
+  // 回归守卫：这条用例曾把两轮写在一起、且不等第一次的抽屉关闭就重开，在 CI 慢机器上
+  // 把输入落进了还在关闭的旧表单。真人的连续操作是同样的路径——这里按真人节奏走一遍：
+  // 第一次填满扩展字段并提交，等抽屉完全收起，再新建第二个、扩展字段全部留空。
+  const writes = captureWrites(page, MARKETING);
+  await stubReads(page);
+  await page.route(`**${MARKETING}/campaigns`, route => route.fulfill(envelope(receipt('7100000000000030'))));
+  await signIn(page);
+
+  const openBlank = async () => {
+    await openCreate(page, '新建活动');
+    const opened = section(page, '新建活动');
+    await expect(opened).toBeVisible();
+    return opened;
+  };
+  const closeDrawer = async () => {
+    await expect(page.locator('.ant-drawer-content-wrapper')).toHaveCount(0, { timeout: 10_000 });
+  };
+
+  const first = await openBlank();
+  await first.getByLabel('活动名称（2-100）').fill('中秋月饼礼盒');
+  await first.getByLabel('标题（1-100）').fill('中秋佳节');
+  await first.getByLabel('节日主题').selectOption('MID_AUTUMN');
+  await first.getByLabel('说明（≤300）').fill('活动期间到店消费满 199 元赠送宠物月饼礼盒一份。');
+  await first.getByLabel('主打项目（≤100）').fill('宠物月饼礼盒');
+  await first.getByLabel('开始时间').fill('2026-09-20T09:00');
+  await first.getByLabel('结束时间').fill('2026-10-08T18:00');
+  await first.getByRole('button', { name: '创建草稿' }).click();
+  await expect(navStatus(page)).toContainText('活动草稿已创建');
+  await closeDrawer();
+
+  const second = await openBlank();
+  // 新抽屉是干净的：任何扩展字段都不带上一个活动的值
+  await expect(second.getByLabel('说明（≤300）')).toHaveValue('');
+  await expect(second.getByLabel('节日主题')).toHaveValue('');
+  await expect(second.getByLabel('主打项目（≤100）')).toHaveValue('');
+  await second.getByLabel('活动名称（2-100）').fill('普通平台活动');
+  await second.getByLabel('标题（1-100）').fill('不填扩展字段');
+  await second.getByLabel('开始时间').fill('2026-11-01T09:00');
+  await second.getByLabel('结束时间').fill('2026-11-30T18:00');
+  await second.getByRole('button', { name: '创建草稿' }).click();
+  await expect.poll(() => writes.filter(w => w.method === 'POST' && w.path === `${MARKETING}/campaigns`).length).toBe(2);
+
+  const posts = writes.filter(w => w.method === 'POST' && w.path === `${MARKETING}/campaigns`);
+  // 第一个活动：填了的扩展字段如实上送
+  expect(posts[0].body).toMatchObject({
+    name: '中秋月饼礼盒', themeCode: 'MID_AUTUMN',
+    description: '活动期间到店消费满 199 元赠送宠物月饼礼盒一份。', highlightText: '宠物月饼礼盒',
+  });
+  // 第二个活动：只填了基本信息，扩展字段一个都不上送
+  expect(posts[1].body).toMatchObject({ name: '普通平台活动', title: '不填扩展字段' });
+  for (const key of ['description', 'themeCode', 'highlightText', 'playType', 'coverAssetId']) {
+    expect(posts[1].body, `第二个活动的空字段 ${key} 不应上送`).not.toHaveProperty(key);
   }
 });
 
