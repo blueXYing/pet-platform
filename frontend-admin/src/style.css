@@ -431,3 +431,136 @@ code { background: #f4f6fa; padding: 2px 6px; border-radius: 4px; font-size: 13p
   .page { padding: 16px; }
   .review-lightbox-stage { height: 340px; }
 }
+
+/* ===== 营销活动中心 ===== */
+/* 分区页签：原生 button（验收脚本按 button 角色定位），当前分区用 aria-pressed 标识 */
+.mkt-tabs { background: #fff; border-radius: 8px; padding: 0 16px; }
+.mkt-tab-strip { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid #f0f0f0; }
+.mkt-tab {
+  appearance: none; border: 0; background: transparent; font: inherit; font-size: 15px; color: rgba(0, 0, 0, 0.65);
+  padding: 13px 14px 11px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color .2s;
+}
+.mkt-tab:hover { color: #2459a8; }
+.mkt-tab[aria-pressed="true"] { color: #2459a8; font-weight: 600; border-bottom-color: #2459a8; }
+.mkt-tab:focus-visible { outline: 2px solid #2459a8; outline-offset: -2px; border-radius: 4px; }
+.mkt-tab-feedback { padding: 12px 0; }
+.mkt-tab-feedback .inline-status {
+  display: inline-flex; align-items: center; margin: 0; padding: 6px 12px; border-radius: 6px;
+  background: #eef4fc; color: #2459a8; font-size: 14px;
+}
+.mkt-tab-feedback .ant-alert { margin: 0; }
+
+/* 抽屉挂在 body 下，拿不到 .page 作用域里的原生控件皮肤与 fieldset/summary 样式，这里按 .mkt-drawer 作用域补齐 */
+.mkt-drawer select, .mkt-drawer input[type="datetime-local"] {
+  width: 100%; min-height: 32px; padding: 4px 11px; border: 1px solid #d9d9d9; border-radius: 6px; background: #fff;
+  font: inherit; font-size: 14px; color: rgba(0, 0, 0, 0.88); box-sizing: border-box; transition: border-color .2s, box-shadow .2s;
+}
+.mkt-drawer select { appearance: none; padding-right: 32px; cursor: pointer;
+  /* 原生箭头换成与 antd 一致的细箭头，避免和旁边的 antd 输入框观感不一致 */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5' fill='none' stroke='%23000000' stroke-opacity='.45' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 11px center; }
+.mkt-drawer select:hover, .mkt-drawer input[type="datetime-local"]:hover { border-color: #4a78bd; }
+.mkt-drawer select:focus, .mkt-drawer input[type="datetime-local"]:focus {
+  border-color: #2459a8; outline: none; box-shadow: 0 0 0 2px rgba(36, 89, 168, 0.12);
+}
+.mkt-drawer select:disabled, .mkt-drawer input[type="datetime-local"]:disabled { background: #f5f5f5; color: rgba(0, 0, 0, 0.25); cursor: not-allowed; }
+.mkt-drawer fieldset { border: 1px solid #f0f0f0; border-radius: 8px; padding: 12px 16px; margin: 0 0 16px; min-width: 0; }
+.mkt-drawer legend { color: #566379; padding: 0 6px; font-size: 14px; font-weight: 600; }
+.mkt-drawer details > summary { cursor: pointer; color: #2459a8; margin: 12px 0; font-weight: 500; }
+.mkt-drawer .ant-select, .mkt-drawer .ant-input-affix-wrapper { width: 100%; }
+/* 抽屉里的表格内边距收窄一点，给可编辑单元格里的输入框腾位置（列宽预算按此计算） */
+.mkt-drawer .ant-table.ant-table-middle .ant-table-thead > tr > th,
+.mkt-drawer .ant-table.ant-table-middle .ant-table-tbody > tr > td { padding-inline: 10px; }
+/* 抽屉头部：标题 / 状态标签 / 说明在左，关闭在右（抽屉自身的 antd 头部已关闭） */
+.mkt-drawer-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex: none;
+  padding-bottom: 12px; margin-bottom: 16px; border-bottom: 1px solid #f0f0f0;
+}
+.mkt-drawer-head-text { min-width: 0; }
+.mkt-drawer-head h3 { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 0; font-size: 18px; line-height: 28px; }
+.mkt-drawer-head .hint { margin: 4px 0 0; }
+.mkt-drawer-close { flex: none; margin-top: -4px; font-size: 16px; }
+
+/* 表单抽屉：头部固定、字段区滚动、操作栏固定在底部——长表单不用滚到底才找得到提交按钮 */
+.ant-drawer.mkt-drawer-form .ant-drawer-body { display: flex; flex-direction: column; overflow: hidden; }
+.mkt-drawer-form .mkt-form { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.mkt-drawer-form .mkt-form-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.mkt-drawer-form .mkt-form-fields { flex: 1; min-height: 0; overflow-y: auto; margin: 0 -24px; padding: 0 24px 4px; }
+.mkt-drawer-form .mkt-form-actions {
+  flex: none; display: flex; gap: 8px; padding-top: 16px; margin-top: 8px; border-top: 1px solid #f0f0f0;
+}
+.mkt-detail h3 { margin: 0 0 4px; font-size: 18px; }
+.mkt-detail > .hint { margin-top: 0; }
+
+/* 表单栅格：字段两列排布，说明类内容整行 */
+.mkt-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 20px; align-items: start; }
+.mkt-span-2 { grid-column: 1 / -1; }
+.mkt-label { font-size: 14px; color: rgba(0, 0, 0, 0.72); }
+.filter-item .hint { font-size: 12px; line-height: 1.6; color: #8c8c8c; margin: 0; }
+.mkt-checks { display: flex; flex-wrap: wrap; gap: 8px 22px; }
+.mkt-check { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+.mkt-check input { width: 16px; height: 16px; margin: 0; accent-color: #2459a8; }
+.mkt-warn { color: #ad6800; background: #fffbe6; border: 1px solid #ffe58f; border-radius: 6px; padding: 6px 10px; font-size: 13px; line-height: 1.7; margin: 0; }
+.mkt-callout { background: #f6f8fb; border-radius: 6px; padding: 8px 12px; font-size: 13px; line-height: 1.8; color: rgba(0, 0, 0, 0.72); margin: 0; }
+.mkt-callout.is-warn { background: #fffbe6; color: #ad6800; }
+.mkt-asset-row { display: flex; gap: 8px; align-items: center; }
+.mkt-asset-preview { display: block; max-width: 240px; max-height: 120px; margin-top: 8px; border: 1px solid #f0f0f0; border-radius: 6px; }
+
+/* ID 联想下拉：名称 + 状态/时间两行 */
+.mkt-option { display: flex; flex-direction: column; line-height: 1.4; padding: 2px 0; }
+.mkt-option-main { font-weight: 600; }
+.mkt-option-sub { font-size: 12px; color: rgba(0, 0, 0, 0.45); }
+
+/* 列表：主体单元格（缩略图 + 名称 + ID）、状态纵排 */
+.mkt-entity { display: flex; align-items: center; gap: 10px; }
+.mkt-entity-cover { flex: none; width: 56px; height: 36px; object-fit: cover; border-radius: 4px; border: 1px solid #f0f0f0; }
+.mkt-entity-cover-empty { display: inline-flex; align-items: center; justify-content: center; font-size: 12px; color: #bfbfbf; background: #fafafa; }
+.mkt-entity-text { min-width: 0; line-height: 1.5; }
+/* 单元格里的名称/副行/ID 一律单行省略（完整内容放在 title 里悬停可见），长文案不会把行撑高 */
+.mkt-entity-text > div { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mkt-entity-name { font-weight: 600; color: rgba(0, 0, 0, 0.88); }
+.mkt-entity-sub, .mkt-entity-id { font-size: 12px; color: rgba(0, 0, 0, 0.45); }
+.mkt-stack { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; max-width: 100%; }
+.mkt-stack > .mkt-entity-sub { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 图片放大镜：缩略图右下角放大角标，点击弹大图预览 */
+.mkt-zoom-trigger {
+  position: relative; display: inline-block; padding: 0; border: 1px solid #f0f0f0; border-radius: 4px;
+  background: #fff; cursor: zoom-in; overflow: hidden;
+}
+.mkt-zoom-trigger img { display: block; object-fit: cover; }
+.mkt-zoom-trigger .mkt-zoom-badge {
+  position: absolute; right: 3px; bottom: 3px; background: rgba(0, 0, 0, 0.55); color: #fff;
+  border-radius: 4px; padding: 0 4px; font-size: 12px; line-height: 18px;
+}
+.mkt-zoom-trigger:hover .mkt-zoom-badge { background: rgba(0, 0, 0, 0.75); }
+.mkt-zoom-stage { display: flex; justify-content: center; align-items: center; }
+.mkt-zoom-stage img {
+  max-width: 100%; max-height: 72vh; object-fit: contain; border: 1px solid #f0f0f0;
+  border-radius: 6px; background: #fff;
+}
+.mkt-load-failed { margin-top: 16px; background: #fff; border-radius: 8px; padding: 32px 0; }
+
+/* 详情抽屉内的分区与自检清单 */
+.mkt-panel { margin-top: 16px; padding-top: 16px; border-top: 1px solid #f0f0f0; }
+.mkt-panel h4 { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 15px; font-weight: 600; }
+.mkt-panel .ant-space { margin-bottom: 4px; }
+.mkt-checklist { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.mkt-checklist li { display: flex; align-items: flex-start; gap: 8px; font-size: 14px; }
+.mkt-checklist li.is-ok .anticon { color: #52c41a; }
+.mkt-checklist li.is-warn .anticon { color: #faad14; }
+.mkt-inline { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0 8px; }
+.mkt-subhead { margin: 12px 0 0; font-size: 14px; font-weight: 600; color: rgba(0, 0, 0, 0.72); }
+.mkt-code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+.mkt-pre {
+  margin: 8px 0 0; padding: 12px; max-height: 360px; overflow: auto; background: #fafafa; border-radius: 6px;
+  font-size: 12px; white-space: pre-wrap; word-break: break-all;
+}
+.mkt-versions { list-style: none; margin: 0; padding: 0; }
+.mkt-versions li { display: flex; align-items: center; gap: 16px; padding: 8px 0; border-bottom: 1px solid #f5f5f5; font-size: 14px; }
+.mkt-versions li:last-child { border-bottom: 0; }
+.mkt-materials { display: flex; flex-wrap: wrap; gap: 12px; }
+.mkt-materials img { display: block; width: 140px; height: 140px; object-fit: cover; border-radius: 6px; border: 1px solid #f0f0f0; }
+
+@media (max-width: 720px) {
+  .mkt-form-grid { grid-template-columns: 1fr; }
+}
