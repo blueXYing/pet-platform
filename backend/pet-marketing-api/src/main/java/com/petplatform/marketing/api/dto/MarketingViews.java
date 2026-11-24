@@ -171,7 +171,22 @@ public final class MarketingViews {
             int width,
             int height,
             String sha256,
-            OffsetDateTime createdAt) {}
+            OffsetDateTime createdAt,
+            /** OSS Key of the uploaded object; null when the object store is disabled (bytes stay in the DB). */
+            String objectKey) {
+
+        /** Pre-2026-11-24 shape: no object key (bytes served from the DB). */
+        public AssetView(
+                String assetId,
+                String contentType,
+                long bytes,
+                int width,
+                int height,
+                String sha256,
+                OffsetDateTime createdAt) {
+            this(assetId, contentType, bytes, width, height, sha256, createdAt, null);
+        }
+    }
 
     /**
      * Contract 76 §4.1 merchant hub overview: only provable counters, never order/revenue/

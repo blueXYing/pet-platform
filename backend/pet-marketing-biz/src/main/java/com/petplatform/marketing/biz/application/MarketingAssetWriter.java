@@ -130,7 +130,7 @@ final class MarketingAssetWriter {
         }
         return new MarketingViews.AssetView(Long.toUnsignedString(row.id),
                 row.contentType, row.bytes, row.width, row.height, row.sha256,
-                offset(row.createdAt));
+                offset(row.createdAt), row.objectKey);
     }
 
     private static OffsetDateTime offset(java.time.LocalDateTime value) {
@@ -140,11 +140,13 @@ final class MarketingAssetWriter {
     static MarketingViews.AssetView parseAsset(String json) {
         try {
             var root = MarketingSupport.JSON.readTree(json);
+            // objectKey 是 2026-11-24 追加的字段：此前落库的幂等回执里没有它，按缺省（null）读回。
             return new MarketingViews.AssetView(root.path("assetId").asText(),
                     root.path("contentType").asText(), root.path("bytes").asLong(),
                     root.path("width").asInt(), root.path("height").asInt(),
                     root.path("sha256").asText(),
-                    OffsetDateTime.parse(root.path("createdAt").asText()));
+                    OffsetDateTime.parse(root.path("createdAt").asText()),
+                    root.path("objectKey").asText(null));
         } catch (Exception failure) {
             MarketingSupport.unavailable("素材回执不可读取");
             return null;
@@ -160,6 +162,7 @@ final class MarketingAssetWriter {
         out.put("height", asset.height());
         out.put("sha256", asset.sha256());
         out.put("createdAt", asset.createdAt().toString());
+        out.put("objectKey", asset.objectKey());
         try {
             return MarketingSupport.JSON.writeValueAsString(out);
         } catch (Exception failure) {

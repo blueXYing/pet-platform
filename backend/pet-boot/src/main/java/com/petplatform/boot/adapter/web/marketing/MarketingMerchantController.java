@@ -231,7 +231,8 @@ public class MarketingMerchantController {
                 new MarketingMerchantApi.MerchantCreateCampaignCommand(
                         scope, text(body, "name"), text(body, "title"), optionalText(body, "subtitle"),
                         optionalText(body, "tagCode"), optionalText(body, "tagName"),
-                        optionalText(body, "coverUrl"),
+                        // 2026-11-24 读写一体存 Key：商家端读取到的是拼好的完整地址，提交时在这里还原成 Key。
+                        MarketingCoverUrlResolver.toKey(optionalText(body, "coverUrl")),
                         optionalText(body, "description"), optionalText(body, "themeCode"),
                         optionalText(body, "highlightText"), optionalText(body, "playType"),
                         optionalText(body, "coverAssetId"),
@@ -254,7 +255,7 @@ public class MarketingMerchantController {
                 new MarketingMerchantApi.MerchantUpdateCampaignCommand(
                         id(campaignId), text(body, "name"), text(body, "title"),
                         optionalText(body, "subtitle"), optionalText(body, "tagCode"),
-                        optionalText(body, "tagName"), optionalText(body, "coverUrl"),
+                        optionalText(body, "tagName"), MarketingCoverUrlResolver.toKey(optionalText(body, "coverUrl")),
                         optionalText(body, "description"), optionalText(body, "themeCode"),
                         optionalText(body, "highlightText"), optionalText(body, "playType"),
                         optionalText(body, "coverAssetId"),
