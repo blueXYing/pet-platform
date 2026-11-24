@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.StreamReadFeature;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.petplatform.common.SnowflakeIdGenerator;
 import com.petplatform.event.api.DispatchedEvent;
 import com.petplatform.event.api.IntegrationEventConsumer;
 import com.petplatform.service.biz.infrastructure.persistence.FlashPriceStore;
@@ -17,6 +18,7 @@ import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiPredicate;
+import javax.sql.DataSource;
 
 /**
  * Strict consumer of OrderPaidEvent.v1 (contract 77 §6.2): the RESERVED ledger row of the paid
@@ -45,6 +47,15 @@ public final class OrderPaidFlashPriceConsumer implements IntegrationEventConsum
         this.store = Objects.requireNonNull(store, "store is required");
         this.consumeGuard = Objects.requireNonNull(consumeGuard, "consumeGuard is required");
         this.clock = clock == null ? Clock.systemUTC() : clock;
+    }
+
+    /** Composition entry for the boot assembler; no persistence type crosses the module edge. */
+    public OrderPaidFlashPriceConsumer(
+            DataSource dataSource,
+            SnowflakeIdGenerator ids,
+            BiPredicate<String, DispatchedEvent> consumeGuard,
+            Clock clock) {
+        this(new FlashPriceStore(dataSource, ids), consumeGuard, clock);
     }
 
     @Override

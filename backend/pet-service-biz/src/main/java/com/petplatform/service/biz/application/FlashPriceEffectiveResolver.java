@@ -2,6 +2,7 @@ package com.petplatform.service.biz.application;
 
 import com.petplatform.common.ApiException;
 import com.petplatform.common.CommonApiCodes;
+import com.petplatform.common.SnowflakeIdGenerator;
 import com.petplatform.service.biz.infrastructure.persistence.FlashPriceStore;
 import com.petplatform.service.biz.infrastructure.persistence.entity.FlashPriceEntities.FlashPriceRow;
 import java.math.BigDecimal;
@@ -11,6 +12,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Objects;
+import javax.sql.DataSource;
 
 /**
  * Contract 77 §5 effective-flash resolution shared by the C read side (snapshot/page/detail) and
@@ -45,6 +47,12 @@ public final class FlashPriceEffectiveResolver {
     public FlashPriceEffectiveResolver(FlashPriceStore store, Clock clock) {
         this.store = store;
         this.clock = clock == null ? Clock.systemUTC() : clock;
+    }
+
+    /** Composition entry for the boot assembler; no persistence type crosses the module edge. */
+    public FlashPriceEffectiveResolver(
+            DataSource dataSource, SnowflakeIdGenerator ids, Clock clock) {
+        this(new FlashPriceStore(dataSource, ids), clock);
     }
 
     public boolean enabled() {

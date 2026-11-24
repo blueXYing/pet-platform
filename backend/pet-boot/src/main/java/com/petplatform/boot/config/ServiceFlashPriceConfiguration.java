@@ -16,7 +16,6 @@ import com.petplatform.service.biz.application.FlashPriceAdminService.FlashPrice
 import com.petplatform.service.biz.application.FlashPriceEffectiveResolver;
 import com.petplatform.service.biz.application.FlashPriceReleaseService;
 import com.petplatform.service.biz.event.OrderPaidFlashPriceConsumer;
-import com.petplatform.service.biz.infrastructure.persistence.FlashPriceStore;
 import com.petplatform.service.biz.task.FlashPriceReleaseTaskRegistration;
 import com.petplatform.task.core.AsyncTaskWorker;
 import com.petplatform.task.core.JdbcAsyncTaskStatusReader;
@@ -56,46 +55,42 @@ import org.springframework.context.annotation.Configuration;
 @ConditionalOnProperty(prefix = "pet.service.flash-price", name = "enabled", havingValue = "true")
 public class ServiceFlashPriceConfiguration {
 
-    @Bean
-    FlashPriceStore flashPriceStore(DataSource source, SnowflakeIdGenerator ids) {
-        return new FlashPriceStore(source, ids);
-    }
-
     /** Shared read-side resolver: joins each caller's read/booking transaction. */
     @Bean
     FlashPriceEffectiveResolver flashPriceEffectiveResolver(
-            FlashPriceStore store, ObjectProvider<Clock> clock) {
-        return new FlashPriceEffectiveResolver(store, clock.getIfAvailable(Clock::systemUTC));
+            DataSource source, SnowflakeIdGenerator ids, ObjectProvider<Clock> clock) {
+        return new FlashPriceEffectiveResolver(
+                source, ids, clock.getIfAvailable(Clock::systemUTC));
     }
 
     @Bean
     ServiceFlashPriceMerchantApiImpl serviceFlashPriceMerchantApi(
-            FlashPriceStore store,
+            DataSource source,
             SnowflakeIdGenerator ids,
             ObjectProvider<com.petplatform.merchant.api.query.MerchantAdmissionQueryApi> admissions,
             ObjectProvider<Clock> clock) {
         return new ServiceFlashPriceMerchantApiImpl(
-                store.dataSource(), ids, requireAdmissions(admissions),
+                source, ids, requireAdmissions(admissions),
                 clock.getIfAvailable(Clock::systemUTC));
     }
 
     @Bean
     ServiceFlashPriceAdminApiImpl serviceFlashPriceAdminApi(
-            FlashPriceStore store,
+            DataSource source,
             SnowflakeIdGenerator ids,
             ObjectProvider<MerchantStoreDisplayApi> display,
             ObjectProvider<Clock> clock) {
         MerchantStoreDisplayApi stores = display.getIfAvailable();
         return new ServiceFlashPriceAdminApiImpl(
-                store.dataSource(), ids, stores == null ? null : new StoreNameAdapter(stores),
+                source, ids, stores == null ? null : new StoreNameAdapter(stores),
                 clock.getIfAvailable(Clock::systemUTC));
     }
 
     @Bean
     ServiceFlashPriceReservationApiImpl serviceFlashPriceReservationApi(
-            FlashPriceStore store, SnowflakeIdGenerator ids, ObjectProvider<Clock> clock) {
+            DataSource source, SnowflakeIdGenerator ids, ObjectProvider<Clock> clock) {
         return new ServiceFlashPriceReservationApiImpl(
-                store.dataSource(), ids, clock.getIfAvailable(Clock::systemUTC));
+                source, ids, clock.getIfAvailable(Clock::systemUTC));
     }
 
     /**
@@ -106,11 +101,12 @@ public class ServiceFlashPriceConfiguration {
      */
     @Bean
     OrderPaidFlashPriceConsumer orderPaidFlashPriceConsumer(
-            FlashPriceStore store,
+            DataSource source,
+            SnowflakeIdGenerator ids,
             ObjectProvider<JdbcOutboxConsumeGuard> guard,
             ObjectProvider<Clock> clock) {
         return new OrderPaidFlashPriceConsumer(
-                store,
+                source, ids,
                 (name, event) -> {
                     JdbcOutboxConsumeGuard claims = guard.getIfAvailable();
                     if (claims == null) {
@@ -130,8 +126,12 @@ public class ServiceFlashPriceConfiguration {
 
     @Bean
     FlashPriceReleaseService flashPriceReleaseService(
-            FlashPriceStore store, JdbcAsyncTaskSubmitter tasks, ObjectProvider<Clock> clock) {
-        return new FlashPriceReleaseService(store, tasks, clock.getIfAvailable(Clock::systemUTC));
+            DataSource source,
+            SnowflakeIdGenerator ids,
+            JdbcAsyncTaskSubmitter tasks,
+            ObjectProvider<Clock> clock) {
+        return new FlashPriceReleaseService(
+                source, ids, tasks, clock.getIfAvailable(Clock::systemUTC));
     }
 
     @Bean(initMethod = "start", destroyMethod = "close")

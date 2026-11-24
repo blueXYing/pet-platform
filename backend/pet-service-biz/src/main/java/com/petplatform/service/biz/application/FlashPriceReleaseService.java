@@ -1,5 +1,6 @@
 package com.petplatform.service.biz.application;
 
+import com.petplatform.common.SnowflakeIdGenerator;
 import com.petplatform.service.biz.infrastructure.persistence.FlashPriceStore;
 import com.petplatform.service.biz.infrastructure.persistence.entity.FlashPriceEntities.ReservationRow;
 import com.petplatform.task.core.JdbcAsyncTaskSubmitter;
@@ -11,6 +12,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Objects;
+import javax.sql.DataSource;
 
 /**
  * Contract 77 §6.3 expiry release round (durable task FLASH_PRICE_RELEASE_EXPIRED, owner=SERVICE).
@@ -41,6 +43,15 @@ public final class FlashPriceReleaseService {
         this.store = Objects.requireNonNull(store, "store is required");
         this.tasks = Objects.requireNonNull(tasks, "task submitter is required");
         this.clock = clock == null ? Clock.systemUTC() : clock;
+    }
+
+    /** Composition entry for the boot assembler; no persistence type crosses the module edge. */
+    public FlashPriceReleaseService(
+            DataSource dataSource,
+            SnowflakeIdGenerator ids,
+            JdbcAsyncTaskSubmitter tasks,
+            Clock clock) {
+        this(new FlashPriceStore(dataSource, ids), tasks, clock);
     }
 
     /** Deterministic per-minute task key: handler and watchdog converge on the same successor. */
