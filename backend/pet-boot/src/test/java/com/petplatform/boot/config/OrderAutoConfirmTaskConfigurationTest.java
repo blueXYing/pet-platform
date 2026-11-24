@@ -25,31 +25,7 @@ class OrderAutoConfirmTaskConfigurationTest {
         });
     }
 
-    @Test void taskProductionRequiresPaymentFoundation() {
-        runner().withPropertyValues("pet.order.auto-confirm.enabled=true")
-                .run(context -> assertThat(context).hasFailed());
-        runner().withPropertyValues("pet.order.auto-confirm.enabled=true", "pet.payment.foundation.enabled=true")
-                .run(context -> {
-                    assertThat(context).hasNotFailed();
-                    assertThat(context).doesNotHaveBean(AsyncTaskWorker.class);
-                });
-    }
-
-    @Test void executionAndRepairRequireExplicitProductionAndPaymentFlags() {
-        for (String flag : new String[] {"worker", "repair"}) {
-            for (boolean payment : new boolean[] {false, true}) {
-                runner().withPropertyValues("pet.order.auto-confirm." + flag + ".enabled=true",
-                                "pet.order.auto-confirm.enabled=false", "pet.payment.foundation.enabled=" + payment)
-                        .run(context -> {
-                            assertThat(context).hasFailed();
-                            assertThat(context.getStartupFailure()).hasRootCauseMessage(
-                                    "Auto-confirm execution and repair require task production and payment foundation");
-                        });
-            }
-        }
-    }
-
-    @Test void explicitRepairComposesCommandAndScannerWithoutStartingWorker() {
+    @Test void paymentEnabledComposesInspectorCommandRepairAndWorker() {
         DataSource source = mock(DataSource.class);
         runner().withBean(DataSource.class, () -> source)
                 .withBean(com.petplatform.common.SnowflakeIdGenerator.class, () -> () -> 1L)
@@ -61,26 +37,13 @@ class OrderAutoConfirmTaskConfigurationTest {
                         () -> mock(com.petplatform.schedule.api.command.ReservationConfirmApi.class))
                 .withBean(com.petplatform.event.api.IntegrationEventPublisher.class,
                         () -> mock(com.petplatform.event.api.IntegrationEventPublisher.class))
-                .withPropertyValues("pet.order.auto-confirm.enabled=true",
-                        "pet.payment.foundation.enabled=true","pet.order.auto-confirm.repair.enabled=true")
-                .run(context -> {
-                    assertThat(context).hasNotFailed();
-                    assertThat(context).hasSingleBean(com.petplatform.order.api.command.OrderAutoConfirmApi.class);
-                    assertThat(context).hasSingleBean(com.petplatform.order.api.command.OrderAutoConfirmRepairApi.class);
-                    assertThat(context).doesNotHaveBean(AsyncTaskWorker.class);
-                    verifyNoInteractions(source);
-                });
-    }
-
-    @Test void inspectionIsAnIndependentOptInWithoutStartupDatabaseAccess() {
-        DataSource source = mock(DataSource.class);
-        runner().withBean(DataSource.class, () -> source)
-                .withPropertyValues("pet.order.auto-confirm.inspection.enabled=true")
+                .withPropertyValues("pet.payment.enabled=true")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(context).hasSingleBean(OrderAutoConfirmTaskInspectionApi.class);
-                    assertThat(context).doesNotHaveBean(AsyncTaskWorker.class);
-                    verifyNoInteractions(source);
+                    assertThat(context).hasSingleBean(com.petplatform.order.api.command.OrderAutoConfirmApi.class);
+                    assertThat(context).hasSingleBean(com.petplatform.order.api.command.OrderAutoConfirmRepairApi.class);
+                    assertThat(context).hasSingleBean(AsyncTaskWorker.class);
                 });
     }
 }

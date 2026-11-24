@@ -33,10 +33,7 @@ import org.springframework.context.annotation.Configuration;
  * deliberately distinct types, so the adapters below qualify every nested name.
  */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(
-    prefix = "pet",
-    name = {"auth.admin.enabled", "admin.ops.http.enabled"},
-    havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.auth.admin", name = "enabled", havingValue = "true")
 public class AdminOpsConfiguration {
 
   /**

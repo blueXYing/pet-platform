@@ -51,36 +51,26 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration(proxyBeanMethods = false)
 public class PaymentCenterConfiguration {
-    static final String REQUIRES_FOUNDATION = "Payment center requires pet.payment.foundation.enabled and pet.payment.dispatch.enabled";
-    static final String REQUIRES_CENTER = "Payment center worker and DEMO require pet.payment.center.enabled";
-    static final String DEMO_REQUIRES_OUTBOX = "Payment center DEMO requires the transactional outbox (pet.outbox.enabled)";
+    static final String REQUIRES_PAYMENT = "Payment center DEMO requires pet.payment.enabled";
     static final String DEMO_FORBIDDEN_IN_PRODUCTION = "Payment center DEMO is forbidden when pet.payment.dispatch.environment=PRODUCTION";
 
     @Bean InitializingBean paymentCenterConfigurationGuard(
-            @Value("${pet.payment.center.enabled:false}") boolean center,
-            @Value("${pet.payment.center.worker.enabled:false}") boolean worker,
+            @Value("${pet.payment.enabled:false}") boolean payment,
             @Value("${pet.payment.center.demo.enabled:false}") boolean demo,
-            @Value("${pet.payment.foundation.enabled:false}") boolean foundation,
-            @Value("${pet.payment.dispatch.enabled:false}") boolean dispatch,
-            @Value("${pet.outbox.enabled:true}") boolean outbox,
             @Value("${pet.payment.dispatch.environment:}") String environment) {
-        return () -> check(center, worker, demo, foundation, dispatch, outbox, environment);
+        return () -> check(payment, demo, environment);
     }
 
     /** Pure flag matrix, unit-tested offline. */
-    static void check(boolean center, boolean worker, boolean demo, boolean foundation, boolean dispatch,
-            boolean outbox, String environment) {
-        if ((worker || demo) && !center) throw new IllegalStateException(REQUIRES_CENTER);
-        if (center && !(foundation && dispatch)) throw new IllegalStateException(REQUIRES_FOUNDATION);
-        if (demo && !outbox) throw new IllegalStateException(DEMO_REQUIRES_OUTBOX);
+    static void check(boolean payment, boolean demo, String environment) {
+        if (demo && !payment) throw new IllegalStateException(REQUIRES_PAYMENT);
         // Anything that is not explicitly SIT is treated as production for the DEMO gate.
         if (demo && !LakalaHttpClient.Environment.SIT.name().equals(environment))
             throw new IllegalStateException(DEMO_FORBIDDEN_IN_PRODUCTION);
     }
 
     @Configuration(proxyBeanMethods = false)
-    @ConditionalOnExpression("${pet.payment.center.enabled:false} && ${pet.payment.foundation.enabled:false}"
-            + " && ${pet.payment.dispatch.enabled:false}")
+    @ConditionalOnProperty(prefix = "pet.payment", name = "enabled", havingValue = "true")
     static class Runtime {
         @Bean PaymentCenterBizPolicy paymentCenterBizPolicy(
                 @Value("${pet.payment.center.demo.enabled:false}") boolean demo,
@@ -140,7 +130,7 @@ public class PaymentCenterConfiguration {
             return new PaymentCallbackRouter(source, receipts, orders);
         }
 
-        @Bean @ConditionalOnProperty(prefix = "pet.payment.center.worker", name = "enabled", havingValue = "true")
+        @Bean
         PaymentCenterQueryCoordinator paymentCenterQueryCoordinator(DataSource source, PaymentChannel channel,
                 PaymentCenterReceiptWriter receipts, PaymentDispatchService.Settings paymentCenterChannelSettings,
                 ObjectProvider<Clock> clocks) {
@@ -149,7 +139,6 @@ public class PaymentCenterConfiguration {
         }
 
         @Bean(initMethod = "start", destroyMethod = "close")
-        @ConditionalOnProperty(prefix = "pet.payment.center.worker", name = "enabled", havingValue = "true")
         AsyncTaskWorker paymentCenterQueryWorker(DataSource source, SnowflakeIdGenerator ids,
                 PaymentCenterQueryCoordinator coordinator, ObjectProvider<Clock> clocks) {
             return AsyncTaskWorker.create(source, ids, "payment-center-query-" + UUID.randomUUID(),

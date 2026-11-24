@@ -31,9 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/v1/c/account")
-@ConditionalOnProperty(prefix = "pet",
-        name = {"auth.c.enabled", "usersettings.http.enabled", "merchant.application.enabled"},
-        havingValue = "true")
+@ConditionalOnProperty(prefix = "pet", name = {"auth.c.enabled", "private-assets.enabled"}, havingValue = "true")
 public class CAccountDeletionController {
 
     private static final Set<String> DELETION_FIELDS = Set.of("acknowledged");

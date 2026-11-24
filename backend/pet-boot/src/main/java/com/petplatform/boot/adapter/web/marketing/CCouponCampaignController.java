@@ -22,9 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /** Contract-72 C-side coupon campaign detail + active claim. */
 @RestController
-@ConditionalOnProperty(prefix = "pet",
-        name = {"coupon.campaign.enabled", "coupon.campaign.c.http.enabled", "auth.c.enabled"},
-        havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.auth.c", name = "enabled", havingValue = "true")
 public class CCouponCampaignController {
     @ModelAttribute
     void noStore(jakarta.servlet.http.HttpServletResponse response) {

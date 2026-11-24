@@ -26,10 +26,7 @@ import org.springframework.context.annotation.Configuration;
  * an open write.
  */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(
-    prefix = "pet",
-    name = {"auth.admin.enabled", "coupon.void.enabled"},
-    havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.auth.admin", name = "enabled", havingValue = "true")
 public class CouponVoidConfiguration {
 
   @Bean

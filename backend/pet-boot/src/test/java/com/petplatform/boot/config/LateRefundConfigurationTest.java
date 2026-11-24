@@ -27,24 +27,30 @@ class LateRefundConfigurationTest {
         return new ApplicationContextRunner().withUserConfiguration(LateRefundConfiguration.class);
     }
 
-    @Test void eitherMissingFlagKeepsAllLateRefundBeansAbsent() {
+    @Test void paymentOffKeepsAllLateRefundBeansAbsent() {
         runner().run(context -> assertThat(context).doesNotHaveBean(LateRefundService.class));
-        runner().withPropertyValues("pet.refund.late.enabled=true")
-                .run(context -> assertThat(context).doesNotHaveBean(LateRefundService.class));
-        runner().withPropertyValues("pet.payment.foundation.enabled=true")
-                .run(context -> assertThat(context).doesNotHaveBean(LateRefundService.class));
     }
 
     @Test void enabledWithoutChannelCredentialsFailsClosed() {
-        dependencies(null).withPropertyValues("pet.refund.late.enabled=true",
-                        "pet.payment.foundation.enabled=true", "pet.payment.dispatch.request-ip=127.0.0.1")
+        dependencies(null).withPropertyValues("pet.payment.enabled=true",
+                        "pet.payment.dispatch.request-ip=127.0.0.1")
                 .run(context -> assertThat(context).hasFailed());
     }
 
-    @Test void injectedOfflineChannelComposesWithoutNetworkOrWorker() {
+    @Test void injectedOfflineChannelComposesWithWorkerAndNoNetwork() {
         PaymentRefundChannel offline = mock(PaymentRefundChannel.class);
-        dependencies(offline).withPropertyValues("pet.refund.late.enabled=true",
-                        "pet.payment.foundation.enabled=true", "pet.payment.dispatch.request-ip=127.0.0.1")
+        dependencies(offline).withPropertyValues("pet.payment.enabled=true",
+                        "pet.payment.dispatch.request-ip=127.0.0.1")
+                .withBean(com.petplatform.order.api.query.OrderAfterSaleFactsApi.class,
+                        () -> mock(com.petplatform.order.api.query.OrderAfterSaleFactsApi.class))
+                .withBean(com.petplatform.order.api.query.OrderAfterSaleRefundFactsApi.class,
+                        () -> mock(com.petplatform.order.api.query.OrderAfterSaleRefundFactsApi.class))
+                .withBean(com.petplatform.schedule.api.command.ReservationRefundReleaseApi.class,
+                        () -> mock(com.petplatform.schedule.api.command.ReservationRefundReleaseApi.class))
+                .withBean(com.petplatform.aftersale.api.query.AfterSaleRefundFactsApi.class,
+                        () -> mock(com.petplatform.aftersale.api.query.AfterSaleRefundFactsApi.class))
+                .withBean(com.petplatform.refund.api.query.RefundAfterSaleFactsApi.class,
+                        () -> mock(com.petplatform.refund.api.query.RefundAfterSaleFactsApi.class))
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(context).hasSingleBean(LateRefundService.class);
@@ -52,7 +58,7 @@ class LateRefundConfigurationTest {
                     assertThat(context).hasSingleBean(PaymentRefundApi.class);
                     assertThat(context).hasSingleBean(PaymentRefundResultFactsApi.class);
                     assertThat(context).hasSingleBean(RefundExecutionService.class);
-                    assertThat(context).doesNotHaveBean(AsyncTaskWorker.class);
+                    assertThat(context).hasSingleBean(AsyncTaskWorker.class);
                     verifyNoInteractions(offline);
                 });
     }

@@ -47,9 +47,7 @@ import tools.jackson.databind.ObjectReader;
  */
 @RestController
 @RequestMapping("/api/v1/c/orders/{orderId}/refund-applications")
-@ConditionalOnProperty(prefix = "pet",
-    name = {"auth.c.enabled", "refund.application.http.enabled"},
-    havingValue = "true")
+@ConditionalOnProperty(prefix = "pet", name = {"auth.c.enabled", "payment.enabled"}, havingValue = "true")
 public class CRefundApplicationController {
 
     private static final ObjectReader STRICT =

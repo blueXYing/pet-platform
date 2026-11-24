@@ -26,7 +26,7 @@ import org.springframework.context.annotation.*;
 
 /** Offline/internal payment foundation. No payment-initiation HTTP or callback HTTP is registered. */
 @Configuration(proxyBeanMethods=false)
-@ConditionalOnProperty(prefix="pet.payment.foundation",name="enabled",havingValue="true")
+@ConditionalOnProperty(prefix="pet.payment",name="enabled",havingValue="true")
 @EnableConfigurationProperties(PaymentFoundationConfiguration.LakalaSettings.class)
 public class PaymentFoundationConfiguration {
     /** @param platform single platform collection merchant for the business-agnostic payment center; mutually exclusive with {@code stores}

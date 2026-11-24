@@ -41,10 +41,7 @@ import org.springframework.web.bind.annotation.RestController;
  * target is currently hidden — the client treats it as "nothing to record", not an error.
  */
 @RestController
-@ConditionalOnProperty(prefix = "pet",
-    name = {"auth.c.enabled", "favtrack.http.enabled",
-            "service.query.enabled", "store.query.enabled"},
-    havingValue = "true")
+@ConditionalOnProperty(prefix = "pet", name = {"auth.c.enabled", "private-assets.enabled"}, havingValue = "true")
 public class CFootprintController {
 
     private final FootprintApiImpl footprints;

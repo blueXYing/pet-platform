@@ -2,6 +2,7 @@ package com.petplatform.boot.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
@@ -9,62 +10,71 @@ import org.springframework.boot.env.YamlPropertySourceLoader;
 import org.springframework.core.env.EnumerablePropertySource;
 import org.springframework.core.io.ClassPathResource;
 
-/** WP-B: application.yml maps pet.payment.* from the environment with every switch OFF and no secret literal. */
+/** Verifies the 5-layer YAML config: base defaults, env profiles, and secrets-only template. */
 class PaymentApplicationYamlDefaultsTest {
-    private static EnumerablePropertySource<?> yaml() throws Exception {
-        List<?> sources = new YamlPropertySourceLoader().load("application", new ClassPathResource("application.yml"));
+    private static EnumerablePropertySource<?> yaml(String file) throws Exception {
+        List<?> sources = new YamlPropertySourceLoader().load(file, new ClassPathResource(file));
         return (EnumerablePropertySource<?>) sources.getFirst();
     }
 
-    private static String raw(String key) throws Exception {
-        Object value = yaml().getProperty(key);
+    private static String raw(EnumerablePropertySource<?> source, String key) {
+        Object value = source.getProperty(key);
         assertThat(value).as(key).isNotNull();
         return value.toString();
     }
 
-    @Test void switchesDefaultToFalse() throws Exception {
-        assertThat(raw("pet.payment.foundation.enabled")).isEqualTo("${PAYMENT_FOUNDATION_ENABLED:false}");
-        assertThat(raw("pet.payment.dispatch.enabled")).isEqualTo("${PAYMENT_DISPATCH_ENABLED:false}");
+    @Test void baseSwitchesDefaultToFalseAndProfilesEnableFullPlatform() throws Exception {
+        var base = yaml("application.yml");
+        assertThat(raw(base, "pet.payment.enabled")).isEqualTo("false");
+        assertThat(raw(base, "pet.payment.center.demo.enabled")).isEqualTo("false");
+        assertThat(base.getProperty("spring.profiles.active")).isNull();
+
+        for (String profile : List.of("application-dev.yml", "application-test.yml", "application-prod.yml")) {
+            var p = yaml(profile);
+            assertThat(raw(p, "pet.auth.admin.enabled")).as(profile).isEqualTo("true");
+            assertThat(raw(p, "pet.auth.c.enabled")).as(profile).isEqualTo("true");
+            assertThat(raw(p, "pet.private-assets.enabled")).as(profile).isEqualTo("true");
+            assertThat(raw(p, "pet.payment.enabled")).as(profile).isEqualTo("true");
+        }
+        assertThat(raw(yaml("application-prod.yml"), "pet.payment.dispatch.environment")).isEqualTo("PRODUCTION");
+        assertThat(raw(yaml("application-prod.yml"), "pet.payment.center.demo.enabled")).isEqualTo("false");
     }
 
     @Test void everyCredentialIsAnEnvironmentPlaceholderWithEmptyDefault() throws Exception {
+        var base = yaml("application.yml");
         for (String key : List.of(
                 "pet.payment.dispatch.app-id", "pet.payment.dispatch.merchant-serial",
                 "pet.payment.dispatch.merchant-private-key-path", "pet.payment.dispatch.platform-serial",
                 "pet.payment.dispatch.platform-certificate-path", "pet.payment.dispatch.parameter-key-path",
                 "pet.payment.dispatch.out-org-code", "pet.payment.dispatch.subject",
                 "pet.payment.dispatch.request-ip", "pet.payment.dispatch.notify-url",
-                "pet.payment.lakala.notification-certificate-path", "pet.payment.lakala.channel-time-zone",
-                "pet.payment.lakala.platform.merchant-no", "pet.payment.lakala.platform.term-no",
-                "pet.payment.lakala.platform.sub-app-id")) {
-            assertThat(raw(key)).as(key).matches("\\$\\{[A-Z0-9_]+:}");
+                "pet.payment.lakala.notification-certificate-path",
+                "pet.payment.lakala.platform.merchant-no", "pet.payment.lakala.platform.term-no")) {
+            assertThat(raw(base, key)).as(key).matches("\\$\\{[A-Z0-9_]+:}");
         }
+        assertThat(raw(base, "pet.payment.lakala.platform.sub-app-id"))
+                .isEqualTo("${WECHAT_MINI_APP_ID:${AUTH_WECHAT_APP_ID:}}");
     }
 
-    @Test void environmentAndSettleTypeDefaults() throws Exception {
-        assertThat(raw("pet.payment.dispatch.environment")).isEqualTo("${LAKALA_ENV:}");
-        assertThat(raw("pet.payment.lakala.settle-type")).isEqualTo("${LAKALA_SETTLE_TYPE:0}");
-    }
-
-    @Test void mappedPlaceholdersMatchTheEnvTemplate() throws Exception {
-        String template = java.nio.file.Files.readString(repositoryRoot().resolve("ops/payment-center.env.example"));
-        for (String name : yaml().getPropertyNames()) {
+    @Test void mappedSecretPlaceholdersMatchTheUnifiedEnvTemplate() throws Exception {
+        var base = yaml("application.yml");
+        String template = java.nio.file.Files.readString(repositoryRoot().resolve("ops/backend-secrets.env.example"));
+        for (String name : base.getPropertyNames()) {
             if (!name.startsWith("pet.payment.")) continue;
-            var matcher = Pattern.compile("\\$\\{([A-Z0-9_]+):").matcher(raw(name));
+            var matcher = Pattern.compile("\\$\\{([A-Z0-9_]+):").matcher(raw(base, name));
             if (!matcher.find()) continue;
             String variable = matcher.group(1);
-            if (variable.startsWith("PAYMENT_FOUNDATION") || variable.startsWith("PAYMENT_DISPATCH")) continue;
+            if (variable.equals("LAKALA_ENV") || variable.equals("LAKALA_CHANNEL_TIMEZONE")) continue;
             assertThat(template).as(variable).containsPattern("(?m)^" + variable + "=");
         }
     }
 
-    @Test void noSecretLiteralInTheFile() throws Exception {
-        String text = new String(new ClassPathResource("application.yml").getInputStream().readAllBytes(),
-                java.nio.charset.StandardCharsets.UTF_8);
-        assertThat(text).doesNotContain("BEGIN PRIVATE KEY").doesNotContain("BEGIN CERTIFICATE");
-        // Every pet.payment.* value is a ${...} placeholder (no inline literal except the boolean/enum defaults inside it).
-        for (String name : yaml().getPropertyNames()) {
-            if (name.startsWith("pet.payment.")) assertThat(raw(name)).as(name).startsWith("${").endsWith("}");
+    @Test void noSecretLiteralInAnyYamlFile() throws Exception {
+        for (String file : List.of(
+                "application.yml", "application-dev.yml", "application-test.yml", "application-prod.yml")) {
+            String text = new String(new ClassPathResource(file).getInputStream().readAllBytes(),
+                    StandardCharsets.UTF_8);
+            assertThat(text).as(file).doesNotContain("BEGIN PRIVATE KEY").doesNotContain("BEGIN CERTIFICATE");
         }
     }
 

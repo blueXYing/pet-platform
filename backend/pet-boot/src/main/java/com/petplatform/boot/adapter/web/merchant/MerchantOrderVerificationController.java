@@ -25,7 +25,7 @@ import tools.jackson.databind.ObjectReader;
  */
 @RestController
 @RequestMapping(value = "/api/v1/merchant/orders", produces = MediaType.APPLICATION_JSON_VALUE)
-@ConditionalOnProperty(name = "pet.verification.completion.http.enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.payment", name = "enabled", havingValue = "true")
 public final class MerchantOrderVerificationController {
     private static final ObjectReader JSON = com.petplatform.boot.config.MerchantJsonReaderFactory.strictReader();
     private final VerificationCompletionApi completion;

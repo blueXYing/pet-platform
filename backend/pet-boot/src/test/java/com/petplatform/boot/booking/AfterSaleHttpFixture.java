@@ -85,17 +85,8 @@ final class AfterSaleHttpFixture implements AutoCloseable {
             at(Instant.parse("2030-01-01T09:00:00Z"));
             var properties=new LinkedHashMap<String,Object>();
             properties.put("server.port",0);properties.put("spring.jmx.enabled",false);properties.put("spring.flyway.enabled",false);
-            for(String flag:List.of("pet.auth.c","pet.auth.admin","pet.schedule.protection","pet.order.creation","pet.order.expiry",
-                    "pet.payment.foundation","pet.order.auto-confirm","pet.order.merchant","pet.refund.application",
-                    "pet.verification.credential","pet.verification.completion","pet.private-assets","pet.aftersale","pet.aftersale.http"))
+            for(String flag:List.of("pet.auth.c","pet.auth.admin","pet.private-assets","pet.payment"))
                 properties.put(flag+".enabled",true);
-            for(String flag:List.of("pet.aftersale.worker","pet.aftersale.refund","pet.order.auto-confirm.worker","pet.order.expiry.worker",
-                    "pet.order.merchant.worker","pet.refund.application.worker","pet.payment.dispatch","pet.outbox",
-                    // Ruling 35 (2026-10-16) defaults the outbox-dispatched consumers ON; this
-                    // fixture pins pet.outbox.enabled=false, so close them explicitly (their
-                    // consume-guard bean only exists when the outbox assembles).
-                    "pet.coupon.lifecycle","pet.points.refund-clawback"))
-                properties.put(flag+".enabled",false);
             for(String auth:List.of("c","admin")){
                 properties.put("pet.auth."+auth+".redis-host",redisHost);properties.put("pet.auth."+auth+".redis-port",redisPort);
                 properties.put("pet.auth."+auth+".cache-prefix",auth.equals("c")?miniPrefix:prefix);
@@ -114,10 +105,20 @@ final class AfterSaleHttpFixture implements AutoCloseable {
             properties.put("pet.order.merchant.protection-key",key(17));
             properties.put("pet.verification.credential.key-id","qa-http");properties.put("pet.verification.credential.encryption-key",key(19));
             properties.put("pet.verification.credential.lookup-key",key(23));
+            Path paramKeyFile=Files.writeString(directory.resolve("param.key"),key(37));
             properties.put("pet.payment.lakala.channel-time-zone","Asia/Shanghai");
+            properties.put("pet.payment.lakala.platform.merchant-no","QA8220000000001");
+            properties.put("pet.payment.lakala.platform.term-no","QAT00001");
+            properties.put("pet.payment.lakala.platform.sub-app-id","qa-afs-http-app");
+            properties.put("pet.payment.dispatch.parameter-key-path",paramKeyFile.toString());
+            properties.put("pet.payment.dispatch.out-org-code","QA-ORG");
+            properties.put("pet.payment.dispatch.subject","QA pet order");
             properties.put("pet.payment.dispatch.request-ip","127.0.0.1");properties.put("pet.payment.dispatch.notify-url","https://qa.invalid/refund");
             properties.put("PRIVATE_ASSET_GRANT_KEY_VERSION","qa-http-grant");properties.put("PRIVATE_ASSET_GRANT_HMAC_KEY_BASE64",key(29));
             properties.put("PRIVATE_ASSET_REASON_KEY_VERSION","qa-http-reason");properties.put("PRIVATE_ASSET_REASON_AES_KEY_BASE64",key(31));
+            properties.put("MERCHANT_SUBJECT_POLICY_VERSION","qa-subject-v1");properties.put("MERCHANT_SUBJECT_HMAC_KEY_BASE64",key(41));
+            properties.put("MERCHANT_PROTECTED_KEY_VERSION","qa-protected-v1");properties.put("MERCHANT_PROTECTED_AES_KEY_BASE64",key(43));
+            properties.put("MERCHANT_PROTECTED_HMAC_KEY_BASE64",key(47));
             properties.putAll(overrides);
             adminOrigin=properties.get("pet.auth.admin.origin").toString();
             context=new SpringApplicationBuilder(PetPlatformApplication.class).initializers(c->{
@@ -141,6 +142,7 @@ final class AfterSaleHttpFixture implements AutoCloseable {
                 beans.registerBean("qaMerchantModeration",MerchantOrderPorts.Moderation.class,()->value->new MerchantOrderPorts.Approval(sha(value),"QA_ONLY_MODERATION",true));
                 beans.registerBean("qaAssetScanner",PrivateAssetScanner.class,()->bytes->new PrivateAssetScanner.ScanResult(true,"QA_ONLY_SCANNER","CLEAN"));
                 beans.registerBean("qaAssetObjects",PrivateObjectStore.class,()->objectStore());
+                beans.registerBean("qaForbiddenPaymentChannel",com.petplatform.payment.biz.application.PaymentChannel.class,()->org.mockito.Mockito.mock(com.petplatform.payment.biz.application.PaymentChannel.class,inv->{channelCalls.incrementAndGet();throw new AssertionError("HTTP slice must not call payment channel");}));
                 beans.registerBean("qaForbiddenRefundChannel",PaymentRefundChannel.class,()->new PaymentRefundChannel(){
                     public VerifiedResult submit(RefundRequest request){channelCalls.incrementAndGet();throw new AssertionError("HTTP slice must not submit money");}
                     public VerifiedResult query(RefundRequest request){channelCalls.incrementAndGet();throw new AssertionError("HTTP slice has no historical money to query");}

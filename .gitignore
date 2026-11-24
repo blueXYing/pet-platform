@@ -18,7 +18,8 @@ Thumbs.db
 *.pem
 *.key
 
-# Local credential fill-in for the C-end WeChat provider (copy of application-local.yml.example)
+# Local secrets file (copy ops/backend-secrets.env.example -> .env.local; never commit)
+/.env.local
 backend/pet-boot/src/main/resources/application-local.yml
 
 # Logs

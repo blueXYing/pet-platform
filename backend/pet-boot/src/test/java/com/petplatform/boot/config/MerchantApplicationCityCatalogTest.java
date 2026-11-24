@@ -45,7 +45,7 @@ class MerchantApplicationCityCatalogTest {
     new ApplicationContextRunner()
         .withUserConfiguration(MerchantApplicationCityConfiguration.class)
         .withPropertyValues(
-            "pet.merchant.application.enabled=true",
+            "pet.private-assets.enabled=true",
             "pet.merchant.application.open-cities[0].code=chengdu",
             "pet.merchant.application.open-cities[0].name=成都")
         .run(
@@ -59,7 +59,7 @@ class MerchantApplicationCityCatalogTest {
     new ApplicationContextRunner()
         .withUserConfiguration(MerchantApplicationCityConfiguration.class)
         .withBean(OpenCityReader.class, () -> fixture)
-        .withPropertyValues("pet.merchant.application.enabled=true")
+        .withPropertyValues("pet.private-assets.enabled=true")
         .run(
             ctx -> {
               assertSame(fixture, ctx.getBean(OpenCityReader.class));

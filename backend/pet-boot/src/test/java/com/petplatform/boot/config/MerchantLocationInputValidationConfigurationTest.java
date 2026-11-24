@@ -24,7 +24,7 @@ class MerchantLocationInputValidationConfigurationTest {
   @Test
   void merchantApplicationGetsLocalValidatorWithoutMapKeyOrExternalProvider() {
     context
-        .withPropertyValues("pet.merchant.application.enabled=true")
+        .withPropertyValues("pet.private-assets.enabled=true")
         .run(
             result -> {
               assertNull(result.getStartupFailure());

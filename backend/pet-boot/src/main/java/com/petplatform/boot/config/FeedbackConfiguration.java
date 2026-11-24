@@ -29,8 +29,7 @@ import org.springframework.context.annotation.Configuration;
  * the deployment gate opens it (pet.feedback.http.enabled).
  */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(prefix = "pet",
-        name = {"auth.c.enabled", "feedback.http.enabled"}, havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.auth.c", name = "enabled", havingValue = "true")
 public class FeedbackConfiguration {
 
     @Bean

@@ -2,7 +2,6 @@ package com.petplatform.boot.config;
 
 import com.petplatform.admin.biz.application.AdminAuthService;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.*;
@@ -29,17 +28,7 @@ public class AdminAuthSecurityConfiguration {
   SecurityFilterChain adminSecurity(
       HttpSecurity http,
       AdminAuthProperties p,
-      ObjectProvider<AdminAuthService> services,
-      @Value("${pet.merchant.application.enabled:false}") boolean merchantApplicationEnabled,
-      @Value("${pet.private-assets.enabled:false}") boolean privateAssetsEnabled,
-      @Value("${pet.service.command.enabled:false}") boolean serviceCommandEnabled,
-      @Value("${pet.aftersale.http.enabled:false}") boolean afterSaleHttpEnabled,
-      @Value("${pet.review.appeal.http.enabled:false}") boolean reviewAppealHttpEnabled,
-      @Value("${pet.points.task.http.enabled:false}") boolean pointsTaskHttpEnabled,
-      @Value("${pet.admin.trade.http.enabled:false}") boolean adminTradeHttpEnabled,
-      @Value("${pet.admin.governance.http.enabled:false}") boolean adminGovernanceHttpEnabled,
-      @Value("${pet.admin.ops.http.enabled:false}") boolean adminOpsHttpEnabled,
-      @Value("${pet.community.admin.http.enabled:false}") boolean communityAdminHttpEnabled)
+      ObjectProvider<AdminAuthService> services)
       throws Exception {
     http.securityMatcher("/api/v1/admin/**")
         .csrf(c -> c.disable())
@@ -49,123 +38,82 @@ public class AdminAuthSecurityConfiguration {
     http.authorizeHttpRequests(
         a -> {
           if (p.isEnabled() && !p.isMaintenance()) {
-            if (afterSaleHttpEnabled) {
-              a.requestMatchers(HttpMethod.GET,
-                  "/api/v1/admin/aftersales", "/api/v1/admin/aftersales/*",
-                  "/api/v1/admin/aftersale-evidence-read-grants/*").permitAll();
-              a.requestMatchers(HttpMethod.POST,
-                  "/api/v1/admin/aftersales/*/accept",
-                  "/api/v1/admin/aftersales/*/supplement-requests",
-                  "/api/v1/admin/aftersales/*/close-duplicate",
-                  "/api/v1/admin/aftersales/*/decisions",
-                  "/api/v1/admin/aftersales/*/evidence-batches/*/assets/*/read-grants").permitAll();
-            }
-            if (reviewAppealHttpEnabled) {
-              // Review appeal governance (contract 56 / REV-002): the ADMIN_WEB Bearer and
-              // the review.appeal.* action codes are enforced by the filter and kernel.
-              a.requestMatchers(HttpMethod.GET,
-                      "/api/v1/admin/review-appeals", "/api/v1/admin/review-appeals/*")
-                  .permitAll();
-              a.requestMatchers(HttpMethod.POST,
-                      "/api/v1/admin/review-appeals/*/decision")
-                  .permitAll();
-            }
-            if (pointsTaskHttpEnabled) {
-              // Points grant amounts config (contract 58 §4 / 32号 ruling: 签到与拉新积分量后台
-              // 可配置): the ADMIN_WEB Bearer plus points.task.config.read/write are enforced by
-              // the filter and the controller.
-              a.requestMatchers(HttpMethod.GET, "/api/v1/admin/points-task-config")
-                  .permitAll();
-              a.requestMatchers(HttpMethod.PUT, "/api/v1/admin/points-task-config")
-                  .permitAll();
-            }
-            if (adminTradeHttpEnabled) {
-              // Platform trade read face (contract 63 / ADM-002+A-003): GET-only routes; the
-              // ADMIN_WEB Bearer plus the order.*/refund.read action codes are enforced by the
-              // filter and re-checked by each kernel per call.
-              a.requestMatchers(HttpMethod.GET,
-                  "/api/v1/admin/trade/orders", "/api/v1/admin/trade/orders/*",
-                  "/api/v1/admin/trade/orders/*/status-logs",
-                  "/api/v1/admin/trade/refunds", "/api/v1/admin/trade/refunds/*",
-                  "/api/v1/admin/trade/verifications", "/api/v1/admin/trade/verifications/*")
-                  .permitAll();
-              // Contract-63 v0.2 disposal writes (user ruling 2026-10-15, doc 33): the four
-              // high-privilege POST routes ride the SAME face switch and kernel re-proofs —
-              // one terminal X-Request-Id plus the refund.channel.query / refund.retry /
-              // order.abnormal.close / merchant.disable action codes and resource scope are
-              // enforced inside each kernel's own commit (FA-1: the chain previously denied
-              // every disposal POST via anyRequest().denyAll(), an HTTP dead face).
-              a.requestMatchers(HttpMethod.POST,
-                  "/api/v1/admin/refunds/*/channel-query",
-                  "/api/v1/admin/refunds/*/retry",
-                  "/api/v1/admin/orders/*/abnormal-close",
-                  "/api/v1/admin/merchants/*/disable")
-                  .permitAll();
-            }
-            if (adminGovernanceHttpEnabled) {
-              // Platform governance read face (contract 64 / ADM-001 gap slice): GET-only
-              // routes; the ADMIN_WEB Bearer plus the merchant.read/schedule.read/
-              // merchant.staff.read action codes are enforced by the filter and re-checked by
-              // each kernel per call.
-              a.requestMatchers(HttpMethod.GET,
-                  "/api/v1/admin/governance/merchants", "/api/v1/admin/governance/merchants/*",
-                  "/api/v1/admin/governance/merchants/*/staff",
-                  "/api/v1/admin/governance/merchants/*/staff-members",
-                  "/api/v1/admin/governance/merchants/*/staff-members/invitations",
-                  "/api/v1/admin/governance/schedule/windows",
-                  "/api/v1/admin/governance/schedule/staff-windows",
-                  "/api/v1/admin/governance/schedule/reservations")
-                  .permitAll();
-            }
-            if (adminOpsHttpEnabled) {
-              // Platform ops console face (contract 65 / A-005): encyclopedia governance, coupon
-              // template/instance management plus the grant/void channels, points ledger and the
-              // read-only runtime switch view. The ADMIN_WEB Bearer plus the encyclopedia.* /
-              // breed.* / coupon.template.* / coupon.instance.* / points.ledger.read /
-              // system.parameter.read action codes are enforced by the filter and re-checked by
-              // each kernel per call (FA-3: the chain previously denied every ops route).
-              a.requestMatchers(HttpMethod.GET,
-                  "/api/v1/admin/encyclopedia/categories",
-                  "/api/v1/admin/encyclopedia/breeds",
-                  "/api/v1/admin/encyclopedia/breeds/*",
-                  "/api/v1/admin/coupon-templates",
-                  "/api/v1/admin/coupon-templates/*",
-                  "/api/v1/admin/coupon-templates/*/trial-calculation",
-                  "/api/v1/admin/coupon-instances",
-                  "/api/v1/admin/coupon-instances/*",
-                  "/api/v1/admin/points/ledger",
-                  "/api/v1/admin/settings/runtime")
-                  .permitAll();
-              a.requestMatchers(HttpMethod.PUT,
-                  "/api/v1/admin/encyclopedia/categories/*",
-                  "/api/v1/admin/encyclopedia/breeds/*",
-                  "/api/v1/admin/coupon-templates/*")
-                  .permitAll();
-              a.requestMatchers(HttpMethod.POST,
-                  "/api/v1/admin/encyclopedia/categories/*/enable",
-                  "/api/v1/admin/encyclopedia/categories/*/disable",
-                  "/api/v1/admin/encyclopedia/breeds/*/publish",
-                  "/api/v1/admin/encyclopedia/breeds/*/offline",
-                  "/api/v1/admin/coupon-templates",
-                  "/api/v1/admin/coupon-templates/*/enable",
-                  "/api/v1/admin/coupon-templates/*/offline",
-                  "/api/v1/admin/coupon-instances/grant",
-                  "/api/v1/admin/coupon-instances/*/void")
-                  .permitAll();
-            }
-            // Contract-71/72 marketing center + coupon campaigns. Controllers are
-            // independently switch-gated; the ADMIN_WEB Bearer and the marketing.*/
-            // coupon.campaign.* action codes are enforced by the filter and kernel.
+            // 运营端全部已实现路由随 pet.auth.admin.enabled 统一放行（Bearer 与 RBAC 动作码仍由
+            // AdminBearerAuthenticationFilter 与各内核逐请求强校验，未登记路由仍由 anyRequest().denyAll() 拒绝）。
+            a.requestMatchers(HttpMethod.GET,
+                "/api/v1/admin/aftersales", "/api/v1/admin/aftersales/*",
+                "/api/v1/admin/aftersale-evidence-read-grants/*").permitAll();
+            a.requestMatchers(HttpMethod.POST,
+                "/api/v1/admin/aftersales/*/accept",
+                "/api/v1/admin/aftersales/*/supplement-requests",
+                "/api/v1/admin/aftersales/*/close-duplicate",
+                "/api/v1/admin/aftersales/*/decisions",
+                "/api/v1/admin/aftersales/*/evidence-batches/*/assets/*/read-grants").permitAll();
+            a.requestMatchers(HttpMethod.GET,
+                    "/api/v1/admin/review-appeals", "/api/v1/admin/review-appeals/*")
+                .permitAll();
+            a.requestMatchers(HttpMethod.POST,
+                    "/api/v1/admin/review-appeals/*/decision")
+                .permitAll();
+            a.requestMatchers(HttpMethod.GET, "/api/v1/admin/points-task-config")
+                .permitAll();
+            a.requestMatchers(HttpMethod.PUT, "/api/v1/admin/points-task-config")
+                .permitAll();
+            a.requestMatchers(HttpMethod.GET,
+                "/api/v1/admin/trade/orders", "/api/v1/admin/trade/orders/*",
+                "/api/v1/admin/trade/orders/*/status-logs",
+                "/api/v1/admin/trade/refunds", "/api/v1/admin/trade/refunds/*",
+                "/api/v1/admin/trade/verifications", "/api/v1/admin/trade/verifications/*")
+                .permitAll();
+            a.requestMatchers(HttpMethod.POST,
+                "/api/v1/admin/refunds/*/channel-query",
+                "/api/v1/admin/refunds/*/retry",
+                "/api/v1/admin/orders/*/abnormal-close",
+                "/api/v1/admin/merchants/*/disable")
+                .permitAll();
+            a.requestMatchers(HttpMethod.GET,
+                "/api/v1/admin/governance/merchants", "/api/v1/admin/governance/merchants/*",
+                "/api/v1/admin/governance/merchants/*/staff",
+                "/api/v1/admin/governance/merchants/*/staff-members",
+                "/api/v1/admin/governance/merchants/*/staff-members/invitations",
+                "/api/v1/admin/governance/schedule/windows",
+                "/api/v1/admin/governance/schedule/staff-windows",
+                "/api/v1/admin/governance/schedule/reservations")
+                .permitAll();
+            a.requestMatchers(HttpMethod.GET,
+                "/api/v1/admin/encyclopedia/categories",
+                "/api/v1/admin/encyclopedia/breeds",
+                "/api/v1/admin/encyclopedia/breeds/*",
+                "/api/v1/admin/coupon-templates",
+                "/api/v1/admin/coupon-templates/*",
+                "/api/v1/admin/coupon-templates/*/trial-calculation",
+                "/api/v1/admin/coupon-instances",
+                "/api/v1/admin/coupon-instances/*",
+                "/api/v1/admin/points/ledger",
+                "/api/v1/admin/settings/runtime")
+                .permitAll();
+            a.requestMatchers(HttpMethod.PUT,
+                "/api/v1/admin/encyclopedia/categories/*",
+                "/api/v1/admin/encyclopedia/breeds/*",
+                "/api/v1/admin/coupon-templates/*")
+                .permitAll();
+            a.requestMatchers(HttpMethod.POST,
+                "/api/v1/admin/encyclopedia/categories/*/enable",
+                "/api/v1/admin/encyclopedia/categories/*/disable",
+                "/api/v1/admin/encyclopedia/breeds/*/publish",
+                "/api/v1/admin/encyclopedia/breeds/*/offline",
+                "/api/v1/admin/coupon-templates",
+                "/api/v1/admin/coupon-templates/*/enable",
+                "/api/v1/admin/coupon-templates/*/offline",
+                "/api/v1/admin/coupon-instances/grant",
+                "/api/v1/admin/coupon-instances/*/void")
+                .permitAll();
             a.requestMatchers(
                     "/api/v1/admin/marketing/**",
                     "/api/v1/admin/coupon-campaigns",
                     "/api/v1/admin/coupon-campaigns/**")
                 .permitAll();
-            if (communityAdminHttpEnabled) {
-              // CCR-COM-001 community moderation: ADMIN_WEB Bearer plus community.* action
-              // codes are enforced by the filter and re-proved by the kernel per call.
-              a.requestMatchers("/api/v1/admin/community/**").permitAll();
-            }
+            a.requestMatchers("/api/v1/admin/community/**").permitAll();
             a.requestMatchers(
                     HttpMethod.POST,
                     "/api/v1/admin/auth/attempts",
@@ -175,27 +123,16 @@ public class AdminAuthSecurityConfiguration {
                     "/api/v1/admin/auth/logout",
                     "/api/v1/admin/auth/activity")
                 .permitAll();
-            if (merchantApplicationEnabled) {
-              a.requestMatchers("/api/v1/admin/merchant-applications/**").permitAll();
-              // 2026-11-20 运营端协议管理（发布/历史）：Bearer+merchant.application.decide 由过滤器和控制器执行。
-              a.requestMatchers("/api/v1/admin/merchant-agreements").permitAll();
-              a.requestMatchers("/api/v1/admin/merchant-applications").permitAll();
-            }
-            if (privateAssetsEnabled) {
-              a.requestMatchers(HttpMethod.GET, "/api/v1/admin/private-asset-read-grants/*")
-                  .permitAll();
-            }
-            if (serviceCommandEnabled) {
-              // Service review (ADM-001 write slice): real admin session + action codes are
-              // enforced by AdminBearerAuthenticationFilter and the controller.
-              a.requestMatchers("/api/v1/admin/services", "/api/v1/admin/services/**").permitAll();
-              // Service category dictionary (CCR-SVC-CAT-001 B-SVC-02): same switch and the
-              // service.category.read/manage action codes.
-              a.requestMatchers(
-                      "/api/v1/admin/service-categories",
-                      "/api/v1/admin/service-categories/**")
-                  .permitAll();
-            }
+            a.requestMatchers("/api/v1/admin/merchant-applications/**").permitAll();
+            a.requestMatchers("/api/v1/admin/merchant-agreements").permitAll();
+            a.requestMatchers("/api/v1/admin/merchant-applications").permitAll();
+            a.requestMatchers(HttpMethod.GET, "/api/v1/admin/private-asset-read-grants/*")
+                .permitAll();
+            a.requestMatchers("/api/v1/admin/services", "/api/v1/admin/services/**").permitAll();
+            a.requestMatchers(
+                    "/api/v1/admin/service-categories",
+                    "/api/v1/admin/service-categories/**")
+                .permitAll();
             a.requestMatchers(
                     HttpMethod.GET,
                     "/api/v1/admin/auth/session",

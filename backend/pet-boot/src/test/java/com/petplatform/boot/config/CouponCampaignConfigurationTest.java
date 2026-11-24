@@ -24,7 +24,7 @@ class CouponCampaignConfigurationTest {
                 .withBean(DataSource.class, () -> source)
                 .withBean(SnowflakeIdGenerator.class, () -> () -> 1L)
                 .withBean(AdminAuthorizationQueryApi.class, () -> mock(AdminAuthorizationQueryApi.class))
-                .withPropertyValues("pet.coupon.campaign.enabled=true")
+                .withPropertyValues("pet.auth.admin.enabled=true")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(context).hasSingleBean(AdminCouponCampaignApi.class);

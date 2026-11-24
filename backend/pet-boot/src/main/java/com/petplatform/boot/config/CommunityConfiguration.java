@@ -39,7 +39,7 @@ import org.springframework.context.annotation.Configuration;
  * when the feature switch is on. Missing cross-domain owners fail closed at call time.
  */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(prefix = "pet.community", name = "enabled", havingValue = "true")
+@org.springframework.boot.autoconfigure.condition.ConditionalOnExpression("${pet.auth.admin.enabled:false} || ${pet.auth.c.enabled:false}")
 public class CommunityConfiguration {
 
     @Bean
@@ -55,8 +55,13 @@ public class CommunityConfiguration {
     }
 
     @Bean
-    CommunityMediaObjectStore communityMediaObjectStore() {
-        return new CommunityOssMediaStore();
+    CommunityMediaObjectStore communityMediaObjectStore(
+            @Value("${pet.oss.endpoint:}") String endpoint,
+            @Value("${pet.oss.region:}") String region,
+            @Value("${pet.oss.bucket:}") String bucket,
+            @Value("${pet.oss.access-key-id:}") String accessKeyId,
+            @Value("${pet.oss.secret-access-key:}") String secretAccessKey) {
+        return new CommunityOssMediaStore(endpoint, region, bucket, accessKeyId, secretAccessKey);
     }
 
     @Bean

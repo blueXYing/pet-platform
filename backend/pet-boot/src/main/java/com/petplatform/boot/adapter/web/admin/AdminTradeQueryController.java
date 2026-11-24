@@ -55,10 +55,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping(value = "/api/v1/admin/trade", produces = MediaType.APPLICATION_JSON_VALUE)
-@ConditionalOnProperty(
-    prefix = "pet",
-    name = {"auth.admin.enabled", "admin.trade.http.enabled"},
-    havingValue = "true")
+@ConditionalOnProperty(prefix = "pet", name = {"auth.admin.enabled", "payment.enabled"}, havingValue = "true")
 public class AdminTradeQueryController {
 
   private static final String[] ORDER_LIST_PARAMS = {

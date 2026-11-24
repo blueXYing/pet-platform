@@ -44,10 +44,7 @@ import org.springframework.web.bind.annotation.RestController;
  * (23号); the idempotency binding lives in the owning coupon kernel.
  */
 @RestController
-@ConditionalOnProperty(
-    prefix = "pet",
-    name = {"auth.admin.enabled", "admin.ops.http.enabled"},
-    havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.auth.admin", name = "enabled", havingValue = "true")
 public class AdminCouponVoidController {
 
   private final ObjectProvider<AdminCouponVoidApi> voidKernel;

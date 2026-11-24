@@ -21,7 +21,6 @@ import org.springframework.context.annotation.Configuration;
 /** Explicit opt-in with the real private-upload pipeline; off/missing retains the existing 503. */
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty(prefix = "pet.private-assets", name = "enabled", havingValue = "true")
-@ConditionalOnProperty(prefix = "pet.service.cover-signing", name = "enabled", havingValue = "true")
 public class ServiceCoverSigningConfiguration {
   @Bean(destroyMethod = "close")
   @ConditionalOnMissingBean(ServiceCoverObjectSigner.class)

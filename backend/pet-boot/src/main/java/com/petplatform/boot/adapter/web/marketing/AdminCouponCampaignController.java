@@ -23,10 +23,7 @@ import tools.jackson.databind.JsonNode;
 
 /** Contract-72 ops coupon campaign face. */
 @RestController
-@ConditionalOnProperty(prefix = "pet",
-        name = {"auth.admin.enabled", "coupon.campaign.enabled",
-                "coupon.campaign.admin.http.enabled"},
-        havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.auth.admin", name = "enabled", havingValue = "true")
 public class AdminCouponCampaignController {
     @ModelAttribute
     void noStore(jakarta.servlet.http.HttpServletResponse response) {

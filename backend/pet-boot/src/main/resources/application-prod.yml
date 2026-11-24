@@ -1,0 +1,31 @@
+# ==============================================================================
+# 生产环境非敏感配置（SPRING_PROFILES_ACTIVE=prod）
+# ------------------------------------------------------------------------------
+# 与 dev / test 装配完全一致的业务能力；生产强制 HTTPS、拉卡拉 PRODUCTION、禁开 DEMO。
+# 所有密钥、密码、证书路径统一由宿主机/容器环境变量注入，禁止写入本文件。
+# ==============================================================================
+
+pet:
+  auth:
+    admin:
+      enabled: true
+      maintenance: false
+    c:
+      enabled: true
+  private-assets:
+    enabled: true
+  payment:
+    enabled: true
+    dispatch:
+      environment: PRODUCTION
+    lakala:
+      settle-type: 0
+    center:
+      demo:
+        enabled: false
+  marketing:
+    asset:
+      allow-http: false
+  service:
+    category:
+      icon-url-allow-http: false

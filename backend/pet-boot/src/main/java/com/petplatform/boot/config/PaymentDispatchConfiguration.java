@@ -31,7 +31,7 @@ import org.springframework.context.annotation.Configuration;
 
 /** Internal opt-in only. No public payment endpoint, worker or live channel call at startup. */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(name = {"pet.payment.foundation.enabled", "pet.payment.dispatch.enabled"}, havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.payment", name = "enabled", havingValue = "true")
 @EnableConfigurationProperties(PaymentDispatchConfiguration.DispatchSettings.class)
 public class PaymentDispatchConfiguration {
     @ConfigurationProperties(prefix = "pet.payment.dispatch")

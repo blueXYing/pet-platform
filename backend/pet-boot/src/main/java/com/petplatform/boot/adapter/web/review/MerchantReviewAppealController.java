@@ -36,7 +36,7 @@ import org.springframework.web.bind.annotation.RestController;
  * aggregate; the admin face keeps its twelve-key review facts unchanged.
  */
 @RestController
-@ConditionalOnProperty(name = "pet.review.appeal.http.enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "pet", name = {"auth.c.enabled", "auth.admin.enabled"}, havingValue = "true")
 public final class MerchantReviewAppealController {
 
     private static final Set<String> APPEAL_BODY = Set.of("reason");

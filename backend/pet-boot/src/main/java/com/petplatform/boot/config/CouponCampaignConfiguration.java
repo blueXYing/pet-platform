@@ -28,7 +28,7 @@ import org.springframework.context.annotation.Configuration;
  * new-user gate; missing owners fail closed 503, never open issuance.
  */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(prefix = "pet.coupon.campaign", name = "enabled", havingValue = "true")
+@org.springframework.boot.autoconfigure.condition.ConditionalOnExpression("${pet.auth.admin.enabled:false} || ${pet.auth.c.enabled:false}")
 public class CouponCampaignConfiguration {
 
     @Bean

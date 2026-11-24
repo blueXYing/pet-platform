@@ -26,13 +26,11 @@ import org.springframework.context.annotation.Configuration;
 
 /** Internal, opt-in expiry for proven no-payment/no-coupon bookings. No channel calls or public commands. */
 @Configuration(proxyBeanMethods=false)
-@ConditionalOnProperty(prefix="pet.order.expiry",name="enabled",havingValue="true", matchIfMissing=true)
 public class BookingExpiryConfiguration {
     private static final String TYPE="RESERVATION_HOLD_EXPIRE";
     @Bean BookingPaymentExposureApi bookingPaymentExposureApi(DataSource source,ScheduleCapacityGuardApi guard,
-            @org.springframework.beans.factory.annotation.Value("${pet.payment.dispatch.enabled:false}") boolean dispatchEnabled,
-            @org.springframework.beans.factory.annotation.Value("${pet.payment.foundation.enabled:false}") boolean foundationEnabled) {
-        return new BookingPaymentExposureApiImpl(source,guard,dispatchEnabled && foundationEnabled);
+            @org.springframework.beans.factory.annotation.Value("${pet.payment.enabled:false}") boolean paymentEnabled) {
+        return new BookingPaymentExposureApiImpl(source,guard,paymentEnabled);
     }
     @Bean BookingCouponExposureApi bookingCouponExposureApi(DataSource source,ScheduleCapacityGuardApi guard) {
         return new BookingCouponExposureApiImpl(source,guard);
@@ -55,12 +53,10 @@ public class BookingExpiryConfiguration {
                 coordination.getIfAvailable(),couponCommands.getIfAvailable());
     }
     @Bean
-    @ConditionalOnProperty(prefix="pet.order.expiry.worker",name="enabled",havingValue="true", matchIfMissing=true)
     public TaskRegistration<ExpiryPayload> bookingExpiryRegistration(OrderExpiryApi orders,ObjectProvider<Clock> clocks) {
         return registration(orders,clocks.getIfAvailable(Clock::systemUTC));
     }
     @Bean(initMethod="start",destroyMethod="close")
-    @ConditionalOnProperty(prefix="pet.order.expiry.worker",name="enabled",havingValue="true", matchIfMissing=true)
     AsyncTaskWorker bookingExpiryWorker(DataSource source,SnowflakeIdGenerator ids,
             TaskRegistration<ExpiryPayload> bookingExpiryRegistration,ObjectProvider<Clock> clocks) {
         return AsyncTaskWorker.create(source,ids,"booking-expiry-"+UUID.randomUUID(),clocks.getIfAvailable(Clock::systemUTC),

@@ -56,7 +56,7 @@ import tools.jackson.databind.ObjectReader;
  */
 @RestController
 @RequestMapping(value = "/api/v1/merchant/refund-applications", produces = MediaType.APPLICATION_JSON_VALUE)
-@ConditionalOnProperty(name = "pet.refund.merchant.http.enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.payment", name = "enabled", havingValue = "true")
 public final class MerchantRefundApplicationController {
 
     private static final ObjectReader JSON =

@@ -42,9 +42,7 @@ import tools.jackson.databind.JsonNode;
  */
 @RestController
 @RequestMapping("/api/v1/admin/feedback-tickets")
-@ConditionalOnProperty(prefix = "pet",
-    name = {"auth.admin.enabled", "admin.ops.http.enabled", "feedback.http.enabled"},
-    havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.auth.admin", name = "enabled", havingValue = "true")
 public class AdminFeedbackOpsController {
 
   private static final String[] LIST_PARAMS = {"page", "pageSize", "status", "type"};

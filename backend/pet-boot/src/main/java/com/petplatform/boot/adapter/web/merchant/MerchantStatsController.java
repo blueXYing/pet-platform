@@ -33,7 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping(value = "/api/v1/merchant/stats", produces = MediaType.APPLICATION_JSON_VALUE)
-@ConditionalOnProperty(name = "pet.order.stats.http.enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.payment", name = "enabled", havingValue = "true")
 public final class MerchantStatsController {
 
     private final MerchantStatsQueryApi queries;

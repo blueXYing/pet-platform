@@ -4,7 +4,6 @@ import com.petplatform.user.biz.application.UserAuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
@@ -16,10 +15,9 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
- * Security chain for /api/v1/c/**: anonymous auth routes plus the session-filtered business routes
- * when C auth is enabled; everything else stays denied so no unimplemented route can be reached
- * accidentally. The chain only exists when the C slice is enabled — disabled, the /api/v1/c/**
- * surface keeps falling through to the global catch-all deny (403) like before.
+ * Security chain for /api/v1/c/** and /api/v1/merchant/**: all implemented C-end and merchant
+ * routes open together with {@code pet.auth.c.enabled}; session and role checks stay in
+ * {@link CBearerSessionFilter} and each domain kernel, and unregistered routes remain denied.
  */
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
@@ -31,47 +29,7 @@ public class CSessionSecurityConfiguration {
   SecurityFilterChain cSecurity(
       HttpSecurity http,
       CAuthProperties p,
-      ObjectProvider<UserAuthService> services,
-      @Value("${pet.merchant.application.enabled:false}") boolean merchantApplicationEnabled,
-      @Value("${pet.private-assets.enabled:false}") boolean privateAssetsEnabled,
-      @Value("${pet.service.command.enabled:false}") boolean serviceCommandEnabled,
-      @Value("${pet.service.query.enabled:false}") boolean serviceQueryEnabled,
-      @Value("${pet.store.query.enabled:false}") boolean storeQueryEnabled,
-      @Value("${pet.merchant.staff.enabled:false}") boolean merchantStaffEnabled,
-      @Value("${pet.merchant.staff-member.enabled:false}") boolean merchantStaffMemberEnabled,
-      @Value("${pet.schedule.query.enabled:false}") boolean scheduleQueryEnabled,
-      @Value("${pet.schedule.command.http.enabled:false}") boolean merchantScheduleHttpEnabled,
-      @Value("${pet.aftersale.http.enabled:false}") boolean afterSaleHttpEnabled,
-      @Value("${pet.verification.credential.http.enabled:false}") boolean verificationHttpEnabled,
-      @Value("${pet.verification.completion.http.enabled:false}")
-          boolean verificationCompletionHttpEnabled,
-      @Value("${pet.order.merchant.http.enabled:false}")
-          boolean merchantOrderHttpEnabled,
-      @Value("${pet.merchant.store-profile.http.enabled:false}")
-          boolean merchantStoreProfileHttpEnabled,
-      @Value("${pet.order.stats.http.enabled:false}")
-          boolean merchantStatsHttpEnabled,
-      @Value("${pet.order.customer.http.enabled:false}")
-          boolean merchantCustomerHttpEnabled,
-      @Value("${pet.refund.application.http.enabled:false}")
-          boolean refundApplicationHttpEnabled,
-      @Value("${pet.refund.merchant.http.enabled:false}")
-          boolean merchantRefundHttpEnabled,
-      @Value("${pet.order.reschedule.http.enabled:false}")
-          boolean orderRescheduleHttpEnabled,
-      @Value("${pet.verification.merchant-read.http.enabled:false}")
-          boolean merchantVerificationReadHttpEnabled,
-      @Value("${pet.review.http.enabled:false}")
-          boolean reviewHttpEnabled,
-      @Value("${pet.review.appeal.http.enabled:false}")
-          boolean reviewAppealHttpEnabled,
-      @Value("${pet.points.task.http.enabled:false}")
-          boolean pointsTaskHttpEnabled,
-      @Value("${pet.favtrack.http.enabled:false}")
-      boolean favoriteFootprintHttpEnabled,
-      @Value("${pet.encyclopedia.query.enabled:false}")
-      boolean encyclopediaQueryEnabled,
-      @Value("${pet.community.c.http.enabled:false}") boolean communityHttpEnabled)
+      ObjectProvider<UserAuthService> services)
       throws Exception {
     http.securityMatcher("/api/v1/c/**", "/api/v1/merchant/**")
         .csrf(c -> c.disable())
@@ -81,21 +39,21 @@ public class CSessionSecurityConfiguration {
     http.authorizeHttpRequests(
         a -> {
           if (p.isEnabled()) {
-            if (afterSaleHttpEnabled) {
-              a.requestMatchers(HttpMethod.GET,
-                  "/api/v1/c/aftersale-options",
-                  "/api/v1/c/orders/*/aftersale-eligibility",
-                  "/api/v1/c/aftersales", "/api/v1/c/aftersales/*",
-                  "/api/v1/merchant/aftersales", "/api/v1/merchant/aftersales/*",
-                  "/api/v1/c/aftersale-evidence-read-grants/*",
-                  "/api/v1/merchant/aftersale-evidence-read-grants/*").permitAll();
-              a.requestMatchers(HttpMethod.POST,
-                  "/api/v1/c/orders/*/aftersales", "/api/v1/c/aftersale-evidence-assets",
-                  "/api/v1/c/aftersales/*/evidence", "/api/v1/c/aftersales/*/withdraw",
-                  "/api/v1/merchant/aftersales/*/evidence", "/api/v1/merchant/aftersales/*/opinion",
-                  "/api/v1/c/aftersales/*/evidence-batches/*/assets/*/read-grants",
-                  "/api/v1/merchant/aftersales/*/evidence-batches/*/assets/*/read-grants").permitAll();
-            }
+            // Aftersale C & M routes
+            a.requestMatchers(HttpMethod.GET,
+                "/api/v1/c/aftersale-options",
+                "/api/v1/c/orders/*/aftersale-eligibility",
+                "/api/v1/c/aftersales", "/api/v1/c/aftersales/*",
+                "/api/v1/merchant/aftersales", "/api/v1/merchant/aftersales/*",
+                "/api/v1/c/aftersale-evidence-read-grants/*",
+                "/api/v1/merchant/aftersale-evidence-read-grants/*").permitAll();
+            a.requestMatchers(HttpMethod.POST,
+                "/api/v1/c/orders/*/aftersales", "/api/v1/c/aftersale-evidence-assets",
+                "/api/v1/c/aftersales/*/evidence", "/api/v1/c/aftersales/*/withdraw",
+                "/api/v1/merchant/aftersales/*/evidence", "/api/v1/merchant/aftersales/*/opinion",
+                "/api/v1/c/aftersales/*/evidence-batches/*/assets/*/read-grants",
+                "/api/v1/merchant/aftersales/*/evidence-batches/*/assets/*/read-grants").permitAll();
+            // Auth, profile, pets & health records
             a.requestMatchers(
                     HttpMethod.POST,
                     "/api/v1/c/auth/attempts",
@@ -108,9 +66,6 @@ public class CSessionSecurityConfiguration {
                     "/api/v1/c/auth/session",
                     "/api/v1/c/pets",
                     "/api/v1/c/pets/*",
-                    // Contract 68 health-record sub-resources: the pet owner reads and adds
-                    // vaccination/deworming rows. The filter's /api/v1/c/pets/ prefix still
-                    // enforces the MINIAPP Bearer; these matchers only open the security chain.
                     "/api/v1/c/pets/*/vaccination-records",
                     "/api/v1/c/pets/*/deworming-records",
                     "/api/v1/c/profile")
@@ -119,322 +74,145 @@ public class CSessionSecurityConfiguration {
                     "/api/v1/c/pets/*/vaccination-records",
                     "/api/v1/c/pets/*/deworming-records",
                     "/api/v1/c/profile").permitAll();
-            // Address book (contract 59): the six user-domain routes ride pet.auth.c.enabled
-            // exactly like pets/profile — the MINIAPP Bearer session is enforced by the
-            // filter's protectedPath list, ownership stays in the AddressService kernel.
+            a.requestMatchers(HttpMethod.PUT, "/api/v1/c/pets/*", "/api/v1/c/profile").permitAll();
+            a.requestMatchers(HttpMethod.DELETE, "/api/v1/c/pets/*").permitAll();
+            // Address book
             a.requestMatchers(
                     HttpMethod.GET, "/api/v1/c/addresses", "/api/v1/c/addresses/*").permitAll();
             a.requestMatchers(HttpMethod.POST, "/api/v1/c/addresses").permitAll();
             a.requestMatchers(HttpMethod.POST, "/api/v1/c/addresses/*/set-default").permitAll();
             a.requestMatchers(HttpMethod.PUT, "/api/v1/c/addresses/*").permitAll();
             a.requestMatchers(HttpMethod.DELETE, "/api/v1/c/addresses/*").permitAll();
-            // Inbox reads (CCR-W2-NOTIFICATION-001): MINIAPP Bearer enforced by the filter.
-            a.requestMatchers("/api/v1/c/notifications", "/api/v1/c/notifications/**")
-                .permitAll();
-            // C order routes (contract 10 §3.5/§3.6/§3.7, C-004 + order-create slices): MINIAPP
-            // Bearer is enforced by the filter's protectedPath list, not by permitAll itself.
-            // The read pair stays GET-only; the two write routes (create order, initiate payment)
-            // join the same pet.auth.c.enabled assembly and the filter's POST family.
-            a.requestMatchers(HttpMethod.GET, "/api/v1/c/orders", "/api/v1/c/orders/*")
-                .permitAll();
-            a.requestMatchers(HttpMethod.POST, "/api/v1/c/orders",
-                    "/api/v1/c/orders/*/payments").permitAll();
-            // Notification preferences (SSOT §16.4 slice): same session-filter enforcement —
-            // the GET/PUT pair rides pet.auth.c.enabled like the inbox surface.
+            // Notifications & preferences
+            a.requestMatchers("/api/v1/c/notifications", "/api/v1/c/notifications/**").permitAll();
             a.requestMatchers("/api/v1/c/notification-preferences").permitAll();
-            // Coupon/points read-only pair (CCR-C006 P1): GET-only; the MINIAPP Bearer is
-            // enforced by the filter's protectedPath list, same as the inbox surface above.
+            // Orders, reschedule, verification, refund applications
+            a.requestMatchers(HttpMethod.GET, "/api/v1/c/orders", "/api/v1/c/orders/*").permitAll();
+            a.requestMatchers(HttpMethod.POST, "/api/v1/c/orders", "/api/v1/c/orders/*/payments")
+                .permitAll();
+            a.requestMatchers(HttpMethod.GET, "/api/v1/c/orders/*/verification-code").permitAll();
+            a.requestMatchers(HttpMethod.POST, "/api/v1/c/orders/*/verification-code").permitAll();
+            a.requestMatchers(HttpMethod.POST, "/api/v1/c/orders/*/refund-applications").permitAll();
+            a.requestMatchers(HttpMethod.POST, "/api/v1/c/orders/*/reschedule").permitAll();
+            // Coupons & points
             a.requestMatchers(HttpMethod.GET,
                     "/api/v1/c/coupons",
                     "/api/v1/c/coupons/*",
                     "/api/v1/c/points/balance",
-                    "/api/v1/c/points/ledger").permitAll();
-            // Service catalog (CCR-W2-API-001 service domain): anonymous GET per the store-read
-            // STR-D8 ruling (PRD "all users browse"); the filter validates a carried bearer.
-            // Contract 74 §3.1 joins the same anonymous browse family.
+                    "/api/v1/c/points/ledger",
+                    "/api/v1/c/points/sign-in/status",
+                    "/api/v1/c/points/tasks").permitAll();
+            a.requestMatchers(HttpMethod.POST,
+                    "/api/v1/c/points/sign-in",
+                    "/api/v1/c/points/claims",
+                    "/api/v1/c/points/referral-bindings").permitAll();
+            // Catalog, stores, cities & schedule availability
             a.requestMatchers("/api/v1/c/stores/*/services").permitAll();
             a.requestMatchers(
                     "/api/v1/c/services", "/api/v1/c/services/*", "/api/v1/c/service-categories")
                 .permitAll();
-            if (serviceQueryEnabled) {
-              // Featured store cards (contract 74 §3.4, B-CARD-01..03): GET-only anonymous browse
-              // per the same STR-D8 discipline as the catalog family; the service slice owns the
-              // assembly (composer + composition beans), the switch keeps the route unreachable
-              // when that slice is not assembled, and the filter still 401s a carried bad bearer.
-              a.requestMatchers(HttpMethod.GET, "/api/v1/c/stores/featured").permitAll();
-            }
-            if (storeQueryEnabled) {
-              // Store catalog (CCR-W2-API-001 store read, STR-D8): GET-only registration behind
-              // the assembly switch; non-GET stays denied and the switch keeps it unreachable
-              // when the slice is not assembled.
-              a.requestMatchers(HttpMethod.GET, "/api/v1/c/stores", "/api/v1/c/stores/*")
-                  .permitAll();
-              // Open-city directory read (HTTP10 §3.3.4, 2026-10-19 city-selection ruling):
-              // anonymous companion of the store/service catalog (code/name pairs only), same
-              // switch, GET-only.
-              a.requestMatchers(HttpMethod.GET, "/api/v1/c/cities").permitAll();
-            }
-            a.requestMatchers(HttpMethod.PUT, "/api/v1/c/pets/*", "/api/v1/c/profile").permitAll();
-            a.requestMatchers(HttpMethod.DELETE, "/api/v1/c/pets/*").permitAll();
-            if (merchantApplicationEnabled) {
-              a.requestMatchers(HttpMethod.GET, "/api/v1/c/merchant-application-cities")
-                  .permitAll();
-              a.requestMatchers("/api/v1/c/merchant-applications/**").permitAll();
-              a.requestMatchers("/api/v1/c/merchant-applications").permitAll();
-              a.requestMatchers("/api/v1/merchant/agreement", "/api/v1/merchant/agreement/consent")
-                  .permitAll();
-              // Admission surfaces (CCR-W2-ADMISSION-001): MINIAPP Bearer is enforced by the
-              // CBearerSessionFilter protectedPath list, not by permitAll itself.
-              a.requestMatchers(
-                      "/api/v1/c/auth/merchant-memberships",
-                      "/api/v1/merchant/auth/admission")
-                  .permitAll();
-            }
-            if (privateAssetsEnabled) {
-              a.requestMatchers(HttpMethod.POST, "/api/v1/c/private-assets").permitAll();
-            }
-            if (serviceCommandEnabled) {
-              // Service workbench (ADM-001 write slice): MINIAPP Bearer enforced by the filter's
-              // protectedPath list, not by permitAll itself.
-              a.requestMatchers("/api/v1/merchant/services", "/api/v1/merchant/services/**")
-                  .permitAll();
-              a.requestMatchers(HttpMethod.GET, "/api/v1/merchant/service-categories").permitAll();
-            }
-            if (merchantStaffEnabled) {
-              // Only the five approved staff operations. Bearer is resolved by the filter;
-              // ownership and read/write eligibility are checked by the MER command/query.
-              a.requestMatchers(HttpMethod.GET, "/api/v1/merchant/staff", "/api/v1/merchant/staff/*")
-                  .permitAll();
-              a.requestMatchers(HttpMethod.POST, "/api/v1/merchant/staff", "/api/v1/merchant/staff/*/enable")
-                  .permitAll();
-              a.requestMatchers(HttpMethod.PUT, "/api/v1/merchant/staff/*").permitAll();
-            }
-            if (merchantStaffMemberEnabled) {
-              // Contract 54 D1-a member management (default OFF): list/invitations and the
-              // owner's invite/cancel/enable/disable decisions. The MINIAPP Bearer is resolved
-              // by the filter; OWNER + coordinate checks stay inside each service call.
-              a.requestMatchers("/api/v1/merchant/staff-members",
-                      "/api/v1/merchant/staff-members/**")
-                  .permitAll();
-              // Employee-side invitation read/confirm (same switch): identity-scoped C routes;
-              // the phone match is enforced by the invitation kernel, not by a coordinate.
-              a.requestMatchers("/api/v1/c/staff/invitations",
-                      "/api/v1/c/staff/invitations/**")
-                  .permitAll();
-            }
-            if (scheduleQueryEnabled) {
-              // Schedule availability (CCR-W2-API-001 SCH-001, SCH-D1 login ruling): GET-only
-              // registration behind the assembly switch. Unlike the STR-D8 browse family this
-              // route keeps the MANDATORY session - the filter's /api/v1/c/services/ prefix
-              // already covers it, so anonymous requests answer 401 there, non-GET stays denied,
-              // and the switch keeps it unreachable when the slice is not assembled.
-              a.requestMatchers(HttpMethod.GET, "/api/v1/c/services/*/availability").permitAll();
-            }
-            if (merchantScheduleHttpEnabled) {
-              // Contract 53 §3/§4 merchant schedule maintenance (default OFF): the MINIAPP
-              // Bearer and OWNER store guard stay inside the controller/service; this chain
-              // only opens the transport, like the other merchant write families.
-              a.requestMatchers(HttpMethod.GET,
-                      "/api/v1/merchant/stores/*/availability-windows",
-                      "/api/v1/merchant/stores/*/availability-windows/*",
-                      "/api/v1/merchant/staff/*/availability-windows",
-                      "/api/v1/merchant/staff/*/availability-windows/*",
-                      "/api/v1/merchant/staff/*/service-capabilities",
-                      // CCR-SCH-SLOT-002 §2: store-level bookable-range config read (the
-                      // wildcard above only covers the availability-windows subpaths).
-                      "/api/v1/merchant/stores/*/booking-window",
-                      // CCR-SCH-SLOT-003 §3.6: weekly cycling template read (same store
-                      // family; the /api/v1/merchant/stores/ filter prefix already covers).
-                      "/api/v1/merchant/stores/*/week-template")
-                  .permitAll();
-              a.requestMatchers(HttpMethod.POST,
-                      "/api/v1/merchant/stores/*/availability-windows",
-                      "/api/v1/merchant/stores/*/availability-windows/*",
-                      "/api/v1/merchant/staff/*/availability-windows",
-                      "/api/v1/merchant/staff/*/availability-windows/*")
-                  .permitAll();
-              a.requestMatchers(HttpMethod.PUT,
-                      "/api/v1/merchant/stores/*/availability-windows/*",
-                      "/api/v1/merchant/staff/*/availability-windows/*",
-                      "/api/v1/merchant/staff/*/service-capabilities",
-                      // CCR-SCH-SLOT-002 §2: bookable-range full replace (optimistic lock).
-                      "/api/v1/merchant/stores/*/booking-window",
-                      // CCR-SCH-SLOT-003 §3.6: weekly cycling template full replace
-                      // (optimistic lock; already-materialized windows never move).
-                      "/api/v1/merchant/stores/*/week-template")
-                  .permitAll();
-            }
-            if (verificationHttpEnabled) {
-              // Verification credential C routes (contract 47 §4, this slice): MINIAPP Bearer is
-              // enforced by the filter's protectedPath regex, not by permitAll itself.
-              a.requestMatchers(HttpMethod.GET, "/api/v1/c/orders/*/verification-code")
-                  .permitAll();
-              a.requestMatchers(HttpMethod.POST, "/api/v1/c/orders/*/verification-code")
-                  .permitAll();
-            }
-            if (verificationCompletionHttpEnabled) {
-              // Merchant scan completion (contract 48 K2 via contract 10 §4.7): same pattern as
-              // the merchant order commands - the filter enforces the session on the
-              // /api/v1/merchant/orders/ prefix.
-              a.requestMatchers(HttpMethod.POST, "/api/v1/merchant/orders/*/verification")
-                  .permitAll();
-            }
-            if (merchantOrderHttpEnabled) {
-              // Merchant manual confirm/reject (contract 45 via contract 10 §4.2/§4.3) plus the
-              // §4.1 store order list read: the MINIAPP Bearer is enforced by the filter's
-              // /api/v1/merchant/orders rules; OWNER admission/coordinate ownership is re-proven
-              // in each command's guard transaction (or the list's store-guard read) on every
-              // call and replay, so the chain only opens the transport here.
-              a.requestMatchers(HttpMethod.GET, "/api/v1/merchant/orders").permitAll();
-              a.requestMatchers(
-                      HttpMethod.POST,
-                      "/api/v1/merchant/orders/*/confirm",
-                      "/api/v1/merchant/orders/*/reject")
-              .permitAll();
-            }
-            if (merchantStoreProfileHttpEnabled) {
-              // Store profile (contract 27 §6.4, IMPLEMENTED_DEFAULT_OFF): the MINIAPP Bearer and
-              // OWNER gate stay in the store-profile service's store-guard transaction. The
-              // avatar-url read (27 §6.4 2026-11-06 supplement, CCR-M-STORE-AVATAR-001) rides the
-              // same switch and re-proves the OWNER + asset ownership when signing.
-              a.requestMatchers(HttpMethod.GET, "/api/v1/merchant/store-profile").permitAll();
-              a.requestMatchers(HttpMethod.GET, "/api/v1/merchant/store-profile/avatar-url").permitAll();
-              a.requestMatchers(HttpMethod.PUT, "/api/v1/merchant/store-profile").permitAll();
-            }
-            if (merchantStatsHttpEnabled) {
-              // Business stats (contract 70, IMPLEMENTED_DEFAULT_OFF): OWNER read family; the
-              // store guard re-proves the coordinate relation on every call.
-              a.requestMatchers(HttpMethod.GET, "/api/v1/merchant/stats/**").permitAll();
-            }
-            if (merchantCustomerHttpEnabled) {
-              // Customer profile reads and the single internal note write (contract 69,
-              // IMPLEMENTED_DEFAULT_OFF): OWNER boundary stays in the order store guard.
-              a.requestMatchers(
-                      HttpMethod.GET,
-                      "/api/v1/merchant/customers",
-                      "/api/v1/merchant/customers/*")
-                  .permitAll();
-              a.requestMatchers(HttpMethod.PUT, "/api/v1/merchant/customers/*/note").permitAll();
-            }
-            if (refundApplicationHttpEnabled) {
-              // C refund application (contract 10 §3.9 / 49号 slice): MINIAPP Bearer is enforced
-              // by the filter's protectedPath regex, not by permitAll itself.
-              a.requestMatchers(HttpMethod.POST,
-                      "/api/v1/c/orders/*/refund-applications")
-                  .permitAll();
-            }
-            if (merchantRefundHttpEnabled) {
-              // Merchant refund application face (contract 57 / HTTP10 §4.4-§4.6 over the
-              // 49号 kernel): same pattern as the merchant order family — the MINIAPP Bearer
-              // is enforced by the filter's /api/v1/merchant/refund-applications rules and the
-              // OWNER coordinate/authority is re-proven in each read's store-guard transaction
-              // and each decision's guard transaction on every call and replay.
-              a.requestMatchers(HttpMethod.GET, "/api/v1/merchant/refund-applications")
-                  .permitAll();
-              a.requestMatchers(HttpMethod.GET, "/api/v1/merchant/refund-applications/*")
-                  .permitAll();
-              a.requestMatchers(HttpMethod.POST,
-                      "/api/v1/merchant/refund-applications/*/approve",
-                      "/api/v1/merchant/refund-applications/*/reject")
-                  .permitAll();
-            }
-            if (orderRescheduleHttpEnabled) {
-              // C reschedule (contract 10 §3.8 / 46号 slice): MINIAPP Bearer is enforced
-              // by the filter's protectedPath regex, not by permitAll itself.
-              a.requestMatchers(HttpMethod.POST,
-                      "/api/v1/c/orders/*/reschedule")
-                  .permitAll();
-            }
-            if (merchantVerificationReadHttpEnabled) {
-              // Merchant verification-record list (CCR-M-VERIFY-RECORD-001, approved
-              // 2026-11-12): the MINIAPP Bearer is enforced by the filter's exact path rule
-              // and the read kernel re-proves the store guard + OWNER coordinate (OWNER-only
-              // per the CCR §9 ruling) in every store-guarded read; the chain only opens the
-              // transport, like the other merchant read families.
-              a.requestMatchers(HttpMethod.GET, "/api/v1/merchant/verifications").permitAll();
-            }
-            if (reviewHttpEnabled) {
-              // C review face (contract 10 §3.14 / REV-001 slice): MINIAPP Bearer is enforced
-              // by the filter's protectedPath regex, not by permitAll itself.
-              a.requestMatchers(HttpMethod.GET,
-                      "/api/v1/c/orders/*/review-eligibility")
-                  .permitAll();
-              a.requestMatchers(HttpMethod.POST,
-                      "/api/v1/c/orders/*/reviews")
-                  .permitAll();
-            }
-            if (reviewAppealHttpEnabled) {
-              // Review appeal M face (contract 56 / REV-002): the filter enforces the
-              // MINIAPP session on the /api/v1/merchant/ prefix; the OWNER admission is
-              // re-proven inside each command's store-guarded transaction on every call.
-              a.requestMatchers(HttpMethod.GET,
-                  "/api/v1/merchant/reviews", "/api/v1/merchant/reviews/*")
-                  .permitAll();
-              a.requestMatchers(HttpMethod.POST,
-                  "/api/v1/merchant/reviews/*/appeal")
-                  .permitAll();
-            }
-            if (favoriteFootprintHttpEnabled) {
-              // Favorite/footprint C face (contract 58 / 10号 §3.16): user-private reads and
-              // writes; the MINIAPP Bearer is enforced by the filter's protectedPath list, and
-              // the favorite/footprint configuration additionally requires both catalog query
-              // slices for target admission, so the switch alone opens nothing half-assembled.
-              a.requestMatchers(HttpMethod.GET,
-                  "/api/v1/c/favorites",
-                  "/api/v1/c/favorites/*/*",
-                  "/api/v1/c/footprints")
-                  .permitAll();
-              a.requestMatchers(HttpMethod.POST,
-                  "/api/v1/c/favorites/*/*",
-                  "/api/v1/c/footprints/*/*")
-                  .permitAll();
-              a.requestMatchers(HttpMethod.DELETE,
-                  "/api/v1/c/favorites/*/*",
-                  "/api/v1/c/footprints/*")
-                  .permitAll();
-            }
-            if (encyclopediaQueryEnabled) {
-              // Encyclopedia public read face (contract 62, PRD 5.1.4): GET-only, anonymous
-              // browse per the STR-D8 ruling (PRD "所有用户；未登录用户可浏览"); the optional
-              // session filter still 401s a carried invalid bearer, non-GET stays denied and
-              // the switch keeps the family unreachable when not assembled.
-              a.requestMatchers(HttpMethod.GET,
-                      "/api/v1/c/encyclopedia/categories",
-                      "/api/v1/c/encyclopedia/breeds",
-                      "/api/v1/c/encyclopedia/breeds/*")
-                  .permitAll();
-            }
-            if (communityHttpEnabled) {
-              // CCR-COM-001: public reads are anonymous GET; writes stay mandatory-session
-              // through CBearerSessionFilter. Media bytes are public and immutable.
-              a.requestMatchers("/api/v1/c/community/**").permitAll();
-            }
-            // Contract-71/72 marketing routes. Controllers are independently switch-gated;
-            // the chain only opens the transport, while CBearerSessionFilter enforces the
-            // MINIAPP session on merchant marketing and the C claim route and validates a
-            // carried bearer on the anonymous marketing GET family.
+            a.requestMatchers(HttpMethod.GET,
+                    "/api/v1/c/stores/featured",
+                    "/api/v1/c/stores",
+                    "/api/v1/c/stores/*",
+                    "/api/v1/c/cities",
+                    "/api/v1/c/services/*/availability").permitAll();
+            // Merchant admission, applications, agreement & private assets
+            a.requestMatchers(HttpMethod.GET, "/api/v1/c/merchant-application-cities").permitAll();
+            a.requestMatchers("/api/v1/c/merchant-applications/**").permitAll();
+            a.requestMatchers("/api/v1/c/merchant-applications").permitAll();
+            a.requestMatchers("/api/v1/merchant/agreement", "/api/v1/merchant/agreement/consent")
+                .permitAll();
+            a.requestMatchers(
+                    "/api/v1/c/auth/merchant-memberships",
+                    "/api/v1/merchant/auth/admission")
+                .permitAll();
+            a.requestMatchers(HttpMethod.POST, "/api/v1/c/private-assets").permitAll();
+            // Merchant workbench: services, staff, staff-members, schedule
+            a.requestMatchers("/api/v1/merchant/services", "/api/v1/merchant/services/**")
+                .permitAll();
+            a.requestMatchers(HttpMethod.GET, "/api/v1/merchant/service-categories").permitAll();
+            a.requestMatchers(HttpMethod.GET, "/api/v1/merchant/staff", "/api/v1/merchant/staff/*")
+                .permitAll();
+            a.requestMatchers(HttpMethod.POST, "/api/v1/merchant/staff", "/api/v1/merchant/staff/*/enable")
+                .permitAll();
+            a.requestMatchers(HttpMethod.PUT, "/api/v1/merchant/staff/*").permitAll();
+            a.requestMatchers("/api/v1/merchant/staff-members", "/api/v1/merchant/staff-members/**")
+                .permitAll();
+            a.requestMatchers("/api/v1/c/staff/invitations", "/api/v1/c/staff/invitations/**")
+                .permitAll();
+            a.requestMatchers(HttpMethod.GET,
+                    "/api/v1/merchant/stores/*/availability-windows",
+                    "/api/v1/merchant/stores/*/availability-windows/*",
+                    "/api/v1/merchant/staff/*/availability-windows",
+                    "/api/v1/merchant/staff/*/availability-windows/*",
+                    "/api/v1/merchant/staff/*/service-capabilities",
+                    "/api/v1/merchant/stores/*/booking-window",
+                    "/api/v1/merchant/stores/*/week-template")
+                .permitAll();
+            a.requestMatchers(HttpMethod.POST,
+                    "/api/v1/merchant/stores/*/availability-windows",
+                    "/api/v1/merchant/stores/*/availability-windows/*",
+                    "/api/v1/merchant/staff/*/availability-windows",
+                    "/api/v1/merchant/staff/*/availability-windows/*")
+                .permitAll();
+            a.requestMatchers(HttpMethod.PUT,
+                    "/api/v1/merchant/stores/*/availability-windows/*",
+                    "/api/v1/merchant/staff/*/availability-windows/*",
+                    "/api/v1/merchant/staff/*/service-capabilities",
+                    "/api/v1/merchant/stores/*/booking-window",
+                    "/api/v1/merchant/stores/*/week-template")
+                .permitAll();
+            // Merchant orders, verification, refunds, store profile, stats, customers
+            a.requestMatchers(HttpMethod.POST, "/api/v1/merchant/orders/*/verification").permitAll();
+            a.requestMatchers(HttpMethod.GET, "/api/v1/merchant/orders").permitAll();
+            a.requestMatchers(HttpMethod.POST,
+                    "/api/v1/merchant/orders/*/confirm",
+                    "/api/v1/merchant/orders/*/reject").permitAll();
+            a.requestMatchers(HttpMethod.GET,
+                    "/api/v1/merchant/store-profile",
+                    "/api/v1/merchant/store-profile/avatar-url").permitAll();
+            a.requestMatchers(HttpMethod.PUT, "/api/v1/merchant/store-profile").permitAll();
+            a.requestMatchers(HttpMethod.GET, "/api/v1/merchant/stats/**").permitAll();
+            a.requestMatchers(HttpMethod.GET,
+                    "/api/v1/merchant/customers",
+                    "/api/v1/merchant/customers/*").permitAll();
+            a.requestMatchers(HttpMethod.PUT, "/api/v1/merchant/customers/*/note").permitAll();
+            a.requestMatchers(HttpMethod.GET,
+                    "/api/v1/merchant/refund-applications",
+                    "/api/v1/merchant/refund-applications/*").permitAll();
+            a.requestMatchers(HttpMethod.POST,
+                    "/api/v1/merchant/refund-applications/*/approve",
+                    "/api/v1/merchant/refund-applications/*/reject").permitAll();
+            a.requestMatchers(HttpMethod.GET, "/api/v1/merchant/verifications").permitAll();
+            // Reviews & appeals
+            a.requestMatchers(HttpMethod.GET, "/api/v1/c/orders/*/review-eligibility").permitAll();
+            a.requestMatchers(HttpMethod.POST, "/api/v1/c/orders/*/reviews").permitAll();
+            a.requestMatchers(HttpMethod.GET,
+                    "/api/v1/merchant/reviews", "/api/v1/merchant/reviews/*").permitAll();
+            a.requestMatchers(HttpMethod.POST, "/api/v1/merchant/reviews/*/appeal").permitAll();
+            // Favorites, footprints, encyclopedia, community, marketing, account deletion, feedback
+            a.requestMatchers(HttpMethod.GET,
+                    "/api/v1/c/favorites",
+                    "/api/v1/c/favorites/*/*",
+                    "/api/v1/c/footprints").permitAll();
+            a.requestMatchers(HttpMethod.POST,
+                    "/api/v1/c/favorites/*/*",
+                    "/api/v1/c/footprints/*/*").permitAll();
+            a.requestMatchers(HttpMethod.DELETE,
+                    "/api/v1/c/favorites/*/*",
+                    "/api/v1/c/footprints/*").permitAll();
+            a.requestMatchers(HttpMethod.GET,
+                    "/api/v1/c/encyclopedia/categories",
+                    "/api/v1/c/encyclopedia/breeds",
+                    "/api/v1/c/encyclopedia/breeds/*").permitAll();
+            a.requestMatchers("/api/v1/c/community/**").permitAll();
             a.requestMatchers(HttpMethod.GET,
                     "/api/v1/c/marketing/**",
                     "/api/v1/c/coupon-campaigns/*").permitAll();
             a.requestMatchers(HttpMethod.POST,
                     "/api/v1/c/coupon-campaigns/*/claims").permitAll();
             a.requestMatchers("/api/v1/merchant/marketing/**").permitAll();
-            if (pointsTaskHttpEnabled) {
-              // Points earn family (contract 58 / 32号 ruling second batch): sign-in,
-              // task-center reads, reward claims and referral bindings. The MINIAPP Bearer
-              // is enforced by the filter's protectedPath list, not by permitAll itself;
-              // non-GET/POST stays denied and the switch keeps the family unreachable when
-              // the slice is not assembled.
-              a.requestMatchers(HttpMethod.GET,
-                      "/api/v1/c/points/sign-in/status",
-                      "/api/v1/c/points/tasks")
-                  .permitAll();
-              a.requestMatchers(HttpMethod.POST,
-                      "/api/v1/c/points/sign-in",
-                      "/api/v1/c/points/claims",
-                      "/api/v1/c/points/referral-bindings")
-                  .permitAll();
-            }
           }
           a.anyRequest().denyAll();
         });
@@ -459,23 +237,21 @@ public class CSessionSecurityConfiguration {
     res.setHeader("X-Content-Type-Options", "nosniff");
     String trace = req.getHeader("X-Trace-Id");
     if (trace == null || !trace.matches("[A-Za-z0-9._:-]{1,64}")) {
-      trace = java.util.UUID.randomUUID().toString();
+      trace = java.util.UUID.randomUUID().toString().replace("-", "");
     }
-    String success =
-        req.getRequestURI().equals("/api/v1/c/merchant-application-cities")
-                || req.getRequestURI().equals("/api/v1/c/private-assets")
-                || req.getRequestURI().startsWith("/api/v1/c/merchant-applications")
-                || req.getRequestURI().startsWith("/api/v1/merchant/agreement")
-                || req.getRequestURI().equals("/api/v1/merchant/staff")
-                || req.getRequestURI().startsWith("/api/v1/merchant/staff/")
+    String path = req.getRequestURI();
+    String prefix =
+        path.startsWith("/api/v1/c/merchant-applications")
+                || path.startsWith("/api/v1/c/private-assets")
+                || path.equals("/api/v1/c/merchant-application-cities")
+                || path.startsWith("/api/v1/merchant/agreement")
             ? "\"success\":false,"
             : "";
     res.getWriter()
         .write(
             "{"
-                + success
-                + "\"code\":\"COMMON_FORBIDDEN\",\"message\":\"Forbidden\","
-                + "\"data\":null,\"traceId\":\""
+                + prefix
+                + "\"code\":\"COMMON_FORBIDDEN\",\"message\":\"Forbidden\",\"data\":null,\"traceId\":\""
                 + trace
                 + "\"}");
   }

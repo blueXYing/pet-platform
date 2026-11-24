@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @RestController
 @RequestMapping(value="/api/v1/merchant/verifications",produces=MediaType.APPLICATION_JSON_VALUE)
-@ConditionalOnProperty(name="pet.verification.merchant-read.http.enabled",havingValue="true")
+@ConditionalOnProperty(prefix = "pet.payment", name = "enabled", havingValue = "true")
 public final class MerchantVerificationReadController {
     private final MerchantVerificationReadApi verifications;
     private final MerchantOrderQueryApi orders;

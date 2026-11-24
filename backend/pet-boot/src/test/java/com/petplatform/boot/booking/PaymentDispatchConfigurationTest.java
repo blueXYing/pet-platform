@@ -38,16 +38,15 @@ class PaymentDispatchConfigurationTest {
                         () -> new PaymentFoundationConfiguration.LakalaSettings(Map.of(), null, "Asia/Shanghai"));
     }
 
-    @Test void defaultAndSingleFlagNeverRegisterChannelOrDispatch() {
-        runner().run(context -> assertThat(context).doesNotHaveBean(PaymentDispatchService.class));
-        runner().withPropertyValues("pet.payment.dispatch.enabled=true")
-                .run(context -> assertThat(context).doesNotHaveBean(PaymentDispatchService.class));
-        runner().withPropertyValues("pet.payment.foundation.enabled=true")
-                .run(context -> assertThat(context).doesNotHaveBean(PaymentChannel.class));
+    @Test void defaultOffNeverRegistersChannelOrDispatch() {
+        runner().run(context -> {
+            assertThat(context).doesNotHaveBean(PaymentDispatchService.class);
+            assertThat(context).doesNotHaveBean(PaymentChannel.class);
+        });
     }
 
     @Test void enabledWithoutCredentialsFailsBeforeAnyChannelCall() {
-        dependencies().withPropertyValues("pet.payment.foundation.enabled=true", "pet.payment.dispatch.enabled=true")
+        dependencies().withPropertyValues("pet.payment.enabled=true")
                 .run(context -> assertThat(context).hasFailed());
     }
 
@@ -58,7 +57,7 @@ class PaymentDispatchConfigurationTest {
         Files.writeString(keyFile, Base64.getEncoder().encodeToString(key));
         PaymentChannel channel = mock(PaymentChannel.class);
         dependencies().withBean(PaymentChannel.class, () -> channel)
-                .withPropertyValues("pet.payment.foundation.enabled=true", "pet.payment.dispatch.enabled=true",
+                .withPropertyValues("pet.payment.enabled=true",
                         "pet.payment.dispatch.parameter-key-path=" + keyFile,
                         "pet.payment.dispatch.out-org-code=TEST_ORG",
                         "pet.payment.dispatch.subject=pet service",

@@ -35,7 +35,7 @@ import tools.jackson.databind.JsonNode;
  */
 @RestController
 @RequestMapping(value = "/api/v1/merchant/customers", produces = MediaType.APPLICATION_JSON_VALUE)
-@ConditionalOnProperty(name = "pet.order.customer.http.enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.payment", name = "enabled", havingValue = "true")
 public final class MerchantCustomerController {
 
     private final MerchantCustomerQueryApi queries;

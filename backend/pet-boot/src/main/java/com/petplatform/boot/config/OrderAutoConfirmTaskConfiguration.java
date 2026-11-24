@@ -32,30 +32,14 @@ import org.springframework.context.annotation.Configuration;
 
 /** All task production, execution and recovery are independently opt-in. */
 @Configuration(proxyBeanMethods = false)
+@ConditionalOnProperty(prefix = "pet.payment", name = "enabled", havingValue = "true")
 public class OrderAutoConfirmTaskConfiguration {
-    @Bean InitializingBean autoConfirmTaskConfigurationGuard(
-            @Value("${pet.order.auto-confirm.enabled:false}") boolean enabled,
-            @Value("${pet.payment.foundation.enabled:false}") boolean paymentEnabled,
-            @Value("${pet.order.auto-confirm.worker.enabled:false}") boolean worker,
-            @Value("${pet.order.auto-confirm.repair.enabled:false}") boolean repair) {
-        return () -> {
-            if ((worker || repair) && (!enabled || !paymentEnabled))
-                throw new IllegalStateException("Auto-confirm execution and repair require task production and payment foundation");
-            if (enabled && !paymentEnabled)
-                throw new IllegalStateException("Auto-confirm task production requires payment foundation");
-        };
-    }
-
     @Bean
-    @ConditionalOnProperty(prefix = "pet.order.auto-confirm.inspection", name = "enabled", havingValue = "true")
     OrderAutoConfirmTaskInspectionApi orderAutoConfirmTaskInspectionApi(DataSource source) {
         return new OrderAutoConfirmTaskInspectionApiImpl(source);
     }
 
     @Configuration(proxyBeanMethods = false)
-    @ConditionalOnExpression(
-            "${pet.order.auto-confirm.enabled:false} && ${pet.payment.foundation.enabled:false}"
-            + " && (${pet.order.auto-confirm.worker.enabled:false} || ${pet.order.auto-confirm.repair.enabled:false})")
     static class Execution {
         @Bean @org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean(RefundOrderFactsApi.class)
         RefundOrderFactsApi refundOrderFactsApi(DataSource source, ScheduleCapacityGuardApi guard) {
@@ -68,7 +52,6 @@ public class OrderAutoConfirmTaskConfiguration {
             return new OrderAutoConfirmService(source, ids, guard, payments, reservations, refunds, outbox);
         }
         @Bean(initMethod="start",destroyMethod="close")
-        @ConditionalOnProperty(prefix="pet.order.auto-confirm.worker",name="enabled",havingValue="true")
         AsyncTaskWorker orderAutoConfirmWorker(DataSource source,
                 SnowflakeIdGenerator ids, OrderAutoConfirmService service) {
             return AsyncTaskWorker.create(source, ids, "order-auto-confirm-" + UUID.randomUUID(),
@@ -78,9 +61,8 @@ public class OrderAutoConfirmTaskConfiguration {
                     List.of(OrderAutoConfirmTaskRegistration.create(source, service)));
         }
         @Bean(initMethod="start",destroyMethod="close")
-        Reconciler orderAutoConfirmReconciler(OrderAutoConfirmService service,
-                @Value("${pet.order.auto-confirm.repair.enabled:false}") boolean repair) {
-            return new Reconciler(service,repair);
+        Reconciler orderAutoConfirmReconciler(OrderAutoConfirmService service) {
+            return new Reconciler(service, true);
         }
     }
 

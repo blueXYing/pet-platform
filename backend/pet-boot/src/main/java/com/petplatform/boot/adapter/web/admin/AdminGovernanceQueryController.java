@@ -53,10 +53,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping(value = "/api/v1/admin/governance", produces = MediaType.APPLICATION_JSON_VALUE)
-@ConditionalOnProperty(
-    prefix = "pet",
-    name = {"auth.admin.enabled", "admin.governance.http.enabled"},
-    havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.auth.admin", name = "enabled", havingValue = "true")
 public class AdminGovernanceQueryController {
 
   private static final String[] LEDGER_LIST_PARAMS = {

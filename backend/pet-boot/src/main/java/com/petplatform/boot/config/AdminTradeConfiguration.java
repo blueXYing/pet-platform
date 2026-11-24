@@ -36,7 +36,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty(
     prefix = "pet",
-    name = {"auth.admin.enabled", "admin.trade.http.enabled"},
+    name = {"auth.admin.enabled", "payment.enabled"},
     havingValue = "true")
 public class AdminTradeConfiguration {
 

@@ -23,8 +23,7 @@ import tools.jackson.databind.JsonNode;
 
 /** CCR-COM-001 operations moderation HTTP face. */
 @RestController
-@ConditionalOnProperty(prefix = "pet", name = {"community.enabled", "community.admin.http.enabled"},
-        havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.auth.admin", name = "enabled", havingValue = "true")
 public class CommunityAdminController {
 
     private final CommunityAdminApi community;

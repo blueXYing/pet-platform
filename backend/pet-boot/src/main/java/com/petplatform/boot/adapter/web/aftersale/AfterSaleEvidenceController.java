@@ -21,7 +21,7 @@ import org.springframework.web.multipart.*;
 
 /** Contract51 private evidence HTTP. All reads use a route-bound, current-session typed grant. */
 @RestController
-@ConditionalOnProperty(name="pet.aftersale.http.enabled",havingValue="true")
+@ConditionalOnProperty(prefix = "pet.payment", name = "enabled", havingValue = "true")
 public final class AfterSaleEvidenceController {
     private final PrivateAssetApi uploads;
     private final AfterSalePrivateAssetApi evidence;

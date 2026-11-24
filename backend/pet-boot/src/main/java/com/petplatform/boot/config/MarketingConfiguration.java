@@ -49,7 +49,7 @@ import org.springframework.context.annotation.Configuration;
  * and the open-city catalog. Missing owners fail closed at call time (503), never open writes.
  */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(prefix = "pet.marketing", name = "enabled", havingValue = "true")
+@org.springframework.boot.autoconfigure.condition.ConditionalOnExpression("${pet.auth.admin.enabled:false} || ${pet.auth.c.enabled:false}")
 public class MarketingConfiguration {
 
     @Bean
@@ -84,8 +84,16 @@ public class MarketingConfiguration {
     }
 
     @Bean
-    MarketingAssetObjectStore marketingAssetObjectStore() {
-        return new MarketingOssAssetStore();
+    MarketingAssetObjectStore marketingAssetObjectStore(
+            @Value("${pet.oss.endpoint:}") String endpoint,
+            @Value("${pet.oss.region:}") String region,
+            @Value("${pet.oss.bucket:}") String bucket,
+            @Value("${pet.oss.access-key-id:}") String accessKeyId,
+            @Value("${pet.oss.secret-access-key:}") String secretAccessKey,
+            @Value("${pet.oss.public-base-url:}") String publicBaseUrl) {
+        com.petplatform.boot.adapter.web.marketing.MarketingCoverUrlResolver.configure(
+                endpoint, region, bucket, accessKeyId, secretAccessKey, publicBaseUrl);
+        return new MarketingOssAssetStore(endpoint, region, bucket, accessKeyId, secretAccessKey);
     }
 
     @Bean

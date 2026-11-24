@@ -47,10 +47,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-@ConditionalOnProperty(
-    prefix = "pet",
-    name = {"auth.admin.enabled", "admin.trade.http.enabled"},
-    havingValue = "true")
+@ConditionalOnProperty(prefix = "pet", name = {"auth.admin.enabled", "payment.enabled"}, havingValue = "true")
 public class AdminTradeDispositionController {
 
     private static final Set<String> ABNORMAL_REASONS =

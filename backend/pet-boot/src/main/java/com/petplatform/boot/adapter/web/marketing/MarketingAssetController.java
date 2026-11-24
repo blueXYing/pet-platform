@@ -12,9 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /** CCR-MKT-002: public, immutable artwork bytes for backend-uploaded marketing assets. */
 @RestController
-@ConditionalOnProperty(prefix = "pet",
-        name = {"marketing.enabled", "marketing.c.http.enabled", "auth.c.enabled"},
-        havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.auth.c", name = "enabled", havingValue = "true")
 public class MarketingAssetController {
 
     private final MarketingPublicApi marketing;

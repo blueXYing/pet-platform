@@ -36,10 +36,7 @@ import org.springframework.context.annotation.Configuration;
  * are ruled constants, not settings.
  */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(
-    prefix = "pet",
-    name = {"auth.admin.enabled", "coupon.grant.enabled"},
-    havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.auth.admin", name = "enabled", havingValue = "true")
 public class CouponGrantConfiguration {
 
   @Bean

@@ -13,8 +13,6 @@ import org.springframework.context.annotation.Configuration;
  * no write path, no idempotency, no outbox dependency exists in this assembly.
  */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(prefix = "pet.encyclopedia.query", name = "enabled", havingValue = "true",
-        matchIfMissing = true)
 public class EncyclopediaQueryConfiguration {
 
     @Bean

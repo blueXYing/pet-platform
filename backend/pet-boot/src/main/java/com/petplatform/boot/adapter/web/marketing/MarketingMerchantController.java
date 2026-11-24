@@ -25,9 +25,7 @@ import tools.jackson.databind.JsonNode;
 
 /** Contract-71/76 merchant-facing marketing/enrollment face. */
 @RestController
-@ConditionalOnProperty(prefix = "pet",
-        name = {"marketing.enabled", "marketing.merchant.http.enabled", "auth.c.enabled"},
-        havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.auth.c", name = "enabled", havingValue = "true")
 public class MarketingMerchantController {
     @ModelAttribute
     void noStore(jakarta.servlet.http.HttpServletResponse response) {

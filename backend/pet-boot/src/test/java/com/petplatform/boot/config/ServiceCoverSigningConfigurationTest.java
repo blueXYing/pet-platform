@@ -10,19 +10,17 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 class ServiceCoverSigningConfigurationTest {
-  @Test void absentByDefaultAndRequiresBothExplicitSwitches() {
-    for (String[] properties : new String[][] {{}, {"pet.private-assets.enabled=true"}, {"pet.service.cover-signing.enabled=true"}}) {
-      new ApplicationContextRunner().withUserConfiguration(ServiceCoverSigningConfiguration.class)
-          .withPropertyValues(properties).run(c -> {
-            assertNull(c.getStartupFailure()); assertTrue(c.getBeansOfType(ServiceCoverUrlPort.class).isEmpty());
-          });
-    }
+  @Test void absentByDefaultAndAssemblesWithPrivateAssets() {
+    new ApplicationContextRunner().withUserConfiguration(ServiceCoverSigningConfiguration.class)
+        .run(c -> {
+          assertNull(c.getStartupFailure()); assertTrue(c.getBeansOfType(ServiceCoverUrlPort.class).isEmpty());
+        });
   }
 
   @Test void adapterUsesApprovedOwnerApiAndPreservesExpiry() {
     Instant expiry = Instant.now().plusSeconds(600);
     new ApplicationContextRunner().withUserConfiguration(ServiceCoverSigningConfiguration.class)
-        .withPropertyValues("pet.private-assets.enabled=true", "pet.service.cover-signing.enabled=true")
+        .withPropertyValues("pet.private-assets.enabled=true")
         .withBean(ServiceCoverObjectSigner.class, () -> mock(ServiceCoverObjectSigner.class))
         .withBean(ServiceCoverSigningApi.class, () -> (id, query) -> new ServiceCoverSigningApi.SignedServiceCover(id, "https://test.example.invalid/x", expiry))
         .run(c -> {

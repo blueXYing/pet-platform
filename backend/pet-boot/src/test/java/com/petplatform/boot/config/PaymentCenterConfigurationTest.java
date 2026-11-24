@@ -37,24 +37,16 @@ class PaymentCenterConfigurationTest {
     // ---- pure flag matrix ------------------------------------------------------------------
 
     @Test void flagMatrix() {
-        assertThatCode(() -> PaymentCenterConfiguration.check(false, false, false, false, false, true, "SIT"))
+        assertThatCode(() -> PaymentCenterConfiguration.check(false, false, "SIT"))
                 .doesNotThrowAnyException();
-        assertThatCode(() -> PaymentCenterConfiguration.check(true, true, true, true, true, true, "SIT"))
+        assertThatCode(() -> PaymentCenterConfiguration.check(true, true, "SIT"))
                 .doesNotThrowAnyException();
-        assertThatCode(() -> PaymentCenterConfiguration.check(true, true, false, true, true, false, "PRODUCTION"))
+        assertThatCode(() -> PaymentCenterConfiguration.check(true, false, "PRODUCTION"))
                 .doesNotThrowAnyException();
-        assertThatThrownBy(() -> PaymentCenterConfiguration.check(false, true, false, true, true, true, "SIT"))
-                .hasMessage(PaymentCenterConfiguration.REQUIRES_CENTER);
-        assertThatThrownBy(() -> PaymentCenterConfiguration.check(false, false, true, true, true, true, "SIT"))
-                .hasMessage(PaymentCenterConfiguration.REQUIRES_CENTER);
-        assertThatThrownBy(() -> PaymentCenterConfiguration.check(true, false, false, false, true, true, "SIT"))
-                .hasMessage(PaymentCenterConfiguration.REQUIRES_FOUNDATION);
-        assertThatThrownBy(() -> PaymentCenterConfiguration.check(true, false, false, true, false, true, "SIT"))
-                .hasMessage(PaymentCenterConfiguration.REQUIRES_FOUNDATION);
-        assertThatThrownBy(() -> PaymentCenterConfiguration.check(true, false, true, true, true, false, "SIT"))
-                .hasMessage(PaymentCenterConfiguration.DEMO_REQUIRES_OUTBOX);
+        assertThatThrownBy(() -> PaymentCenterConfiguration.check(false, true, "SIT"))
+                .hasMessage(PaymentCenterConfiguration.REQUIRES_PAYMENT);
         for (String environment : new String[] {"PRODUCTION", "", null, "sit", "PROD"})
-            assertThatThrownBy(() -> PaymentCenterConfiguration.check(true, false, true, true, true, true, environment))
+            assertThatThrownBy(() -> PaymentCenterConfiguration.check(true, true, environment))
                     .as(String.valueOf(environment)).hasMessage(PaymentCenterConfiguration.DEMO_FORBIDDEN_IN_PRODUCTION);
     }
 
@@ -100,33 +92,25 @@ class PaymentCenterConfigurationTest {
         });
     }
 
-    @Test void centerWithoutFoundationAndDispatchFailsStartup() throws Exception {
-        runner(platform()).withPropertyValues("pet.payment.center.enabled=true").run(context ->
-                assertThat(context).getFailure().hasStackTraceContaining(PaymentCenterConfiguration.REQUIRES_FOUNDATION));
-    }
-
-    @Test void workerOrDemoWithoutCenterFailsStartup() throws Exception {
-        runner(platform()).withPropertyValues("pet.payment.center.worker.enabled=true").run(context ->
-                assertThat(context).getFailure().hasStackTraceContaining(PaymentCenterConfiguration.REQUIRES_CENTER));
+    @Test void demoWithoutPaymentFailsStartup() throws Exception {
         runner(platform()).withPropertyValues("pet.payment.center.demo.enabled=true").run(context ->
-                assertThat(context).getFailure().hasStackTraceContaining(PaymentCenterConfiguration.REQUIRES_CENTER));
+                assertThat(context).getFailure().hasStackTraceContaining(PaymentCenterConfiguration.REQUIRES_PAYMENT));
     }
 
     @Test void centerRequiresThePlatformMerchant() throws Exception {
         PaymentMerchantBindings storesOnly = (merchantId, storeId) -> new PaymentMerchantBindings.Binding("M", "T", "A");
-        runner(storesOnly).withPropertyValues("pet.payment.center.enabled=true", "pet.payment.foundation.enabled=true",
-                "pet.payment.dispatch.enabled=true").run(context ->
+        runner(storesOnly).withPropertyValues("pet.payment.enabled=true").run(context ->
                 assertThat(context).getFailure().hasStackTraceContaining("requires the platform merchant"));
     }
 
-    @Test void centerWiresInternalBeansOnlyAndNoDemoByDefault() throws Exception {
-        runner(platform()).withPropertyValues("pet.payment.center.enabled=true", "pet.payment.foundation.enabled=true",
-                "pet.payment.dispatch.enabled=true", "pet.payment.dispatch.environment=SIT").run(context -> {
+    @Test void centerWiresInternalBeansAndWorkerNoDemoByDefault() throws Exception {
+        runner(platform()).withPropertyValues("pet.payment.enabled=true",
+                "pet.payment.dispatch.environment=SIT").run(context -> {
             assertThat(context).hasNotFailed();
             assertThat(context).hasSingleBean(PaymentCenterApi.class);
             assertThat(context).hasSingleBean(PaymentCenterFactsApi.class);
             assertThat(context).hasSingleBean(PaymentCallbackRouter.class);
-            assertThat(context).doesNotHaveBean(PaymentCenterQueryCoordinator.class);
+            assertThat(context).hasSingleBean(PaymentCenterQueryCoordinator.class);
             assertThat(context).doesNotHaveBean(DemoPaymentService.class);
             assertThat(context).doesNotHaveBean(DemoPaymentConfirmConsumer.class);
             assertThat(context.getBean(PaymentCenterBizPolicy.class).registered("DEMO")).isFalse();
@@ -135,8 +119,8 @@ class PaymentCenterConfigurationTest {
     }
 
     @Test void demoInSitRegistersTheDemoOwnerWithTheConfiguredCeiling() throws Exception {
-        runner(platform()).withPropertyValues("pet.payment.center.enabled=true", "pet.payment.foundation.enabled=true",
-                "pet.payment.dispatch.enabled=true", "pet.payment.dispatch.environment=SIT",
+        runner(platform()).withPropertyValues("pet.payment.enabled=true",
+                "pet.payment.dispatch.environment=SIT",
                 "pet.payment.center.demo.enabled=true", "pet.payment.center.demo.max-amount=0.05").run(context -> {
             assertThat(context).hasNotFailed();
             assertThat(context).hasSingleBean(DemoPaymentService.class);
@@ -146,12 +130,12 @@ class PaymentCenterConfigurationTest {
     }
 
     @Test void demoInProductionOrWithABadCeilingFailsStartup() throws Exception {
-        runner(platform()).withPropertyValues("pet.payment.center.enabled=true", "pet.payment.foundation.enabled=true",
-                "pet.payment.dispatch.enabled=true", "pet.payment.dispatch.environment=PRODUCTION",
+        runner(platform()).withPropertyValues("pet.payment.enabled=true",
+                "pet.payment.dispatch.environment=PRODUCTION",
                 "pet.payment.center.demo.enabled=true").run(context ->
                 assertThat(context).getFailure().hasStackTraceContaining(PaymentCenterConfiguration.DEMO_FORBIDDEN_IN_PRODUCTION));
-        runner(platform()).withPropertyValues("pet.payment.center.enabled=true", "pet.payment.foundation.enabled=true",
-                "pet.payment.dispatch.enabled=true", "pet.payment.dispatch.environment=SIT",
+        runner(platform()).withPropertyValues("pet.payment.enabled=true",
+                "pet.payment.dispatch.environment=SIT",
                 "pet.payment.center.demo.enabled=true", "pet.payment.center.demo.max-amount=0.001").run(context ->
                 assertThat(context).getFailure().hasStackTraceContaining("max-amount"));
     }
@@ -163,8 +147,7 @@ class PaymentCenterConfigurationTest {
                 "127.0.0.1", "https://notify.invalid/pay", false);
         runner(platform()).withBean("override", PaymentDispatchConfiguration.DispatchSettings.class, () -> dispatch,
                         bd -> bd.setPrimary(true))
-                .withPropertyValues("pet.payment.center.enabled=true", "pet.payment.foundation.enabled=true",
-                        "pet.payment.dispatch.enabled=true").run(context ->
+                .withPropertyValues("pet.payment.enabled=true").run(context ->
                 assertThat(context).getFailure().hasStackTraceContaining("Payment center channel settings unavailable"));
     }
 }

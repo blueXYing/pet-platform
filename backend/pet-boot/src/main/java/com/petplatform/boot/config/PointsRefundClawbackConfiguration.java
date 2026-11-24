@@ -17,8 +17,6 @@ import org.springframework.context.annotation.Configuration;
  * need the SQL06 §9 tables only — no migration is executed or implied here.
  */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(prefix = "pet.points.refund-clawback", name = "enabled",
-        havingValue = "true", matchIfMissing = true)
 public class PointsRefundClawbackConfiguration {
 
     @Bean

@@ -43,9 +43,7 @@ import tools.jackson.databind.ObjectReader;
  * fact, never a client claim; the fixed receipt is {reviewId, scoreIncluded}.
  */
 @RestController
-@ConditionalOnProperty(prefix = "pet",
-    name = {"auth.c.enabled", "review.http.enabled"},
-    havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.auth.c", name = "enabled", havingValue = "true")
 public class CReviewController {
 
     private static final ObjectReader STRICT =

@@ -32,7 +32,7 @@ import org.springframework.context.annotation.Configuration;
  * default datasource.
  */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(prefix = "pet.schedule.command", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.private-assets", name = "enabled", havingValue = "true")
 public class ScheduleWriteConfiguration {
 
     @Bean

@@ -37,9 +37,7 @@ import org.springframework.context.annotation.Configuration;
  * Default off in production until the deployment gate opens it (pet.usersettings.http.enabled).
  */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(prefix = "pet",
-        name = {"auth.c.enabled", "usersettings.http.enabled", "merchant.application.enabled"},
-        havingValue = "true")
+@ConditionalOnProperty(prefix = "pet", name = {"auth.c.enabled", "private-assets.enabled"}, havingValue = "true")
 public class UserSettingsDeletionConfiguration {
 
     @Bean
@@ -72,8 +70,6 @@ public class UserSettingsDeletionConfiguration {
      * authoritative state — auto-cancels never retry).
      */
     @Bean(initMethod = "start", destroyMethod = "close")
-    @ConditionalOnProperty(prefix = "pet.usersettings.deletion.worker",
-            name = "enabled", havingValue = "true")
     AsyncTaskWorker accountDeletionExpiryWorker(
             DataSource source,
             ObjectProvider<SnowflakeIdGenerator> ids,

@@ -82,10 +82,7 @@ import tools.jackson.databind.ObjectReader;
  * (no runtime configuration mechanism exists in V1 — CCR-ADM-A005-OPS-001).
  */
 @RestController
-@ConditionalOnProperty(
-    prefix = "pet",
-    name = {"auth.admin.enabled", "admin.ops.http.enabled"},
-    havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.auth.admin", name = "enabled", havingValue = "true")
 public class AdminOpsController {
 
   private static final ObjectReader STRICT =
@@ -104,77 +101,16 @@ public class AdminOpsController {
     "page", "pageSize", "userId", "bizType", "createdFrom", "createdTo"
   };
 
-  /** 21号《部署开关组合清单》登记的装配开关系（phase 为该清单归属域；只读视图，非配置机制）。 */
+  /** 运行时精简边界开关只读视图（四个基础底座在 dev/test/prod 统一全开，其余为运维/安全边界开关）。 */
   private static final String[][] SWITCH_REGISTRY = {
     {"pet.auth.admin.enabled", "ADMIN"},
+    {"pet.auth.admin.maintenance", "ADMIN"},
     {"pet.auth.c.enabled", "C"},
-    {"pet.outbox.enabled", "INFRA"},
-    {"pet.notification.delivery.enabled", "INFRA"},
-    {"pet.merchant.application.enabled", "MERCHANT"},
-    {"pet.merchant.subject.enabled", "MERCHANT"},
-    {"pet.merchant.protection.enabled", "MERCHANT"},
-    {"pet.merchant.staff.enabled", "MERCHANT"},
-    {"pet.merchant.staff-identity.enabled", "MERCHANT"},
-    {"pet.merchant.staff-member.enabled", "MERCHANT"},
-    {"pet.service.query.enabled", "CATALOG"},
-    {"pet.service.command.enabled", "CATALOG"},
-    {"pet.service.cover-signing.enabled", "CATALOG"},
-    {"pet.store.query.enabled", "CATALOG"},
     {"pet.private-assets.enabled", "CATALOG"},
-    {"pet.schedule.protection.enabled", "SCHEDULE"},
-    {"pet.schedule.command.enabled", "SCHEDULE"},
-    {"pet.schedule.command.http.enabled", "SCHEDULE"},
-    {"pet.order.creation.enabled", "ORDER"},
-    {"pet.order.expiry.enabled", "ORDER"},
-    {"pet.order.expiry.worker.enabled", "ORDER"},
-    {"pet.order.auto-confirm.enabled", "ORDER"},
-    {"pet.order.auto-confirm.worker.enabled", "ORDER"},
-    {"pet.order.auto-confirm.repair.enabled", "ORDER"},
-    {"pet.order.merchant.enabled", "ORDER"},
-    {"pet.order.merchant.http.enabled", "ORDER"},
-    {"pet.order.merchant.worker.enabled", "ORDER"},
-    {"pet.order.reschedule.enabled", "ORDER"},
-    {"pet.order.reschedule.http.enabled", "ORDER"},
-    {"pet.payment.foundation.enabled", "PAYMENT"},
-    {"pet.payment.dispatch.enabled", "PAYMENT"},
-    {"pet.refund.late.enabled", "REFUND"},
-    {"pet.refund.late.worker.enabled", "REFUND"},
-    {"pet.refund.application.enabled", "REFUND"},
-    {"pet.refund.application.worker.enabled", "REFUND"},
-    {"pet.refund.application.http.enabled", "REFUND"},
-    {"pet.refund.merchant.http.enabled", "REFUND"},
-    {"pet.aftersale.enabled", "AFTERSALE"},
-    {"pet.aftersale.worker.enabled", "AFTERSALE"},
-    {"pet.aftersale.http.enabled", "AFTERSALE"},
-    {"pet.aftersale.refund.enabled", "AFTERSALE"},
-    {"pet.verification.credential.enabled", "VERIFICATION"},
-    {"pet.verification.credential.http.enabled", "VERIFICATION"},
-    {"pet.verification.staff-identity.enabled", "VERIFICATION"},
-    {"pet.verification.completion.enabled", "VERIFICATION"},
-    {"pet.verification.completion.http.enabled", "VERIFICATION"},
-    {"pet.review.enabled", "REVIEW"},
-    {"pet.review.http.enabled", "REVIEW"},
-    {"pet.review.appeal.enabled", "REVIEW"},
-    {"pet.review.appeal.http.enabled", "REVIEW"},
-    {"pet.points.task.enabled", "POINTS"},
-    {"pet.points.task.http.enabled", "POINTS"},
-    {"pet.favtrack.http.enabled", "C"},
-    {"pet.encyclopedia.query.enabled", "COMMUNITY"},
-    {"pet.coupon.lifecycle.enabled", "COUPON"},
-    {"pet.coupon.grant.enabled", "COUPON"},
-    {"pet.coupon.void.enabled", "COUPON"},
-    {"pet.marketing.enabled", "MARKETING"},
-    {"pet.marketing.admin.http.enabled", "MARKETING"},
-    {"pet.marketing.merchant.http.enabled", "MARKETING"},
-    {"pet.marketing.c.http.enabled", "MARKETING"},
-    {"pet.marketing.migration-enabled", "MARKETING"},
-    {"pet.coupon.campaign.enabled", "COUPON"},
-    {"pet.coupon.campaign.admin.http.enabled", "COUPON"},
-    {"pet.coupon.campaign.c.http.enabled", "COUPON"},
-    {"pet.admin.trade.http.enabled", "ADMIN"},
-    {"pet.admin.trade.worker.enabled", "ADMIN"},
-    {"pet.admin.governance.http.enabled", "ADMIN"},
-    {"pet.admin.ops.http.enabled", "ADMIN"}
+    {"pet.payment.enabled", "PAYMENT"},
+    {"pet.payment.center.demo.enabled", "PAYMENT"},
+    {"pet.notification.delivery.enabled", "INFRA"},
+    {"pet.marketing.campaign.category-validation.enabled", "MARKETING"}
   };
 
   private final AdminEncyclopediaQueryApi encyclopediaQuery;

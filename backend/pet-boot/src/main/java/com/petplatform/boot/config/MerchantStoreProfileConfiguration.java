@@ -22,7 +22,7 @@ import org.springframework.context.annotation.Configuration;
  * application runtime's shared reader when that assembly is present.
  */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(prefix = "pet.merchant.store-profile", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.private-assets", name = "enabled", havingValue = "true")
 public class MerchantStoreProfileConfiguration {
 
     @Bean

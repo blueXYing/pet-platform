@@ -66,7 +66,7 @@ import com.petplatform.task.core.TaskDatabaseClock;
 
 /** Internal late-payment refund composition. All execution and live provider beans are opt-in. */
 @Configuration(proxyBeanMethods = false)
-@org.springframework.boot.autoconfigure.condition.ConditionalOnExpression("${pet.payment.foundation.enabled:false} and (${pet.refund.late.enabled:false} or ${pet.order.merchant.enabled:false} or ${pet.aftersale.enabled:false} or ${pet.admin.trade.http.enabled:false})")
+@ConditionalOnProperty(prefix = "pet.payment", name = "enabled", havingValue = "true")
 @EnableConfigurationProperties(PaymentDispatchConfiguration.DispatchSettings.class)
 public class LateRefundConfiguration {
     private static final String SUBMIT = "REFUND_SUBMIT";
@@ -98,10 +98,10 @@ public class LateRefundConfiguration {
             ObjectProvider<com.petplatform.order.api.query.OrderAdminCloseFactsApi> adminCloseOrders,
             org.springframework.core.env.Environment environment) {
         var ordinary=applicationOrders.getIfAvailable();
-        var aftersale=environment.getProperty("pet.aftersale.enabled",Boolean.class,false)?aftersaleOrders.getObject():null;
-        var adminClose=environment.getProperty("pet.admin.trade.http.enabled",Boolean.class,false)?adminCloseOrders.getIfAvailable():null;
+        var aftersale=aftersaleOrders.getIfAvailable();
+        var adminClose=adminCloseOrders.getIfAvailable();
         return new LateRefundService(source, ids, guard, orders, payments, outbox,merchantOrders.getIfAvailable(),
-            environment.getProperty("pet.refund.late.enabled",Boolean.class,false),ordinary,ordinary==null?null:applications::getObject,
+            true,ordinary,ordinary==null?null:applications::getObject,
             aftersale,aftersale==null?null:aftersales::getObject,aftersale==null?null:aftersaleRefunds.getObject(),adminClose);
     }
 
@@ -111,7 +111,7 @@ public class LateRefundConfiguration {
     }
 
     /** Ruling 32: after-sale refund funding rides the original WeChat route of the succeeded payment. */
-    @Bean @ConditionalOnProperty(name="pet.aftersale.refund.enabled",havingValue="true")
+    @Bean
     com.petplatform.payment.api.query.RefundFundingEligibilityFactsApi wechatOriginalRouteRefundFunding(
             DataSource source, PaymentSuccessFactsApi payments) {
         return new com.petplatform.payment.biz.application.WechatOriginalRouteRefundFundingAuthority(source, payments);
@@ -159,14 +159,12 @@ public class LateRefundConfiguration {
             if (zone == null || zone.isBlank()) throw new IllegalArgumentException();
             var settings = new PaymentRefundService.Settings(dispatch.requestIp(),
                     dispatch.notifyUrl(), ZoneId.of(zone));
-            boolean afsRefund=environment.getProperty("pet.aftersale.refund.enabled",Boolean.class,false);
-            boolean afs=environment.getProperty("pet.aftersale.enabled",Boolean.class,false);
-            boolean trade=environment.getProperty("pet.admin.trade.http.enabled",Boolean.class,false);
+            var afsOrders = aftersaleOrders.getIfAvailable();
+            var afsFacts = aftersales.getIfAvailable();
             return new PaymentRefundService(source, ids, guard, orders, payments, refunds,
                     channel, settings, clocks.getIfAvailable(Clock::systemUTC),merchantOrders.getIfAvailable(),
-                    applicationOrders.getIfAvailable(),applications.getIfAvailable(),afs?aftersaleOrders.getObject():null,
-                    afs?aftersales.getObject():null,afsRefund?funding.getObject():null,
-                    trade?adminCloseOrders.getIfAvailable():null);
+                    applicationOrders.getIfAvailable(),applications.getIfAvailable(),afsOrders,
+                    afsFacts,funding.getIfAvailable(),adminCloseOrders.getIfAvailable());
         } catch (Exception failure) {
             throw new IllegalStateException("Refund execution settings unavailable");
         }
@@ -177,13 +175,13 @@ public class LateRefundConfiguration {
         return new RefundExecutionService(refunds, payment, results);
     }
 
-    @Bean @ConditionalOnProperty(name="pet.refund.late.enabled",havingValue="true")
+    @Bean
     OrderLateRefundProjectionConsumer orderLateRefundProjectionConsumer(DataSource source,
             SnowflakeIdGenerator ids, ScheduleCapacityGuardApi guard,
             ReservationExpiryApi expiry, LateRefundService refunds) {
         return new OrderLateRefundProjectionConsumer(source, ids, guard, expiry, refunds);
     }
-    @Bean @ConditionalOnProperty(name="pet.aftersale.enabled",havingValue="true")
+    @Bean
     com.petplatform.order.biz.apiimpl.OrderAfterSaleRefundProjectionConsumer afterSaleRefundProjection(DataSource source,
             SnowflakeIdGenerator ids,ScheduleCapacityGuardApi guard,com.petplatform.order.api.query.OrderAfterSaleFactsApi locations,
             com.petplatform.order.api.query.OrderAfterSaleRefundFactsApi origins,LateRefundService refunds,
@@ -191,20 +189,19 @@ public class LateRefundConfiguration {
         return new com.petplatform.order.biz.apiimpl.OrderAfterSaleRefundProjectionConsumer(source,ids,guard,locations,origins,refunds,release);
     }
 
-    @Bean @ConditionalOnProperty(prefix = "pet.refund.late.worker", name = "enabled", havingValue = "true")
+    @Bean
     TaskRegistration<RefundPayload> refundSubmitRegistration(RefundExecutionService execution,
             DataSource source) {
         return registration(SUBMIT, execution, source);
     }
 
-    @Bean @ConditionalOnProperty(prefix = "pet.refund.late.worker", name = "enabled", havingValue = "true")
+    @Bean
     TaskRegistration<RefundPayload> refundQueryRegistration(RefundExecutionService execution,
             DataSource source) {
         return registration(QUERY, execution, source);
     }
 
     @Bean(initMethod = "start", destroyMethod = "close")
-    @ConditionalOnProperty(prefix = "pet.refund.late.worker", name = "enabled", havingValue = "true")
     AsyncTaskWorker lateRefundWorker(DataSource source, SnowflakeIdGenerator ids,
             @Qualifier("refundSubmitRegistration") TaskRegistration<RefundPayload> refundSubmitRegistration,
             @Qualifier("refundQueryRegistration") TaskRegistration<RefundPayload> refundQueryRegistration,
@@ -216,7 +213,6 @@ public class LateRefundConfiguration {
     }
 
     @Bean(initMethod = "start", destroyMethod = "close")
-    @ConditionalOnProperty(prefix = "pet.refund.late.worker", name = "enabled", havingValue = "true")
     DeadTaskReconciler lateRefundDeadTaskReconciler(RefundExecutionService execution) {
         return new DeadTaskReconciler(execution);
     }

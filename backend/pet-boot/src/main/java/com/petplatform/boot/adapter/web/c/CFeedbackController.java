@@ -33,8 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/v1/c/feedback-tickets")
-@ConditionalOnProperty(prefix = "pet",
-        name = {"auth.c.enabled", "feedback.http.enabled"}, havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.auth.c", name = "enabled", havingValue = "true")
 public class CFeedbackController {
 
     private static final Set<String> CREATE_FIELDS = Set.of("type", "contact", "content",

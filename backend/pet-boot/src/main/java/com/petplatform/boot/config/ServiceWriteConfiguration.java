@@ -41,7 +41,7 @@ import org.springframework.context.annotation.Configuration;
  * backend producer-to-inbox chain.
  */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(prefix = "pet.service.command", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.private-assets", name = "enabled", havingValue = "true")
 public class ServiceWriteConfiguration {
 
     @Bean

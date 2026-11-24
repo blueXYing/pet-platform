@@ -39,8 +39,7 @@ import tools.jackson.databind.JsonNode;
 
 /** Contract-71 platform ops marketing center face. */
 @RestController
-@ConditionalOnProperty(prefix = "pet", name = {"auth.admin.enabled", "marketing.admin.http.enabled"},
-        havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.auth.admin", name = "enabled", havingValue = "true")
 public class MarketingAdminController {
 
     private final MarketingAdminApi marketing;
