@@ -86,7 +86,9 @@ assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
     'pages/marketing/flash/index',
     'pages/marketing/flash/edit',
     // 2026-11-04 Figma restore PR #211 batch 1: user-approved minimal "我的" hub above the tab bar.
-    'pages/mine/index'] },
+    'pages/mine/index',
+    // CCR-PAY-CENTER-001 Stage 7 (Contract 80 §5): OWNER-only wallet/withdrawal & read-only receiver status.
+    'pages/wallet/index', 'pages/wallet/withdrawals', 'pages/wallet/receiver'] },
   { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form', 'vaccine-form', 'deworm-form'] },
   { root: 'consumer/pages/merchant-application', pages: ['index', 'signing'] },
   { root: 'consumer/pages/store-services', pages: ['index', 'service-detail', 'stores', 'hot-services'] },

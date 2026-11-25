@@ -91,6 +91,10 @@ export default function MerchantMinePage() {
     { id: 'mine-marketing', label: '营销活动', hint: '平台活动报名与商家活动', url: '/merchant/pages/marketing/index', disabled: !allowed },
     { id: 'mine-members', label: '成员管理', hint: '邀请员工与成员状态', url: '/merchant/pages/members/index', disabled: !allowed },
   ] : []
+  const walletMenu: readonly MenuItem[] = owner ? [
+    { id: 'mine-wallet', label: '我的钱包与提现', hint: '拉卡拉可提现余额、待结算与手动提现', url: `/merchant/pages/wallet/index${preview ? '?preview=1' : ''}` },
+    { id: 'mine-settlement-receiver', label: '结算账户状态', hint: '分账接收方开通与绑定状态（只读）', url: `/merchant/pages/wallet/receiver${preview ? '?preview=1' : ''}` },
+  ] : []
   const operationMenu: readonly MenuItem[] = owner ? [
     { id: 'mine-orders', label: '订单处理', hint: '待接单与全部订单', url: '/merchant/pages/order-list/index', disabled: !can('merchant.order.read') },
     { id: 'mine-refunds', label: '退款处理', hint: '待处理退款申请', url: '/merchant/pages/refund/index', disabled: !can('merchant.refund.read') },
@@ -149,12 +153,14 @@ export default function MerchantMinePage() {
         </View>
         {owner && <Text className='mmine-section'>店铺管理</Text>}
         {owner && renderMenu(ownerMenu)}
+        {owner && <Text className='mmine-section'>结算与资金</Text>}
+        {owner && renderMenu(walletMenu)}
         {owner && <Text className='mmine-section'>经营处理</Text>}
         {owner && renderMenu(operationMenu)}
         <Text className='mmine-section'>{owner ? '更多' : '员工入口'}</Text>
         {renderMenu(moreMenu)}
         <Button id='mine-back-consumer' className='mmine-back' onClick={backToConsumer}>返回用户端</Button>
-        <Text className='mmine-tail'>仅展示 V1 已批准入口；账户资金、安全设置、通知设置等不在本期范围。</Text>
+        <Text className='mmine-tail'>仅展示 V1 已批准入口；安全设置、通知设置等不在本期范围。</Text>
       </>}
       <View className='mmine-tab-space' />
     </View>

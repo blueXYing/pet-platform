@@ -51,6 +51,13 @@ import ServiceCategoryAdminPage from './pages/ServiceCategoryAdminPage';
 import MarketingCenterPage from './pages/MarketingCenterPage';
 import ServiceFlashPricePage from './pages/ServiceFlashPricePage';
 import CommunityModerationPage from './pages/CommunityModerationPage';
+import { createSettlementAdminClient } from './api/settlementAdmin';
+import SettlementConfigPage from './pages/SettlementConfigPage';
+import SettlementReceiverPage from './pages/SettlementReceiverPage';
+import SettlementOrderListPage from './pages/SettlementOrderListPage';
+import SettlementWithdrawalListPage from './pages/SettlementWithdrawalListPage';
+import SettlementSubsidyReportPage from './pages/SettlementSubsidyReportPage';
+import SettlementReconcilePage from './pages/SettlementReconcilePage';
 
 const READ_ACTION = 'merchant.application.read';
 const auth = createAuthClient();
@@ -72,6 +79,7 @@ const marketingAdmin = createMarketingAdminClient();
 const serviceFlashPriceAdmin = createServiceFlashPriceAdminClient();
 const communityAdmin = createCommunityAdminClient();
 const serviceCategories = createServiceCategoryAdminClient();
+const settlementAdmin = createSettlementAdminClient();
 
 /** 403 文案与旧版逐字一致；缺省兜底是积分任务配置。 */
 const FORBIDDEN_TITLES: Record<string, string> = {
@@ -95,6 +103,11 @@ const FORBIDDEN_TITLES: Record<string, string> = {
   'community.post.read': '403 · 无社区审核权限',
   'marketing.campaign.read': '403 · 无营销活动权限',
   'service.flash-price.read': '403 · 无秒杀审核权限',
+  'settlement.report.read': '403 · 无结算报表权限',
+  'settlement.config.write': '403 · 无结算配置权限',
+  'settlement.receiver.write': '403 · 无分账接收方管理权限',
+  'settlement.receiver.read-sensitive': '403 · 无敏感收款信息查看权限',
+  'settlement.instruction.retry': '403 · 无结算异常处理权限',
 };
 
 // 2026-11-20 用户裁决：运营端刷新不再丢登录态——token 持久化到 localStorage（登出/失效即清除）。
@@ -132,6 +145,7 @@ export function App() {
     communityAdmin.resetContext(nextToken);
     serviceCategories.resetContext(nextToken);
     agreementAdmin.resetContext(nextToken);
+    settlementAdmin.resetContext(nextToken);
     try {
       const nextSession = await sessions.session(nextToken);
       const nextPermissions = await sessions.permissions(nextToken);
@@ -185,6 +199,7 @@ export function App() {
     communityAdmin.resetContext();
     serviceCategories.resetContext();
     agreementAdmin.resetContext();
+    settlementAdmin.resetContext();
   }, [token]);
 
   if (location.pathname !== '/login' && !token) return <Navigate to="/login" replace />;
@@ -218,11 +233,20 @@ export function App() {
   const canManageServiceCategories = permissions?.actionCodes.includes('service.category.manage') === true;
   const canReadFlashPrices = permissions?.actionCodes.includes('service.flash-price.read') === true;
   const canReviewFlashPrices = permissions?.actionCodes.includes('service.flash-price.review') === true;
-  const guard = (element: ReactNode, action = READ_ACTION) => {
+  const canReadSettlement = permissions?.actionCodes.includes('settlement.report.read') === true;
+  const canWriteSettlementConfig = permissions?.actionCodes.includes('settlement.config.write') === true;
+  const canWriteSettlementReceiver = permissions?.actionCodes.includes('settlement.receiver.write') === true;
+  const canReadSensitiveReceiver = permissions?.actionCodes.includes('settlement.receiver.read-sensitive') === true;
+  const canRetrySettlement = permissions?.actionCodes.includes('settlement.instruction.retry') === true;
+  const guard = (element: ReactNode, action: string | readonly string[] = READ_ACTION) => {
     if (!token) return <Navigate to="/login" replace />;
     if (bootstrap === 'loading') return <div className="page"><p role="status">会话加载中</p></div>;
     if (bootstrap === 'failed') return <div className="page" role="alert"><h2>会话或权限查询失败，访问已关闭</h2><Button onClick={signOut}>返回登录</Button></div>;
-    if (!permissions?.actionCodes.includes(action)) return <div className="page" role="alert"><h2>{FORBIDDEN_TITLES[action] ?? '403 · 无积分任务配置权限'}</h2><p>当前账号未授予 {action}。</p></div>;
+    const required = typeof action === 'string' ? [action] : action;
+    if (!required.some(code => permissions?.actionCodes.includes(code))) {
+      const primary = required[0];
+      return <div className="page" role="alert"><h2>{FORBIDDEN_TITLES[primary] ?? '403 · 无积分任务配置权限'}</h2><p>当前账号未授予 {required.join(' 或 ')}。</p></div>;
+    }
     return element;
   };
   // 菜单项内放真实 <Link>：导航保持 link 角色（验收脚本按 link 名字点击），Menu onClick 兜底。
@@ -239,6 +263,14 @@ export function App() {
       menuItem('/trade/orders', '订单总览', canReadOrders),
       menuItem('/trade/refunds', '退款单', canReadRefunds),
       menuItem('/trade/verifications', '核销记录', canReadVerifications),
+    ].filter(Boolean) as NonNullable<MenuProps['items']> },
+    { type: 'group', label: '结算资金', children: [
+      menuItem('/settlement/configs', '商家结算配置', canReadSettlement || canWriteSettlementConfig),
+      menuItem('/settlement/receivers', '分账接收方', canReadSettlement),
+      menuItem('/settlement/orders', '结算单与指令', canReadSettlement),
+      menuItem('/settlement/withdrawals', '商家提现台账', canReadSettlement),
+      menuItem('/settlement/subsidy-report', '平台补贴应付报表', canReadSettlement),
+      menuItem('/settlement/reconcile', '日对账差异', canReadSettlement),
     ].filter(Boolean) as NonNullable<MenuProps['items']> },
     { type: 'group', label: '治理', children: [
       menuItem('/governance/merchants', '商家台账', canReadLedger),
@@ -294,6 +326,12 @@ export function App() {
     <Route path="/ops/service-flash-prices" element={guard(<ServiceFlashPricePage client={serviceFlashPriceAdmin} canReview={canReviewFlashPrices} onAuthLost={signOut} />, 'service.flash-price.read')} />
     <Route path="/ops/community" element={guard(<CommunityModerationPage client={communityAdmin} canModerate={canModerateCommunity} canHandleReports={canHandleCommunityReports} onAuthLost={signOut} />, 'community.post.read')} />
     <Route path="/ops/marketing" element={guard(<MarketingCenterPage client={marketingAdmin} couponClient={couponAdmin} categoryClient={serviceCategories} canManage={canManageMarketing} canPublish={canPublishMarketing} canReview={canReviewMarketing} canCouponManage={canManageCouponCampaigns} canCouponPublish={canPublishCouponCampaigns} onAuthLost={signOut} />, 'marketing.campaign.read')} />
+    <Route path="/settlement/configs" element={guard(<SettlementConfigPage client={settlementAdmin} canWrite={canWriteSettlementConfig} onAuthLost={signOut} />, ['settlement.report.read', 'settlement.config.write'])} />
+    <Route path="/settlement/receivers" element={guard(<SettlementReceiverPage client={settlementAdmin} canWrite={canWriteSettlementReceiver} canReadSensitive={canReadSensitiveReceiver} onAuthLost={signOut} />, 'settlement.report.read')} />
+    <Route path="/settlement/orders" element={guard(<SettlementOrderListPage client={settlementAdmin} canRetry={canRetrySettlement} onAuthLost={signOut} />, 'settlement.report.read')} />
+    <Route path="/settlement/withdrawals" element={guard(<SettlementWithdrawalListPage client={settlementAdmin} onAuthLost={signOut} />, 'settlement.report.read')} />
+    <Route path="/settlement/subsidy-report" element={guard(<SettlementSubsidyReportPage client={settlementAdmin} onAuthLost={signOut} />, 'settlement.report.read')} />
+    <Route path="/settlement/reconcile" element={guard(<SettlementReconcilePage client={settlementAdmin} canResolve={canRetrySettlement} onAuthLost={signOut} />, 'settlement.report.read')} />
     <Route path="*" element={<main style={{ padding: 32 }}><h1>404 · 页面不存在</h1><p><Link to="/">返回工作台</Link></p></main>} />
   </Routes>;
   if (location.pathname === '/login') return routes;
