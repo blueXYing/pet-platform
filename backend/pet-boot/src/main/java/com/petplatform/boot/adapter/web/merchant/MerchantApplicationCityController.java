@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping(
     value = "/api/v1/c/merchant-application-cities",
     produces = MediaType.APPLICATION_JSON_VALUE)
-@ConditionalOnProperty(prefix = "pet.private-assets", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "pet", name = {"auth.admin.enabled", "private-assets.enabled"}, havingValue = "true")
 public final class MerchantApplicationCityController {
   private final ObjectProvider<MerchantApplicationCityCatalog> catalogs;
 

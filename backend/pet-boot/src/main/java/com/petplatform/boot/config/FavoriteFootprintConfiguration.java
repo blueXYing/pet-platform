@@ -19,7 +19,7 @@ import org.springframework.context.annotation.Configuration;
  * deployment gate opens it (pet.favtrack.http.enabled).
  */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(prefix = "pet", name = {"auth.c.enabled", "private-assets.enabled"}, havingValue = "true")
+@ConditionalOnProperty(prefix = "pet", name = {"auth.admin.enabled", "auth.c.enabled", "private-assets.enabled"}, havingValue = "true")
 public class FavoriteFootprintConfiguration {
 
     @Bean

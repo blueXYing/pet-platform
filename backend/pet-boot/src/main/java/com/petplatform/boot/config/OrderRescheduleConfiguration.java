@@ -19,6 +19,7 @@ import org.springframework.core.env.Environment;
 @ConditionalOnProperty(prefix="pet.payment",name="enabled",havingValue="true")
 public class OrderRescheduleConfiguration {
  @Configuration(proxyBeanMethods=false)
+ @ConditionalOnProperty(prefix="pet.payment",name="enabled",havingValue="true")
  static class Runtime {
   @Bean ReservationSwapApi reservationSwap(DataSource s,SnowflakeIdGenerator ids,ScheduleCapacityGuardApi guard,
     ScheduleProtectionFactsApi facts,ScheduleCapacityProofApiImpl proof,OrderProtectionFactsApi orders){

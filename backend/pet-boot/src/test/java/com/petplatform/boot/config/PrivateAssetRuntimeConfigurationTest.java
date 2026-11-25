@@ -76,7 +76,7 @@ class PrivateAssetRuntimeConfigurationTest {
             AdminPrivateAssetController.class)
         .withPropertyValues(
             "pet.private-assets.enabled=true",
-            "pet.merchant.application.enabled=true",
+            "pet.auth.admin.enabled=true",
             "PRIVATE_ASSET_GRANT_KEY_VERSION=qa-grant-v1",
             "PRIVATE_ASSET_GRANT_HMAC_KEY_BASE64=" + grant,
             "PRIVATE_ASSET_REASON_KEY_VERSION=qa-reason-v1",

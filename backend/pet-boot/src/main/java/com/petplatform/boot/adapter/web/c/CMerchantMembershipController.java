@@ -32,7 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/v1/c/auth/merchant-memberships")
-@ConditionalOnProperty(prefix = "pet", name = {"auth.c.enabled", "private-assets.enabled"}, havingValue = "true")
+@ConditionalOnProperty(prefix = "pet", name = {"auth.admin.enabled", "auth.c.enabled", "private-assets.enabled"}, havingValue = "true")
 public class CMerchantMembershipController {
 
   private final MerchantAdmissionApiImpl admission;

@@ -47,7 +47,7 @@ import org.springframework.web.bind.annotation.RestController;
  * optional subject never changes visibility.
  */
 @RestController
-@ConditionalOnProperty(prefix = "pet.private-assets", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "pet", name = {"auth.admin.enabled", "private-assets.enabled"}, havingValue = "true")
 public class CServiceController {
 
     /** Contract 74 §2.1 stable categoryCode lexical shape. */

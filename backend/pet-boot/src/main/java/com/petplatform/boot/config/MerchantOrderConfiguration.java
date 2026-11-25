@@ -27,6 +27,7 @@ import org.springframework.web.context.request.*;
 @ConditionalOnProperty(prefix="pet.payment",name="enabled",havingValue="true")
 public class MerchantOrderConfiguration {
     @Configuration(proxyBeanMethods=false)
+    @ConditionalOnProperty(prefix="pet.payment",name="enabled",havingValue="true")
     static class Runtime {
         @Bean @ConditionalOnMissingBean(RefundOrderFactsApi.class)
         RefundOrderFactsApi merchantRefundPresence(DataSource s,ScheduleCapacityGuardApi guard){return new com.petplatform.refund.biz.apiimpl.RefundOrderFactsApiImpl(s,guard);}

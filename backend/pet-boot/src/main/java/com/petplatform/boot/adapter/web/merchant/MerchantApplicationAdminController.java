@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping(
     value = "/api/v1/admin/merchant-applications",
     produces = MediaType.APPLICATION_JSON_VALUE)
-@ConditionalOnProperty(prefix = "pet.private-assets", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "pet", name = {"auth.admin.enabled", "private-assets.enabled"}, havingValue = "true")
 public final class MerchantApplicationAdminController {
   private static final Set<String> STATUSES = Set.of("REVIEWING", "APPROVED", "REJECTED");
   private static final Set<String> TYPES =

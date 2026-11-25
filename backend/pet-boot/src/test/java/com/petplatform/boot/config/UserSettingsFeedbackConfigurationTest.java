@@ -32,7 +32,7 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 class UserSettingsFeedbackConfigurationTest {
 
     private static final String[] DELETION_PRECONDITIONS = {
-            "pet.auth.c.enabled=true", "pet.private-assets.enabled=true"};
+            "pet.auth.admin.enabled=true", "pet.auth.c.enabled=true", "pet.private-assets.enabled=true"};
     private static final String[] FEEDBACK_PRECONDITIONS = {
             "pet.auth.c.enabled=true"};
 

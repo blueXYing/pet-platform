@@ -47,6 +47,7 @@ public class RefundApplicationConfiguration {
     }
 
     @Configuration(proxyBeanMethods=false)
+    @ConditionalOnProperty(prefix="pet.payment",name="enabled",havingValue="true")
     static class Runtime {
         @Bean OrderRefundApplicationApiImpl orderRefundApplications(DataSource source,ScheduleCapacityGuardApi guard,
                 SnowflakeIdGenerator ids,PaymentSuccessFactsApi payments,RefundOrderFactsApi refunds,

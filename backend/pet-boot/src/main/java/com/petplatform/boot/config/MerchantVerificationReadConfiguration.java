@@ -28,6 +28,7 @@ import org.springframework.core.env.Environment;
 public class MerchantVerificationReadConfiguration {
 
     @Configuration(proxyBeanMethods = false)
+    @ConditionalOnProperty(prefix = "pet.payment", name = "enabled", havingValue = "true")
     static class Runtime {
 
         /** CCR §9 STAFF display names: read-only merchant_staff naming face (schema 52). */

@@ -23,6 +23,7 @@ public class VerificationCredentialConfiguration {
  /** Contract 48 K1 v0.2 / binding-CCR D2: the single action a V1 staff member may hold. */
  public static final String VERIFY_ACTION="merchant.order.verify";
  @Configuration(proxyBeanMethods=false)
+ @ConditionalOnProperty(prefix="pet.payment",name="enabled",havingValue="true")
  static class Runtime {
   @Bean @ConditionalOnMissingBean(CredentialProtection.class)
   CredentialProtection credentialProtection(@Value("${pet.verification.credential.key-id}")String id,
@@ -61,6 +62,7 @@ public class VerificationCredentialConfiguration {
   }
  }
  @Configuration(proxyBeanMethods=false)
+ @ConditionalOnProperty(prefix="pet.payment",name="enabled",havingValue="true")
  static class Completion {
   @Bean com.petplatform.order.api.command.OrderVerificationCommitApi verificationOrderCommit(DataSource s,ScheduleCapacityGuardApi g,OrderVerificationCredentialFactsApi f,SnowflakeIdGenerator ids,IntegrationEventPublisher outbox,
    org.springframework.beans.factory.ObjectProvider<VerificationCompletionService> verification,org.springframework.beans.factory.ObjectProvider<com.petplatform.aftersale.api.command.AfterSaleVerificationApi> aftersales){

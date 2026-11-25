@@ -32,6 +32,7 @@ import org.springframework.core.env.Environment;
 @ConditionalOnProperty(prefix="pet.payment",name="enabled",havingValue="true")
 public class AfterSaleWorkflowConfiguration {
     @Configuration(proxyBeanMethods=false)
+    @ConditionalOnProperty(prefix="pet.payment",name="enabled",havingValue="true")
     static class Runtime {
         @Bean AfterSaleAuthorityAdapter afterSaleAuthority(UserAuthService users,AdminSessionQueryApi sessions,
                 AdminAuthorizationQueryApi authorization,MerchantOrderAuthorityApi merchants){

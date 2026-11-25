@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
  * An unconfigured or empty catalog fails closed with 503 (never an implicit "no cities").
  */
 @RestController
-@ConditionalOnProperty(prefix = "pet.private-assets", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "pet", name = {"auth.admin.enabled", "private-assets.enabled"}, havingValue = "true")
 public class CCityController {
 
     private final ObjectProvider<MerchantApplicationCityCatalog> catalogs;

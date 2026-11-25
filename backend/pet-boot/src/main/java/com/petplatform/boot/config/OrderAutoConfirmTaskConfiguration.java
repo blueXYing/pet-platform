@@ -40,6 +40,7 @@ public class OrderAutoConfirmTaskConfiguration {
     }
 
     @Configuration(proxyBeanMethods = false)
+    @ConditionalOnProperty(prefix = "pet.payment", name = "enabled", havingValue = "true")
     static class Execution {
         @Bean @org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean(RefundOrderFactsApi.class)
         RefundOrderFactsApi refundOrderFactsApi(DataSource source, ScheduleCapacityGuardApi guard) {
