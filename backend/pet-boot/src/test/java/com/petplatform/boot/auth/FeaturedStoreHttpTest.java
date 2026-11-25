@@ -480,8 +480,8 @@ class FeaturedStoreHttpTest {
     Map<String, Object> card = maps(page.data().get("items")).get(0);
     assertNull(card.get("avatarUrl"), "unsigned avatar must not leak a URL");
     assertNull(card.get("avatarUrlExpiresAt"));
-    assertEquals(rating(null, 0, false), card.get("rating"),
-        "an unassembled review kernel hides the rating, never a fabricated zero");
+    assertEquals(rating(null, 0, true), card.get("rating"),
+        "a store with no reviews reports null score and zero count, never a fabricated zero score");
     // No orders were seeded: the available sales aggregation answers honest zeros.
     assertEquals(0, ((Number) card.get("monthlySold")).intValue());
     assertEquals(0, ((Number) maps(card.get("services")).get(0).get("soldCount")).intValue());

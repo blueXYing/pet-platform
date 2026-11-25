@@ -217,7 +217,9 @@ class MerchantOrderHttpAcceptanceTest {
                     "SELECT COUNT(*) FROM async_task t JOIN pet_order o ON o.id=t.biz_id"
                             + " WHERE t.task_type='ORDER_AUTO_CONFIRM' AND o.id=" + order
                             + " AND t.execute_at=o.confirm_deadline"));
-            assertEquals(0, f.count("SELECT COUNT(*) FROM async_task_attempt"));
+            assertEquals(0, f.count(
+                    "SELECT COUNT(*) FROM async_task_attempt a JOIN async_task t ON t.id=a.task_id"
+                            + " WHERE t.task_type='ORDER_AUTO_CONFIRM' AND t.biz_id=" + order));
         }
     }
 

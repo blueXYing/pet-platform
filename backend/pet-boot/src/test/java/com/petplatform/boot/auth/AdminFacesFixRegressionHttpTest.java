@@ -225,7 +225,7 @@ class AdminFacesFixRegressionHttpTest {
         assertEquals("ok", settings.envelope().get("message"));
         assertEquals(Boolean.TRUE, settings.data().get("readOnly"));
         assertTrue(((List<?>) settings.data().get("switches")).stream()
-                .anyMatch(row -> "pet.admin.ops.http.enabled".equals(map(row).get("key"))
+                .anyMatch(row -> "pet.auth.admin.enabled".equals(map(row).get("key"))
                         && Boolean.TRUE.equals(map(row).get("enabled"))));
 
         // Kernel-backed ops reads: the collection gate inside the authorization owner must know
