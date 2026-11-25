@@ -81,7 +81,12 @@ public final class AdminPermissionEvaluator {
           "community.report.read", "community.report.handle",
           // CCR-SVC-FLASH-PRICE-001 (contract 77 §4): flash-price review face — read for the
           // list/detail, review for approve/reject/pause/end. Registered 2026-11-18.
-          "service.flash-price.read", "service.flash-price.review");
+          "service.flash-price.read", "service.flash-price.review",
+          // CCR-PAY-CENTER-001 (contract 80 §2 / ruling 40 / ruling 22): settlement config,
+          // operator-filled receiver onboarding & audited reveal, exception retry & read-only reports.
+          "settlement.config.write", "settlement.receiver.write",
+          "settlement.receiver.read-sensitive", "settlement.instruction.retry",
+          "settlement.report.read");
 
   public static List<String> evaluate(
       boolean superAdmin, Collection<String> grants, Set<String> deployed) {
