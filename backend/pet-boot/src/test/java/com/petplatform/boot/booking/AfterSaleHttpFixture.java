@@ -148,6 +148,9 @@ final class AfterSaleHttpFixture implements AutoCloseable {
                     public VerifiedResult query(RefundRequest request){channelCalls.incrementAndGet();throw new AssertionError("HTTP slice has no historical money to query");}
                 });
             }).run(properties.entrySet().stream().map(e->"--"+e.getKey()+"="+e.getValue()).toArray(String[]::new));
+            if(!Boolean.TRUE.equals(overrides.get("pet.order.auto-confirm.worker.enabled"))&&context.containsBean("orderAutoConfirmWorker")){
+                context.getBean("orderAutoConfirmWorker",com.petplatform.task.core.AsyncTaskWorker.class).close();
+            }
             baseUrl="http://127.0.0.1:"+context.getEnvironment().getProperty("local.server.port")+"/api/v1";
             context.getBean(AdminAuthService.class).bootstrap("qa-http-operator","QA HTTP operator",PASSWORD.toCharArray(),"Isolated HTTP acceptance");
             buyerToken=loginBuyer();otherToken=loginOther();ownerToken=loginOwner();adminToken=loginAdmin();
