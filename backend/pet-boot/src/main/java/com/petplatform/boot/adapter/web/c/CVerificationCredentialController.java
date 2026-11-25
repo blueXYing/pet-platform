@@ -41,9 +41,7 @@ import tools.jackson.databind.ObjectReader;
  */
 @RestController
 @RequestMapping("/api/v1/c/orders/{orderId}/verification-code")
-@ConditionalOnProperty(prefix = "pet",
-    name = {"auth.c.enabled", "verification.credential.http.enabled"},
-    havingValue = "true")
+@ConditionalOnProperty(prefix = "pet", name = {"auth.c.enabled", "payment.enabled"}, havingValue = "true")
 public class CVerificationCredentialController {
 
     private static final ObjectReader STRICT =

@@ -28,27 +28,8 @@ import org.springframework.core.env.Environment;
 @Configuration(proxyBeanMethods = false)
 public class ReviewConfiguration {
 
-    @Bean
-    Object reviewSwitchValidation(Environment e) {
-        boolean enabled = e.getProperty("pet.review.enabled", Boolean.class, false);
-        boolean http = e.getProperty("pet.review.http.enabled", Boolean.class, false);
-        boolean dependencies = e.getProperty("pet.auth.c.enabled", Boolean.class, false);
-        boolean appeal = e.getProperty("pet.review.appeal.enabled", Boolean.class, false);
-        boolean appealHttp = e.getProperty("pet.review.appeal.http.enabled", Boolean.class, false);
-        boolean appealDependencies = e.getProperty("pet.schedule.protection.enabled", Boolean.class, false)
-                && e.getProperty("pet.auth.admin.enabled", Boolean.class, false);
-        if (http && !enabled || enabled && !dependencies)
-            throw new IllegalStateException(
-                    "Review kernel requires the real C session and order query dependencies");
-        if (appealHttp && !appeal || appeal && (!enabled || !dependencies || !appealDependencies))
-            throw new IllegalStateException(
-                    "Review appeal requires the review kernel, the store guard and both real"
-                            + " session domains (pet.schedule.protection / pet.auth.admin)");
-        return new Object();
-    }
-
     @Configuration(proxyBeanMethods = false)
-    @ConditionalOnProperty(name = "pet.review.enabled", havingValue = "true")
+    @ConditionalOnProperty(prefix = "pet.auth.c", name = "enabled", havingValue = "true")
     static class Runtime {
         /** The apiimpl facade keeps review persistence inside pet-review-biz (ARCH-002). */
         @Bean
@@ -56,12 +37,6 @@ public class ReviewConfiguration {
                 ObjectProvider<Clock> clocks,
                 ObjectProvider<ScheduleCapacityGuardApi> guards,
                 ObjectProvider<ReviewAppealAuthorityAdapter> appealAuthority) {
-            // Same UTC-clock discipline as the sibling kernels; system UTC when no shared
-            // clock bean is assembled. The appeal guard/authority beans exist only under
-            // pet.review.appeal.enabled — without them the appeal faces fail closed (503).
-            // CCR-M-REVIEW-VIEW-001: the OWNER store reads project the buyer nickname/avatar
-            // through the user basics read, assembled locally over the same DataSource exactly
-            // like the contract-69 customer slice (boot owns biz apiimpl assembly, ARCH-002).
             return new ReviewApiImpl(source, ids, orders, clocks.getIfAvailable(Clock::systemUTC),
                     guards.getIfAvailable(), appealAuthority.getIfAvailable(),
                     new com.petplatform.user.biz.apiimpl.UserQueryApiImpl(source));
@@ -69,13 +44,9 @@ public class ReviewConfiguration {
     }
 
     @Configuration(proxyBeanMethods = false)
-    @ConditionalOnProperty(name = "pet.review.appeal.enabled", havingValue = "true")
+    @ConditionalOnProperty(prefix = "pet", name = {"auth.c.enabled", "auth.admin.enabled"}, havingValue = "true")
     static class AppealRuntime {
-        /** Contract56 port-side authority: MER OWNER/admin action checks over real sessions.
-         *  DependsOn keeps the switch validation first so an incomplete dependency stack
-         *  always surfaces as the gate message, never as a bean-wiring accident. */
         @Bean(name = "reviewAppealAuthority")
-        @org.springframework.context.annotation.DependsOn("reviewSwitchValidation")
         ReviewAppealAuthorityAdapter reviewAppealAuthority(DataSource source,
                 ScheduleCapacityGuardApi guard, UserAuthService users,
                 AdminSessionQueryApi sessions, AdminAuthorizationQueryApi admins) {

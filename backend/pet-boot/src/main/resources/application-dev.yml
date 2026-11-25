@@ -1,0 +1,33 @@
+# ==============================================================================
+# 开发环境非敏感配置（SPRING_PROFILES_ACTIVE=dev）
+# ------------------------------------------------------------------------------
+# 与 test / prod 装配完全一致的业务能力，区别仅在于环境地址、拉卡拉 SIT 与本地调试项。
+# 所有密钥、密码、证书路径统一放在进程环境变量或本地 git-ignored 的 .env.local。
+# ==============================================================================
+
+pet:
+  auth:
+    admin:
+      enabled: true
+      origin: ${ADMIN_AUTH_ORIGIN:http://127.0.0.1:5173}
+    c:
+      enabled: true
+  private-assets:
+    enabled: true
+  payment:
+    enabled: true
+    dispatch:
+      environment: SIT
+    lakala:
+      settle-type: 0
+    center:
+      demo:
+        enabled: true
+  marketing:
+    asset:
+      allow-http: true
+  service:
+    category:
+      icon-url-allow-http: true
+    flash-price:
+      enabled: true

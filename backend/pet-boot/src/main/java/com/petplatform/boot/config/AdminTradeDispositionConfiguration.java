@@ -60,19 +60,9 @@ import org.springframework.core.env.Environment;
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty(
     prefix = "pet",
-    name = {"auth.admin.enabled", "admin.trade.http.enabled"},
+    name = {"auth.admin.enabled", "payment.enabled"},
     havingValue = "true")
 public class AdminTradeDispositionConfiguration {
-
-    @Bean Object adminTradeDispositionSwitchValidation(Environment e) {
-        boolean payment = e.getProperty("pet.payment.foundation.enabled", Boolean.class, false);
-        boolean worker = e.getProperty("pet.admin.trade.worker.enabled", Boolean.class, false);
-        if (worker && !payment) {
-            throw new IllegalStateException(
-                    "Admin trade disposal worker requires the payment foundation (channel refund execution)");
-        }
-        return new Object();
-    }
 
     @Bean
     @ConditionalOnMissingBean(OrderAdminCloseFactsApi.class)
@@ -125,7 +115,6 @@ public class AdminTradeDispositionConfiguration {
     }
 
     @Bean(initMethod = "start", destroyMethod = "close")
-    @ConditionalOnProperty(prefix = "pet.admin.trade.worker", name = "enabled", havingValue = "true")
     AsyncTaskWorker adminTradeRefundWorker(DataSource source, SnowflakeIdGenerator ids,
             RefundExecutionService execution, ObjectProvider<Clock> clocks) {
         return AsyncTaskWorker.create(source, ids, "admin-trade-" + UUID.randomUUID(),
@@ -139,7 +128,6 @@ public class AdminTradeDispositionConfiguration {
     }
 
     @Bean(initMethod = "start", destroyMethod = "close")
-    @ConditionalOnProperty(prefix = "pet.admin.trade.worker", name = "enabled", havingValue = "true")
     LateRefundConfiguration.DeadTaskReconciler adminTradeRefundReconciler(RefundExecutionService execution) {
         return new LateRefundConfiguration.DeadTaskReconciler(execution);
     }

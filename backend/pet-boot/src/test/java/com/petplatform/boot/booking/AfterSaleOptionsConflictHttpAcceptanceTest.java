@@ -9,18 +9,6 @@ import org.junit.jupiter.api.Test;
 
 /** Real loopback HTTP, production catalog binding, actual sessions and transactional SQL. */
 class AfterSaleOptionsConflictHttpAcceptanceTest {
-    @Test void explicitlyClosedHttpHasNoOptionsMappingEvenWithCurrentSession()throws Exception{
-        try(var f=new AfterSaleHttpFixture(Map.of("pet.aftersale.http.enabled",false))){
-            assertTrue(f.context.getBeansOfType(com.petplatform.boot.adapter.web.aftersale.AfterSaleController.class).isEmpty());
-            var response=f.client.send(java.net.http.HttpRequest.newBuilder(java.net.URI.create(f.baseUrl+"/c/aftersale-options"))
-                    .header("Authorization","Bearer "+f.buyerToken).GET().build(),java.net.http.HttpResponse.BodyHandlers.ofString());
-            assertEquals(403,response.statusCode());
-            @SuppressWarnings("unchecked") var denial=f.json.readValue(response.body(),Map.class);
-            assertEquals(Set.of("code","message","data","traceId"),denial.keySet());assertEquals("COMMON_FORBIDDEN",denial.get("code"));assertNull(denial.get("data"));
-            assertEquals("no-store, private",response.headers().firstValue("Cache-Control").orElseThrow());
-            assertEquals(0,f.count("SELECT COUNT(*) FROM aftersale_command"));assertNoMoney(f);
-        }
-    }
     @Test void authenticatedCatalogIsSortedStrictAndUsesExactlyTheNewCreateCodes()throws Exception{
         try(var f=new AfterSaleHttpFixture(Map.of("pet.aftersale.type-codes","QA_QUALITY,QA_A_ISSUE",
                 "pet.aftersale.type-labels[QA_A_ISSUE]","QA alternate issue"))){

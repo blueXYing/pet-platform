@@ -40,7 +40,7 @@ import tools.jackson.databind.JsonNode;
  */
 @RestController
 @RequestMapping(value = "/api/v1/merchant/store-profile", produces = MediaType.APPLICATION_JSON_VALUE)
-@ConditionalOnProperty(prefix = "pet.merchant.store-profile", name = "http.enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "pet", name = {"auth.admin.enabled", "private-assets.enabled"}, havingValue = "true")
 public final class MerchantStoreProfileController {
 
     private final MerchantStoreProfileQueryApi queries;

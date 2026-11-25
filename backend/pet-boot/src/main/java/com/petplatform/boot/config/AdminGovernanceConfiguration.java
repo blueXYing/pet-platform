@@ -30,10 +30,7 @@ import org.springframework.context.annotation.Configuration;
  * depends on another biz). The two ports share one shape but are deliberately distinct types.
  */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(
-    prefix = "pet",
-    name = {"auth.admin.enabled", "admin.governance.http.enabled"},
-    havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.auth.admin", name = "enabled", havingValue = "true")
 public class AdminGovernanceConfiguration {
 
   @Bean

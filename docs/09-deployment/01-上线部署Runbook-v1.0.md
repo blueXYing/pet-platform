@@ -240,36 +240,23 @@ cd backend && mvn -T 4 -DskipTests package
 #       pet-boot/target/pet-boot-0.1.0-SNAPSHOT.jar        ← 普通 jar，仅供架构测试，勿部署
 ```
 
-### 3.4 后端启动（jar 启动参数/环境变量）
+### 3.4 后端启动（五层配置 + 环境变量）
 
-部署机环境变量（全部经 `application.yml` 占位符注入，无默认凭据）：
+配置已收口为五层（详见 [21号《部署开关与五层配置清单》](../08-engineering/21-部署开关组合清单-v1.0.md)）：
+- 公共默认值与敏感项绑定入口：`application.yml`；
+- 环境非敏感配置：`application-dev.yml` / `application-test.yml` / `application-prod.yml`（三套环境装配完全一致的全量业务能力，不再手工拼装几十个场景开关）；
+- 密钥、密码、证书路径：统一按 [ops/backend-secrets.env.example](../../ops/backend-secrets.env.example) 注入进程环境变量（本地开发可复制为仓库根目录 `.env.local`，Spring Boot 自动导入）。
+
+生产启动只需注入环境变量并指定 `SPRING_PROFILES_ACTIVE=prod`：
 
 ```bash
-export DB_HOST=<PLACEHOLDER:DB_HOST> DB_PORT=3306 DB_NAME=pet_platform
-export DB_USER=<PLACEHOLDER:业务账号> DB_PASSWORD=<PLACEHOLDER:密码>
-export REDIS_HOST=<PLACEHOLDER:REDIS_HOST> REDIS_PORT=6379 REDIS_PASSWORD=<PLACEHOLDER:>
-export SERVER_PORT=8080
+set -a
+source /etc/pet-platform/backend-secrets.env   # 按 ops/backend-secrets.env.example 填写
+set +a
 export SPRING_PROFILES_ACTIVE=prod
-# ——B 类凭据（§2 全表；未配齐的域保持其开关默认关，不要手工开）——
-export AUTH_WECHAT_APP_ID=<PLACEHOLDER> AUTH_WECHAT_APP_SECRET=<PLACEHOLDER>
-export OSS_ENDPOINT=<PLACEHOLDER> OSS_REGION=<PLACEHOLDER> OSS_BUCKET=<PLACEHOLDER>
-export OSS_ACCESS_KEY_ID=<PLACEHOLDER> OSS_SECRET_ACCESS_KEY=<PLACEHOLDER>
-# 其余 pet.auth.admin.* / pet.payment.* / 保护密钥等经外置配置或 -D 注入，见 §2
-```
+export SERVER_PORT=8080
 
-管理端会话密钥等 `pet.auth.admin.*` 键不是环境变量占位，用 Spring 标准松绑定注入（外置 `application-prod.yml` 或 `-D` 参数均可）：
-
-```bash
 java -jar pet-boot-0.1.0-SNAPSHOT-exec.jar \
-  --spring.profiles.active=prod \
-  --pet.auth.admin.enabled=true \
-  --pet.auth.admin.origin=https://<PLACEHOLDER:管理端域名> \
-  --pet.auth.admin.key-id=<PLACEHOLDER:key-id> \
-  --pet.auth.admin.mac-key-base64=<PLACEHOLDER:openssl rand -base64 32> \
-  --pet.auth.admin.encryption-key-base64=<PLACEHOLDER:另一把 openssl rand -base64 32> \
-  --pet.auth.admin.redis-host=$REDIS_HOST --pet.auth.admin.redis-port=$REDIS_PORT \
-  --pet.auth.admin.audit-path=<PLACEHOLDER:/var/log/pet/admin-audit.log> \
-  --pet.auth.admin.node-id=1 \
   2>&1 | tee /var/log/pet/boot.log
 ```
 

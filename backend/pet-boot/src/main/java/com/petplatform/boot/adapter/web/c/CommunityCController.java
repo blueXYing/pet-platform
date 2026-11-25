@@ -36,8 +36,7 @@ import tools.jackson.databind.ObjectReader;
 
 /** CCR-COM-001 public community HTTP face. */
 @RestController
-@ConditionalOnProperty(prefix = "pet", name = {"community.enabled", "community.c.http.enabled", "auth.c.enabled"},
-        havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.auth.c", name = "enabled", havingValue = "true")
 public class CommunityCController {
 
     /** Default tree reader; keeps JsonMapper out of the controller (ARCH-004). */

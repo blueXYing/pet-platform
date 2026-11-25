@@ -32,10 +32,9 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 class UserSettingsFeedbackConfigurationTest {
 
     private static final String[] DELETION_PRECONDITIONS = {
-            "pet.auth.c.enabled=true", "pet.usersettings.http.enabled=true",
-            "pet.merchant.application.enabled=true"};
+            "pet.auth.admin.enabled=true", "pet.auth.c.enabled=true", "pet.private-assets.enabled=true"};
     private static final String[] FEEDBACK_PRECONDITIONS = {
-            "pet.auth.c.enabled=true", "pet.feedback.http.enabled=true"};
+            "pet.auth.c.enabled=true"};
 
     private static String[] withCooldown(String extraProperty) {
         java.util.List<String> properties = new java.util.ArrayList<>(java.util.List.of(DELETION_PRECONDITIONS));
@@ -104,21 +103,21 @@ class UserSettingsFeedbackConfigurationTest {
 
     @Test
     void deletionFaceNeedsAllThreeHardPreconditions() {
-        // Slice switch on, but no C session domain: nothing assembles.
-        deletionRunner("pet.usersettings.http.enabled=true").run(context -> {
+        // Only private-assets on (no C session domain): nothing assembles.
+        deletionRunner("pet.private-assets.enabled=true").run(context -> {
             assertThat(context).hasNotFailed();
             assertThat(context).doesNotHaveBean(AccountDeletionService.class);
         });
-        // All three hard preconditions but the OWNER-membership surface missing: assembly
+        // Both preconditions but the OWNER-membership surface missing: assembly
         // fails closed (never a silent fallback).
         deletionRunnerWithoutMembership().run(context -> assertThat(context).hasFailed());
-        // Everything present: the slice assembles with the fact ports and the cooldown
-        // deployment configuration (v0.2, default 7, bounded 1..30).
+        // Everything present: the slice assembles with the fact ports, cooldown and worker.
         deletionRunner(DELETION_PRECONDITIONS).run(context -> {
             assertThat(context).hasNotFailed();
             assertThat(context).hasSingleBean(AccountDeletionService.class);
             assertThat(context).hasSingleBean(OrderDeletionFactsApi.class);
             assertThat(context).hasSingleBean(AfterSaleDeletionFactsApi.class);
+            assertThat(context).hasBean("accountDeletionExpiryWorker");
         });
         deletionRunner(withCooldown("pet.usersettings.deletion.cooldown-days=3"))
                 .run(context -> assertThat(context).hasNotFailed());
@@ -127,13 +126,6 @@ class UserSettingsFeedbackConfigurationTest {
                 .run(context -> assertThat(context).hasFailed());
         deletionRunner(withCooldown("pet.usersettings.deletion.cooldown-days=31"))
                 .run(context -> assertThat(context).hasFailed());
-        // The durable expiry worker is independently opt-in (SQL13 family precedent) and
-        // registers the ACCOUNT_DELETION_EXEC binding when on.
-        deletionRunner(withCooldown("pet.usersettings.deletion.worker.enabled=true"))
-                .run(context -> {
-                    assertThat(context).hasNotFailed();
-                    assertThat(context).hasBean("accountDeletionExpiryWorker");
-                });
     }
 
     @Test

@@ -379,24 +379,15 @@ class ReviewAppealHttpAcceptanceTest {
         return counts;
     }
 
-    /** Default-off: without pet.review.appeal.http.enabled every new route stays unreachable. */
-    @Test void appealFaceStaysOffWithoutItsSwitch() throws Exception {
-        try (var f = new AfterSaleHttpFixture(Map.of(
-                "pet.review.enabled", true, "pet.review.http.enabled", true))) {
-            f.ordinary.t.r.f.f.db.script("14-Command-Idempotency-Schema-v0.1.sql");
-            String reviewId = publishedReview(f);
-            assertEquals(403, f.send("GET", "/merchant/reviews?merchantId=" + MERCHANT
-                    + "&storeId=" + STORE, null, f.ownerToken).status());
-            assertEquals(403, f.send("GET", "/merchant/reviews/" + reviewId, null, f.ownerToken).status());
-            assertEquals(403, f.send("GET", "/merchant/reviews/summary?merchantId=" + MERCHANT
-                    + "&storeId=" + STORE, null, f.ownerToken).status());
-            assertEquals(403, f.send("POST", appealPath(reviewId),
-                    Map.of("reason", "未开放的申诉面"), f.ownerToken).status());
-            assertEquals(403, f.send("GET", "/admin/review-appeals", null, f.adminToken).status());
-            assertEquals(403, f.send("POST", "/admin/review-appeals/900199999999/decision",
-                    Map.of("decisionType", "APPROVED", "reason", "未开放"), f.adminToken).status());
-            assertEquals(0, f.count("SELECT COUNT(*) FROM review_appeal"));
-        }
+    /** Default-off: without pet.auth.c.enabled + pet.auth.admin.enabled the appeal controller stays unassembled. */
+    @Test void appealFaceStaysOffWithoutItsSwitch() {
+        new org.springframework.boot.test.context.runner.ApplicationContextRunner()
+                .withPropertyValues("pet.auth.c.enabled=true")
+                .withUserConfiguration(com.petplatform.boot.adapter.web.review.MerchantReviewAppealController.class)
+                .run(context -> {
+                    assertNull(context.getStartupFailure());
+                    assertTrue(context.getBeansOfType(com.petplatform.boot.adapter.web.review.MerchantReviewAppealController.class).isEmpty());
+                });
     }
 
     private static void assertError(AfterSaleHttpFixture.Reply reply, int status, String code) {

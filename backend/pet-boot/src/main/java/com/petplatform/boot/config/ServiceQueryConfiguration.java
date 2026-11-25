@@ -20,7 +20,7 @@ import org.springframework.context.annotation.Configuration;
  * reads fail closed rather than degrade.
  */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(prefix = "pet.service.query", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "pet", name = {"auth.admin.enabled", "private-assets.enabled"}, havingValue = "true")
 public class ServiceQueryConfiguration {
 
     @Bean

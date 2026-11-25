@@ -11,11 +11,8 @@ class OrderRescheduleConfigurationTest {
  @Test void disabledByDefaultDoesNotTouchDatabaseOrRegisterCommand(){
   DataSource source=mock(DataSource.class);runner().withBean(DataSource.class,()->source).run(c->{assertThat(c).hasNotFailed();assertThat(c).doesNotHaveBean(OrderRescheduleApi.class);verifyNoInteractions(source);});
  }
- @Test void httpWithoutKernelFailsClosed(){
-  runner().withPropertyValues("pet.order.reschedule.http.enabled=true").run(c->assertThat(c).hasFailed());
- }
  @Test void explicitEnablementWithoutOwnerDependenciesFailsClosed(){
-  runner().withPropertyValues("pet.order.reschedule.enabled=true").run(c->assertThat(c).hasFailed());
+  runner().withPropertyValues("pet.payment.enabled=true").run(c->assertThat(c).hasFailed());
  }
  @Test void missingVerificationProviderCannotComposeEvenWithAllOtherOwners(){
   enabled().run(c->{assertThat(c).hasFailed();assertThat(c.getStartupFailure()).hasStackTraceContaining("VerificationRescheduleFenceApi");});
@@ -24,8 +21,7 @@ class OrderRescheduleConfigurationTest {
   enabled().withBean(VerificationRescheduleFenceApi.class,()->mock(VerificationRescheduleFenceApi.class))
    .run(c->{assertThat(c).hasNotFailed();assertThat(c).hasSingleBean(OrderRescheduleApi.class);assertThat(c).doesNotHaveBean(com.petplatform.task.core.AsyncTaskWorker.class);});
  }
- private ApplicationContextRunner enabled(){return runner().withPropertyValues("pet.order.reschedule.enabled=true","pet.schedule.protection.enabled=true",
-   "pet.payment.foundation.enabled=true","pet.order.auto-confirm.enabled=true","pet.order.merchant.enabled=true")
+ private ApplicationContextRunner enabled(){return runner().withPropertyValues("pet.payment.enabled=true")
   .withBean(DataSource.class,()->mock(DataSource.class))
   .withBean(com.petplatform.common.SnowflakeIdGenerator.class,()->()->1L)
   .withBean(com.petplatform.schedule.api.protection.ScheduleCapacityGuardApi.class,()->mock(com.petplatform.schedule.api.protection.ScheduleCapacityGuardApi.class))

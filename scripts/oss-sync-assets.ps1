@@ -1,4 +1,4 @@
-# OSS 一键重新导入(CCR-OSS-001)
+﻿# OSS 一键重新导入(CCR-OSS-001)
 # 用法:在仓库根目录执行  powershell -File scripts/oss-sync-assets.ps1
 # 可选参数(带默认值):
 #   -DbJdbcUrl / -DbUser / -DbPass   注册表所在MySQL(默认本机测试实例占位,按需改)
@@ -12,8 +12,9 @@ param(
 )
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
-$envFile = Join-Path $root "ops/oss.env.local"
-if (-not (Test-Path $envFile)) { throw "缺少 $envFile;请先按模板填写OSS连接信息" }
+$envFile = Join-Path $root ".env.local"
+if (-not (Test-Path $envFile)) { $envFile = Join-Path $root "ops/oss.env.local" }
+if (-not (Test-Path $envFile)) { throw "缺少 .env.local（或 ops/oss.env.local）；请先按 ops/backend-secrets.env.example 填写 OSS 连接信息" }
 Get-Content $envFile | ForEach-Object {
   $line = $_.Trim()
   if ($line -and -not $line.StartsWith("#") -and $line.Contains("=")) {

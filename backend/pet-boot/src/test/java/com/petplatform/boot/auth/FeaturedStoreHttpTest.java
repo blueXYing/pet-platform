@@ -117,7 +117,11 @@ class FeaturedStoreHttpTest {
     props.put("pet.merchant.application.open-cities[0].name", "成都");
     props.put("pet.merchant.application.open-cities[1].code", "shanghai");
     props.put("pet.merchant.application.open-cities[1].name", "上海");
-    props.put("pet.merchant.application.enabled", true);
+    props.put("pet.private-assets.enabled", true);
+    props.put("PRIVATE_ASSET_GRANT_KEY_VERSION", "qa-featured-grant");
+    props.put("PRIVATE_ASSET_GRANT_HMAC_KEY_BASE64", Base64.getEncoder().encodeToString(key(29)));
+    props.put("PRIVATE_ASSET_REASON_KEY_VERSION", "qa-featured-reason");
+    props.put("PRIVATE_ASSET_REASON_AES_KEY_BASE64", Base64.getEncoder().encodeToString(key(31)));
     props.put("pet.outbox.enabled", true);
     props.put("pet.service.query.enabled", true);
     if (reviewEnabled) {
@@ -131,6 +135,8 @@ class FeaturedStoreHttpTest {
                     var beans = (GenericApplicationContext) ctx;
                     beans.registerBean(
                         "featuredDataSource", javax.sql.DataSource.class, () -> db.source);
+                    beans.registerBean("qaStubObjectStore", com.petplatform.thirdparty.biz.application.port.PrivateObjectStore.class, () -> org.mockito.Mockito.mock(com.petplatform.thirdparty.biz.application.port.PrivateObjectStore.class));
+                    beans.registerBean("qaStubAssetScanner", com.petplatform.thirdparty.biz.application.port.PrivateAssetScanner.class, () -> bytes -> new com.petplatform.thirdparty.biz.application.port.PrivateAssetScanner.ScanResult(true, "QA_ONLY_SCANNER", "CLEAN"));
                     beans.registerBean("featuredIds", SnowflakeIdGenerator.class, () -> db.ids);
                     beans.registerBean(
                         "featuredWechat",
@@ -474,8 +480,8 @@ class FeaturedStoreHttpTest {
     Map<String, Object> card = maps(page.data().get("items")).get(0);
     assertNull(card.get("avatarUrl"), "unsigned avatar must not leak a URL");
     assertNull(card.get("avatarUrlExpiresAt"));
-    assertEquals(rating(null, 0, false), card.get("rating"),
-        "an unassembled review kernel hides the rating, never a fabricated zero");
+    assertEquals(rating(null, 0, true), card.get("rating"),
+        "a store with no reviews reports null score and zero count, never a fabricated zero score");
     // No orders were seeded: the available sales aggregation answers honest zeros.
     assertEquals(0, ((Number) card.get("monthlySold")).intValue());
     assertEquals(0, ((Number) maps(card.get("services")).get(0).get("soldCount")).intValue());

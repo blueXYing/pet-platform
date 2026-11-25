@@ -74,31 +74,34 @@ class AdminFacesFixRegressionHttpTest {
         props.put("pet.auth.c.redis-host", fixture.redisHost);
         props.put("pet.auth.c.redis-port", fixture.redisPort);
         props.put("pet.auth.c.cache-prefix", "auth001c_facesfix:");
-        props.put("pet.admin.trade.http.enabled", true);
-        props.put("pet.admin.ops.http.enabled", true);
-        // The 35号 union opening: the grant channel rides the ops face but is gated by its own
-        // switch (production default stays off until the unified flip); FA-1 asserts the
-        // assembled kernel's own NOT_FOUND, so this regression boots with it explicitly on.
-        props.put("pet.coupon.grant.enabled", true);
-        // The shared store capacity guard (schedule protection foundation) backs the trade
-        // disposition kernels and the merchant order face alike; the booking expiry kernel
-        // provides the reservation release facts the late-refund service reads.
-        props.put("pet.schedule.protection.enabled", true);
-        props.put("pet.order.expiry.enabled", true);
-        // The payment foundation reads booking user facts from the order creation kernel.
-        props.put("pet.order.creation.enabled", true);
-        // The payment foundation publishes through the transactional outbox; with the outbox on,
-        // the refund.late subscription must be on too or the dispatcher boots with an empty
-        // consumer list and fails (the composition constraint the E2E launcher documented).
-        props.put("pet.outbox.enabled", true);
-        props.put("pet.refund.late.enabled", true);
+        props.put("pet.private-assets.enabled", true);
+        props.put("PRIVATE_ASSET_GRANT_KEY_VERSION", "qa-faces-grant");
+        props.put("PRIVATE_ASSET_GRANT_HMAC_KEY_BASE64", Base64.getEncoder().encodeToString(key(29)));
+        props.put("PRIVATE_ASSET_REASON_KEY_VERSION", "qa-faces-reason");
+        props.put("PRIVATE_ASSET_REASON_AES_KEY_BASE64", Base64.getEncoder().encodeToString(key(31)));
+        props.put("pet.payment.enabled", true);
         props.put("pet.payment.lakala.channel-time-zone", "Asia/Shanghai");
-        // The refund execution settings validate a non-blank request IP and notify URL.
+        props.put("pet.payment.lakala.platform.merchant-no", "QA8220000000002");
+        props.put("pet.payment.lakala.platform.term-no", "QAT00002");
+        props.put("pet.payment.lakala.platform.sub-app-id", "qa-facesfix-app");
+        Path paramKeyFile = Files.writeString(fixture.directory.resolve("param.key"),
+                Base64.getEncoder().encodeToString(key(37)));
+        props.put("pet.payment.dispatch.parameter-key-path", paramKeyFile.toString());
+        props.put("pet.payment.dispatch.out-org-code", "QA-ORG");
+        props.put("pet.payment.dispatch.subject", "QA facesfix order");
         props.put("pet.payment.dispatch.request-ip", "127.0.0.1");
         props.put("pet.payment.dispatch.notify-url", "https://faces.example.invalid/notify");
-        props.put("pet.order.merchant.enabled", true);
-        props.put("pet.payment.foundation.enabled", true);
         props.put("pet.order.merchant.protection-key", Base64.getEncoder().encodeToString(key(17)));
+        props.put("pet.verification.credential.key-id", "qa-faces");
+        props.put("pet.verification.credential.encryption-key", Base64.getEncoder().encodeToString(key(19)));
+        props.put("pet.verification.credential.lookup-key", Base64.getEncoder().encodeToString(key(23)));
+        props.put("pet.refund.application.protection-key", Base64.getEncoder().encodeToString(key(13)));
+        props.put("pet.refund.application.reason-codes", "QA_REASON");
+        props.put("pet.aftersale.protection-key", Base64.getEncoder().encodeToString(key(11)));
+        props.put("pet.aftersale.type-codes", "QA_QUALITY");
+        props.put("pet.aftersale.demand-codes", "QA_REFUND");
+        props.put("pet.aftersale.type-labels[QA_QUALITY]", "QA quality");
+        props.put("pet.aftersale.demand-labels[QA_REFUND]", "QA refund");
         try {
             context = new SpringApplicationBuilder(PetPlatformApplication.class)
                     .properties(props)
@@ -108,6 +111,33 @@ class AdminFacesFixRegressionHttpTest {
                         beans.registerBean("facesFixIds", SnowflakeIdGenerator.class, () -> fixture.ids);
                         beans.registerBean("facesFixWechat",
                                 WechatSessionProvider.class, CAuthHttpTest.FixedWechatProvider::new);
+                        beans.registerBean("facesFixObjectStore",
+                                com.petplatform.thirdparty.biz.application.port.PrivateObjectStore.class,
+                                () -> org.mockito.Mockito.mock(
+                                        com.petplatform.thirdparty.biz.application.port.PrivateObjectStore.class));
+                        beans.registerBean("facesFixAssetScanner",
+                                com.petplatform.thirdparty.biz.application.port.PrivateAssetScanner.class,
+                                () -> bytes -> new com.petplatform.thirdparty.biz.application.port.PrivateAssetScanner.ScanResult(true, "QA_ONLY_SCANNER", "CLEAN"));
+                        beans.registerBean("facesFixProtection",
+                                com.petplatform.merchant.biz.application.ApplicationValidationPorts.ProtectedValuePort.class,
+                                () -> org.mockito.Mockito.mock(
+                                        com.petplatform.merchant.biz.application.ApplicationValidationPorts.ProtectedValuePort.class));
+                        beans.registerBean("facesFixSubjects",
+                                com.petplatform.merchant.biz.application.SubjectCredentialPort.class,
+                                () -> org.mockito.Mockito.mock(
+                                        com.petplatform.merchant.biz.application.SubjectCredentialPort.class));
+                        beans.registerBean("facesFixPaymentChannel",
+                                com.petplatform.payment.biz.application.PaymentChannel.class,
+                                () -> org.mockito.Mockito.mock(
+                                        com.petplatform.payment.biz.application.PaymentChannel.class));
+                        beans.registerBean("facesFixRefundModeration",
+                                com.petplatform.refund.biz.application.RefundApplicationPorts.Moderation.class,
+                                () -> value -> new com.petplatform.refund.biz.application.RefundApplicationPorts.Approval(
+                                        sha(value), "TEST_ONLY_MODERATION", true));
+                        beans.registerBean("facesFixAfterSaleModeration",
+                                com.petplatform.aftersale.biz.application.AfterSalePorts.Moderation.class,
+                                () -> value -> new com.petplatform.aftersale.biz.application.AfterSalePorts.Approval(
+                                        sha(value), "TEST_ONLY_MODERATION", true));
                         beans.registerBean("facesFixMerchantModeration",
                                 com.petplatform.order.biz.application.MerchantOrderPorts.Moderation.class,
                                 () -> value -> new com.petplatform.order.biz.application.MerchantOrderPorts.Approval(
@@ -195,7 +225,7 @@ class AdminFacesFixRegressionHttpTest {
         assertEquals("ok", settings.envelope().get("message"));
         assertEquals(Boolean.TRUE, settings.data().get("readOnly"));
         assertTrue(((List<?>) settings.data().get("switches")).stream()
-                .anyMatch(row -> "pet.admin.ops.http.enabled".equals(map(row).get("key"))
+                .anyMatch(row -> "pet.auth.admin.enabled".equals(map(row).get("key"))
                         && Boolean.TRUE.equals(map(row).get("enabled"))));
 
         // Kernel-backed ops reads: the collection gate inside the authorization owner must know

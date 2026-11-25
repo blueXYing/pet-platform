@@ -17,7 +17,7 @@ import org.springframework.context.annotation.Configuration;
  * security chain at deployment.
  */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(prefix = "pet.store.query", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "pet", name = {"auth.admin.enabled", "private-assets.enabled"}, havingValue = "true")
 public class StoreQueryConfiguration {
 
     @Bean

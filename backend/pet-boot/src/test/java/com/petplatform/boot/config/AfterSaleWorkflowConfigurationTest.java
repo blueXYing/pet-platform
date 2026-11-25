@@ -45,29 +45,6 @@ class AfterSaleWorkflowConfigurationTest {
         });
     }
 
-    @ParameterizedTest
-    @ValueSource(strings={"pet.aftersale.http.enabled","pet.aftersale.worker.enabled","pet.aftersale.refund.enabled"})
-    void childSwitchCannotOpenAnUnavailableWorkflow(String flag) {
-        runner().withPropertyValues(flag+"=true").run(c->{
-            assertThat(c).hasFailed();
-            assertThat(c.getStartupFailure()).hasStackTraceContaining("dependent switches require workflow");
-        });
-    }
-
-    @Test void httpCannotBeEnabledWithoutAdminSessions() {
-        dependencies("").withPropertyValues("pet.aftersale.http.enabled=true").run(c->{
-            assertThat(c).hasFailed();
-            assertThat(c.getStartupFailure()).hasStackTraceContaining("Aftersale HTTP requires real admin sessions");
-        });
-    }
-
-    @Test void httpStartsWithRealSessionDependenciesButWithoutFundingProvider() {
-        dependencies("").withPropertyValues("pet.aftersale.http.enabled=true","pet.auth.admin.enabled=true")
-                .run(c->{assertThat(c).hasNotFailed();assertThat(c).hasSingleBean(AfterSaleService.class);
-                    assertThat(c).doesNotHaveBean(RefundFundingEligibilityFactsApi.class);
-                    verifyNoInteractions(c.getBean(PrivateObjectStore.class),c.getBean(PaymentSuccessFactsApi.class));});
-    }
-
     @Test void oneConfiguredCatalogProvidesSortedLabelsAndTheExactCreateCodeSet() {
         dependencies("").withPropertyValues("pet.aftersale.type-codes=Z_KIND,A_KIND",
                 "pet.aftersale.type-labels[Z_KIND]=Z issue","pet.aftersale.type-labels[A_KIND]=A issue",
@@ -110,59 +87,42 @@ class AfterSaleWorkflowConfigurationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings={"pet.refund.application.enabled","pet.verification.completion.enabled","pet.private-assets.enabled","pet.auth.c.enabled"})
-    void requiredSubsystemCannotBeDisabledBehindAReadyAdapter(String flag) {
-        dependencies("").withPropertyValues(flag+"=false").run(c->{
-            assertThat(c).hasFailed();
-            assertThat(c.getStartupFailure()).hasStackTraceContaining("requires real refund, verification, private assets and sessions");
-        });
-    }
-
-    @ParameterizedTest
     @ValueSource(strings={"user","admin-session","admin-authorization","merchant","payment","history","object-store","grant-key","reason-protection","watermark","moderation"})
     void missingTrustedSourceHasNoPermissiveReplacement(String missing) {
         dependencies(missing).run(c->assertThat(c).hasFailed());
     }
 
-    @Test void openingRefundWithoutAuthoritativeFundingProviderFailsStartup() {
-        dependencies("").withPropertyValues("pet.aftersale.refund.enabled=true").run(c->{
-            assertThat(c).hasFailed();
-            assertThat(c.getStartupFailure()).hasStackTraceContaining("RefundFundingEligibilityFactsApi");
-        });
-    }
-
-    @Test void offlineA1StartsWithoutFundingAndNeverCallsExternalOrFinancialDependencies() {
+    @Test void offlineCompositionStartsWithWorkersAndNeverCallsExternalOrFinancialDependencies() {
         dependencies("").run(c->{
             assertThat(c).hasNotFailed();
             assertThat(c).hasSingleBean(AfterSaleService.class);
-            assertThat(c).doesNotHaveBean(RefundFundingEligibilityFactsApi.class);
-            assertThat(c).doesNotHaveBean(AsyncTaskWorker.class);
-            assertThat(c).doesNotHaveBean(AfterSaleWorkflowConfiguration.Reconciler.class);
+            assertThat(c).hasSingleBean(AsyncTaskWorker.class);
+            assertThat(c).hasSingleBean(AfterSaleWorkflowConfiguration.Reconciler.class);
             verifyNoInteractions(c.getBean(PrivateObjectStore.class),c.getBean(PaymentSuccessFactsApi.class),
                     c.getBean(IntegrationEventPublisher.class),c.getBean(AdminSessionQueryApi.class),
                     c.getBean(AdminAuthorizationQueryApi.class));
         });
     }
 
-    @Test void explicitTestProviderEnablesOnlyInternalCompositionWithoutImplicitExecution() {
-        dependencies("").withPropertyValues("pet.aftersale.refund.enabled=true")
+    @Test void explicitFundingProviderComposesWithoutExternalCalls() {
+        dependencies("")
                 .withBean(RefundFundingEligibilityFactsApi.class,()->mock(RefundFundingEligibilityFactsApi.class))
                 .run(c->{
                     assertThat(c).hasNotFailed();assertThat(c).hasSingleBean(AfterSaleService.class);
-                    assertThat(c).doesNotHaveBean(AsyncTaskWorker.class);
                     verifyNoInteractions(c.getBean(RefundFundingEligibilityFactsApi.class));
                 });
     }
 
     private ApplicationContextRunner dependencies(String missing) {
-        var result=runner().withPropertyValues("pet.aftersale.enabled=true","pet.refund.application.enabled=true",
-                "pet.verification.completion.enabled=true","pet.private-assets.enabled=true","pet.auth.c.enabled=true",
+        var result=runner().withPropertyValues("pet.payment.enabled=true",
                 "pet.aftersale.type-codes=QUALITY","pet.aftersale.demand-codes=REFUND",
                 "pet.aftersale.protection-key="+Base64.getEncoder().encodeToString(new byte[32]))
                 .withBean(DataSource.class,()->mock(DataSource.class))
                 .withBean(SnowflakeIdGenerator.class,()->()->1L)
                 .withBean(ScheduleCapacityGuardApi.class,()->mock(ScheduleCapacityGuardApi.class))
                 .withBean(OrderRefundApplicationApiImpl.class,()->mock(OrderRefundApplicationApiImpl.class))
+                .withBean(com.petplatform.refund.biz.application.RefundExecutionService.class,
+                        ()->mock(com.petplatform.refund.biz.application.RefundExecutionService.class))
                 .withBean(IntegrationEventPublisher.class,()->mock(IntegrationEventPublisher.class));
         if(!missing.equals("user"))result=result.withBean(UserAuthService.class,()->mock(UserAuthService.class));
         if(!missing.equals("admin-session"))result=result.withBean(AdminSessionQueryApi.class,()->mock(AdminSessionQueryApi.class));

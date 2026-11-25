@@ -32,7 +32,7 @@ import org.springframework.context.annotation.Configuration;
  * a store with a bound avatar but no signer degrades avatarUrl to null (the card still renders).
  */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(prefix = "pet.service.query", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "pet", name = {"auth.admin.enabled", "private-assets.enabled"}, havingValue = "true")
 public class FeaturedStoreConfiguration {
 
     @Bean
@@ -50,7 +50,6 @@ public class FeaturedStoreConfiguration {
 
     /** Only the shared 31号 pipeline signs store photos; the cover signer carries the OSS keys. */
     @Bean
-    @ConditionalOnProperty(prefix = "pet.private-assets", name = "enabled", havingValue = "true")
     @ConditionalOnMissingBean(StorePhotoSigningApi.class)
     StorePhotoSigningApi storePhotoSigning(
             DataSource source,

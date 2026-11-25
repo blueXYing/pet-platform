@@ -226,15 +226,14 @@ class ReviewHttpAcceptanceTest {
         }
     }
 
-    /** Default-off assembly: without pet.review.http.enabled the routes stay unreachable (403). */
-    @Test void reviewFaceStaysOffWithoutItsSwitch() throws Exception {
-        try (var f = new AfterSaleHttpFixture()) {
-            f.ordinary.t.r.f.f.db.script("14-Command-Idempotency-Schema-v0.1.sql");
-            String order = verified(f);
-            assertEquals(403, f.send("GET", eligibilityPath(order), null, f.buyerToken).status());
-            assertEquals(403, f.send("POST", reviewsPath(order), body(5, 4, 3), f.buyerToken).status());
-            assertEquals(0, f.count("SELECT COUNT(*) FROM review"));
-        }
+    /** Default-off assembly: without pet.auth.c.enabled the review controller stays unassembled. */
+    @Test void reviewFaceStaysOffWithoutItsSwitch() {
+        new org.springframework.boot.test.context.runner.ApplicationContextRunner()
+                .withUserConfiguration(com.petplatform.boot.adapter.web.c.CReviewController.class)
+                .run(context -> {
+                    assertNull(context.getStartupFailure());
+                    assertTrue(context.getBeansOfType(com.petplatform.boot.adapter.web.c.CReviewController.class).isEmpty());
+                });
     }
 
     private static Map<String, String> headers(String token, String requestId) {

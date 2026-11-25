@@ -38,8 +38,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /** Contract-71 anonymous C-side marketing reads, with boot-composed merchant/coupon facts. */
 @RestController
-@ConditionalOnProperty(prefix = "pet", name = {"marketing.enabled", "marketing.c.http.enabled", "auth.c.enabled"},
-        havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.auth.c", name = "enabled", havingValue = "true")
 public class MarketingCController {
     @ModelAttribute
     void noStore(jakarta.servlet.http.HttpServletResponse response) {

@@ -31,11 +31,10 @@ import org.springframework.context.annotation.Configuration;
  * supplied here. Enabling requires every real dependency bean to exist.
  */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(prefix = "pet.merchant.application", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "pet", name = {"auth.admin.enabled", "private-assets.enabled"}, havingValue = "true")
 public class MerchantApplicationRuntimeConfiguration {
   @Bean
   @ConditionalOnMissingBean(SubjectCredentialPort.class)
-  @ConditionalOnProperty(prefix = "pet.merchant.subject", name = "enabled", havingValue = "true")
   SubjectCredentialPort merchantSubjects(ApplicationValidationPorts.ProtectedValuePort protection,
       @Value("${MERCHANT_SUBJECT_POLICY_VERSION:}") String version,
       @Value("${MERCHANT_SUBJECT_HMAC_KEY_BASE64:}") String lookup,
@@ -60,7 +59,6 @@ public class MerchantApplicationRuntimeConfiguration {
   }
   @Bean
   @ConditionalOnMissingBean(ApplicationValidationPorts.ProtectedValuePort.class)
-  @ConditionalOnProperty(prefix = "pet.merchant.protection", name = "enabled", havingValue = "true")
   ApplicationValidationPorts.ProtectedValuePort merchantProtectedValues(
       @Value("${MERCHANT_PROTECTED_KEY_VERSION:}") String version,
       @Value("${MERCHANT_PROTECTED_AES_KEY_BASE64:}") String aes,
@@ -107,6 +105,7 @@ public class MerchantApplicationRuntimeConfiguration {
   }
 
   @Bean
+  @ConditionalOnMissingBean(ApplicationReviewFactsReader.class)
   ApplicationReviewFactsReader merchantApplicationReviewFacts(
       DataSource source, SnowflakeIdGenerator ids) {
     return new PersistentApplicationReviewFactsReader(source, ids);

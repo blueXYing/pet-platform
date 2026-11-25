@@ -29,22 +29,10 @@ import org.springframework.core.env.Environment;
 
 /** Approved workflow and opt-in HTTP adapters; no production funding fallback. */
 @Configuration(proxyBeanMethods=false)
+@ConditionalOnProperty(prefix="pet.payment",name="enabled",havingValue="true")
 public class AfterSaleWorkflowConfiguration {
-    @Bean Object afterSaleSwitchValidation(Environment e) {
-        boolean enabled=on(e,"pet.aftersale.enabled");
-        if(!enabled && (on(e,"pet.aftersale.http.enabled") || on(e,"pet.aftersale.worker.enabled") || on(e,"pet.aftersale.refund.enabled")))
-            throw new IllegalStateException("Aftersale dependent switches require workflow");
-        if(on(e,"pet.aftersale.http.enabled") && !on(e,"pet.auth.admin.enabled"))
-            throw new IllegalStateException("Aftersale HTTP requires real admin sessions");
-        if(enabled && (!on(e,"pet.refund.application.enabled") || !on(e,"pet.verification.completion.enabled")
-                || !on(e,"pet.private-assets.enabled") || !on(e,"pet.auth.c.enabled")))
-            throw new IllegalStateException("Aftersale requires real refund, verification, private assets and sessions");
-        return new Object();
-    }
-    private static boolean on(Environment e,String key){return e.getProperty(key,Boolean.class,false);}
-
     @Configuration(proxyBeanMethods=false)
-    @ConditionalOnProperty(name="pet.aftersale.enabled",havingValue="true")
+    @ConditionalOnProperty(prefix="pet.payment",name="enabled",havingValue="true")
     static class Runtime {
         @Bean AfterSaleAuthorityAdapter afterSaleAuthority(UserAuthService users,AdminSessionQueryApi sessions,
                 AdminAuthorizationQueryApi authorization,MerchantOrderAuthorityApi merchants){
@@ -86,8 +74,8 @@ public class AfterSaleWorkflowConfiguration {
                 RefundAfterSaleService refunds,ObjectProvider<RefundFundingEligibilityFactsApi> funding,
                 AfterSaleAuthorityAdapter authority,AfterSalePorts.ReasonPolicy reasons,AfterSalePorts.Moderation moderation,
                 AfterSalePorts.Protection protection,AfterSalePrivateAssetApi assets,AfterSaleTaskAdapter tasks,Environment env){
-            // The off switch cannot be bypassed by merely installing a provider bean.
-            var authorityFacts=on(env,"pet.aftersale.refund.enabled")?funding.getObject():disabledFunding();
+            var resolvedFunding = funding.getIfAvailable();
+            var authorityFacts = resolvedFunding != null ? resolvedFunding : disabledFunding();
             return new AfterSaleService(source,guard,ids,outbox,orders,orders,ordinary,refunds,authorityFacts,
                     authority,reasons,moderation,protection,AfterSaleAssetAdapters.assets(assets),tasks,
                     // CCR-M-AFTERSALE-VIEW-001: merchant-read nickname via the user domain's masked
@@ -95,7 +83,6 @@ public class AfterSaleWorkflowConfiguration {
                     new com.petplatform.user.biz.apiimpl.UserQueryApiImpl(source));
         }
         @Bean(initMethod="start",destroyMethod="close")
-        @ConditionalOnProperty(name="pet.aftersale.worker.enabled",havingValue="true")
         AsyncTaskWorker afterSaleWorker(DataSource source,SnowflakeIdGenerator ids,AfterSaleService service,
                 AfterSaleTaskAdapter tasks,ObjectProvider<RefundExecutionService> executions,Environment env){
             var registrations=new ArrayList<TaskRegistration<?>>();registrations.add(tasks.registration(service));
@@ -107,7 +94,6 @@ public class AfterSaleWorkflowConfiguration {
                     "REFUND_CHANNEL",List.of(Duration.ofSeconds(30),Duration.ofMinutes(1),Duration.ofMinutes(5)))),registrations);
         }
         @Bean(initMethod="start",destroyMethod="close")
-        @ConditionalOnProperty(name="pet.aftersale.worker.enabled",havingValue="true")
         Reconciler afterSaleReconciler(AfterSaleService service,RefundExecutionService execution){return new Reconciler(service,execution);}
     }
     private static Set<String> codes(Environment e,String key){

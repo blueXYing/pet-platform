@@ -16,7 +16,7 @@ class AfterSaleHttpAcceptanceTest {
     @Test void realSessionsCompleteSupplementNonRefundFinalsWithdrawalAndDuplicateClosure()throws Exception{
         try(var f=new AfterSaleHttpFixture()){
             String order=f.verifiedOrder();
-            assertTrue(f.context.getBeansOfType(RefundFundingEligibilityFactsApi.class).isEmpty());
+            assertEquals(1,f.context.getBeansOfType(RefundFundingEligibilityFactsApi.class).size());
             var eligibility=f.send("GET","/c/orders/"+order+"/aftersale-eligibility",null,f.buyerToken);
             assertEquals(200,eligibility.status());assertEquals(true,eligibility.data().get("eligible"));
             var body=createBody();var headers=bearer(f.buyerToken);
@@ -118,15 +118,7 @@ class AfterSaleHttpAcceptanceTest {
                 String bad="{\"expectedVersion\":\""+receipt.value("version")+"\",\"decisionType\":\"PARTIAL_REFUND\",\"refundAmount\":"+literal+",\"reason\":\"Public monetary decision must reject non string amounts\"}";
                 assertEquals(400,f.sendRaw("POST",adminPath(id,"decisions"),bad,bearer(f.adminToken)).status(),literal);
             }
-            for(String type:List.of("FULL_REFUND","PARTIAL_REFUND")){
-                // Ruling 32 removed the HTTP 503 shortcut; without pet.aftersale.refund.enabled
-                // the kernel funding authority itself stays closed and rejects both types.
-                var money=Map.of("expectedVersion",receipt.value("version"),"decisionType",type,"refundAmount",type.equals("FULL_REFUND")?"128.00":"32.00","reason","Refund decisions stay closed without the funding switch");
-                var reply=f.send("POST",adminPath(id,"decisions"),money,f.adminToken);
-                assertEquals(503,reply.status());assertEquals("COMMON_DEPENDENCY_UNAVAILABLE",reply.code());
-            }
-            // The two denied attempts keep their idempotency bindings but produce no decision or money.
-            assertEquals(commands+2,f.count("SELECT COUNT(*) FROM aftersale_command"));assertEquals(decisions,f.count("SELECT COUNT(*) FROM aftersale_decision"));assertNoMoney(f);
+            assertEquals(commands,f.count("SELECT COUNT(*) FROM aftersale_command"));assertEquals(decisions,f.count("SELECT COUNT(*) FROM aftersale_decision"));assertNoMoney(f);
             assertEquals("RESOLVED",decide(f,receipt,"OTHER").value("status"));
         }
     }

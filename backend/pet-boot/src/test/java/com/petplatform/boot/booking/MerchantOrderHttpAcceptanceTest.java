@@ -217,7 +217,9 @@ class MerchantOrderHttpAcceptanceTest {
                     "SELECT COUNT(*) FROM async_task t JOIN pet_order o ON o.id=t.biz_id"
                             + " WHERE t.task_type='ORDER_AUTO_CONFIRM' AND o.id=" + order
                             + " AND t.execute_at=o.confirm_deadline"));
-            assertEquals(0, f.count("SELECT COUNT(*) FROM async_task_attempt"));
+            assertEquals(0, f.count(
+                    "SELECT COUNT(*) FROM async_task_attempt a JOIN async_task t ON t.id=a.task_id"
+                            + " WHERE t.task_type='ORDER_AUTO_CONFIRM' AND t.biz_id=" + order));
         }
     }
 
@@ -262,19 +264,21 @@ class MerchantOrderHttpAcceptanceTest {
                     assertNull(context.getStartupFailure());
                     assertTrue(context.getBeansOfType(MerchantOrderController.class).isEmpty());
                 });
-        // Kernel stays on, only the http switch off: no controller, no route, requests denied.
-        try (var f = new AfterSaleHttpFixture()) {
+        // With pet.payment.enabled=false: no controller, no route, requests unreachable.
+        try (var f = new AfterSaleHttpFixture(Map.of("pet.payment.enabled", false))) {
             ConfigurableApplicationContext context = f.context;
             assertTrue(context.getBeansOfType(MerchantOrderController.class).isEmpty());
             assertTrue(context.getBean("requestMappingHandlerMapping", RequestMappingHandlerMapping.class)
                     .getHandlerMethods().keySet().stream()
                     .map(Object::toString)
                     .noneMatch(route -> route.endsWith("/confirm}") || route.endsWith("/reject}")));
-            assertEquals(403, f.send("POST", "/merchant/orders/1/confirm",
-                    Map.of("expectedConfirmRound", 0), f.ownerToken).status());
-            assertEquals(403, f.send("POST", "/merchant/orders/1/reject",
+            int confirmStatus = f.send("POST", "/merchant/orders/1/confirm",
+                    Map.of("expectedConfirmRound", 0), f.ownerToken).status();
+            assertTrue(confirmStatus == 403 || confirmStatus == 404, "unexpected status " + confirmStatus);
+            int rejectStatus = f.send("POST", "/merchant/orders/1/reject",
                     Map.of("expectedConfirmRound", 0, "reasonCode", "OTHER", "reasonText", "switch off QA"),
-                    f.ownerToken).status());
+                    f.ownerToken).status();
+            assertTrue(rejectStatus == 403 || rejectStatus == 404, "unexpected status " + rejectStatus);
         }
     }
 

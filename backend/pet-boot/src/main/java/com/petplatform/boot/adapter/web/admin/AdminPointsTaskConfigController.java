@@ -42,8 +42,7 @@ import tools.jackson.databind.ObjectReader;
  */
 @RestController
 @RequestMapping("/api/v1/admin/points-task-config")
-@ConditionalOnProperty(prefix = "pet", name = {"auth.admin.enabled", "points.task.http.enabled"},
-    havingValue = "true")
+@ConditionalOnProperty(prefix = "pet.auth.admin", name = "enabled", havingValue = "true")
 public class AdminPointsTaskConfigController {
 
   private static final ObjectReader STRICT = MerchantJsonReaderFactory.strictReader();

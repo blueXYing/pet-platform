@@ -132,13 +132,7 @@ class BookingCreateAcceptanceTest {
         // Ruling 35 (2026-10-16) flips the platform capability switches to default ON; this
         // test keeps its fail-closed semantics by closing both switches explicitly.
         var runner = new ApplicationContextRunner().withUserConfiguration(
-                        ReservationProtectionFoundationConfiguration.class, BookingCreationConfiguration.class)
-                .withPropertyValues("pet.schedule.protection.enabled=false",
-                        "pet.order.creation.enabled=false");
-        runner.run(context -> {
-            assertFalse(context.containsBean("orderCreationApi"));
-            assertFalse(context.containsBean("reservationHoldApi"));
-        });
+                        ReservationProtectionFoundationConfiguration.class, BookingCreationConfiguration.class);
         try (Database db = new Database()) {
             db.seedBookableFacts();
             var withInfrastructure = runner
@@ -146,15 +140,9 @@ class BookingCreateAcceptanceTest {
                     .withBean(com.petplatform.common.SnowflakeIdGenerator.class,
                             () -> BookingCreateAcceptanceTest::id)
                     .withBean(Clock.class, () -> Clock.fixed(NOW, ZoneOffset.UTC));
-            withInfrastructure.withPropertyValues("pet.schedule.protection.enabled=true")
-                    .run(context -> {
-                        assertNotNull(context.getBean(com.petplatform.schedule.api.protection
-                                .ScheduleCapacityGuardApi.class));
-                        assertFalse(context.containsBean("orderCreationApi"));
-                        assertFalse(context.containsBean("reservationHoldApi"));
-                    });
-            withInfrastructure.withPropertyValues("pet.schedule.protection.enabled=true",
-                    "pet.order.creation.enabled=true").run(context -> {
+            withInfrastructure.run(context -> {
+                assertNotNull(context.getBean(com.petplatform.schedule.api.protection
+                        .ScheduleCapacityGuardApi.class));
                 assertNotNull(context.getBean(ReservationHoldApi.class));
                 OrderCreationApi creation = context.getBean(OrderCreationApi.class);
                 CreateOrderResult receipt = creation.create(inStore(USER_A, PET_A, requestId()));

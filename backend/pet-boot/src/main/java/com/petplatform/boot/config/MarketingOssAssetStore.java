@@ -12,31 +12,37 @@ import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
-/** S3-compatible OSS adapter for uploaded marketing artwork; credentials stay in process env. */
+/** S3-compatible OSS adapter for uploaded marketing artwork; reads unified pet.oss.* settings. */
 public final class MarketingOssAssetStore implements MarketingAssetObjectStore, AutoCloseable {
 
     private final String bucket;
     private final S3Client client;
 
     public MarketingOssAssetStore() {
-        String endpoint = env("OSS_ENDPOINT");
-        if (endpoint != null && !endpoint.contains("://")) endpoint = "https://" + endpoint;
-        String region = env("OSS_REGION");
-        String bucket = env("OSS_BUCKET");
-        String accessKey = env("OSS_ACCESS_KEY_ID");
-        String secret = env("OSS_SECRET_ACCESS_KEY");
-        if (endpoint.isEmpty() || region.isEmpty() || bucket.isEmpty()
-                || accessKey.isEmpty() || secret.isEmpty()) {
+        this(env("OSS_ENDPOINT"), env("OSS_REGION"), env("OSS_BUCKET"),
+                env("OSS_ACCESS_KEY_ID"), env("OSS_SECRET_ACCESS_KEY"));
+    }
+
+    public MarketingOssAssetStore(
+            String endpoint, String region, String bucket, String accessKey, String secret) {
+        String normEndpoint = normalize(endpoint);
+        if (!normEndpoint.isEmpty() && !normEndpoint.contains("://")) normEndpoint = "https://" + normEndpoint;
+        String normRegion = normalize(region);
+        String normBucket = normalize(bucket);
+        String normAccessKey = normalize(accessKey);
+        String normSecret = normalize(secret);
+        if (normEndpoint.isEmpty() || normRegion.isEmpty() || normBucket.isEmpty()
+                || normAccessKey.isEmpty() || normSecret.isEmpty()) {
             this.bucket = null;
             this.client = null;
             return;
         }
-        this.bucket = bucket;
+        this.bucket = normBucket;
         this.client = S3Client.builder()
-                .endpointOverride(URI.create(endpoint.startsWith("http") ? endpoint : "https://" + endpoint))
-                .region(Region.of(region))
+                .endpointOverride(URI.create(normEndpoint))
+                .region(Region.of(normRegion))
                 .credentialsProvider(StaticCredentialsProvider.create(
-                        AwsBasicCredentials.create(accessKey, secret)))
+                        AwsBasicCredentials.create(normAccessKey, normSecret)))
                 .serviceConfiguration(S3Configuration.builder().chunkedEncodingEnabled(false).build())
                 .build();
     }
@@ -67,8 +73,11 @@ public final class MarketingOssAssetStore implements MarketingAssetObjectStore, 
         if (client != null) client.close();
     }
 
-    private static String env(String name) {
-        String value = System.getenv(name);
+    private static String normalize(String value) {
         return value == null ? "" : value.strip();
+    }
+
+    private static String env(String name) {
+        return normalize(System.getenv(name));
     }
 }

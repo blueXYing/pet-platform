@@ -45,10 +45,7 @@ import org.springframework.web.bind.annotation.RestController;
  * uniform 404 (anti-enumeration).
  */
 @RestController
-@ConditionalOnProperty(prefix = "pet",
-    name = {"auth.c.enabled", "favtrack.http.enabled",
-            "service.query.enabled", "store.query.enabled"},
-    havingValue = "true")
+@ConditionalOnProperty(prefix = "pet", name = {"auth.admin.enabled", "auth.c.enabled", "private-assets.enabled"}, havingValue = "true")
 public class CFavoriteController {
 
     private final FavoriteApiImpl favorites;

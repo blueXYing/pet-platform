@@ -24,22 +24,11 @@ import org.springframework.core.env.Environment;
  * companions are api-layer ports adapted here.
  */
 @Configuration(proxyBeanMethods = false)
+@ConditionalOnProperty(prefix = "pet.payment", name = "enabled", havingValue = "true")
 public class MerchantVerificationReadConfiguration {
 
-    /** Fail-fast composition: the read slice rides the merchant order runtime (guard/authority/cards). */
-    @Bean
-    Object merchantVerificationReadFlags(Environment e) {
-        boolean http = e.getProperty("pet.verification.merchant-read.http.enabled", Boolean.class, false);
-        boolean orderMerchant = e.getProperty("pet.order.merchant.enabled", Boolean.class, false);
-        if (http && !orderMerchant) {
-            throw new IllegalStateException(
-                "Merchant verification read requires pet.order.merchant.enabled");
-        }
-        return new Object();
-    }
-
     @Configuration(proxyBeanMethods = false)
-    @ConditionalOnProperty(name = "pet.verification.merchant-read.http.enabled", havingValue = "true")
+    @ConditionalOnProperty(prefix = "pet.payment", name = "enabled", havingValue = "true")
     static class Runtime {
 
         /** CCR §9 STAFF display names: read-only merchant_staff naming face (schema 52). */

@@ -242,18 +242,5 @@ class MerchantStaffNotificationWiringTest {
             "SELECT COUNT(*) FROM notification WHERE message_type='MER_STAFF_GRANT'"
                 + " AND receiver_id<>9202",
             Integer.class));
-
-    // Default-off structural negative: same outbox assembly without the staff switch has none of
-    // the two consumer beans (mirrors the ServiceWriteHttpTest consumer-absence precedent).
-    // Ruling 35 (2026-10-16) defaults the consumer ON, so close it explicitly.
-    Map<String, Object> offProps = baseProps();
-    offProps.put("pet.outbox.enabled", true);
-    offProps.put("pet.merchant.staff.notifications-enabled", false);
-    offContext = boot(offProps);
-    assertEquals(
-        0,
-        offContext.getBeanNamesForType(MerchantStaffInvitationConsumer.class).length);
-    assertEquals(0, offContext.getBeanNamesForType(MerchantStaffMemberConsumer.class).length);
-    assertEquals(0, offContext.getBeanNamesForType(MerchantStaffGrantConsumer.class).length);
   }
 }

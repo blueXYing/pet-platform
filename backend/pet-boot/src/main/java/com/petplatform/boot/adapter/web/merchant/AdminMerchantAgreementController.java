@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @RestController
 @RequestMapping(value = "/api/v1/admin/merchant-agreements", produces = MediaType.APPLICATION_JSON_VALUE)
-@ConditionalOnProperty(prefix = "pet.merchant.application", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "pet", name = {"auth.admin.enabled", "private-assets.enabled"}, havingValue = "true")
 public final class AdminMerchantAgreementController {
   private final MerchantAgreementApiImpl agreements;
 

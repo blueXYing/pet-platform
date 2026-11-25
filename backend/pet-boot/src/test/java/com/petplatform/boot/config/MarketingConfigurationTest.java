@@ -43,7 +43,7 @@ class MarketingConfigurationTest {
                 .withBean(MerchantApplicationCityCatalog.class,
                         () -> new MerchantApplicationCityCatalog(
                                 List.of(new MerchantApplicationCityCatalog.City("shanghai", "上海"))))
-                .withPropertyValues("pet.marketing.enabled=true")
+                .withPropertyValues("pet.auth.admin.enabled=true")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     assertThat(context).hasSingleBean(MarketingAdminApi.class);
@@ -91,7 +91,7 @@ class MarketingConfigurationTest {
                 .withBean(DataSource.class, () -> source)
                 .withBean(SnowflakeIdGenerator.class, () -> () -> 1L)
                 .withBean(ServiceCatalogCategoryApi.class, () -> mixed)
-                .withPropertyValues("pet.marketing.enabled=true")
+                .withPropertyValues("pet.auth.admin.enabled=true")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     MarketingServiceCategoryPort port =
@@ -109,7 +109,7 @@ class MarketingConfigurationTest {
                 .withUserConfiguration(MarketingConfiguration.class)
                 .withBean(DataSource.class, () -> source)
                 .withBean(SnowflakeIdGenerator.class, () -> () -> 1L)
-                .withPropertyValues("pet.marketing.enabled=true")
+                .withPropertyValues("pet.auth.admin.enabled=true")
                 .run(context -> {
                     assertThat(context).hasNotFailed();
                     MarketingServiceCategoryPort port =

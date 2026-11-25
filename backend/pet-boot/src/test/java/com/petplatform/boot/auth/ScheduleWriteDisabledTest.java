@@ -25,7 +25,7 @@ class ScheduleWriteDisabledTest {
     void explicitOffKeepsTheScheduleWriteSliceUnassembled() {
         new ApplicationContextRunner()
                 .withUserConfiguration(ScheduleWriteConfiguration.class)
-                .withPropertyValues("pet.schedule.command.enabled=false")
+                .withPropertyValues("pet.private-assets.enabled=false")
                 .run(context -> {
                     assertNull(context.getStartupFailure());
                     assertTrue(context.getBeansOfType(ScheduleMerchantCommandApiImpl.class)
@@ -35,7 +35,7 @@ class ScheduleWriteDisabledTest {
                 });
         new ApplicationContextRunner()
                 .withUserConfiguration(MerchantScheduleController.class)
-                .withPropertyValues("pet.schedule.command.http.enabled=false")
+                .withPropertyValues("pet.private-assets.enabled=false")
                 .run(context -> {
                     assertNull(context.getStartupFailure());
                     assertTrue(context.getBeansOfType(MerchantScheduleController.class)

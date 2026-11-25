@@ -34,7 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
  * phone, coordinate, user id or order id.
  */
 @RestController
-@ConditionalOnProperty(prefix = "pet.service.query", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "pet", name = {"auth.admin.enabled", "private-assets.enabled"}, havingValue = "true")
 public class CFeaturedStoreController {
 
     /** Contract 74 §2.1 stable categoryCode lexical shape. */

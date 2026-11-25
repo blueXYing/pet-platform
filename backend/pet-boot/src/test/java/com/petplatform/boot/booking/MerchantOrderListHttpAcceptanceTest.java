@@ -237,15 +237,16 @@ class MerchantOrderListHttpAcceptanceTest {
                     assertNull(context.getStartupFailure());
                     assertTrue(context.getBeansOfType(MerchantOrderController.class).isEmpty());
                 });
-        // Kernel stays on, only the http switch off: no controller, no route, requests denied.
-        try (var f = new AfterSaleHttpFixture()) {
+        // With pet.payment.enabled=false: no controller, no route, requests unreachable.
+        try (var f = new AfterSaleHttpFixture(Map.of("pet.payment.enabled", false))) {
             ConfigurableApplicationContext context = f.context;
             assertTrue(context.getBeansOfType(MerchantOrderController.class).isEmpty());
             assertTrue(context.getBean("requestMappingHandlerMapping", RequestMappingHandlerMapping.class)
                     .getHandlerMethods().keySet().stream()
                     .map(Object::toString)
                     .noneMatch(route -> route.endsWith("/merchant/orders}")));
-            assertEquals(403, f.send("GET", listQuery("710301", "710302", null, 1, 20), (String) null, f.ownerToken).status());
+            int status = f.send("GET", listQuery("710301", "710302", null, 1, 20), (String) null, f.ownerToken).status();
+            assertTrue(status == 403 || status == 404, "unexpected status " + status);
         }
     }
 

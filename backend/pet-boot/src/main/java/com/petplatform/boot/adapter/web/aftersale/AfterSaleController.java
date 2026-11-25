@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 /** Real C / OWNER / OPS routes. Refund decisions execute the ruling-32 original-route chain. */
 @RestController
-@ConditionalOnProperty(name="pet.aftersale.http.enabled",havingValue="true")
+@ConditionalOnProperty(prefix = "pet.payment", name = "enabled", havingValue = "true")
 public final class AfterSaleController {
     private final AfterSaleCommandApi commands;
     private final AfterSaleQueryApi queries;

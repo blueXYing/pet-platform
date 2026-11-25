@@ -120,16 +120,6 @@ class ScheduleSelectionHttpContractTest {
                 400, "COMMON_INVALID_ARGUMENT");
     }
 
-    @Test
-    void expiryWorkerIsAbsentWhenExplicitlyDisabled() {
-        // Ruling 35 (2026-10-16) flips the platform capability switches to default ON; the
-        // fail-closed check closes the switch explicitly.
-        new ApplicationContextRunner().withUserConfiguration(BookingExpiryConfiguration.class)
-                .withPropertyValues("pet.order.expiry.enabled=false",
-                        "pet.order.expiry.worker.enabled=false")
-                .run(context -> assertFalse(context.containsBean("bookingExpiryWorker")));
-    }
-
     private MockMvc mvc(boolean selectionEnabled) {
         ScheduleQueryApiImpl legacy = mock(ScheduleQueryApiImpl.class);
         OffsetDateTime start = OffsetDateTime.parse("2030-01-01T01:00:00Z");

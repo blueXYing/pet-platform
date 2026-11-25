@@ -62,30 +62,6 @@ class RefundApplicationConfigurationTest {
         });
     }
 
-    @Test void orphanWorkerAndHttpWithoutTheSliceFailClosed() {
-        runner().withPropertyValues("pet.refund.application.worker.enabled=true").run(c -> {
-            assertThat(c).hasFailed();
-            assertThat(c.getStartupFailure()).hasStackTraceContaining("real session, merchant and payment dependencies");
-        });
-        // 2026-10-07 C-005: the HTTP face is implemented default-off; it still refuses to boot
-        // unless the whole kernel slice (and its real dependencies) is enabled first.
-        runner().withPropertyValues("pet.refund.application.http.enabled=true").run(c -> {
-            assertThat(c).hasFailed();
-            assertThat(c.getStartupFailure()).hasStackTraceContaining("real session, merchant and payment dependencies");
-        });
-        dependencies("").withPropertyValues("pet.refund.application.http.enabled=true")
-                .run(c -> assertThat(c).hasNotFailed());
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {"pet.auth.c.enabled", "pet.order.merchant.enabled", "pet.payment.foundation.enabled"})
-    void disabledRequiredSubsystemFailsEvenWhenAdaptersExist(String flag) {
-        dependencies("").withPropertyValues(flag + "=false").run(c -> {
-            assertThat(c).hasFailed();
-            assertThat(c.getStartupFailure()).hasStackTraceContaining("real session, merchant and payment dependencies");
-        });
-    }
-
     @ParameterizedTest
     @ValueSource(strings = {"auth", "merchant", "payment", "moderation", "protection", "reasons"})
     void absentTrustedDependencyCannotBecomePermissiveDefault(String missing) {
@@ -133,7 +109,7 @@ class RefundApplicationConfigurationTest {
                 assertThat(c.getBean(RefundApplicationService.class).preServiceAutoRefund()).isFalse());
     }
 
-    @Test void completeOfflineCompositionStartsNoWorkerAndCallsNoPaymentOrOutbox() {
+    @Test void completeOfflineCompositionComposesKernelAndWorkersWithoutCallingPaymentOrOutbox() {
         dependencies("").run(c -> {
             assertThat(c).hasNotFailed();
             assertThat(c).hasSingleBean(RefundApplicationService.class);
@@ -141,8 +117,8 @@ class RefundApplicationConfigurationTest {
             assertThat(c).hasSingleBean(OrderRefundApplicationApi.class);
             assertThat(c).hasSingleBean(OrderRefundApplicationFactsApi.class);
             assertThat(c).hasSingleBean(OrderApplicationRefundProjectionConsumer.class);
-            assertThat(c).doesNotHaveBean(AsyncTaskWorker.class);
-            assertThat(c).doesNotHaveBean(RefundApplicationConfiguration.ApplicationReconciler.class);
+            assertThat(c).hasSingleBean(AsyncTaskWorker.class);
+            assertThat(c).hasSingleBean(RefundApplicationConfiguration.ApplicationReconciler.class);
             verifyNoInteractions(c.getBean(PaymentRefundChannel.class), c.getBean(PaymentSuccessFactsApi.class),
                     c.getBean(LateRefundService.class), c.getBean(IntegrationEventPublisher.class));
             var reasons = c.getBean(RefundApplicationPorts.ReasonPolicy.class);
@@ -163,16 +139,13 @@ class RefundApplicationConfigurationTest {
         });
     }
 
-    @ParameterizedTest
-    @ValueSource(booleans = {false, true})
-    void standardMerchantAndPaymentCompositionHasNoCircularDependencyOrImplicitWorkers(boolean lateEnabled) {
+    @Test
+    void standardMerchantAndPaymentCompositionHasNoCircularDependency() {
         new ApplicationContextRunner()
                 .withInitializer(c -> ((DefaultListableBeanFactory) c.getBeanFactory()).setAllowCircularReferences(false))
                 .withUserConfiguration(RefundApplicationConfiguration.class, MerchantOrderConfiguration.class,
                         LateRefundConfiguration.class, OrderAutoConfirmTaskConfiguration.class, PaymentFoundationConfiguration.class)
-                .withPropertyValues("pet.refund.application.enabled=true", "pet.auth.c.enabled=true",
-                        "pet.order.merchant.enabled=true", "pet.payment.foundation.enabled=true",
-                        "pet.refund.late.enabled=" + lateEnabled, "pet.payment.dispatch.request-ip=127.0.0.1",
+                .withPropertyValues("pet.payment.enabled=true", "pet.payment.dispatch.request-ip=127.0.0.1",
                         "pet.payment.lakala.channel-time-zone=Asia/Shanghai",
                         "pet.refund.application.reason-codes=SERVICE_ISSUE",
                         "pet.refund.application.protection-key=" + Base64.getEncoder().encodeToString(new byte[32]),
@@ -188,6 +161,10 @@ class RefundApplicationConfigurationTest {
                 .withBean(RefundApplicationPorts.Moderation.class, () -> mock(RefundApplicationPorts.Moderation.class))
                 .withBean(PaymentRefundChannel.class, () -> mock(PaymentRefundChannel.class))
                 .withBean(IntegrationEventPublisher.class, () -> mock(IntegrationEventPublisher.class))
+                .withBean(com.petplatform.order.api.query.OrderAfterSaleFactsApi.class, () -> mock(com.petplatform.order.api.query.OrderAfterSaleFactsApi.class))
+                .withBean(com.petplatform.order.api.query.OrderAfterSaleRefundFactsApi.class, () -> mock(com.petplatform.order.api.query.OrderAfterSaleRefundFactsApi.class))
+                .withBean(com.petplatform.aftersale.api.query.AfterSaleRefundFactsApi.class, () -> mock(com.petplatform.aftersale.api.query.AfterSaleRefundFactsApi.class))
+                .withBean(com.petplatform.refund.api.query.RefundAfterSaleFactsApi.class, () -> mock(com.petplatform.refund.api.query.RefundAfterSaleFactsApi.class))
                 .run(c -> {
                     assertThat(c).hasNotFailed();
                     assertThat(c).hasSingleBean(RefundApplicationService.class);
@@ -201,10 +178,8 @@ class RefundApplicationConfigurationTest {
                     assertThat(c).hasSingleBean(PaymentRefundApi.class);
                     assertThat(c).hasSingleBean(PaymentRefundResultFactsApi.class);
                     assertThat(c).hasSingleBean(ReservationRefundReleaseApi.class);
-                    assertThat(c).doesNotHaveBean(AsyncTaskWorker.class);
-                    assertThat(c).doesNotHaveBean(RefundApplicationConfiguration.ApplicationReconciler.class);
-                    assertThat(c).doesNotHaveBean(LateRefundConfiguration.DeadTaskReconciler.class);
-                    assertThat(c.getBean(LateRefundService.class).eventTypes()).hasSize(lateEnabled ? 1 : 0);
+                    assertThat(c.getBeansOfType(AsyncTaskWorker.class)).isNotEmpty();
+                    assertThat(c.getBean(LateRefundService.class).eventTypes()).hasSize(1);
                     verifyNoInteractions(c.getBean(PaymentRefundChannel.class), c.getBean(IntegrationEventPublisher.class),
                             c.getBean(UserAuthService.class), c.getBean(BookingUserFactsApi.class));
                 });
@@ -322,8 +297,7 @@ class RefundApplicationConfigurationTest {
     }
 
     private ApplicationContextRunner dependencies(String missing) {
-        var result = runner().withPropertyValues("pet.refund.application.enabled=true", "pet.auth.c.enabled=true",
-                        "pet.order.merchant.enabled=true", "pet.payment.foundation.enabled=true")
+        var result = runner().withPropertyValues("pet.payment.enabled=true")
                 .withBean(DataSource.class, () -> mock(DataSource.class)).withBean(SnowflakeIdGenerator.class, () -> () -> 1L)
                 .withBean(ScheduleCapacityGuardApi.class, () -> mock(ScheduleCapacityGuardApi.class))
                 .withBean(ScheduleProtectionFactsApi.class, () -> mock(ScheduleProtectionFactsApi.class))
@@ -331,6 +305,7 @@ class RefundApplicationConfigurationTest {
                 .withBean(ReservationRefundReleaseApi.class, () -> mock(ReservationRefundReleaseApi.class))
                 .withBean(RefundOrderFactsApi.class, () -> mock(RefundOrderFactsApi.class))
                 .withBean(LateRefundService.class, () -> mock(LateRefundService.class))
+                .withBean(RefundExecutionService.class, () -> mock(RefundExecutionService.class))
                 .withBean(PaymentRefundChannel.class, () -> mock(PaymentRefundChannel.class))
                 .withBean(IntegrationEventPublisher.class, () -> mock(IntegrationEventPublisher.class));
         if (!missing.equals("auth")) result = result.withBean(UserAuthService.class, () -> mock(UserAuthService.class));

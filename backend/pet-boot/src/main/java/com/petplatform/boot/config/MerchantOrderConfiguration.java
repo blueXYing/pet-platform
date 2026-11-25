@@ -24,22 +24,10 @@ import org.springframework.core.env.Environment;
 import org.springframework.web.context.request.*;
 
 @Configuration(proxyBeanMethods=false)
+@ConditionalOnProperty(prefix="pet.payment",name="enabled",havingValue="true")
 public class MerchantOrderConfiguration {
-    @Bean Object merchantOrderSwitchValidation(Environment e){
-        boolean enabled=e.getProperty("pet.order.merchant.enabled",Boolean.class,false);
-        boolean http=e.getProperty("pet.order.merchant.http.enabled",Boolean.class,false);
-        boolean worker=e.getProperty("pet.order.merchant.worker.enabled",Boolean.class,false);
-        if((http||worker)&&!enabled || enabled&&!e.getProperty("pet.payment.foundation.enabled",Boolean.class,false)
-            ||http&&(!worker||!e.getProperty("pet.order.auto-confirm.enabled",Boolean.class,false)||!e.getProperty("pet.order.auto-confirm.worker.enabled",Boolean.class,false)))throw new IllegalStateException("Merchant order flags require complete payment, command and worker dependencies");
-        // Contracts 69/70 read slices ride the same runtime chain as the §4.1 list (store guard
-        // + OWNER authority); their HTTP flags stay independently default-off.
-        boolean customer=e.getProperty("pet.order.customer.http.enabled",Boolean.class,false);
-        boolean stats=e.getProperty("pet.order.stats.http.enabled",Boolean.class,false);
-        if((customer||stats)&&!enabled)throw new IllegalStateException("Merchant read slices require pet.order.merchant.enabled");
-        return new Object();
-    }
     @Configuration(proxyBeanMethods=false)
-    @ConditionalOnProperty(name="pet.order.merchant.enabled",havingValue="true")
+    @ConditionalOnProperty(prefix="pet.payment",name="enabled",havingValue="true")
     static class Runtime {
         @Bean @ConditionalOnMissingBean(RefundOrderFactsApi.class)
         RefundOrderFactsApi merchantRefundPresence(DataSource s,ScheduleCapacityGuardApi guard){return new com.petplatform.refund.biz.apiimpl.RefundOrderFactsApiImpl(s,guard);}
@@ -117,14 +105,12 @@ public class MerchantOrderConfiguration {
             return new MerchantOrderService(s,ids,guard,auth,payments,reservation,presence,refunds,outbox,protection,moderation,sessions);
         }
         @Bean(initMethod="start",destroyMethod="close")
-        @ConditionalOnProperty(name="pet.order.merchant.worker.enabled",havingValue="true")
         AsyncTaskWorker merchantRefundWorker(DataSource s,SnowflakeIdGenerator ids,RefundExecutionService execution){
             return AsyncTaskWorker.create(s,ids,"merchant-refund-"+UUID.randomUUID(),Clock.systemUTC(),TaskWorkerSettings.defaults(),
                 new TaskRetryDelays(Map.of("REFUND_CHANNEL",List.of(Duration.ofSeconds(30),Duration.ofMinutes(1),Duration.ofMinutes(2),Duration.ofMinutes(5),Duration.ofMinutes(15),Duration.ofMinutes(30),Duration.ofHours(1)))),
                 List.of(LateRefundConfiguration.registration("MERCHANT_REFUND_SUBMIT",execution,s),LateRefundConfiguration.registration("MERCHANT_REFUND_CHANNEL_QUERY",execution,s)));
         }
         @Bean(initMethod="start",destroyMethod="close")
-        @ConditionalOnProperty(name="pet.order.merchant.worker.enabled",havingValue="true")
         LateRefundConfiguration.DeadTaskReconciler merchantRefundReconciler(RefundExecutionService execution){return new LateRefundConfiguration.DeadTaskReconciler(execution);}
     }
 }

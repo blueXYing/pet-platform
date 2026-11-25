@@ -32,23 +32,8 @@ import org.springframework.web.context.request.*;
 
 /** Approved R1/R2 internal composition. Public HTTP and all flags remain closed by default. */
 @Configuration(proxyBeanMethods=false)
+@ConditionalOnProperty(prefix="pet.payment",name="enabled",havingValue="true")
 public class RefundApplicationConfiguration {
-    @Bean Object refundApplicationSwitchValidation(Environment e) {
-        boolean enabled=e.getProperty("pet.refund.application.enabled",Boolean.class,false);
-        boolean worker=e.getProperty("pet.refund.application.worker.enabled",Boolean.class,false);
-        boolean http=e.getProperty("pet.refund.application.http.enabled",Boolean.class,false);
-        boolean merchantHttp=e.getProperty("pet.refund.merchant.http.enabled",Boolean.class,false);
-        boolean dependencies=e.getProperty("pet.payment.foundation.enabled",Boolean.class,false)
-                && e.getProperty("pet.order.merchant.enabled",Boolean.class,false)
-                && e.getProperty("pet.auth.c.enabled",Boolean.class,false);
-        // The C refund-application HTTP face (contract 10 §3.9 slice) rides the same real
-        // dependencies as the kernel; it stays unreachable unless the whole slice is enabled.
-        // The M refund face (contract 57) rides the same kernel and its own http switch.
-        if(worker&&!enabled || enabled&&!dependencies || http&&!enabled || merchantHttp&&!enabled)
-            throw new IllegalStateException("Refund application requires real session, merchant and payment dependencies");
-        return new Object();
-    }
-
     /** Uses the real auth service on every command/replay; no caller-declared identity. */
     public static RefundApplicationPorts.SessionAuthority sessionAuthority(UserAuthService auth) {
         Objects.requireNonNull(auth);
@@ -62,7 +47,7 @@ public class RefundApplicationConfiguration {
     }
 
     @Configuration(proxyBeanMethods=false)
-    @ConditionalOnProperty(name="pet.refund.application.enabled",havingValue="true")
+    @ConditionalOnProperty(prefix="pet.payment",name="enabled",havingValue="true")
     static class Runtime {
         @Bean OrderRefundApplicationApiImpl orderRefundApplications(DataSource source,ScheduleCapacityGuardApi guard,
                 SnowflakeIdGenerator ids,PaymentSuccessFactsApi payments,RefundOrderFactsApi refunds,
@@ -127,7 +112,6 @@ public class RefundApplicationConfiguration {
             return new OrderApplicationRefundProjectionConsumer(source,ids,guard,orders,facts,refunds,release);
         }
         @Bean(initMethod="start",destroyMethod="close")
-        @ConditionalOnProperty(name="pet.refund.application.worker.enabled",havingValue="true")
         AsyncTaskWorker refundApplicationWorker(DataSource source,SnowflakeIdGenerator ids,RefundApplicationService applications,
                 RefundExecutionService execution) {
             return AsyncTaskWorker.create(source,ids,"refund-application-"+UUID.randomUUID(),Clock.systemUTC(),TaskWorkerSettings.defaults(),
@@ -138,7 +122,6 @@ public class RefundApplicationConfiguration {
                     LateRefundConfiguration.registration("APPLICATION_REFUND_CHANNEL_QUERY",execution,source)));
         }
         @Bean(initMethod="start",destroyMethod="close")
-        @ConditionalOnProperty(name="pet.refund.application.worker.enabled",havingValue="true")
         ApplicationReconciler refundApplicationReconciler(RefundApplicationService applications,RefundExecutionService execution) {
             return new ApplicationReconciler(applications,execution);
         }

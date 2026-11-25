@@ -1,12 +1,28 @@
+# ==============================================================================
+# 宠物平台 V1.0 后端公共配置（Single Source of Truth）
+# ------------------------------------------------------------------------------
+# 分层约定：
+#   1. application.yml       公共默认值 + 所有敏感项/机器路径的环境变量唯一绑定入口
+#   2. application-dev.yml   开发环境非敏感配置（SPRING_PROFILES_ACTIVE=dev）
+#   3. application-test.yml  测试/SIT 环境非敏感配置（SPRING_PROFILES_ACTIVE=test）
+#   4. application-prod.yml  生产环境非敏感配置（SPRING_PROFILES_ACTIVE=prod）
+#   5. 环境变量 / .env.local 密钥、密码、证书与机器路径（模板见 ops/backend-secrets.env.example）
+#
+# 注意：本文件刻意不设默认 spring.profiles.active：
+#   - 自动化单测默认跑最小上下文，不会误连外部依赖；
+#   - 生产漏传 SPRING_PROFILES_ACTIVE 时不会静默落到 dev 配置。
+# ==============================================================================
+
 spring:
   application:
     name: pet-platform
-  profiles:
-    active: ${SPRING_PROFILES_ACTIVE:local}
+  config:
+    # 本地开发可选加载唯一 git-ignored 的 .env.local；生产直接由进程环境变量注入
+    import: optional:file:./.env.local[.properties],optional:file:../.env.local[.properties]
   datasource:
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:pet_platform}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
     username: ${DB_USER:pet}
-    password: ${DB_PASSWORD:pet}
+    password: ${DB_PASSWORD:}
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -16,8 +32,7 @@ spring:
     multipart:
       max-file-size: 10MB
       max-request-size: 11MB
-      # This is the only servlet multipart endpoint. Keep bounded evidence bytes out of the
-      # container's ordinary temp directory; the controller/core enforce the same 10 MiB ceiling.
+      # Keep bounded evidence bytes out of the container's ordinary temp directory.
       file-size-threshold: 10MB
   flyway:
     enabled: true
@@ -40,12 +55,8 @@ logging:
   pattern:
     level: "%5p [traceId=%X{traceId:-} requestId=%X{requestId:-}]"
 
-# C-end (mini-program) auth slice. Off by default; when pet.auth.c.enabled=true the real
-# WeChat provider additionally needs app-id/app-secret. Fill them in the git-ignored
-# application-local.yml (copy application-local.yml.example) or via the environment
-# variables below at deployment time. Never commit real credentials.
 pet:
-  # 2026-11-19 用户裁决：所有环境统一真实 OSS；只从环境变量读取，真实密钥永不入库。
+  # ---------- 统一对象存储（OSS，所有模块共享） ----------
   oss:
     endpoint: ${OSS_ENDPOINT:}
     region: ${OSS_REGION:}
@@ -53,104 +64,82 @@ pet:
     access-key-id: ${OSS_ACCESS_KEY_ID:}
     secret-access-key: ${OSS_SECRET_ACCESS_KEY:}
     public-base-url: ${OSS_PUBLIC_BASE_URL:}
+
+  # ---------- 私有素材 / 入驻 / 目录 / 排期底座 ----------
   private-assets:
-    enabled: ${PRIVATE_ASSETS_ENABLED:false}
-  # Contract 77 service flash price (CCR-SVC-FLASH-PRICE-001): default OFF — while off the
-  # reservation API answers fail-closed FLASH_PRICE_DISABLED, the C read side and booking facts
-  # stay LIST (no flash query at all) and no consumer/task/controller registers. The four-table
-  # migration rides the existing service-write Flyway (db/service-migration V31, svcw001_*
-  # guarded by pet.service.command.migration-enabled).
-  service:
-    flash-price:
-      enabled: ${SERVICE_FLASH_PRICE_ENABLED:false}
+    enabled: false
+
+  # ---------- 认证与会话（统一复用 REDIS_HOST/PORT/PASSWORD 与 WECHAT_MINI_APP_ID/SECRET） ----------
   auth:
+    admin:
+      enabled: false
+      maintenance: false
+      origin: ${ADMIN_AUTH_ORIGIN:}
+      key-id: ${ADMIN_AUTH_KEY_ID:}
+      mac-key-base64: ${ADMIN_AUTH_MAC_KEY_BASE64:}
+      encryption-key-base64: ${ADMIN_AUTH_ENCRYPTION_KEY_BASE64:}
+      audit-path: ${ADMIN_AUTH_AUDIT_PATH:}
+      node-id: ${SNOWFLAKE_NODE_ID:1}
+      redis-host: ${REDIS_HOST:localhost}
+      redis-port: ${REDIS_PORT:6379}
+      redis-password: ${REDIS_PASSWORD:}
     c:
-      enabled: ${AUTH_C_ENABLED:false}
-      redis-host: ${AUTH_C_REDIS_HOST:}
-      redis-port: ${AUTH_C_REDIS_PORT:6379}
+      enabled: false
+      redis-host: ${REDIS_HOST:localhost}
+      redis-port: ${REDIS_PORT:6379}
+      redis-password: ${REDIS_PASSWORD:}
       wechat:
-        app-id: ${AUTH_WECHAT_APP_ID:}
-        app-secret: ${AUTH_WECHAT_APP_SECRET:}
-  # Contract 58 favorite/footprint C face (32号裁决第二节批次; 10号 §3.16): default OFF
-  # (35号 B-class blocker) — the face hard-requires both C catalog query slices
-  # (pet.service.query.enabled + pet.store.query.enabled), which chain to the merchant
-  # application kernel; it goes live together with the C session domain and the catalogs.
-  favtrack:
-    http:
-      enabled: false
-  # Contract-66 user settings hub / account-deletion C face (PRD 5.1.29; CCR-USR-DELETION-001
-  # v0.2 cooling period): default OFF — the slice assembles only with pet.auth.c.enabled AND
-  # pet.merchant.application.enabled (the OWNER-membership surface), composing the order and
-  # aftersale leaf deletion-fact ports; missing ports are assembly errors, never fallbacks.
-  # The cooling period is deployment configuration (v0.2 user ruling 2026-10-19: default 7
-  # days, bounded 1..30); the durable expiry worker below is independently opt-in (SQL13).
+        app-id: ${WECHAT_MINI_APP_ID:${AUTH_WECHAT_APP_ID:}}
+        app-secret: ${WECHAT_MINI_APP_SECRET:${AUTH_WECHAT_APP_SECRET:}}
+
+  # ---------- 业务参数默认值（非环境差异，跨环境一致） ----------
   usersettings:
-    http:
-      enabled: false
     deletion:
-      cooldown-days: ${DELETION_COOLDOWN_DAYS:7}
-      worker:
-        enabled: ${DELETION_WORKER_ENABLED:false}
-  # Contract-67 feedback-ticket C face (PRD 5.1.28 complaint class; CCR-CS-FEEDBACK-001):
-  # default OFF — assembles only with pet.auth.c.enabled; the write guard consumes the
-  # user-owned active-status fact port.
-  feedback:
-    http:
-      enabled: false
-  # CCR-COM-001 community domain: public feed/detail/interactions + admin moderation.
-  # Default OFF; migration only accepts an explicitly named com001_* database.
-  community:
-    enabled: ${COMMUNITY_ENABLED:false}
-    c:
-      http:
-        enabled: ${COMMUNITY_C_HTTP_ENABLED:false}
-    admin:
-      http:
-        enabled: ${COMMUNITY_ADMIN_HTTP_ENABLED:false}
-    migration-enabled: ${COMMUNITY_MIGRATION_ENABLED:false}
-    migration-database: ${COMMUNITY_MIGRATION_DATABASE:}
-    media:
-      public-base-url: ${COMMUNITY_MEDIA_PUBLIC_BASE_URL:}
-  # Contract-71 marketing center (CCR-MKT-001): kernel + three HTTP faces, default OFF.
-  # The kernel composes admin authorization, merchant store facts, coupon campaign facts and
-  # the open-city catalog; missing owners fail closed 503 at call time, never open writes.
-  marketing:
-    enabled: ${MARKETING_ENABLED:false}
-    admin:
-      http:
-        enabled: ${MARKETING_ADMIN_HTTP_ENABLED:false}
-    merchant:
-      http:
-        enabled: ${MARKETING_MERCHANT_HTTP_ENABLED:false}
-    c:
-      http:
-        enabled: ${MARKETING_C_HTTP_ENABLED:false}
-    migration-enabled: ${MARKETING_MIGRATION_ENABLED:false}
-    migration-database: ${MARKETING_MIGRATION_DATABASE:}
-    asset:
-      # Public base for uploaded artwork URLs; production must be HTTPS/CDN.
-      public-base-url: ${MARKETING_ASSET_PUBLIC_BASE_URL:}
-      # Local E2E only: permit http:// asset URLs (production stays HTTPS-only).
-      allow-http: ${MARKETING_ASSET_ALLOW_HTTP:false}
-  # Contract-72 coupon campaign/batch + active claim (CCR-MKT-001): default OFF.
+      cooldown-days: 7
   coupon:
+    grant:
+      max-per-template: 10
+  community:
+    media:
+      public-base-url: ${COMMUNITY_MEDIA_PUBLIC_BASE_URL:${OSS_PUBLIC_BASE_URL:}}
+  marketing:
+    asset:
+      public-base-url: ${MARKETING_ASSET_PUBLIC_BASE_URL:${OSS_PUBLIC_BASE_URL:}}
+      allow-http: false
     campaign:
-      enabled: ${COUPON_CAMPAIGN_ENABLED:false}
-      admin:
-        http:
-          enabled: ${COUPON_CAMPAIGN_ADMIN_HTTP_ENABLED:false}
-      c:
-        http:
-          enabled: ${COUPON_CAMPAIGN_C_HTTP_ENABLED:false}
-  # CCR-PAY-CENTER-001 stage 1 payment foundation + Lakala channel. Every switch is OFF by default and
-  # every credential is a path/placeholder read from the environment (see ops/payment-center.env.example).
-  # Never commit real credentials, test keys or SM4 keys. Empty platform.* means "not configured".
+      # 存量活动分类码清理完成后在对应环境开启
+      category-validation:
+        enabled: false
+  service:
+    category:
+      icon-url-allow-http: false
+    flash-price:
+      enabled: false
+  notification:
+    delivery:
+      # 外部微信订阅消息投递（待接入真实微信适配器后开启；站内通知不受影响）
+      enabled: false
+
+  # ---------- 交易与资金链保护密钥（仅环境变量注入，无明文默认） ----------
+  order:
+    merchant:
+      protection-key: ${ORDER_MERCHANT_PROTECTION_KEY:}
+  verification:
+    credential:
+      key-id: ${VERIFICATION_CREDENTIAL_KEY_ID:}
+      encryption-key: ${VERIFICATION_CREDENTIAL_ENCRYPTION_KEY:}
+      lookup-key: ${VERIFICATION_CREDENTIAL_LOOKUP_KEY:}
+  refund:
+    application:
+      protection-key: ${REFUND_APPLICATION_PROTECTION_KEY:}
+  aftersale:
+    protection-key: ${AFTERSALE_PROTECTION_KEY:}
+
+  # ---------- 支付与资金链（拉卡拉，统一开关 pet.payment.enabled） ----------
   payment:
-    foundation:
-      enabled: ${PAYMENT_FOUNDATION_ENABLED:false}
+    enabled: false
     dispatch:
-      enabled: ${PAYMENT_DISPATCH_ENABLED:false}
-      # SIT or PRODUCTION (enum names; "PROD" is not accepted). No default: empty fails dispatch startup.
+      # SIT 或 PRODUCTION（由 application-dev/test/prod.yml 指定；空值启动失败）
       environment: ${LAKALA_ENV:}
       app-id: ${LAKALA_APP_ID:}
       merchant-serial: ${LAKALA_MERCHANT_SERIAL_NO:}
@@ -164,20 +153,14 @@ pet:
       notify-url: ${LAKALA_PAY_NOTIFY_URL:}
     lakala:
       notification-certificate-path: ${LAKALA_NOTIFY_CERT_PATH:}
-      channel-time-zone: ${LAKALA_CHANNEL_TIMEZONE:}
-      # preorder settle_type persisted per payment row: 1 = split-ledger, 0 = ordinary settlement.
-      # Default 0 until stage 2 split-ledger ships (PLAN Q2 unanswered); SIT sets LAKALA_SETTLE_TYPE=1 explicitly.
-      settle-type: ${LAKALA_SETTLE_TYPE:0}
+      channel-time-zone: ${LAKALA_CHANNEL_TIMEZONE:Asia/Shanghai}
+      settle-type: 0
       platform:
         merchant-no: ${LAKALA_MERCHANT_NO:}
         term-no: ${LAKALA_TERM_NO:}
-        sub-app-id: ${WECHAT_MINI_APP_ID:}
-    # Contract 75 §8 payment center (PaymentCenterConfiguration). All OFF; no HTTP is registered.
-    # DEMO is test-only and fails startup unless pet.payment.dispatch.environment is SIT.
+        sub-app-id: ${WECHAT_MINI_APP_ID:${AUTH_WECHAT_APP_ID:}}
     center:
-      enabled: ${PAYMENT_CENTER_ENABLED:false}
-      worker:
-        enabled: ${PAYMENT_CENTER_WORKER_ENABLED:false}
       demo:
-        enabled: ${PAYMENT_CENTER_DEMO_ENABLED:false}
-        max-amount: ${PAYMENT_CENTER_DEMO_MAX_AMOUNT:0.01}
+        # 仅开发/测试环境按需开启；PRODUCTION 环境下 guard 强制拒绝启动
+        enabled: false
+        max-amount: 0.01

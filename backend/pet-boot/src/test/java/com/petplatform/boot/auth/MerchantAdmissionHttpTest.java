@@ -106,7 +106,11 @@ class MerchantAdmissionHttpTest {
     props.put("pet.auth.admin.audit-path", db.directory.resolve("admission-audit.bin"));
     props.put("pet.merchant.application.open-cities[0].code", "chengdu");
     props.put("pet.merchant.application.open-cities[0].name", "成都");
-    props.put("pet.merchant.application.enabled", true);
+    props.put("pet.private-assets.enabled", true);
+    props.put("PRIVATE_ASSET_GRANT_KEY_VERSION", "qa-admission-grant");
+    props.put("PRIVATE_ASSET_GRANT_HMAC_KEY_BASE64", Base64.getEncoder().encodeToString(key(29)));
+    props.put("PRIVATE_ASSET_REASON_KEY_VERSION", "qa-admission-reason");
+    props.put("PRIVATE_ASSET_REASON_AES_KEY_BASE64", Base64.getEncoder().encodeToString(key(31)));
     props.put("pet.merchant.application.notifications-enabled", true);
     props.put("pet.outbox.enabled", true);
     try {
@@ -117,6 +121,8 @@ class MerchantAdmissionHttpTest {
                     var beans = (GenericApplicationContext) ctx;
                     beans.registerBean(
                         "admissionDataSource", javax.sql.DataSource.class, () -> db.source);
+                    beans.registerBean("qaStubObjectStore", com.petplatform.thirdparty.biz.application.port.PrivateObjectStore.class, () -> org.mockito.Mockito.mock(com.petplatform.thirdparty.biz.application.port.PrivateObjectStore.class));
+                    beans.registerBean("qaStubAssetScanner", com.petplatform.thirdparty.biz.application.port.PrivateAssetScanner.class, () -> bytes -> new com.petplatform.thirdparty.biz.application.port.PrivateAssetScanner.ScanResult(true, "QA_ONLY_SCANNER", "CLEAN"));
                     beans.registerBean("admissionIds", SnowflakeIdGenerator.class, () -> db.ids);
                     beans.registerBean(
                         "admissionWechat",

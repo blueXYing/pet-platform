@@ -29,11 +29,12 @@ import org.springframework.context.annotation.Configuration;
  * the deployment gate opens it (pet.feedback.http.enabled).
  */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(prefix = "pet",
-        name = {"auth.c.enabled", "feedback.http.enabled"}, havingValue = "true")
+@org.springframework.boot.autoconfigure.condition.ConditionalOnExpression(
+        "${pet.auth.admin.enabled:false} || ${pet.auth.c.enabled:false}")
 public class FeedbackConfiguration {
 
     @Bean
+    @org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean(UserActiveStatusApi.class)
     UserActiveStatusApi userActiveStatus(DataSource source) {
         return new UserActiveStatusApiImpl(source);
     }

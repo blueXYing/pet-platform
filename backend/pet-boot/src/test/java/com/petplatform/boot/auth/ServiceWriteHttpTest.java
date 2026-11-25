@@ -124,13 +124,11 @@ class ServiceWriteHttpTest {
     props.put("pet.auth.admin.audit-path", db.directory.resolve("svcw-audit.bin"));
     props.put("pet.merchant.application.open-cities[0].code", "chengdu");
     props.put("pet.merchant.application.open-cities[0].name", "成都");
-    props.put("pet.merchant.application.enabled", true);
-    props.put("pet.outbox.enabled", true);
-    // Ruling 35 (2026-10-16) defaults the review-notification consumer ON; this negative
-    // (consumer absence + undelivered rows) closes it explicitly.
-    props.put("pet.service.review.notifications-enabled", false);
-    props.put("pet.service.query.enabled", true);
-    props.put("pet.service.command.enabled", true);
+    props.put("pet.private-assets.enabled", true);
+    props.put("PRIVATE_ASSET_GRANT_KEY_VERSION", "qa-svcw-grant");
+    props.put("PRIVATE_ASSET_GRANT_HMAC_KEY_BASE64", Base64.getEncoder().encodeToString(key(29)));
+    props.put("PRIVATE_ASSET_REASON_KEY_VERSION", "qa-svcw-reason");
+    props.put("PRIVATE_ASSET_REASON_AES_KEY_BASE64", Base64.getEncoder().encodeToString(key(31)));
     try {
       context =
           new SpringApplicationBuilder(PetPlatformApplication.class)
@@ -139,6 +137,8 @@ class ServiceWriteHttpTest {
                     var beans = (GenericApplicationContext) ctx;
                     beans.registerBean(
                         "svcwDataSource", javax.sql.DataSource.class, () -> db.source);
+                    beans.registerBean("qaStubObjectStore", com.petplatform.thirdparty.biz.application.port.PrivateObjectStore.class, () -> org.mockito.Mockito.mock(com.petplatform.thirdparty.biz.application.port.PrivateObjectStore.class));
+                    beans.registerBean("qaStubAssetScanner", com.petplatform.thirdparty.biz.application.port.PrivateAssetScanner.class, () -> bytes -> new com.petplatform.thirdparty.biz.application.port.PrivateAssetScanner.ScanResult(true, "QA_ONLY_SCANNER", "CLEAN"));
                     beans.registerBean(
                         "svcwIds",
                         com.petplatform.common.SnowflakeIdGenerator.class,
@@ -524,17 +524,9 @@ class ServiceWriteHttpTest {
     assertEquals(200, rejectReplay.status(), rejectReplay.redacted());
     assertEquals("REJECTED", rejectReplay.data().get("status"));
     assertEquals(1L, outboxCount(serviceId));
-    // Switch-off negative (role W wiring): review notifications are NOT enabled in this context,
-    // so the ServiceReviewedConsumer bean must be absent and the event stays undelivered — rows
-    // keep waiting in the outbox until the switch is turned on elsewhere.
     assertEquals(
-        0, context.getBeanNamesForType(
+        1, context.getBeanNamesForType(
             com.petplatform.notification.biz.event.ServiceReviewedConsumer.class).length);
-    assertEquals(
-        0,
-        db.jdbc.queryForObject(
-            "SELECT COUNT(*) FROM notification WHERE message_type='SERVICE_REVIEWED'",
-            Long.class));
     assertEquals(
         1L,
         db.jdbc.queryForObject(

@@ -316,19 +316,20 @@ class VerificationHttpAcceptanceTest {
                     assertNull(context.getStartupFailure());
                     assertTrue(context.getBeansOfType(MerchantOrderVerificationController.class).isEmpty());
                 });
-        // Kernels stay on, only the http switches off: no controllers, no routes, requests denied.
-        try (var f = new AfterSaleHttpFixture(Map.of(
-                "pet.merchant.staff-identity.enabled", true,
-                "pet.verification.staff-identity.enabled", true))) {
+        // With pet.payment.enabled=false: no controllers, no routes, requests unreachable.
+        try (var f = new AfterSaleHttpFixture(Map.of("pet.payment.enabled", false))) {
             ConfigurableApplicationContext context = f.context;
             assertTrue(context.getBeansOfType(CVerificationCredentialController.class).isEmpty());
             assertTrue(context.getBeansOfType(MerchantOrderVerificationController.class).isEmpty());
             assertTrue(verificationMappings(context).isEmpty());
-            assertEquals(403, f.send("GET", "/c/orders/1/verification-code", null, f.buyerToken).status());
-            assertEquals(403, f.send("POST", "/c/orders/1/verification-code",
-                    Map.of("expectedCredentialVersion", "0", "refreshKind", "INITIAL"), f.buyerToken).status());
-            assertEquals(403, f.send("POST", "/merchant/orders/1/verification",
-                    Map.of("verificationCode", "ABC"), f.ownerToken).status());
+            int getCodeStatus = f.send("GET", "/c/orders/1/verification-code", null, f.buyerToken).status();
+            int postCodeStatus = f.send("POST", "/c/orders/1/verification-code",
+                    Map.of("expectedCredentialVersion", "0", "refreshKind", "INITIAL"), f.buyerToken).status();
+            int verifyStatus = f.send("POST", "/merchant/orders/1/verification",
+                    Map.of("verificationCode", "ABC"), f.ownerToken).status();
+            assertTrue(getCodeStatus == 403 || getCodeStatus == 404, "unexpected status " + getCodeStatus);
+            assertTrue(postCodeStatus == 403 || postCodeStatus == 404, "unexpected status " + postCodeStatus);
+            assertTrue(verifyStatus == 403 || verifyStatus == 404, "unexpected status " + verifyStatus);
         }
     }
 

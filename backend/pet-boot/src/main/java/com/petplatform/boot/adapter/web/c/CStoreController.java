@@ -51,7 +51,7 @@ import org.springframework.web.bind.annotation.RestController;
  * AND. The response projection is unchanged.
  */
 @RestController
-@ConditionalOnProperty(prefix = "pet.store.query", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "pet", name = {"auth.admin.enabled", "private-assets.enabled"}, havingValue = "true")
 public class CStoreController {
 
     private static final java.util.regex.Pattern CITY =

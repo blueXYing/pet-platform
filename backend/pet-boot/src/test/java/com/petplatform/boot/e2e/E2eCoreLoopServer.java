@@ -495,93 +495,32 @@ public final class E2eCoreLoopServer {
                   "--pet.auth.admin.encryption-key-base64="
                       + Base64.getEncoder().encodeToString(adminAes),
                   "--pet.auth.admin.audit-path=" + directory.resolve("admin-audit.bin"),
-                  "--pet.merchant.application.enabled=true",
+                  "--pet.private-assets.enabled=true",
                   "--pet.merchant.application.open-cities[0].code=chengdu",
                   "--pet.merchant.application.open-cities[0].name=成都",
-                  "--pet.merchant.application.notifications-enabled=false",
-                  "--pet.merchant.protection.enabled=true",
-                  "--pet.merchant.subject.enabled=true",
                   "--MERCHANT_PROTECTED_KEY_VERSION=e2e-only-v1",
                   "--MERCHANT_PROTECTED_AES_KEY_BASE64=" + base64(31),
                   "--MERCHANT_PROTECTED_HMAC_KEY_BASE64=" + base64(47),
                   "--MERCHANT_SUBJECT_POLICY_VERSION=CN-ID15-18-USCC18-v1",
                   "--MERCHANT_SUBJECT_HMAC_KEY_BASE64=" + base64(63),
-                  "--pet.outbox.enabled=true",
+                  "--PRIVATE_ASSET_GRANT_KEY_VERSION=e2e-grant-v1",
+                  "--PRIVATE_ASSET_GRANT_HMAC_KEY_BASE64=" + base64(53),
+                  "--PRIVATE_ASSET_REASON_KEY_VERSION=e2e-reason-v1",
+                  "--PRIVATE_ASSET_REASON_AES_KEY_BASE64=" + base64(59),
                   "--pet.outbox.owner=e2e-outbox-" + UUID.randomUUID(),
-                  "--pet.service.query.enabled=true",
-                  "--pet.service.command.enabled=true",
-                  "--pet.service.review.notifications-enabled=false",
-                  "--pet.store.query.enabled=true",
-                  "--pet.schedule.query.enabled=true",
-                  "--pet.schedule.protection.enabled=true",
-                  "--pet.order.creation.enabled=true",
-                  "--pet.order.expiry.enabled=true",
-                  // Round 3: the expiry worker runs so a payment-timeout close releases the
-                  // frozen coupon (contract-61 release rides the guarded close).
-                  "--pet.order.expiry.worker.enabled=true",
-                  "--pet.payment.foundation.enabled=true",
+                  "--pet.payment.enabled=true",
                   "--pet.payment.lakala.channel-time-zone=Asia/Shanghai",
-                  "--pet.payment.dispatch.enabled=true",
                   "--pet.payment.dispatch.parameterKeyPath=" + parameterKeyFile,
                   "--pet.payment.dispatch.outOrgCode=E2E-ORG-001",
                   "--pet.payment.dispatch.subject=E2E宠物服务订单",
                   "--pet.payment.dispatch.requestIp=127.0.0.1",
                   "--pet.payment.dispatch.notify-url=https://e2e.example.invalid/notify",
-                  "--pet.order.auto-confirm.enabled=true",
-                  "--pet.order.auto-confirm.worker.enabled=true",
-                  "--pet.order.merchant.enabled=true",
-                  "--pet.order.merchant.http.enabled=true",
-                  // 45号 switch validation: the merchant-order HTTP face requires its worker
-                  // and the auto-confirm worker to be on (complete dependency composition).
-                  "--pet.order.merchant.worker.enabled=true",
                   "--pet.order.merchant.protection-key=" + base64(17),
-                  "--pet.order.reschedule.enabled=true",
-                  "--pet.order.reschedule.http.enabled=true",
-                  // 39号 §1 selection amendment: the availability items carry windowId/kind so
-                  // the C reschedule page can build the 46号 request without guessing identity.
-                  "--pet.schedule.selection.enabled=true",
-                  "--pet.verification.credential.enabled=true",
-                  "--pet.verification.credential.http.enabled=true",
                   "--pet.verification.credential.key-id=e2e-key",
                   "--pet.verification.credential.encryption-key=" + base64(19),
                   "--pet.verification.credential.lookup-key=" + base64(23),
-                  "--pet.verification.completion.enabled=true",
-                  "--pet.verification.completion.http.enabled=true",
-                  // CCR-M-VERIFY-RECORD-001 (approved 2026-11-12): merchant verification-record
-                  // list read face for future e2e demo rounds (pet.order.merchant rides above).
-                  "--pet.verification.merchant-read.http.enabled=true",
-                  "--pet.refund.application.enabled=true",
-                  "--pet.refund.application.http.enabled=true",
-                  // Round 3: the application worker runs so an approved application becomes a
-                  // real refund_order executed over the sandbox refund channel, publishing
-                  // RefundSucceededEvent.v1 for the coupon restore + points clawback consumers.
-                  "--pet.refund.application.worker.enabled=true",
                   "--pet.refund.application.protection-key=" + base64(13),
                   "--pet.refund.application.reason-codes=SCHEDULE_CONFLICT,PLAN_CHANGED,SERVICE_ISSUE",
-                  // Composition constraint found during bring-up: with pet.outbox enabled,
-                  // LateRefundService registers an empty subscription unless refund.late is on,
-                  // and OutboxDispatcher fails the whole boot (empty eventTypes is an error).
-                  "--pet.refund.late.enabled=true",
-                  // Round 2 additions (all default-off faces the first round left disabled):
-                  // contract-57 merchant refund list/detail/approve/reject HTTP face.
-                  "--pet.refund.merchant.http.enabled=true",
-                  // REV-001 review kernel + C review face, REV-002 appeal faces (M + admin).
-                  "--pet.review.enabled=true",
-                  "--pet.review.http.enabled=true",
-                  "--pet.review.appeal.enabled=true",
-                  "--pet.review.appeal.http.enabled=true",
-                  // Aftersale workflow + HTTP faces (needs private-assets composition below).
-                  "--pet.private-assets.enabled=true",
-                  "--PRIVATE_ASSET_GRANT_KEY_VERSION=e2e-grant-v1",
-                  "--PRIVATE_ASSET_GRANT_HMAC_KEY_BASE64=" + base64(53),
-                  "--PRIVATE_ASSET_REASON_KEY_VERSION=e2e-reason-v1",
-                  "--PRIVATE_ASSET_REASON_AES_KEY_BASE64=" + base64(59),
-                  "--pet.aftersale.enabled=true",
-                  "--pet.aftersale.http.enabled=true",
-                  // Round 4: the ruling-32 original-route funding authority turns the switch
-                  // on (the false default below was the round-2 fixture setting; duplicate
-                  // command-line keys are joined and fail Boolean conversion, so the old line
-                  // is replaced, not repeated).
                   "--pet.aftersale.protection-key=" + base64(29),
                   "--pet.aftersale.type-codes=SERVICE_QUALITY,OTHER",
                   "--pet.aftersale.demand-codes=REFUND,RESERVICE,OTHER",
@@ -589,43 +528,7 @@ public final class E2eCoreLoopServer {
                   "--pet.aftersale.type-labels[OTHER]=其他问题",
                   "--pet.aftersale.demand-labels[REFUND]=退款",
                   "--pet.aftersale.demand-labels[RESERVICE]=重新服务",
-                  "--pet.aftersale.demand-labels[OTHER]=其他诉求",
-                  // Round 3 additions (additive new-capability faces, all default-off):
-                  // contract-61 coupon lifecycle kernel — freeze joins the 38 create
-                  // transaction, consume rides the 41 payment result, release rides the 39
-                  // close, the restore consumer is dispatched by the outbox.
-                  "--pet.coupon.lifecycle.enabled=true",
-                  // contract-62 encyclopedia anonymous read face (categories/breeds/detail).
-                  "--pet.encyclopedia.query.enabled=true",
-                  // contract-58/60 points earn kernel + C HTTP face + PTS-002 refund clawback.
-                  "--pet.points.task.enabled=true",
-                  "--pet.points.task.http.enabled=true",
-                  "--pet.points.refund-clawback.enabled=true",
-          // The 2026-10-08 ruling turns pre-service refunds into automatic full
-          // approvals, so the C refund-apply walks the real execution chain.
-          "--pet.refund.pre-service-auto-refund.enabled=true",
-          // Round 4 additions (admin web main chain, additive; test-domain only — the
-          // production defaults stay unchanged):
-          // contract-63 trade read face + v0.2 disposal kernels and their durable
-          // ADMIN_REFUND_SUBMIT/ADMIN_REFUND_CHANNEL_QUERY workers (worker requires the
-          // payment foundation, which is already on).
-          "--pet.admin.trade.http.enabled=true",
-          "--pet.admin.trade.worker.enabled=true",
-          // contract-64 governance read face (merchants/schedule/staff).
-          "--pet.admin.governance.http.enabled=true",
-          // contract-65 ops face CANNOT be enabled in this fixture (QA finding, no production
-          // change allowed here): with pet.admin.ops.http.enabled=true the context fails to
-          // boot — AdminOpsController's AdminEncyclopediaCommandApi constructor parameter
-          // matches TWO beans (AdminEncyclopediaApiImpl implements both the query and the
-          // command face, and AdminOpsConfiguration exposes it twice) with no @Primary and no
-          // retained parameter names. The switch stays off; the ops routes still answer the
-          // walkthrough with the security chain's deny (403), which is the documented finding.
-          // "--pet.admin.ops.http.enabled=true",
-          // A-004 ruling-32 aftersale original-route refund execution: the funding authority
-          // rides the succeeded payment's WeChat route; the worker family executes the
-          // AFTERSALE_REFUND_SUBMIT/CHANNEL_QUERY tasks and supplement timeouts.
-          "--pet.aftersale.refund.enabled=true",
-          "--pet.aftersale.worker.enabled=true");
+                  "--pet.aftersale.demand-labels[OTHER]=其他诉求");
       String endpoint = "http://127.0.0.1:" + port;
       // Round-2 admin operator: the real bootstrap lane (26号 maintenance-mode first account,
       // PLATFORM_SUPER_ADMIN + scope ALL per SSOT §24 single-operator adjudication). Skipped on

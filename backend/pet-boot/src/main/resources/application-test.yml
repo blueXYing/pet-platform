@@ -1,0 +1,32 @@
+# ==============================================================================
+# 测试 / SIT 环境非敏感配置（SPRING_PROFILES_ACTIVE=test）
+# ------------------------------------------------------------------------------
+# 与 dev / prod 装配完全一致的业务能力；对接拉卡拉 SIT 通道，开启 DEMO 支付联调。
+# 注意：本文件面向部署测试环境（SIT），自动化单测不会激活 test profile。
+# ==============================================================================
+
+pet:
+  auth:
+    admin:
+      enabled: true
+    c:
+      enabled: true
+  private-assets:
+    enabled: true
+  payment:
+    enabled: true
+    dispatch:
+      environment: SIT
+    lakala:
+      settle-type: 1
+    center:
+      demo:
+        enabled: true
+  marketing:
+    asset:
+      allow-http: false
+  service:
+    category:
+      icon-url-allow-http: false
+    flash-price:
+      enabled: true

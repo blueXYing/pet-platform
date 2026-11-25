@@ -22,14 +22,14 @@ class ScheduleQueryDisabledTest {
     void explicitOffKeepsTheScheduleQuerySliceUnassembled() {
         new ApplicationContextRunner()
                 .withUserConfiguration(ScheduleQueryConfiguration.class)
-                .withPropertyValues("pet.schedule.query.enabled=false")
+                .withPropertyValues("pet.private-assets.enabled=false")
                 .run(context -> {
                     assertNull(context.getStartupFailure());
                     assertTrue(context.getBeansOfType(ScheduleQueryApiImpl.class).isEmpty());
                 });
         new ApplicationContextRunner()
                 .withUserConfiguration(CScheduleController.class)
-                .withPropertyValues("pet.schedule.query.enabled=false")
+                .withPropertyValues("pet.private-assets.enabled=false")
                 .run(context -> {
                     assertNull(context.getStartupFailure());
                     assertTrue(context.getBeansOfType(CScheduleController.class).isEmpty());

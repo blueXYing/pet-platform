@@ -25,7 +25,7 @@ class MerchantApplicationRuntimeConfigurationTest {
   @Test
   void enablingWithoutAuthoritativeProvidersCannotConstructASuccessfulRuntime() {
     context
-        .withPropertyValues("pet.merchant.application.enabled=true")
+        .withPropertyValues("pet.auth.admin.enabled=true", "pet.private-assets.enabled=true")
         .run(ctx -> assertNotNull(ctx.getStartupFailure()));
   }
 }
