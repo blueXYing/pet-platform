@@ -1,0 +1,346 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- Contract 78 / SQL78 settlement tables. Matched by PaymentMybatis classpath*:mapper/Payment*Mapper.xml. -->
+<mapper namespace="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentSettlementMapper">
+
+  <!-- ==================== settlement_config & audit ==================== -->
+
+  <sql id="configColumns">id,merchant_id,settle_days,fee_rate,enabled,version,created_at,updated_at</sql>
+
+  <select id="selectConfigByMerchant" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentSettlementMapper$ConfigRow">
+    SELECT <include refid="configColumns"/> FROM settlement_config WHERE merchant_id=#{merchantId}
+  </select>
+
+  <select id="selectConfigByMerchantForUpdate" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentSettlementMapper$ConfigRow">
+    SELECT <include refid="configColumns"/> FROM settlement_config WHERE merchant_id=#{merchantId} FOR UPDATE
+  </select>
+
+  <insert id="insertConfig">
+    INSERT INTO settlement_config(id,merchant_id,settle_days,fee_rate,enabled,version,created_at,updated_at)
+    VALUES(#{id},#{merchantId},#{settleDays},#{feeRate},#{enabled},0,#{now},#{now})
+  </insert>
+
+  <update id="updateConfig">
+    UPDATE settlement_config
+    SET settle_days=#{settleDays},fee_rate=#{feeRate},enabled=#{enabled},
+        version=version+1,updated_at=#{now}
+    WHERE id=#{id} AND version=#{version}
+  </update>
+
+  <insert id="insertConfigAudit">
+    INSERT INTO settlement_config_audit(
+      id,merchant_id,config_id,request_key,before_settle_days,after_settle_days,
+      before_fee_rate,after_fee_rate,before_enabled,after_enabled,
+      operator_type,operator_id,reason,created_at)
+    VALUES(
+      #{id},#{merchantId},#{configId},#{requestKey},#{beforeSettleDays},#{afterSettleDays},
+      #{beforeFeeRate},#{afterFeeRate},#{beforeEnabled},#{afterEnabled},
+      #{operatorType},#{operatorId},#{reason},#{now})
+  </insert>
+
+  <select id="selectConfigAuditByRequestKey" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentSettlementMapper$ConfigAuditRow">
+    SELECT id,merchant_id,config_id,before_settle_days,after_settle_days,
+           before_fee_rate,after_fee_rate,before_enabled,after_enabled,
+           operator_type,operator_id,reason,created_at
+    FROM settlement_config_audit WHERE request_key=#{requestKey} FOR UPDATE
+  </select>
+
+  <!-- ==================== settlement_order ==================== -->
+
+  <sql id="orderColumns">
+    id,payment_id,order_id,biz_type,biz_no,merchant_id,store_id,
+    original_price,flash_discount_amount,merchant_discount_amount,platform_subsidy_amount,
+    paid_amount,refunded_amount,split_base,fee_rate_snapshot,merchant_share,
+    split_amount,platform_retained_amount,platform_subsidy_due,actual_merchant_amount,channel_split_fee,
+    verified_at,settle_days_snapshot,eligible_at,due_schedule_round,reversed_amount,
+    active_instruction_id,status,hold_reason,last_error_code,last_error_message,
+    source_paid_event_id,source_verified_event_id,version,created_at,updated_at
+  </sql>
+
+  <select id="selectOrderById" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentSettlementMapper$OrderRow">
+    SELECT <include refid="orderColumns"/> FROM settlement_order WHERE id=#{id}
+  </select>
+
+  <select id="selectOrderByIdForUpdate" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentSettlementMapper$OrderRow">
+    SELECT <include refid="orderColumns"/> FROM settlement_order WHERE id=#{id} FOR UPDATE
+  </select>
+
+  <select id="selectOrderByPaymentId" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentSettlementMapper$OrderRow">
+    SELECT <include refid="orderColumns"/> FROM settlement_order WHERE payment_id=#{paymentId}
+  </select>
+
+  <select id="selectOrderByPaymentIdForUpdate" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentSettlementMapper$OrderRow">
+    SELECT <include refid="orderColumns"/> FROM settlement_order WHERE payment_id=#{paymentId} FOR UPDATE
+  </select>
+
+  <select id="selectOrderByOrderId" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentSettlementMapper$OrderRow">
+    SELECT <include refid="orderColumns"/> FROM settlement_order WHERE order_id=#{orderId}
+  </select>
+
+  <select id="selectOrderByOrderIdForUpdate" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentSettlementMapper$OrderRow">
+    SELECT <include refid="orderColumns"/> FROM settlement_order WHERE order_id=#{orderId} FOR UPDATE
+  </select>
+
+  <select id="selectOrderByBiz" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentSettlementMapper$OrderRow">
+    SELECT <include refid="orderColumns"/> FROM settlement_order WHERE biz_type=#{bizType} AND biz_no=#{bizNo}
+  </select>
+
+  <insert id="insertOrder">
+    INSERT INTO settlement_order(
+      id,payment_id,order_id,biz_type,biz_no,merchant_id,store_id,
+      original_price,flash_discount_amount,merchant_discount_amount,platform_subsidy_amount,
+      paid_amount,refunded_amount,split_base,fee_rate_snapshot,merchant_share,
+      platform_subsidy_due,channel_split_fee,due_schedule_round,reversed_amount,
+      status,source_paid_event_id,version,created_at,updated_at)
+    VALUES(
+      #{id},#{paymentId},#{orderId},#{bizType},#{bizNo},#{merchantId},#{storeId},
+      #{originalPrice},#{flashDiscountAmount},#{merchantDiscountAmount},#{platformSubsidyAmount},
+      #{paidAmount},0.00,#{splitBase},#{feeRateSnapshot},#{merchantShare},
+      0.00,0.00,0,0.00,
+      'PENDING_TRIGGER',#{sourcePaidEventId},0,#{now},#{now})
+  </insert>
+
+  <update id="markOrderWaiting">
+    UPDATE settlement_order
+    SET status='WAITING',verified_at=#{verifiedAt},settle_days_snapshot=#{settleDays},
+        eligible_at=#{eligibleAt},due_schedule_round=#{dueScheduleRound},
+        source_verified_event_id=COALESCE(source_verified_event_id,#{sourceVerifiedEventId}),
+        hold_reason=NULL,version=version+1,updated_at=#{now}
+    WHERE id=#{id} AND version=#{version} AND status='PENDING_TRIGGER'
+  </update>
+
+  <update id="markOrderOnHold">
+    UPDATE settlement_order
+    SET status='ON_HOLD',hold_reason=#{holdReason},last_error_code=#{errorCode},
+        last_error_message=#{errorMessage},version=version+1,updated_at=#{now}
+    WHERE id=#{id} AND version=#{version} AND status IN ('WAITING','ON_HOLD')
+  </update>
+
+  <update id="markOrderCanceled">
+    UPDATE settlement_order
+    SET status='CANCELED',refunded_amount=#{refundedAmount},split_base=0.00,
+        merchant_share=0.00,split_amount=0.00,platform_retained_amount=0.00,
+        platform_subsidy_due=0.00,hold_reason=NULL,version=version+1,updated_at=#{now}
+    WHERE id=#{id} AND version=#{version} AND status IN ('PENDING_TRIGGER','WAITING','ON_HOLD')
+  </update>
+
+  <update id="updateOrderRefundAmounts">
+    UPDATE settlement_order
+    SET refunded_amount=#{refundedAmount},split_base=#{splitBase},merchant_share=#{merchantShare},
+        version=version+1,updated_at=#{now}
+    WHERE id=#{id} AND version=#{version} AND status IN ('PENDING_TRIGGER','WAITING','ON_HOLD')
+  </update>
+
+  <update id="markOrderSplitting">
+    UPDATE settlement_order
+    SET status='SPLITTING',split_amount=#{splitAmount},platform_retained_amount=#{platformRetainedAmount},
+        platform_subsidy_due=#{platformSubsidyDue},active_instruction_id=#{instructionId},
+        hold_reason=NULL,last_error_code=NULL,last_error_message=NULL,
+        version=version+1,updated_at=#{now}
+    WHERE id=#{id} AND version=#{version} AND status='WAITING'
+  </update>
+
+  <update id="markOrderSplitSucceeded">
+    UPDATE settlement_order
+    SET status='SPLIT_SUCCEEDED',actual_merchant_amount=#{actualMerchantAmount},
+        channel_split_fee=#{channelSplitFee},last_error_code=NULL,last_error_message=NULL,
+        version=version+1,updated_at=#{now}
+    WHERE id=#{id} AND version=#{version} AND status='SPLITTING' AND active_instruction_id=#{instructionId}
+  </update>
+
+  <update id="markOrderSplitFailed">
+    UPDATE settlement_order
+    SET status='SPLIT_FAILED',last_error_code=#{errorCode},last_error_message=#{errorMessage},
+        version=version+1,updated_at=#{now}
+    WHERE id=#{id} AND version=#{version} AND status='SPLITTING' AND active_instruction_id=#{instructionId}
+  </update>
+
+  <update id="markOrderReversing">
+    UPDATE settlement_order
+    SET status='REVERSING',active_instruction_id=#{instructionId},
+        last_error_code=NULL,last_error_message=NULL,
+        version=version+1,updated_at=#{now}
+    WHERE id=#{id} AND version=#{version} AND status IN ('SPLIT_SUCCEEDED','PARTIALLY_REVERSED','REVERSE_FAILED')
+  </update>
+
+  <update id="markOrderFallbackSucceeded">
+    UPDATE settlement_order
+    SET status=#{newStatus},reversed_amount=#{reversedAmount},
+        last_error_code=NULL,last_error_message=NULL,
+        version=version+1,updated_at=#{now}
+    WHERE id=#{id} AND version=#{version} AND status='REVERSING' AND active_instruction_id=#{instructionId}
+  </update>
+
+  <update id="markOrderReverseFailed">
+    UPDATE settlement_order
+    SET status='REVERSE_FAILED',last_error_code=#{errorCode},last_error_message=#{errorMessage},
+        version=version+1,updated_at=#{now}
+    WHERE id=#{id} AND version=#{version} AND status IN ('SPLIT_SUCCEEDED','PARTIALLY_REVERSED','REVERSING')
+  </update>
+
+  <update id="updatePostSplitRefundProjection">
+    UPDATE settlement_order
+    SET refunded_amount=#{refundedAmount},split_base=#{splitBase},merchant_share=#{merchantShare},
+        platform_subsidy_due=#{platformSubsidyDue},version=version+1,updated_at=#{now}
+    WHERE id=#{id} AND version=#{version}
+      AND status IN ('SPLIT_SUCCEEDED','REVERSING','PARTIALLY_REVERSED','REVERSED','REVERSE_FAILED')
+  </update>
+
+  <update id="resumeOrRetryOrderToWaiting">
+    UPDATE settlement_order
+    SET status='WAITING',hold_reason=NULL,last_error_code=NULL,last_error_message=NULL,
+        due_schedule_round=#{dueScheduleRound},version=version+1,updated_at=#{now}
+    WHERE id=#{id} AND version=#{version} AND status=#{expectedStatus}
+  </update>
+
+  <select id="listOrders" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentSettlementMapper$OrderRow">
+    SELECT <include refid="orderColumns"/> FROM settlement_order
+    <where>
+      <if test="merchantId != null">AND merchant_id=#{merchantId}</if>
+      <if test="status != null">AND status=#{status}</if>
+    </where>
+    ORDER BY created_at DESC, id DESC
+    LIMIT #{limit} OFFSET #{offset}
+  </select>
+
+  <select id="countOrders" resultType="java.lang.Long">
+    SELECT COUNT(*) FROM settlement_order
+    <where>
+      <if test="merchantId != null">AND merchant_id=#{merchantId}</if>
+      <if test="status != null">AND status=#{status}</if>
+    </where>
+  </select>
+
+  <!-- ==================== settlement_instruction ==================== -->
+
+  <sql id="instructionColumns">
+    id,settlement_order_id,payment_id,refund_order_id,origin_instruction_id,merchant_id,instruction_type,attempt_no,
+    out_separate_no,separate_no,merchant_no,receiver_no,log_no,log_date,
+    total_amount,merchant_amount,platform_amount,
+    actual_separate_amount,actual_merchant_amount,total_fee_amount,merchant_fee_amount,
+    status,channel_status,channel_final_status,acc_result_desc,fallback_reason,
+    submit_response_sha256,terminal_receipt_sha256,finish_date,sent_at,terminal_at,
+    result_event_id,version,created_at,updated_at
+  </sql>
+
+  <select id="selectInstructionById" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentSettlementMapper$InstructionRow">
+    SELECT <include refid="instructionColumns"/> FROM settlement_instruction WHERE id=#{id}
+  </select>
+
+  <select id="selectInstructionByIdForUpdate" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentSettlementMapper$InstructionRow">
+    SELECT <include refid="instructionColumns"/> FROM settlement_instruction WHERE id=#{id} FOR UPDATE
+  </select>
+
+  <select id="selectInstructionByOutSeparateNo" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentSettlementMapper$InstructionRow">
+    SELECT <include refid="instructionColumns"/> FROM settlement_instruction WHERE out_separate_no=#{outSeparateNo}
+  </select>
+
+  <select id="selectSucceededSplitInstruction" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentSettlementMapper$InstructionRow">
+    SELECT <include refid="instructionColumns"/> FROM settlement_instruction
+    WHERE settlement_order_id=#{settlementOrderId} AND instruction_type='SPLIT' AND status='SUCCEEDED'
+    ORDER BY attempt_no DESC, id DESC
+    LIMIT 1
+  </select>
+
+  <select id="selectFallbackInstructionsByRefundOrderId" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentSettlementMapper$InstructionRow">
+    SELECT <include refid="instructionColumns"/> FROM settlement_instruction
+    WHERE refund_order_id=#{refundOrderId} AND instruction_type='FALLBACK'
+    ORDER BY attempt_no DESC, id DESC
+  </select>
+
+  <select id="selectInstructionsByOrderId" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentSettlementMapper$InstructionRow">
+    SELECT <include refid="instructionColumns"/> FROM settlement_instruction
+    WHERE settlement_order_id=#{settlementOrderId}
+    ORDER BY created_at ASC, id ASC
+  </select>
+
+  <select id="selectMaxAttemptNo" resultType="java.lang.Integer">
+    SELECT COALESCE(MAX(attempt_no), 0) FROM settlement_instruction
+    WHERE settlement_order_id=#{settlementOrderId} AND instruction_type=#{instructionType}
+  </select>
+
+  <select id="countActiveSplitInstructions" resultType="java.lang.Long">
+    SELECT COUNT(*) FROM settlement_instruction
+    WHERE settlement_order_id=#{settlementOrderId} AND instruction_type='SPLIT'
+      AND status IN ('CREATED','SENT','PROCESSING','SUCCEEDED')
+  </select>
+
+  <select id="countActiveFallbackInstructions" resultType="java.lang.Long">
+    SELECT COUNT(*) FROM settlement_instruction
+    WHERE settlement_order_id=#{settlementOrderId} AND instruction_type='FALLBACK'
+      AND status IN ('CREATED','SENT','PROCESSING')
+  </select>
+
+  <insert id="insertInstruction">
+    INSERT INTO settlement_instruction(
+      id,settlement_order_id,payment_id,refund_order_id,origin_instruction_id,merchant_id,instruction_type,attempt_no,
+      out_separate_no,merchant_no,receiver_no,log_no,log_date,
+      total_amount,merchant_amount,platform_amount,status,fallback_reason,sent_at,version,created_at,updated_at)
+    VALUES(
+      #{id},#{settlementOrderId},#{paymentId},#{refundOrderId},#{originInstructionId},#{merchantId},#{instructionType},#{attemptNo},
+      #{outSeparateNo},#{merchantNo},#{receiverNo},#{logNo},#{logDate},
+      #{totalAmount},#{merchantAmount},#{platformAmount},'SENT',#{fallbackReason},#{now},0,#{now},#{now})
+  </insert>
+
+  <update id="markInstructionProcessing">
+    UPDATE settlement_instruction
+    SET status='PROCESSING',separate_no=COALESCE(separate_no,#{separateNo}),
+        channel_status=#{channelStatus},channel_final_status=COALESCE(#{channelFinalStatus},channel_final_status),
+        submit_response_sha256=COALESCE(submit_response_sha256,#{submitResponseSha256}),
+        version=version+1,updated_at=#{now}
+    WHERE id=#{id} AND version=#{version} AND status IN ('SENT','PROCESSING')
+  </update>
+
+  <update id="markInstructionSucceeded">
+    UPDATE settlement_instruction
+    SET status='SUCCEEDED',separate_no=COALESCE(separate_no,#{separateNo}),
+        actual_separate_amount=#{actualSeparateAmount},actual_merchant_amount=#{actualMerchantAmount},
+        total_fee_amount=#{totalFeeAmount},merchant_fee_amount=#{merchantFeeAmount},
+        channel_status=#{channelStatus},channel_final_status=#{channelFinalStatus},
+        acc_result_desc=NULL,terminal_receipt_sha256=#{terminalReceiptSha256},
+        finish_date=#{finishDate},terminal_at=#{now},result_event_id=#{resultEventId},
+        version=version+1,updated_at=#{now}
+    WHERE id=#{id} AND version=#{version} AND status IN ('SENT','PROCESSING')
+  </update>
+
+  <update id="markInstructionFailed">
+    UPDATE settlement_instruction
+    SET status='FAILED',separate_no=COALESCE(separate_no,#{separateNo}),
+        channel_status=#{channelStatus},channel_final_status=#{channelFinalStatus},
+        acc_result_desc=#{accResultDesc},terminal_receipt_sha256=#{terminalReceiptSha256},
+        finish_date=#{finishDate},terminal_at=#{now},result_event_id=#{resultEventId},
+        version=version+1,updated_at=#{now}
+    WHERE id=#{id} AND version=#{version} AND status IN ('SENT','PROCESSING')
+  </update>
+
+  <!-- ==================== settlement_instruction_receipt ==================== -->
+
+  <select id="countReceiptByDigest" resultType="java.lang.Long">
+    SELECT COUNT(*) FROM settlement_instruction_receipt
+    WHERE instruction_id=#{instructionId} AND receipt_sha256=#{digest}
+  </select>
+
+  <insert id="insertInstructionReceipt">
+    INSERT INTO settlement_instruction_receipt(
+      id,instruction_id,receipt_sha256,receipt_source,channel_response_sha256,
+      separate_no,cmd_type,channel_status,channel_final_status,
+      total_amount,actual_separate_amount,total_fee_amount,acc_result_desc,finish_date,received_at)
+    VALUES(
+      #{id},#{instructionId},#{digest},#{source},#{responseSha},
+      #{separateNo},#{cmdType},#{channelStatus},#{channelFinalStatus},
+      #{totalAmount},#{actualSeparateAmount},#{totalFeeAmount},#{accResultDesc},#{finishDate},#{now})
+  </insert>
+
+  <!-- ==================== settlement_action_request ==================== -->
+
+  <insert id="insertActionRequest">
+    INSERT INTO settlement_action_request(id,request_key,action_type,settlement_order_id,request_fingerprint,created_at)
+    VALUES(#{id},#{requestKey},#{actionType},#{settlementOrderId},#{fingerprint},#{now})
+    ON DUPLICATE KEY UPDATE id=id
+  </insert>
+
+  <select id="selectActionRequestForUpdate" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentSettlementMapper$ActionRequestRow">
+    SELECT id,action_type,settlement_order_id,request_fingerprint,created_at
+    FROM settlement_action_request WHERE request_key=#{requestKey} FOR UPDATE
+  </select>
+</mapper>

@@ -51,12 +51,16 @@ public final class LakalaProtocol {
     private static final Pattern LOG_NO = Pattern.compile("[0-9A-Za-z]{1,32}");
     /**
      * Reconciliation trace field names for the 1111 query and 1112 trade-notice responses.
-     * PENDING SIT VERIFICATION: the 1111/1112 documents are not available locally. The names
-     * are taken from the identically named fields in 1293/1296/2396 (log_no String(14),
-     * log_date yyyyMMdd). They are parsed as optional values only and never gate payment state.
+     * Verified against 1111/1112 PDFs (2026-11-25, Contract 78 §2): 1111/1112 return log_no (M,
+     * last 14 chars of trade_no), trade_no (M, starts with yyyyMMdd + log_no) and trade_req_date
+     * (M in 1111, O in 1112), without an explicit log_date field. Explicit log_date is still
+     * honored first; when absent, log_date is resolved from trade_req_date or the strict yyyyMMdd
+     * prefix of trade_no (never from trade_time). Missing/malformed trace never gates payment state.
      */
     private static final String LOG_NO_FIELD = "log_no";
     private static final String LOG_DATE_FIELD = "log_date";
+    private static final String TRADE_REQ_DATE_FIELD = "trade_req_date";
+    private static final String TRADE_NO_FIELD = "trade_no";
     private static final String SUCCESS_CODE = "BBS00000";
     private static final Set<String> NOTICE_STATES = Set.of("INIT", "CREATE", "SUCCESS", "FAIL",
             "DEAL", "UNKNOWN", "CLOSE", "PART_REFUND", "REFUND", "REVOKED");
@@ -236,14 +240,20 @@ public final class LakalaProtocol {
                 header(headers, "Lklapi-Signature"), trustedPlatformKey);
     }
 
-    /** Official 1009 callback: three lines, no invented appId or serial line. */
-    public static NotificationReceipt verifyNotification(Map<String, String> headers,
-            byte[] rawBody, PublicKey trustedNotificationKey, ExpectedPayment expected) {
-        if (expected == null) invalid();
+    /** Official 1009 callback signature verification shared by labs/sacs notifications. */
+    static void verifyNotificationSignature(Map<String, String> headers, byte[] rawBody,
+            PublicKey trustedNotificationKey) {
         Matcher auth = NOTIFICATION_AUTH.matcher(header(headers, "Authorization"));
         if (!auth.matches()) invalid();
         verify(threeLines(auth.group(1), auth.group(2), rawBody),
                 auth.group(3), trustedNotificationKey);
+    }
+
+    /** Official 1009 callback: three lines, no invented appId or serial line. */
+    public static NotificationReceipt verifyNotification(Map<String, String> headers,
+            byte[] rawBody, PublicKey trustedNotificationKey, ExpectedPayment expected) {
+        if (expected == null) invalid();
+        verifyNotificationSignature(headers, rawBody, trustedNotificationKey);
         JsonNode data = json(rawBody);
         String merchant = field(data, "merchant_no", 32);
         String out = field(data, "out_trade_no", 64);
@@ -320,25 +330,59 @@ public final class LakalaProtocol {
     private record Trace(String logNo, LocalDate logDate) {}
 
     /**
-     * Optional reconciliation trace. Both values must be present and well formed, otherwise both
-     * are null. Never throws: a missing or malformed trace must not change the payment outcome.
+     * Optional reconciliation trace (Contract 75 §3 & Contract 78 §2). Both values must be present
+     * and well formed, otherwise both are null. Never throws: a missing or malformed trace must not
+     * change the payment outcome.
      */
     private static Trace collectTrace(JsonNode data) {
         JsonNode no = data.get(LOG_NO_FIELD);
-        JsonNode date = data.get(LOG_DATE_FIELD);
-        if (no == null || date == null || !no.isTextual() || !date.isTextual()) {
+        if (no == null || !no.isTextual()) {
             return new Trace(null, null);
         }
         String logNo = no.textValue();
-        String logDate = date.textValue();
-        if (!LOG_NO.matcher(logNo).matches() || !logDate.matches("[0-9]{8}")) {
+        if (!LOG_NO.matcher(logNo).matches()) {
             return new Trace(null, null);
         }
-        try {
-            return new Trace(logNo, LocalDate.parse(logDate, LOG_DATE));
-        } catch (DateTimeParseException failure) {
+        if (data.has(LOG_DATE_FIELD)) {
+            LocalDate explicit = strictDate(data.get(LOG_DATE_FIELD));
+            return explicit == null ? new Trace(null, null) : new Trace(logNo, explicit);
+        }
+        // 1111/1112 carry no explicit log_date field. Resolve strictly from trade_req_date or the
+        // exact yyyyMMdd + log_no prefix in trade_no (never from trade_time).
+        LocalDate reqDate = null;
+        if (data.has(TRADE_REQ_DATE_FIELD)) {
+            JsonNode reqNode = data.get(TRADE_REQ_DATE_FIELD);
+            if (reqNode != null && !reqNode.isNull()
+                    && !(reqNode.isTextual() && reqNode.textValue().isEmpty())) {
+                reqDate = strictDate(reqNode);
+                if (reqDate == null) return new Trace(null, null);
+            }
+        }
+        LocalDate tradeNoDate = tradeNoDatePrefix(data.get(TRADE_NO_FIELD), logNo);
+        if (reqDate != null && tradeNoDate != null && !reqDate.equals(tradeNoDate)) {
             return new Trace(null, null);
         }
+        LocalDate resolved = reqDate != null ? reqDate : tradeNoDate;
+        return resolved == null ? new Trace(null, null) : new Trace(logNo, resolved);
+    }
+
+    private static LocalDate strictDate(JsonNode node) {
+        if (node == null || !node.isTextual()) return null;
+        String text = node.textValue();
+        if (!text.matches("[0-9]{8}")) return null;
+        try { return LocalDate.parse(text, LOG_DATE); }
+        catch (DateTimeParseException failure) { return null; }
+    }
+
+    private static LocalDate tradeNoDatePrefix(JsonNode tradeNoNode, String logNo) {
+        if (tradeNoNode == null || !tradeNoNode.isTextual()) return null;
+        String tradeNo = tradeNoNode.textValue();
+        // Official samples use yyyyMMdd + log_no (22 digits); production also uses yyyyMMdd + 10 digits + log_no (32 digits).
+        if (tradeNo.length() < 8 + logNo.length() || tradeNo.length() > 32
+                || !tradeNo.endsWith(logNo) || !tradeNo.matches("[0-9]+")) return null;
+        String prefix = tradeNo.substring(0, 8);
+        try { return LocalDate.parse(prefix, LOG_DATE); }
+        catch (DateTimeParseException failure) { return null; }
     }
 
     private static JsonNode successData(byte[] rawBody) {

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderSettlementFactsMapper">
+  <select id="selectForSettlement" resultType="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderSettlementFactsMapper$SettlementOrderRow">
+    SELECT id, merchant_id, store_id, order_stage, payment_status, verification_status,
+           original_price, flash_discount, discount_amount, pay_amount, refunded_amount,
+           current_refund_application_id, refund_order_id, current_aftersale_id, verified_at
+    FROM pet_order
+    WHERE id = #{orderId}
+  </select>
+</mapper>

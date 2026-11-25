@@ -17,6 +17,7 @@ import com.petplatform.payment.biz.apiimpl.PaymentRefundResultFactsApiImpl;
 import com.petplatform.payment.biz.application.LakalaPaymentRefundChannel;
 import com.petplatform.payment.biz.application.PaymentRefundChannel;
 import com.petplatform.payment.biz.application.PaymentRefundService;
+import com.petplatform.payment.biz.application.SettlementRefundGate;
 import com.petplatform.payment.biz.infrastructure.provider.LakalaHttpClient;
 import com.petplatform.payment.biz.infrastructure.provider.LakalaRefundHttpClient;
 import com.petplatform.refund.biz.application.LateRefundService;
@@ -153,6 +154,7 @@ public class LateRefundConfiguration {
             ObjectProvider<com.petplatform.aftersale.api.query.AfterSaleRefundFactsApi> aftersales,
             ObjectProvider<com.petplatform.payment.api.query.RefundFundingEligibilityFactsApi> funding,
             ObjectProvider<com.petplatform.order.api.query.OrderAdminCloseFactsApi> adminCloseOrders,
+            ObjectProvider<SettlementRefundGate> settlementGate,
             org.springframework.core.env.Environment environment) {
         try {
             String zone = lakala.channelTimeZone();
@@ -164,7 +166,8 @@ public class LateRefundConfiguration {
             return new PaymentRefundService(source, ids, guard, orders, payments, refunds,
                     channel, settings, clocks.getIfAvailable(Clock::systemUTC),merchantOrders.getIfAvailable(),
                     applicationOrders.getIfAvailable(),applications.getIfAvailable(),afsOrders,
-                    afsFacts,funding.getIfAvailable(),adminCloseOrders.getIfAvailable());
+                    afsFacts,funding.getIfAvailable(),adminCloseOrders.getIfAvailable(),
+                    settlementGate.getIfAvailable());
         } catch (Exception failure) {
             throw new IllegalStateException("Refund execution settings unavailable");
         }

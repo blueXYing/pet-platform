@@ -164,3 +164,11 @@ pet:
         # 仅开发/测试环境按需开启；PRODUCTION 环境下 guard 强制拒绝启动
         enabled: false
         max-amount: 0.01
+    settlement:
+      # 阶段 2 订单分账与结算总开关（默认关闭；开启须先启用 pet.payment.enabled）
+      enabled: false
+      lowest-ratio: ${LAKALA_SPLIT_LOWEST_RATIO:0}
+      org-code: ${LAKALA_ORG_CODE:}
+      notify-url: ${LAKALA_SEPARATE_NOTIFY_URL:}
+      migration-enabled: false
+      migration-database: ""

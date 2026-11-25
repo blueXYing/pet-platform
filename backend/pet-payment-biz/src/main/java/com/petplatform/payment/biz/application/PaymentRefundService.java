@@ -69,6 +69,7 @@ public final class PaymentRefundService implements PaymentRefundApi {
     private final Clock clock;
     private final PaymentFoundationStore payments;
     private final PaymentRefundStore refunds;
+    private final SettlementRefundGate settlementGate;
     private final TransactionTemplate tx;
 
     /** Channel time zone must be explicitly confirmed; the protocol's 14-digit time has no zone. */
@@ -117,6 +118,19 @@ public final class PaymentRefundService implements PaymentRefundApi {
             com.petplatform.aftersale.api.query.AfterSaleRefundFactsApi aftersaleDecisions,
             com.petplatform.payment.api.query.RefundFundingEligibilityFactsApi funding,
             com.petplatform.order.api.query.OrderAdminCloseFactsApi adminCloseOrders) {
+        this(source, ids, guard, orders, paymentFacts, refundFacts, channel, settings, clock, merchantOrders,
+                applicationOrders, applicationApprovals, aftersaleOrders, aftersaleDecisions, funding,
+                adminCloseOrders, null);
+    }
+    public PaymentRefundService(DataSource source,SnowflakeIdGenerator ids,ScheduleCapacityGuardApi guard,
+            OrderLatePaymentFactsApi orders,PaymentSuccessFactsApi paymentFacts,RefundExecutionFactsApi refundFacts,
+            PaymentRefundChannel channel,Settings settings,Clock clock,OrderMerchantRejectFactsApi merchantOrders,
+            OrderRefundApplicationFactsApi applicationOrders,RefundApplicationApprovalFactsApi applicationApprovals,
+            com.petplatform.order.api.query.OrderAfterSaleRefundFactsApi aftersaleOrders,
+            com.petplatform.aftersale.api.query.AfterSaleRefundFactsApi aftersaleDecisions,
+            com.petplatform.payment.api.query.RefundFundingEligibilityFactsApi funding,
+            com.petplatform.order.api.query.OrderAdminCloseFactsApi adminCloseOrders,
+            SettlementRefundGate settlementGate) {
         if((aftersaleOrders==null)!=(aftersaleDecisions==null)||funding!=null&&aftersaleOrders==null)throw new IllegalArgumentException("After-sale funding dependencies incomplete");
         this.aftersaleOrders=aftersaleOrders;this.aftersaleDecisions=aftersaleDecisions;this.funding=funding;
         this.adminCloseOrders=adminCloseOrders;
@@ -134,6 +148,7 @@ public final class PaymentRefundService implements PaymentRefundApi {
         this.clock = Objects.requireNonNull(clock);
         this.payments = new PaymentFoundationStore(source);
         this.refunds = new PaymentRefundStore(source);
+        this.settlementGate = settlementGate;
         this.tx = new TransactionTemplate(new DataSourceTransactionManager(source));
         tx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         tx.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
@@ -149,24 +164,7 @@ public final class PaymentRefundService implements PaymentRefundApi {
                 command == null ? null : command.storeId(),
                 command == null ? -1 : command.bindingVersion(), "TASK:REFUND_SUBMIT:");
         try {
-            SendDecision decision = tx.execute(status -> prepare(identity));
-            if (decision == null) throw unavailable();
-            if (!decision.firstSubmission()) {
-                if (decision.progress().state() == CoordinationState.QUERY_PENDING)
-                    return queryExisting(identity);
-                return decision.progress();
-            }
-            ChannelRefundProgress beforeSend = tx.execute(status -> preflight(identity));
-            if (beforeSend == null) throw unavailable();
-            if (beforeSend.state() != CoordinationState.QUERY_PENDING) return beforeSend;
-            // The immutable MAY_HAVE_SENT fact has already committed. An exception is UNKNOWN.
-            PaymentRefundChannel.VerifiedResult verified;
-            try {
-                verified = channel.submit(decision.request());
-            } catch (RuntimeException unknown) {
-                return tx.execute(status -> delayUnknown(identity));
-            }
-            return tx.execute(status -> persist(identity, verified, "SUBMIT"));
+            return coordinateSubmitOrGate(identity);
         } catch (ApiException known) { throw known; }
         catch (RuntimeException failure) { throw unavailable(); }
     }
@@ -179,9 +177,85 @@ public final class PaymentRefundService implements PaymentRefundApi {
                 query == null ? null : query.paymentId(),
                 query == null ? null : query.storeId(),
                 query == null ? -1 : query.bindingVersion(), "TASK:REFUND_CHANNEL_QUERY:");
-        try { return queryExisting(identity); }
+        try {
+            if (settlementGate != null) {
+                Boolean hasDispatch = tx.execute(status -> refunds.byRefund(identity.refundOrderIdLong(), false) != null);
+                if (Boolean.FALSE.equals(hasDispatch)) {
+                    return coordinateSubmitOrGate(identity);
+                }
+            }
+            return queryExisting(identity);
+        }
         catch (ApiException known) { throw known; }
         catch (RuntimeException failure) { throw unavailable(); }
+    }
+
+    private ChannelRefundProgress coordinateSubmitOrGate(Identity identity) {
+        if (settlementGate != null) {
+            GatePreflight gatePreflight = tx.execute(status -> validateForGate(identity));
+            if (gatePreflight == null) throw unavailable();
+            if (gatePreflight.existingProgress() != null) {
+                if (gatePreflight.existingProgress().state() == CoordinationState.QUERY_PENDING) {
+                    return queryExisting(identity);
+                }
+                return gatePreflight.existingProgress();
+            }
+            SettlementRefundGate.GateDecision gate = settlementGate.ensureReadyForRefund(gatePreflight.request());
+            if (gate instanceof SettlementRefundGate.GateDecision.Wait wait) {
+                return new ChannelRefundProgress(identity.refundOrderId(), identity.refundNo(),
+                        CoordinationState.QUERY_PENDING, wait.nextCheckAt());
+            }
+            if (gate instanceof SettlementRefundGate.GateDecision.Paused) {
+                return new ChannelRefundProgress(identity.refundOrderId(), identity.refundNo(),
+                        CoordinationState.RECONCILIATION_REQUIRED, null);
+            }
+        }
+        SendDecision decision = tx.execute(status -> prepare(identity));
+        if (decision == null) throw unavailable();
+        if (!decision.firstSubmission()) {
+            if (decision.progress().state() == CoordinationState.QUERY_PENDING)
+                return queryExisting(identity);
+            return decision.progress();
+        }
+        ChannelRefundProgress beforeSend = tx.execute(status -> preflight(identity));
+        if (beforeSend == null) throw unavailable();
+        if (beforeSend.state() != CoordinationState.QUERY_PENDING) return beforeSend;
+        // The immutable MAY_HAVE_SENT fact has already committed. An exception is UNKNOWN.
+        PaymentRefundChannel.VerifiedResult verified;
+        try {
+            verified = channel.submit(decision.request());
+        } catch (RuntimeException unknown) {
+            return tx.execute(status -> delayUnknown(identity));
+        }
+        return tx.execute(status -> persist(identity, verified, "SUBMIT"));
+    }
+
+    private GatePreflight validateForGate(Identity input) {
+        payments.session();
+        refunds.session();
+        QueryContext context = system(input.context());
+        guard.acquire(List.of(input.storeId()), context);
+        guard.requireHeld(input.storeId(), source);
+        var hint = payments.byId(input.paymentId(), false);
+        if (hint == null || hint.orderId() <= 0 || hint.storeId() != input.storeIdLong())
+            throw unavailable();
+        Dispatch previous = refunds.byRefund(input.refundOrderIdLong(), true);
+        if (previous != null) {
+            validateIdentity(input, previous);
+            return new GatePreflight(progress(previous), null);
+        }
+        PaymentSuccessFact paid = paymentFacts.requireSucceeded(Long.toString(input.paymentId()),
+                Long.toString(hint.orderId()), input.storeId(), context);
+        RefundExecutionFact business = refundFacts.requireForChannel(input.refundOrderId(),
+                input.storeId(), context);
+        OrderRefundOriginFact order = requireOrigin(Long.toString(hint.orderId()), input,
+                business, context);
+        validateBinding(input, hint, order, paid, business);
+        if (!"CREATED".equals(business.status()) && !"PROCESSING".equals(business.status())
+                && !"UNKNOWN".equals(business.status())) throw unavailable();
+        return new GatePreflight(null, new SettlementRefundGate.RefundGateRequest(
+                input.paymentId(), input.refundOrderIdLong(), business.refundAmount(),
+                business.originalPaidAmount(), business.sourceType()));
     }
 
     private ChannelRefundProgress queryExisting(Identity identity) {
@@ -657,6 +731,9 @@ public final class PaymentRefundService implements PaymentRefundApi {
         return new ApiException(CommonApiCodes.DEPENDENCY_UNAVAILABLE,
                 "refund channel state requires reconciliation");
     }
+
+    private record GatePreflight(ChannelRefundProgress existingProgress,
+            SettlementRefundGate.RefundGateRequest request) {}
 
     private record Identity(CommandContext context, String refundOrderId, String refundNo,
             long paymentId, String storeId, long refundOrderIdLong, long refundNoLong,
