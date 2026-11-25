@@ -325,9 +325,10 @@ class ServiceCatalogSalesFactsMySqlTest {
                     (id,order_no,user_id,merchant_id,store_id,service_id,pet_id,reservation_id,
                      order_stage,payment_status,verification_status,fulfillment_type,
                      original_amount,discount_amount,pay_amount,refunded_amount,
+                     original_price,flash_discount,price_source,
                      appointment_start_at,appointment_end_at,paid_at,created_at,updated_at)
                     VALUES(?,?,?,?,?,?,?,?,?,?,'UNVERIFIED','IN_STORE',
-                           ?,0.00,?,?, '2030-01-01 09:00:00','2030-01-01 10:00:00',
+                           ?,0.00,?,?,100.00,0.00,'LIST', '2030-01-01 09:00:00','2030-01-01 10:00:00',
                            ?, '2026-10-01 08:00:00', UTC_TIMESTAMP(3))
                     """, id, id, USER, MERCHANT, storeId, serviceId, PET,
                     RESERVATION_BASE + id, stage, paymentStatus, new BigDecimal("100.00"),

@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.petplatform.service.biz.infrastructure.persistence.mapper.FlashPriceMapper">
+
+    <update id="setTimeZoneUtc">SET time_zone = '+00:00'</update>
+    <update id="setLockWaitTimeout2Seconds">SET innodb_lock_wait_timeout = 2</update>
+
+    <sql id="flashColumns">
+        f.id, f.service_id, f.merchant_id, f.store_id, f.title, f.description, f.price_mode,
+        f.discount_rate, f.flash_price, f.list_price_snapshot, f.start_at, f.end_at,
+        f.total_quota, f.per_user_limit, f.sold_count, f.status, f.reject_reason, f.version,
+        f.created_by_type, f.created_by_id, f.created_at, f.updated_at
+    </sql>
+
+    <!-- ============================== service_flash_price ============================== -->
+
+    <insert id="insertFlashPrice">
+        INSERT INTO service_flash_price
+            (id, service_id, merchant_id, store_id, title, description, price_mode,
+             discount_rate, flash_price, list_price_snapshot, start_at, end_at,
+             total_quota, per_user_limit, sold_count, status, reject_reason, version,
+             created_by_type, created_by_id, created_at, updated_at)
+        VALUES
+            (#{id}, #{serviceId}, #{merchantId}, #{storeId}, #{title}, #{description}, 'DISCOUNT',
+             #{discountRate}, #{flashPrice}, #{listPriceSnapshot}, #{startAt}, #{endAt},
+             #{totalQuota}, #{perUserLimit}, 0, #{status}, NULL, 1,
+             #{createdByType}, #{createdById}, #{now}, #{now})
+    </insert>
+
+    <update id="updateFlashPrice">
+        UPDATE service_flash_price
+        SET title=#{title}, description=#{description}, discount_rate=#{discountRate},
+            flash_price=#{flashPrice}, list_price_snapshot=#{listPriceSnapshot},
+            start_at=#{startAt}, end_at=#{endAt}, total_quota=#{totalQuota},
+            per_user_limit=#{perUserLimit}, reject_reason=#{rejectReason},
+            version=version+1, updated_at=#{now}
+        WHERE id=#{id} AND version=#{expectedVersion}
+    </update>
+
+    <update id="updateStatus">
+        UPDATE service_flash_price
+        SET status=#{toStatus}, reject_reason=#{rejectReason},
+            version=version+1, updated_at=#{now}
+        WHERE id=#{id} AND version=#{expectedVersion}
+          AND status IN
+          <foreach collection="fromStatuses" item="fromStatus" open="(" separator="," close=")">
+              #{fromStatus}
+          </foreach>
+    </update>
+
+    <update id="updateApprovedPrice">
+        UPDATE service_flash_price
+        SET status=#{toStatus}, list_price_snapshot=#{listPriceSnapshot},
+            flash_price=#{flashPrice}, reject_reason=NULL,
+            version=version+1, updated_at=#{now}
+        WHERE id=#{id} AND version=#{expectedVersion}
+          AND status IN
+          <foreach collection="fromStatuses" item="fromStatus" open="(" separator="," close=")">
+              #{fromStatus}
+          </foreach>
+    </update>
+
+    <select id="selectById" resultType="com.petplatform.service.biz.infrastructure.persistence.entity.FlashPriceEntities$FlashPriceRow">
+        SELECT <include refid="flashColumns"/>
+        FROM service_flash_price f
+        WHERE f.id=#{id}
+    </select>
+
+    <select id="selectByIdForUpdate" resultType="com.petplatform.service.biz.infrastructure.persistence.entity.FlashPriceEntities$FlashPriceRow">
+        SELECT <include refid="flashColumns"/>
+        FROM service_flash_price f
+        WHERE f.id=#{id}
+        FOR UPDATE
+    </select>
+
+    <!-- Contract 77 §3.2: an active window is PENDING_REVIEW/SCHEDULED/ACTIVE/PAUSED and
+         half-open intervals intersect when newStart < oldEnd AND newEnd > oldStart. -->
+    <select id="countOverlap" resultType="long">
+        SELECT COUNT(*) FROM service_flash_price
+        WHERE service_id=#{serviceId}
+          AND status IN ('PENDING_REVIEW','SCHEDULED','ACTIVE','PAUSED')
+          AND start_at &lt; #{endAt}
+          AND end_at &gt; #{startAt}
+        <if test="excludeId != null">
+          AND id != #{excludeId}
+        </if>
+    </select>
+
+    <select id="selectMerchantPage" resultType="com.petplatform.service.biz.infrastructure.persistence.entity.FlashPriceEntities$FlashPriceRow">
+        SELECT <include refid="flashColumns"/>
+        FROM service_flash_price f
+        WHERE f.service_id=#{serviceId}
+        <if test="status != null">
+          AND f.status=#{status}
+        </if>
+        ORDER BY f.created_at DESC, f.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countMerchant" resultType="long">
+        SELECT COUNT(*) FROM service_flash_price
+        WHERE service_id=#{serviceId}
+        <if test="status != null">
+          AND status=#{status}
+        </if>
+    </select>
+
+    <!-- Admin decoration joins this module's own service_item; storeName arrives via the port. -->
+    <select id="selectAdminPage" resultType="com.petplatform.service.biz.infrastructure.persistence.entity.FlashPriceEntities$FlashPriceRow">
+        SELECT <include refid="flashColumns"/>, s.service_name
+        FROM service_flash_price f
+        LEFT JOIN service_item s ON s.id = f.service_id
+        <where>
+            <if test="status != null">
+              f.status=#{status}
+            </if>
+        </where>
+        ORDER BY f.updated_at DESC, f.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countAdmin" resultType="long">
+        SELECT COUNT(*) FROM service_flash_price
+        <where>
+            <if test="status != null">
+              status=#{status}
+            </if>
+        </where>
+    </select>
+
+    <select id="countParticipants" resultType="long">
+        SELECT COUNT(DISTINCT user_id) FROM service_flash_price_order
+        WHERE flash_price_id=#{flashPriceId} AND status IN ('RESERVED','CONSUMED')
+    </select>
+
+    <select id="countParticipantsBatch" resultType="com.petplatform.service.biz.infrastructure.persistence.entity.FlashPriceEntities$ParticipantCountRow">
+        SELECT flash_price_id AS flashPriceId, COUNT(DISTINCT user_id) AS participants
+        FROM service_flash_price_order
+        WHERE status IN ('RESERVED','CONSUMED')
+          AND flash_price_id IN
+          <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+        GROUP BY flash_price_id
+    </select>
+
+    <!-- ============================== service_item facts (own module) ============================== -->
+
+    <select id="lockServiceFacts" resultType="com.petplatform.service.biz.infrastructure.persistence.entity.FlashPriceEntities$ServiceFactsRow">
+        SELECT s.id, s.merchant_id, s.store_id, s.service_name, s.price, s.status
+        FROM service_item s
+        WHERE s.id=#{serviceId}
+        FOR UPDATE
+    </select>
+
+    <select id="selectServiceFacts" resultType="com.petplatform.service.biz.infrastructure.persistence.entity.FlashPriceEntities$ServiceFactsRow">
+        SELECT s.id, s.merchant_id, s.store_id, s.service_name, s.price, s.status
+        FROM service_item s
+        WHERE s.id=#{serviceId}
+    </select>
+
+    <!-- ============================== read side effective flash ============================== -->
+
+    <!-- SCHEDULED/ACTIVE are the reserve-visible statuses; PAUSED hides the flash (77 §4.2). -->
+    <select id="selectEffectiveFlash" resultType="com.petplatform.service.biz.infrastructure.persistence.entity.FlashPriceEntities$FlashPriceRow">
+        SELECT <include refid="flashColumns"/>
+        FROM service_flash_price f
+        WHERE f.service_id=#{serviceId}
+          AND f.status IN ('SCHEDULED','ACTIVE')
+          AND f.start_at &lt;= #{now}
+          AND f.end_at &gt; #{now}
+        ORDER BY f.start_at ASC, f.id ASC
+    </select>
+
+    <!-- ============================== reserve ledger ============================== -->
+
+    <select id="selectFlashForUpdate" resultType="com.petplatform.service.biz.infrastructure.persistence.entity.FlashPriceEntities$FlashPriceRow">
+        SELECT <include refid="flashColumns"/>
+        FROM service_flash_price f
+        WHERE f.id=#{id}
+        FOR UPDATE
+    </select>
+
+    <select id="countActiveByUser" resultType="long">
+        SELECT COUNT(*) FROM service_flash_price_order
+        WHERE flash_price_id=#{flashPriceId} AND user_id=#{userId}
+          AND status IN ('RESERVED','CONSUMED')
+    </select>
+
+    <update id="incrementSoldCount">
+        UPDATE service_flash_price
+        SET sold_count=sold_count+1, version=version+1, updated_at=#{now}
+        WHERE id=#{id} AND version=#{expectedVersion}
+    </update>
+
+    <insert id="insertReservation">
+        INSERT INTO service_flash_price_order
+            (id, flash_price_id, order_id, user_id, reserved_price, status, expire_at,
+             reserved_at, version)
+        VALUES
+            (#{id}, #{flashPriceId}, #{orderId}, #{userId}, #{reservedPrice}, 'RESERVED',
+             #{expireAt}, #{now}, 1)
+    </insert>
+
+    <select id="selectReservationByOrderId" resultType="com.petplatform.service.biz.infrastructure.persistence.entity.FlashPriceEntities$ReservationRow">
+        SELECT id, flash_price_id, order_id, user_id, reserved_price, status, expire_at,
+               reserved_at, consumed_at, released_at, version
+        FROM service_flash_price_order
+        WHERE order_id=#{orderId}
+    </select>
+
+    <select id="selectReservationByIdForUpdate" resultType="com.petplatform.service.biz.infrastructure.persistence.entity.FlashPriceEntities$ReservationRow">
+        SELECT id, flash_price_id, order_id, user_id, reserved_price, status, expire_at,
+               reserved_at, consumed_at, released_at, version
+        FROM service_flash_price_order
+        WHERE id=#{id}
+        FOR UPDATE
+    </select>
+
+    <!-- ============================== paid / release ============================== -->
+
+    <update id="markConsumedByOrderId">
+        UPDATE service_flash_price_order
+        SET status='CONSUMED', consumed_at=#{now}, version=version+1
+        WHERE order_id=#{orderId} AND status='RESERVED'
+    </update>
+
+    <select id="selectExpiredReservations" resultType="com.petplatform.service.biz.infrastructure.persistence.entity.FlashPriceEntities$ReservationRow">
+        SELECT id, flash_price_id, order_id, user_id, reserved_price, status, expire_at,
+               reserved_at, consumed_at, released_at, version
+        FROM service_flash_price_order
+        WHERE status='RESERVED' AND expire_at &lt; #{cutoff}
+        ORDER BY expire_at ASC, id ASC
+        LIMIT #{limit}
+    </select>
+
+    <update id="releaseReservation">
+        UPDATE service_flash_price_order
+        SET status='RELEASED', released_at=#{now}, version=version+1
+        WHERE id=#{id} AND status='RESERVED' AND version=#{expectedVersion}
+    </update>
+
+    <update id="decrementSoldCount">
+        UPDATE service_flash_price
+        SET sold_count=sold_count-1, version=version+1, updated_at=#{now}
+        WHERE id=#{flashPriceId} AND sold_count &gt; 0
+    </update>
+
+    <!-- ============================== audit + command idempotency ============================== -->
+
+    <insert id="insertAudit">
+        INSERT INTO service_flash_price_audit
+            (id, flash_price_id, action_type, from_status, to_status, operator_type,
+             operator_id, request_id, trace_id, reason, created_at)
+        VALUES
+            (#{id}, #{flashPriceId}, #{actionType}, #{fromStatus}, #{toStatus}, #{operatorType},
+             #{operatorId}, #{requestId}, #{traceId}, #{reason}, #{now})
+    </insert>
+
+    <select id="selectBinding" resultType="com.petplatform.service.biz.infrastructure.persistence.entity.FlashPriceEntities$BindingRow">
+        SELECT id, request_key, command_type, params_sha256, params_canonical, status,
+               receipt_json, created_at, updated_at
+        FROM service_flash_price_command
+        WHERE request_key=#{requestKey}
+    </select>
+
+    <insert id="insertBinding">
+        INSERT INTO service_flash_price_command
+            (id, request_key, command_type, params_sha256, params_canonical, status,
+             receipt_json, created_at, updated_at)
+        VALUES
+            (#{id}, #{requestKey}, #{commandType}, #{paramsSha256}, #{paramsCanonical},
+             'IN_PROGRESS', NULL, #{now}, #{now})
+    </insert>
+
+    <update id="markBindingSucceeded">
+        UPDATE service_flash_price_command
+        SET status='SUCCEEDED', receipt_json=#{receiptJson}, updated_at=#{now}
+        WHERE request_key=#{requestKey}
+    </update>
+
+    <delete id="deleteBinding">
+        DELETE FROM service_flash_price_command WHERE request_key=#{requestKey}
+    </delete>
+
+</mapper>

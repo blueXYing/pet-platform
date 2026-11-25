@@ -28,8 +28,13 @@ public class ServiceQueryConfiguration {
             DataSource source,
             MerchantDisplayEligibilityApi merchantFacts,
             MerchantDisplayStoreIdsApi displayStoreIds,
-            ObjectProvider<ServiceCoverUrlPort> coverUrls) {
+            ObjectProvider<ServiceCoverUrlPort> coverUrls,
+            ObjectProvider<com.petplatform.service.biz.application.FlashPriceEffectiveResolver>
+                    flashPrices) {
+        // Contract 77 §5: the flash resolver bean exists only while the flash-price switch is
+        // on; without it every projection stays byte-identical to the pre-flash LIST slice.
         return new ServiceQueryApiImpl(
-                source, merchantFacts, displayStoreIds, coverUrls.getIfAvailable());
+                source, merchantFacts, displayStoreIds, coverUrls.getIfAvailable(),
+                flashPrices.getIfAvailable());
     }
 }

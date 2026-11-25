@@ -1,0 +1,26 @@
+/* 限时秒杀列表页专属（共享基础在 ../index.css；Figma 18:9537）*/
+.mmf-service-head { display: flex; align-items: baseline; margin-top: 24rpx; }
+.mmf-service-label { font-size: 27rpx; font-weight: 500; color: #374151; }
+.mmf-service-count { margin-left: auto; font-size: 21rpx; color: #9ca3af; }
+.mmf-service-scroll { margin-top: 14rpx; width: 100%; white-space: nowrap; }
+.mmf-service-chips { display: inline-flex; gap: 16rpx; padding-bottom: 4rpx; }
+.mmf-service-chip { display: inline-flex; flex-direction: column; padding: 14rpx 26rpx; border-radius: 24rpx; background: #ffffff; border: 2rpx solid #c0ecff; }
+.mmf-service-chip-name { max-width: 220rpx; font-size: 25rpx; line-height: 34rpx; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mmf-service-chip-price { margin-top: 4rpx; font-size: 21rpx; color: #9ca3af; }
+.mmf-service-chip-active { background: #5baae8; border-color: #5baae8; }
+.mmf-service-chip-active .mmf-service-chip-name { color: #ffffff; }
+.mmf-service-chip-active .mmf-service-chip-price { color: rgba(255, 255, 255, 0.92); }
+
+.mmf-card { align-items: flex-start; }
+.mmf-card-icon { width: 46rpx; height: 44rpx; }
+.mmf-card-price { display: flex; align-items: baseline; margin-top: 8rpx; }
+.mmf-card-rate { font-size: 21rpx; color: #ff7a00; }
+.mmf-card-flash { margin-left: 12rpx; font-size: 27rpx; line-height: 38rpx; font-weight: 700; color: #ff7a00; }
+.mmf-card-list { margin-left: 12rpx; font-size: 21rpx; color: #9ca3af; text-decoration: line-through; }
+.mmf-card-window { display: block; margin-top: 6rpx; font-size: 23rpx; color: #577683; }
+.mmf-card-meta { display: block; margin-top: 4rpx; font-size: 21rpx; color: #9ca3af; }
+.mmf-card-actions { display: flex; gap: 14rpx; margin-top: 16rpx; }
+.mmf-action { display: flex; align-items: center; justify-content: center; height: 56rpx; padding: 0 28rpx; border-radius: 999rpx; background: #ffffff; border: 2rpx solid #c0ecff; }
+.mmf-action-primary { background: #5baae8; border-color: #5baae8; }
+.mmf-action-text { font-size: 23rpx; color: #5baae8; }
+.mmf-action-text-primary { color: #ffffff; }

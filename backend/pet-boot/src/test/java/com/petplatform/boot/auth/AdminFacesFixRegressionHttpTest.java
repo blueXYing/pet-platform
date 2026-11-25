@@ -283,9 +283,11 @@ class AdminFacesFixRegressionHttpTest {
         // console for every operator.
         fixture.jdbc.update("INSERT INTO pet_order(id,order_no,user_id,merchant_id,store_id,"
                 + "service_id,pet_id,reservation_id,order_stage,fulfillment_type,original_amount,"
+                + "original_price,flash_discount,price_source,"
                 + "pay_amount,appointment_start_at,appointment_end_at,created_at,updated_at,version)"
                 + " VALUES(930001,930001,930010,930020,930021,930030,930040,930050,'COMPLETED',"
-                + "'IN_STORE',60.00,60.00,'2026-10-15 08:00:00.000','2026-10-15 09:00:00.000',"
+                + "'IN_STORE',60.00,60.00,0.00,'LIST',60.00,"
+                + "'2026-10-15 08:00:00.000','2026-10-15 09:00:00.000',"
                 + "NOW(3),NOW(3),3)");
         Reply statusLogs = send("GET", "/api/v1/admin/trade/orders/930001/status-logs", null, bearer(token));
         assertEquals(200, statusLogs.status(), statusLogs.redacted());

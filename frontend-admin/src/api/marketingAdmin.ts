@@ -13,7 +13,14 @@ export type Campaign = {
   // and themeLabel/coverUrl are server-derived read-only values.
   description: string | null; themeCode: string | null; themeLabel: string | null;
   highlightText: string | null; playType: string | null; coverAssetId: string | null;
-  tagCode: string | null; tagName: string | null; coverUrl: string | null;
+  tagCode: string | null; tagName: string | null;
+  /**
+   * 营销图片读写一体存 OSS Key（2026-11-24 用户裁决）。
+   * - 封面：coverUrl 是服务端拼好的可访问地址（既有语义，用于预览）；coverStoredKey 是库里存的原始值
+   *   （编辑表单回显它、保存时原样提交，后端再把本 bucket 的完整地址还原成 Key）。
+   * - 投放插画 / 内容位图：xxxUrl 是存储值，xxxDisplayUrl 是可访问地址（预览用）。
+   */
+  coverUrl: string | null; coverStoredKey?: string | null;
   cityCodes: string[]; serviceCategoryCodes: string[];
   startAt: string; endAt: string; enrollStartAt: string | null; enrollEndAt: string | null;
   enrollmentQuota: number | null; couponCampaignId: string | null; pageVersion: number;
@@ -30,12 +37,14 @@ export type CampaignDetail = {
 export type Placement = {
   placementId: string; positionCode: string; campaignId: string; campaignTitle: string;
   cityCode: string | null; titleOverride: string | null; subtitleOverride: string | null;
-  imageUrlOverride: string | null; templateCode: string | null; sortWeight: number;
+  imageUrlOverride: string | null; imageUrlOverrideDisplayUrl?: string | null;
+  templateCode: string | null; sortWeight: number;
   startAt: string; endAt: string; status: string; version: string;
 };
 export type HomeBlock = {
   blockId: string; blockCode: string; positionCode: string; templateCode: string;
   title: string; subtitle: string | null; tagName: string | null; imageUrl: string | null;
+  imageDisplayUrl?: string | null;
   targetType: string; targetValue: string | null; cityCode: string | null;
   sponsorMerchantId: string | null; sponsorStoreId: string | null; sortWeight: number;
   startAt: string; endAt: string; status: string; version: string;
@@ -63,6 +72,8 @@ export type CouponClaim = { claimId: string; userId: string; couponInstanceId: s
 export type MarketingAsset = {
   assetId: string; url: string; contentType: string; bytes: number;
   width: number; height: number; sha256: string; createdAt: string;
+  /** 图片在对象存储里的 Key（表单回填它）；对象存储未启用时为 null，此时回填 url。previewUrl 是可访问的预览地址。 */
+  objectKey?: string | null; previewUrl?: string | null;
 };
 
 export type CampaignInput = {
@@ -168,6 +179,10 @@ export function createMarketingAdminClient(transport?: Transport) {
     createCouponCampaign(input: Record<string, unknown>, requestId = crypto.randomUUID()) {
       return request<{ campaignId: string; status: string; version: string; occurredAt: string }>(COUPON_ROOT, { method: 'POST', body: input, requestId });
     },
+    // PUT /coupon-campaigns/{id}（contract 72）：仅草稿可编辑，请求体与创建一致并带 expectedVersion。
+    updateCouponCampaign(campaignId: string, input: Record<string, unknown>, expectedVersion: string, requestId = crypto.randomUUID()) {
+      return request<{ campaignId: string; status: string; version: string; occurredAt: string }>(`${COUPON_ROOT}/${campaignId}`, { method: 'PUT', body: { ...input, expectedVersion }, requestId });
+    },
     couponCampaignAction(campaignId: string, action: 'publish' | 'pause' | 'end', expectedVersion: string) {
       return request<{ campaignId: string; status: string; version: string; occurredAt: string }>(`${COUPON_ROOT}/${campaignId}/${action}`, { method: 'POST', body: { expectedVersion } });
     },
@@ -234,13 +249,18 @@ export function targetNeedsValue(targetType: string): boolean {
 const FAILURE_TEXT: Record<string, string> = {
   SERVICE_CATEGORY_INVALID: '保存失败：所选服务分类中有分类不存在或未启用，请在「服务分类」字典确认后重新勾选再保存',
   PLACEMENT_LIMIT_EXCEEDED: '操作失败：已达位置启用上限——热门服务顶部 Banner 全平台最多同时启用 1 个，首页 Banner 同一城市最多同时启用 3 个。请先停用已启用的同位置 Banner 再试',
-  CAMPAIGN_LANDING_INVALID: '保存失败：投放窗口必须完全落在关联活动的时间窗口内',
+  CAMPAIGN_LANDING_INVALID: '操作未通过校验：投放窗口必须落在关联活动的时间窗口内；活动发布需要至少一家参与门店且关联券活动可用',
   CAMPAIGN_THEME_INVALID: '保存失败：节日主题缺失或不在白名单，请从「节日主题」下拉中重新选择',
   CAMPAIGN_PLAY_TYPE_INVALID: '保存失败：玩法仅支持「节日主题（THEME）」，请重新选择',
   MARKETING_ASSET_INVALID: '保存失败：封面素材不存在、不属于当前商家或未启用，请重新上传或清空封面资产 ID',
   MARKETING_ASSET_TOO_LARGE: '上传失败：文件超过 2 MiB 上限，请压缩后重试',
   CAMPAIGN_STATE_NOT_ALLOWED: '操作失败：当前状态不允许该操作，已为你刷新最新数据，请重试',
   CAMPAIGN_NOT_FOUND: '该活动不存在或已被删除，已为你刷新列表',
+  CAMPAIGN_PAGE_INVALID: '保存失败：活动页 Schema 不符合页面模板要求，请检查 JSON 结构',
+  ENROLLMENT_STATE_NOT_ALLOWED: '操作失败：该报名已被处理或已撤回，已为你刷新最新数据',
+  ENROLLMENT_QUOTA_EXCEEDED: '操作失败：该活动报名名额已满。如需继续通过报名，请先在活动详情里调高「报名名额」',
+  MARKETING_STORE_NOT_ELIGIBLE: '操作失败：报名门店当前不可用或与商家归属不一致，无法通过该报名',
+  COUPON_CAMPAIGN_NOT_FOUND: '券活动不存在或已被删除，已为你刷新列表',
   COMMON_CONFLICT: '操作冲突：数据已被其他人修改，已为你刷新最新数据，请重试',
   COMMON_NOT_FOUND: '数据不存在或已被删除，已为你刷新列表',
   COMMON_INVALID_ARGUMENT: '保存失败：填写内容不符合要求，请检查名称/标题长度、时间窗口、城市与分类选择等字段后重试',
@@ -254,10 +274,31 @@ const FAILURE_TEXT: Record<string, string> = {
   INVALID_ADMIN_PATH: '请求地址非法，已阻止发送',
 };
 
+// 这几个错误码在后端对应多种互不相干的原因（同一个 COMMON_CONFLICT 既可能是版本冲突，
+// 也可能是「券活动名称已存在」），而服务端 message 本身就是写给运营看的中文说明。
+// 所以有 message 时优先透出服务端原话，没有才退回固定文案。
+const SERVER_MESSAGE_FIRST = new Set(['CAMPAIGN_LANDING_INVALID', 'CAMPAIGN_STATE_NOT_ALLOWED', 'COMMON_CONFLICT']);
+
 export function describeMarketingFailure(error: unknown, fallback = '操作失败'): string {
   if (error instanceof RequestFailure) {
     if (error.code === 'UNAUTHENTICATED') return '登录已失效，请重新登录';
-    return FAILURE_TEXT[error.code] ?? `${fallback}（${error.code}）`;
+    // 服务端把错误码原样回显成 message 时不算具体原因，不透出（否则又变成裸错误码）。
+    const detail = error.serverMessage && error.serverMessage !== error.code ? error.serverMessage.trim() : '';
+    if (SERVER_MESSAGE_FIRST.has(error.code)) {
+      if (!detail) return FAILURE_TEXT[error.code];
+      return /版本/.test(detail)
+        ? `${fallback}：${detail}，已为你刷新最新数据，请确认后重试`
+        : `${fallback}：${detail}`;
+    }
+    if (!(error.code in FAILURE_TEXT)) {
+      // 文案表没登记的错误码：有服务端原话就用原话，绝不把错误码丢给运营。
+      return detail ? `${fallback}：${detail}` : `${fallback}（${error.code}）`;
+    }
+    // 参数校验（2026-11-20 裁决：校验失败必须透出具体原因）：保留中文指引，同时带上服务端指出的具体字段。
+    if (error.code === 'COMMON_INVALID_ARGUMENT' && detail && detail !== '请求参数不合法') {
+      return `${FAILURE_TEXT.COMMON_INVALID_ARGUMENT}（服务端：${detail}）`;
+    }
+    return FAILURE_TEXT[error.code];
   }
   return error instanceof Error && error.message ? `${fallback}（${error.message}）` : fallback;
 }
@@ -266,5 +307,6 @@ export function describeMarketingFailure(error: unknown, fallback = '操作失�
 export function isMarketingStale(error: unknown): boolean {
   return error instanceof RequestFailure
     && (error.code === 'COMMON_CONFLICT' || error.code === 'CAMPAIGN_STATE_NOT_ALLOWED'
+      || error.code === 'ENROLLMENT_STATE_NOT_ALLOWED'
       || error.code === 'CAMPAIGN_NOT_FOUND' || error.code === 'COMMON_NOT_FOUND');
 }

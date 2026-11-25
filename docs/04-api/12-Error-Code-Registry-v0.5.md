@@ -259,6 +259,13 @@ HTTP 映射只属于 Adapter 层；内部 Java API 通过稳定 code 表达同�
 | SERVICE_FULFILLMENT_NOT_SUPPORTED | 履约方式不支持 | 400 |
 | SERVICE_STATE_NOT_ALLOWED | 服务当前状态不允许该操作（写入方状态机违规：编辑 ACTIVE/REVIEWING、对非 DRAFT/REJECTED/OFFLINE 提交、对非 ACTIVE 下架、对非 REVIEWING 审核决定、对非 ACTIVE 强制下架；或商家/门店事实明确但不可经营）（CCR-W2-API-001 服务写入方 v0.2，2026-09-22 已批） | 409 |
 | SERVICE_REVIEW_REASON_REQUIRED | 审核驳回缺少必填意见（10-500 字）（同批） | 400 |
+| FLASH_PRICE_NOT_FOUND | 闪价记录不存在或不属于该服务/门店（防枚举）（契约 77 / CCR-SVC-FLASH-PRICE-001，2026-11-18） | 404 |
+| FLASH_PRICE_STATE_NOT_ALLOWED | 闪价状态机不允许该动作（含 PAUSED/窗口外 reserve） | 409 |
+| FLASH_PRICE_WINDOW_OVERLAP | 同服务活跃窗口重叠 | 409 |
+| FLASH_PRICE_QUOTA_EXCEEDED | 闪价总量售罄 | 409 |
+| FLASH_PRICE_LIMIT_REACHED | 超出闪价每人限领 | 409 |
+| FLASH_PRICE_INVALID | 闪价折扣/价格约束不满足（flashPrice ≥ 当前价等） | 409 |
+| FLASH_PRICE_DISABLED | 开关关闭时内部 reserve 被调用（fail-closed，不应发生） | 503 |
 | MERCHANT_NOT_FOUND | 商家不存在 |
 | MERCHANT_DISABLED | 商家不可接受新订单 |
 | STORE_NOT_FOUND | 门店不存在 |
@@ -731,6 +738,24 @@ CCR-AFS-PAGE-OPTIONS-001 已批准目录读取：目录不完整/代码名称不
 必填组合等通用参数非法。严格校验受 `pet.marketing.campaign.category-validation.enabled`
 （默认 false）控制，开启后存量不一致 code 在编辑时返回 `SERVICE_CATEGORY_INVALID`；空数组仍表示“全部”。
 C 端分类筛选的未知/停用 `categoryCode` 按 74 号契约 §8 的通用参数错误处理，不使用本码。
+
+## 服务限时秒杀 HTTP 状态映射（2026-11-18 77 号，CCR-SVC-FLASH-PRICE-001）
+
+新增业务码（同时登记 §12 MERCHANT/SERVICE 表）：
+
+| Code | 含义 | 建议 HTTP |
+|---|---|---:|
+| FLASH_PRICE_NOT_FOUND | 闪价记录不存在或不属于该服务/门店（防枚举） | 404 |
+| FLASH_PRICE_STATE_NOT_ALLOWED | 闪价状态机不允许该动作（编辑已提交、取消已生效、approve 非待审、reserve 遇 PAUSED/窗口外） | 409 |
+| FLASH_PRICE_WINDOW_OVERLAP | 同服务 `PENDING_REVIEW/SCHEDULED/ACTIVE/PAUSED` 窗口与新区间相交 | 409 |
+| FLASH_PRICE_QUOTA_EXCEEDED | reserve 时总量售罄（soldCount ≥ totalQuota） | 409 |
+| FLASH_PRICE_LIMIT_REACHED | reserve 时超出每人限领（RESERVED/CONSUMED 计数） | 409 |
+| FLASH_PRICE_INVALID | 折扣率/价格约束不满足（flashPrice ≥ 服务当前价、折扣率小数位超限等） | 409 |
+| FLASH_PRICE_DISABLED | 开关 `pet.service.flash-price.enabled=false` 时内部 reserve 被调用 | 503 |
+
+通用复用：400 `COMMON_INVALID_ARGUMENT`（字段结构/长度/枚举，如 `priceModeLabel` 非法、驳回原因为空）、401 `COMMON_UNAUTHORIZED`、403 `COMMON_FORBIDDEN`（商家非 OWNER、员工写、运营动作码 `service.flash-price.read/review` 缺失）、404 `COMMON_NOT_FOUND`（服务不存在）、409 `COMMON_CONFLICT`（乐观 version 冲突/请求锁忙）/`IDEMPOTENCY_KEY_CONFLICT`（同 requestId 异参）、503 `COMMON_DEPENDENCY_UNAVAILABLE`。
+
+语义区分：`FLASH_PRICE_INVALID` 是业务价格约束失败（参数结构合法但闪价不满足 >0 且 < 当前价）；折扣率不在 (0,10) 或超 1 位小数等结构问题走 `COMMON_INVALID_ARGUMENT`。运营审核通过时重读服务当前价发现 `flashPrice ≥ 当前价` 用 `FLASH_PRICE_INVALID`（提示商家调整），不是 STATE_NOT_ALLOWED。新动作码 `service.flash-price.read/review` 登记 `AdminPermissionEvaluator.DEPLOYED_ACTIONS`。
 
 ## 社区 HTTP 状态映射（2026-10-28 73 号，CCR-COM-001）
 

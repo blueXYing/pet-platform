@@ -106,15 +106,29 @@ abstract class MarketingSupport {
         return optionalUrl(value, field, false);
     }
 
-    /** Local E2E may opt into http image URLs; production remains HTTPS-only. */
+    /**
+     * 营销图片字段的取值规则（2026-11-24 用户裁决：读写一体存 OSS Key）。允许三种值：
+     * <ul>
+     *   <li>OSS Key：不含协议，形如 {@code marketing/fullcard/a.png}、{@code marketing-assets/1.png}；</li>
+     *   <li>完整的 https 地址：历史数据或外部素材；本地 E2E 可另行放行 http；</li>
+     *   <li>空。</li>
+     * </ul>
+     * Key 的形态收紧到「小写字母开头的目录段 + 图片扩展名结尾的文件名」，不带协议、主机、查询串、
+     * 内部空白或路径穿越，避免任意不带协议的字符串混进图片字段。首尾空白在落库前被规整掉。
+     */
     protected static String optionalUrl(String value, String field, boolean allowHttp) {
         if (value == null || value.isBlank()) return null;
         String url = value.strip();
         boolean secure = url.startsWith("https://");
         boolean localHttp = allowHttp && url.startsWith("http://");
-        if ((!secure && !localHttp) || url.length() > 512) invalid(field + " is invalid");
+        boolean objectKey = OBJECT_KEY.matcher(url).matches();
+        if ((!secure && !localHttp && !objectKey) || url.length() > 512) invalid(field + " is invalid");
         return url;
     }
+
+    /** OSS Key：可选的多级小写目录 + 图片扩展名结尾的文件名；不允许 {@code //}、{@code ..}、空白、查询串与 fragment。 */
+    private static final java.util.regex.Pattern OBJECT_KEY = java.util.regex.Pattern.compile(
+            "[a-z0-9][a-z0-9_-]*(?:/[a-z0-9][a-z0-9_.-]*)*\\.(?:png|jpe?g|webp|gif|avif)");
 
     protected static int boundedInt(Integer value, int fallback, int min, int max, String field) {
         if (value == null) return fallback;

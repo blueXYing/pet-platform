@@ -1,0 +1,43 @@
+/* 创建/编辑秒杀页专属（共享基础在 ../index.css；Figma 18:9694）*/
+.mmfe-edit { padding: 10rpx 30rpx 40rpx; }
+.mmfe-banner { margin-top: 24rpx; padding: 24rpx; border-radius: 24rpx; background: #ffffff; border: 2rpx solid #c0ecff; }
+.mmfe-banner-reject { border-color: #fecaca; background: #fef2f2; }
+.mmfe-banner-title { display: block; font-size: 25rpx; font-weight: 600; color: #dc2626; }
+.mmfe-banner-title-plain { display: block; font-size: 25rpx; font-weight: 600; color: #111827; }
+.mmfe-banner-text { display: block; margin-top: 8rpx; font-size: 23rpx; color: #6b7280; }
+
+.mmfe-service { display: flex; align-items: center; margin-top: 14rpx; padding: 20rpx 24rpx; border-radius: 24rpx; background: #ffffff; border: 2rpx solid #c0ecff; }
+.mmfe-service-icon { width: 76rpx; height: 76rpx; border-radius: 20rpx; background: #fff0e6; display: flex; align-items: center; justify-content: center; }
+.mmfe-service-icon image { width: 40rpx; height: 40rpx; }
+.mmfe-service-main { margin-left: 20rpx; flex: 1; min-width: 0; }
+.mmfe-service-name { display: block; font-size: 27rpx; line-height: 38rpx; font-weight: 600; color: #111827; }
+.mmfe-service-price { display: block; margin-top: 4rpx; font-size: 23rpx; color: #ff7a00; }
+
+.mmfe-service-scroll { margin-top: 14rpx; width: 100%; white-space: nowrap; }
+.mmfe-service-chips { display: inline-flex; gap: 16rpx; padding-bottom: 4rpx; }
+.mmfe-chip { display: inline-flex; flex-direction: column; align-items: center; padding: 12rpx 26rpx; border-radius: 24rpx; background: #ffffff; border: 2rpx solid #e5e7eb; }
+.mmfe-chip text { font-size: 23rpx; color: #4b5563; }
+.mmfe-chip-price { margin-top: 2rpx; font-size: 21rpx; color: #9ca3af; }
+.mmfe-chip-active { background: #5baae8; border-color: #5baae8; }
+.mmfe-chip-active text { color: #ffffff; }
+
+.mmfe-chips { display: flex; gap: 16rpx; margin-top: 14rpx; }
+.mmfe-mode-chip { display: flex; align-items: center; justify-content: center; height: 74rpx; padding: 0 30rpx; border-radius: 999rpx; background: #ffffff; border: 2rpx solid #e5e7eb; }
+.mmfe-mode-chip text { font-size: 27rpx; color: #4b5563; }
+.mmfe-mode-chip-active { background: #5baae8; border-color: #5baae8; }
+.mmfe-mode-chip-active text { color: #ffffff; }
+
+.mmfe-preview { display: block; margin-top: 12rpx; font-size: 25rpx; font-weight: 600; color: #ff7a00; }
+.mmfe-quota-head { display: flex; }
+.mmfe-quota-second { margin-left: auto; }
+.mmfe-quota-row { display: flex; gap: 14rpx; }
+.mmfe-quota-input { flex: 1; }
+.mmfe-textarea { height: 204rpx; margin-top: 14rpx; }
+.mmfe-actions { display: flex; gap: 22rpx; margin-top: 36rpx; }
+.mmfe-action { flex: 1; height: 92rpx; border-radius: 24rpx; background: #5baae8; display: flex; align-items: center; justify-content: center; }
+.mmfe-action-secondary { background: #ffffff; border: 2rpx solid #c0ecff; }
+.mmfe-action-text { font-size: 27rpx; font-weight: 600; color: #ffffff; }
+.mmfe-action-text-secondary { color: #5baae8; }
+.mmfe-action-disabled { opacity: 0.55; }
+.mmfe-cancel { margin-top: 20rpx; color: #6b7280; }
+.mmfe-tail { margin-top: 28rpx; text-align: center; }

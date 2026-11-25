@@ -134,6 +134,10 @@ public class AdminAuthSecurityConfiguration {
                     "/api/v1/admin/service-categories/**")
                 .permitAll();
             a.requestMatchers(
+                    "/api/v1/admin/service-flash-prices",
+                    "/api/v1/admin/service-flash-prices/**")
+                .permitAll();
+            a.requestMatchers(
                     HttpMethod.GET,
                     "/api/v1/admin/auth/session",
                     "/api/v1/admin/auth/permissions",

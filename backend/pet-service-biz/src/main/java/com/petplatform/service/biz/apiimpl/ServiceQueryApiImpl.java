@@ -39,8 +39,19 @@ public final class ServiceQueryApiImpl
             MerchantDisplayEligibilityApi merchantFacts,
             MerchantDisplayStoreIdsApi displayStoreIds,
             ServiceCoverUrlPort coverUrls) {
+        this(dataSource, merchantFacts, displayStoreIds, coverUrls, null);
+    }
+
+    /** Contract 77 §5 wiring: an enabled flash resolver re-prices live windows on the read side. */
+    public ServiceQueryApiImpl(
+            DataSource dataSource,
+            MerchantDisplayEligibilityApi merchantFacts,
+            MerchantDisplayStoreIdsApi displayStoreIds,
+            ServiceCoverUrlPort coverUrls,
+            com.petplatform.service.biz.application.FlashPriceEffectiveResolver flashPrices) {
         this.service = new ServiceQueryService(
-                new ServiceReadStore(dataSource), merchantFacts, displayStoreIds, coverUrls);
+                new ServiceReadStore(dataSource), merchantFacts, displayStoreIds, coverUrls,
+                flashPrices);
     }
 
     @Override

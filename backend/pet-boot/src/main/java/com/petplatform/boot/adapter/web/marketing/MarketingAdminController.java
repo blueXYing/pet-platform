@@ -85,6 +85,11 @@ public class MarketingAdminController {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("assetId", asset.assetId());
         out.put("url", url);
+        // 2026-11-24 读写一体存 Key：图片已直传对象存储，这里把 Key 一并带回，表单回填 Key（而不是地址），
+        // 与活动/投放位/内容位的图片存储形态统一。对象存储未启用时 objectKey 为 null，表单回退到 url。
+        out.put("objectKey", asset.objectKey());
+        out.put("previewUrl", asset.objectKey() == null ? url
+                : MarketingCoverUrlResolver.resolve(asset.objectKey()));
         out.put("contentType", asset.contentType());
         out.put("bytes", asset.bytes());
         out.put("width", asset.width());
@@ -521,12 +526,16 @@ public class MarketingAdminController {
     }
 
     // ---------------------------------------------------------------- input parsing
+    //
+    // 2026-11-24 用户裁决：营销图片读写一体存 OSS Key。下面三个图片字段在进入服务层之前先做归一化
+    // （MarketingCoverUrlResolver.toKey：本 bucket 的完整地址 → Key），这样服务层校验、幂等参数与落库
+    // 看到的都是同一个值；「编辑后保存」不会把 Key 覆盖成完整地址。
 
     private static CampaignInput campaignInput(JsonNode body) {
         return new CampaignInput(
                 text(body, "name"), text(body, "campaignType"), text(body, "participationMode"),
                 text(body, "title"), optionalText(body, "subtitle"), optionalText(body, "tagCode"),
-                optionalText(body, "tagName"), optionalText(body, "coverUrl"),
+                optionalText(body, "tagName"), MarketingCoverUrlResolver.toKey(optionalText(body, "coverUrl")),
                 optionalText(body, "description"), optionalText(body, "themeCode"),
                 optionalText(body, "highlightText"), optionalText(body, "playType"),
                 optionalText(body, "coverAssetId"),
@@ -541,7 +550,8 @@ public class MarketingAdminController {
         return new PlacementInput(
                 text(body, "positionCode"), text(body, "campaignId"), optionalText(body, "cityCode"),
                 optionalText(body, "titleOverride"), optionalText(body, "subtitleOverride"),
-                optionalText(body, "imageUrlOverride"), optionalText(body, "templateCode"),
+                MarketingCoverUrlResolver.toKey(optionalText(body, "imageUrlOverride")),
+                optionalText(body, "templateCode"),
                 body.hasNonNull("sortWeight") ? integer(body, "sortWeight") : null,
                 time(body, "startAt"), time(body, "endAt"));
     }
@@ -550,7 +560,7 @@ public class MarketingAdminController {
         return new HomeBlockInput(
                 text(body, "blockCode"), text(body, "positionCode"), text(body, "templateCode"),
                 text(body, "title"), optionalText(body, "subtitle"), optionalText(body, "tagName"),
-                optionalText(body, "imageUrl"), text(body, "targetType"),
+                MarketingCoverUrlResolver.toKey(optionalText(body, "imageUrl")), text(body, "targetType"),
                 optionalText(body, "targetValue"), optionalText(body, "cityCode"),
                 optionalText(body, "sponsorMerchantId"), optionalText(body, "sponsorStoreId"),
                 body.hasNonNull("sortWeight") ? integer(body, "sortWeight") : null,
@@ -608,6 +618,10 @@ public class MarketingAdminController {
         // 封面地址在输出口统一解析（存 OSS Key 时拼成完整网址；已是完整网址的原样返回），
         // 兼容商家封面上传派生出的素材接口地址。
         out.put("coverUrl", MarketingCoverUrlResolver.resolve(c.coverUrl()));
+        // 2026-11-24 读写一体存 Key：coverStoredKey 是库里存的原始值（Key 或历史完整地址）。
+        // 运营编辑表单回显它、保存时原样提交——后端再做归一化——这样「编辑后保存」不会把 Key 覆盖成完整地址。
+        // coverUrl 保持「可访问地址」的既有语义不变，现有读取方不受影响。
+        out.put("coverStoredKey", c.coverUrl());
         out.put("tagCode", c.tagCode());
         out.put("tagName", c.tagName());
         out.put("cityCodes", c.cityCodes());
@@ -665,6 +679,8 @@ public class MarketingAdminController {
         out.put("titleOverride", p.titleOverride());
         out.put("subtitleOverride", p.subtitleOverride());
         out.put("imageUrlOverride", p.imageUrlOverride());
+        // 2026-11-24 读写一体存 Key：xxxUrl 是存储值（表单回显用），xxxDisplayUrl 是拼好的可访问地址（预览用）。
+        out.put("imageUrlOverrideDisplayUrl", MarketingCoverUrlResolver.resolve(p.imageUrlOverride()));
         out.put("templateCode", p.templateCode());
         out.put("sortWeight", p.sortWeight());
         out.put("startAt", time(p.startAt()));
@@ -684,6 +700,7 @@ public class MarketingAdminController {
         out.put("subtitle", b.subtitle());
         out.put("tagName", b.tagName());
         out.put("imageUrl", b.imageUrl());
+        out.put("imageDisplayUrl", MarketingCoverUrlResolver.resolve(b.imageUrl()));
         out.put("targetType", b.targetType());
         out.put("targetValue", b.targetValue());
         out.put("cityCode", b.cityCode());

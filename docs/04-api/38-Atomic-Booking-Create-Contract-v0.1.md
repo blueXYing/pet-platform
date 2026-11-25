@@ -52,3 +52,15 @@ hold注册同事务beforeCommit校验，经真实ORDER.getByReservations验证�
 ## 2026-09-28 implementation supplement
 
 For atomic booking creation, scheduled task submission and coordinated expiration are specified in [Contract 39](39-Selection-Booking-Expiry-Contract-v0.1.md). Its ORDER + SCH transaction supersedes standalone reservation expiry for this slice. Default switches remain off; no payment-channel or coupon settlement capability is implied.
+
+## 2026-11-18 flash-price supplement（CCR-SVC-FLASH-PRICE-001 / 契约77）
+
+服务限时价格（闪价）接入本下单内核，**不改变锁与事务顺序**：
+
+1. 价格权威仍在 SERVICE：`BookingServiceFacts` 增加 `listPrice/priceSource/flashPriceId/flashDiscount`，`price`=生效价（闪价生效时即闪价）。`readCurrentService` 的服务行锁与当前读语义不变；闪价生效性（状态/窗口/价格比较）由 SERVICE 在同一读取内解析。
+2. 执行顺序在 `reservations.hold` 成功、`verifyHold` 之后、券冻结（61 号）之前插入一步：当 `flashPriceId != null` 时调用 `ServiceFlashPriceReservationApi.reserve(context, flashPriceId, orderId, userId, expireAt=held.holdExpireAt())`，reserve 与订单创建同 DataSource 同事务（行锁 `service_flash_price`）。reserve 返回的 `price/listPrice/flashDiscount` 为权威值，覆盖本地候选。
+3. reserve 失败（404/409/503）→ 整个执行事务回滚，预占随事务消失；不产生部分写入。
+4. `writeOrder` 落快照：`price`=生效价、`original_price=listPrice`、`flash_discount`、`price_source`、`flash_price_id`；服务快照 `service_list_price/service_price_source/service_flash_price_id` 与 `snapshotJson` 同步。无闪价：不调用 reserve，`price_source=LIST`、`flash_discount=0`、`original_price=price`，行为与本契约原文完全一致。
+5. 支付成功后的配额消费走既有 `OrderPaidEvent.v1`（SERVICE 消费者置 CONSUMED）；过期释放由 SERVICE 自有 durable task 按 `service_flash_price_order.expire_at` 完成——**ORDER 侧（含 39 号过期链路与 `OrderExpiryApiImpl`）零改动、零新增事件**。
+6. 开关 `pet.service.flash-price.enabled=false` 时：`BookingServiceFacts` 不返回闪价字段（LIST），reserve 永不被调用。
+

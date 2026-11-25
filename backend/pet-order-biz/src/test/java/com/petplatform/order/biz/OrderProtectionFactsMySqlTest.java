@@ -367,8 +367,9 @@ class OrderProtectionFactsMySqlTest {
                     INSERT INTO pet_order
                     (id,order_no,user_id,merchant_id,store_id,service_id,pet_id,reservation_id,
                      service_staff_id,order_stage,verification_status,fulfillment_type,
-                     original_amount,pay_amount,appointment_start_at,appointment_end_at,created_at,updated_at)
-                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,100.00,100.00,'2030-01-01 09:00:00',
+                     original_amount,pay_amount,original_price,flash_discount,price_source,
+                     appointment_start_at,appointment_end_at,created_at,updated_at)
+                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,100.00,100.00,100.00,0.00,'LIST','2030-01-01 09:00:00',
                            '2030-01-01 10:00:00',UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))
                     """, id, id + 10000, 7400L, MERCHANT, store, SERVICE, 7500L, reservation,
                     staff, stage, verification, "IN_STORE");

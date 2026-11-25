@@ -94,6 +94,18 @@ export function isMerchantOrderActionPath(spec: RequestSpec): boolean {
 export function isMerchantOrderListPath(spec: RequestSpec): boolean {
   return spec.method === 'GET' && spec.path === '/api/v1/merchant/orders'
 }
+// Contract 77 merchant service flash-price surfaces (switch pet.service.flash-price.enabled
+// default OFF): the service in the path is the only target — the query/body never carries
+// merchant/store coordinates because the server locates the service's store and re-proves the
+// OWNER authority plus the ACTIVE service on every call and replay (77号 §3/§8).
+export function isMerchantFlashPricePath(spec: RequestSpec): boolean {
+  const match = /^\/api\/v1\/merchant\/services\/([1-9][0-9]{0,18})\/flash-prices(?:\/([1-9][0-9]{0,18})(?:\/(submit|cancel))?)?$/.exec(spec.path)
+  if (!match) return false
+  if (match[1] === undefined) return false
+  if (match[2] === undefined) return spec.method === 'GET' || spec.method === 'POST'
+  if (match[3] === undefined) return spec.method === 'PUT'
+  return spec.method === 'POST'
+}
 // Contract 48 K3 merchant verification-record list read (CCR-M-VERIFY-RECORD-001, switch
 // pet.verification.merchant-read.http.enabled default OFF): the only GET on the exact
 // /merchant/verifications path. OWNER-only — the query carries the caller's merchant
@@ -302,17 +314,20 @@ export class ConsumerApi {
     const merchantMarketingPath = isMerchantMarketingPath(spec)
     const merchantStaffMemberPath = isMerchantStaffMemberPath(spec)
     const favoriteFootprintPath = isFavoriteFootprintPath(spec)
+    // Merchant service flash-price family (77号): path-targeted on the service; same
+    // envelope discipline as the other merchant route families.
+    const merchantFlashPricePath = isMerchantFlashPricePath(spec)
     if (/^\/api\/v1\/(c|merchant)\/aftersale/.test(spec.path) && !afterSalePath) throw new Error('INVALID_PATH')
     if (/^\/api\/v1\/merchant\/reviews(\/|$)/.test(spec.path) && !merchantReviewPath) throw new Error('INVALID_PATH')
     if (/^\/api\/v1\/c\/(favorites|footprints)(\/|$)/.test(spec.path) && !favoriteFootprintPath) throw new Error('INVALID_PATH')
-    if (!/^\/api\/v1\/c\/[a-z0-9/-]+$/.test(spec.path) && !agreementPath && !admissionPath && !categoryPath && !serviceCommandPath && !afterSalePath && !schedulePath && !verificationPath && !merchantOrderAction && !merchantOrderList && !merchantVerificationRecords && !merchantReviewPath && !merchantRefundPath && !merchantCustomerPath && !merchantStatsPath && !merchantStoreProfilePath && !merchantMarketingPath && !merchantStaffMemberPath && !favoriteFootprintPath) throw new Error('INVALID_PATH')
+    if (!/^\/api\/v1\/c\/[a-z0-9/-]+$/.test(spec.path) && !agreementPath && !admissionPath && !categoryPath && !serviceCommandPath && !afterSalePath && !schedulePath && !verificationPath && !merchantOrderAction && !merchantOrderList && !merchantVerificationRecords && !merchantReviewPath && !merchantRefundPath && !merchantCustomerPath && !merchantStatsPath && !merchantStoreProfilePath && !merchantMarketingPath && !merchantStaffMemberPath && !favoriteFootprintPath && !merchantFlashPricePath) throw new Error('INVALID_PATH')
     if (spec.method !== 'GET' && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?![\s\S])/i.test(spec.requestId || '')) throw new Error('REQUEST_ID_REQUIRED')
     const response = await this.transport({ ...spec, headers: { 'Content-Type': 'application/json', ...(spec.requestId ? { 'X-Request-Id': spec.requestId } : {}), ...headers } })
     if (afterSalePath) return afterSaleEnvelope(response)
     const body = object(response.data)
     if (response.statusCode < 200 || response.statusCode >= 300 || body.code !== 'SUCCESS') throw new ApiError(typeof body.code === 'string' ? body.code : 'INVALID_RESPONSE', response.statusCode)
     const applicationPath = /^\/api\/v1\/c\/merchant-applications(?:\/|$)/.test(spec.path) || spec.path === '/api/v1/c/merchant-application-cities'
-    if ((agreementPath || applicationPath || admissionPath || categoryPath || serviceCommandPath || schedulePath || verificationPath || merchantOrderAction || merchantOrderList || merchantVerificationRecords || merchantRefundPath || merchantCustomerPath || merchantStatsPath || merchantStoreProfilePath || merchantMarketingPath || merchantStaffMemberPath) && body.success !== true) throw new Error('INVALID_RESPONSE')
+    if ((agreementPath || applicationPath || admissionPath || categoryPath || serviceCommandPath || schedulePath || verificationPath || merchantOrderAction || merchantOrderList || merchantVerificationRecords || merchantRefundPath || merchantCustomerPath || merchantStatsPath || merchantStoreProfilePath || merchantMarketingPath || merchantStaffMemberPath || merchantFlashPricePath) && body.success !== true) throw new Error('INVALID_RESPONSE')
     return body.data
   }
   private clear() {
@@ -421,8 +436,9 @@ export class ConsumerApi {
     }
   }
   async request<T>(spec: RequestSpec, decode: (data: unknown) => T, retried = false): Promise<T> {
-    if (/^\/api\/v1\/(c|merchant)\/aftersale/.test(spec.path) && !isAfterSalePath(spec)) throw new Error('INVALID_PATH')
-    if (/^\/api\/v1\/merchant\/reviews(\/|$)/.test(spec.path) && !isMerchantReviewPath(spec)) throw new Error('INVALID_PATH')
+  if (/^\/api\/v1\/(c|merchant)\/aftersale/.test(spec.path) && !isAfterSalePath(spec)) throw new Error('INVALID_PATH')
+  if (/^\/api\/v1\/merchant\/reviews(\/|$)/.test(spec.path) && !isMerchantReviewPath(spec)) throw new Error('INVALID_PATH')
+  if (/^\/api\/v1\/merchant\/services\/[1-9][0-9]{0,18}\/flash-prices(\/|$)/.test(spec.path) && !isMerchantFlashPricePath(spec)) throw new Error('INVALID_PATH')
     const ticket = this.scope.capture()
     if (!this.credential || !this.currentSession || this.currentSession.userId !== ticket.context.userId) throw new ApiError('COMMON_UNAUTHORIZED', 401)
     const merchantRequest = spec.path.startsWith('/api/v1/merchant/')
@@ -438,6 +454,11 @@ export class ConsumerApi {
       const verificationPath = isMerchantVerificationPath(spec)
       if (verificationPath && !ticket.context.storeId) throw new Error('WORKSPACE_PATH_MISMATCH')
       const merchantStaffMemberPath = isMerchantStaffMemberPath(spec)
+      // Merchant service flash-price surfaces (77号): path-targeted on the service; the
+      // server re-proves OWNER + ACTIVE service per call, so no coordinate query is carried
+      // (the workspace must still have a store selected, merchant order-action discipline).
+      const merchantFlashPricePath = isMerchantFlashPricePath(spec)
+      if (merchantFlashPricePath && !ticket.context.storeId) throw new Error('WORKSPACE_PATH_MISMATCH')
       // Merchant order decisions (45号) equally target the order only; the OWNER authority is
       // re-proven server-side per call, so a wrong-workspace request fails closed there.
       const merchantOrderAction = isMerchantOrderActionPath(spec)
@@ -487,7 +508,7 @@ export class ConsumerApi {
       if (merchantStaffMemberPath && (!ticket.context.storeId
         || spec.data?.merchantId !== ticket.context.merchantId
         || spec.data?.storeId !== ticket.context.storeId)) throw new Error('WORKSPACE_PATH_MISMATCH')
-      const targetFree = spec.path === '/api/v1/merchant/service-categories' || afterSalePath && spec.path !== '/api/v1/merchant/aftersales' || verificationPath || merchantOrderAction || merchantRefundDecision
+      const targetFree = spec.path === '/api/v1/merchant/service-categories' || afterSalePath && spec.path !== '/api/v1/merchant/aftersales' || verificationPath || merchantOrderAction || merchantRefundDecision || merchantFlashPricePath
       if (!targetFree && spec.data?.merchantId !== ticket.context.merchantId) throw new Error('WORKSPACE_PATH_MISMATCH')
     } else if (ticket.context.workspace !== 'consumer'
       && !isStaffInvitationPath(spec.path) && !isNotificationInboxPath(spec.path)) throw new Error('WORKSPACE_PATH_MISMATCH')

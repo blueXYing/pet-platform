@@ -7,7 +7,7 @@
 | `PLAN.md` | 背景、差距分析、后续阶段设计（分析版） |
 | `HANDOFF.md` | **执行手册**：固定决策、Phase 1 规格、测试命令、报告模板 |
 | `PROMPT-P1.txt` | 直接复制给执行智能体的 Phase 1 提示词 |
-| `PROMPT-P2.txt` | Phase 2（秒杀）提示词 |
+| `PROMPT-P2.txt` | 已迁移：见 `planning/progress/2026-11-18/svc-flash-price/PROMPT.txt` |
 | `PROMPT-P3.txt` | Phase 3（商家券）提示词 |
 | `PROMPT-P4.txt` | Phase 4a（裂变返券）提示词 |
 | `PROMPT-P5.txt` | Phase 5（会员卡）提示词 |

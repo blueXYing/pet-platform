@@ -1493,7 +1493,10 @@ public final class E2eCoreLoopServer {
         "63-Marketing-Storage-v0.1.sql",
         "64-Community-Storage-v0.1.sql",
         // CCR-PAY-CENTER-001 stage 1: payment_order biz/settle/log columns (requires 40/41).
-        "75-Payment-Center-Schema-v0.1.sql"));
+        "75-Payment-Center-Schema-v0.1.sql",
+        // CCR-SVC-FLASH-PRICE-001 (contract 77): service flash-price four tables. The
+        // pet_order snapshot columns ride 06 itself (kept in sync there).
+        "73-Service-Flash-Price-Schema-v0.1.sql"));
     try (var connection = source.getConnection()) {
       for (String file : scripts) {
         ScriptUtils.executeSqlScript(connection, new EncodedResource(

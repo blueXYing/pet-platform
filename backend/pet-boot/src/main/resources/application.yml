@@ -113,6 +113,8 @@ pet:
   service:
     category:
       icon-url-allow-http: false
+    flash-price:
+      enabled: false
   notification:
     delivery:
       # 外部微信订阅消息投递（待接入真实微信适配器后开启；站内通知不受影响）

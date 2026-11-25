@@ -29,3 +29,5 @@ pet:
   service:
     category:
       icon-url-allow-http: true
+    flash-price:
+      enabled: true

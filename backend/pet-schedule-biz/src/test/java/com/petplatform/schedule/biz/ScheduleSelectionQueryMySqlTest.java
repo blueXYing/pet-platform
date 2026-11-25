@@ -329,7 +329,7 @@ class ScheduleSelectionQueryMySqlTest {
                 new ServiceBookabilityDTO("301", "10", "201", true, List.of()));
         when(services.getServiceSnapshot(any())).thenReturn(new ServiceSnapshotDTO(
                 "301", "10", "201", "service", "1", "category", BigDecimal.ONE, 60,
-                type, null, null, null, null));
+                type, null, null, null, null, null, null, null, null, null, null));
         QualifiedStaffFactsPort staff = (store, selectedService, from, to) -> 2;
         return new SelectionWindowQueryService(new SelectionReadStore(db.source), services,
                 staff, Clock.fixed(Instant.parse("2029-12-31T00:00:00Z"), ZoneOffset.UTC));

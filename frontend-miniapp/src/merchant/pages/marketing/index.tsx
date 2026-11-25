@@ -27,7 +27,7 @@ type MarketingTool = Readonly<{
 const MARKETING_TOOLS: readonly MarketingTool[] = [
   { id: 'mmk-tool-coupon', title: '优惠券', hint: '新客立减、满减券', icon: iconToolCoupon, iconClass: 'mmk-tool-icon-coupon', available: false, badge: '筹备中' },
   { id: 'mmk-tool-member-card', title: '会员卡', hint: '储值卡、次卡', icon: iconToolMemberCard, iconClass: 'mmk-tool-icon-member-card', available: false, badge: '筹备中' },
-  { id: 'mmk-tool-flash-sale', title: '限时秒杀', hint: '爆款服务抢购', icon: iconToolFlashSale, iconClass: 'mmk-tool-icon-flash-sale', available: false, badge: '筹备中' },
+  { id: 'mmk-tool-flash-sale', title: '限时秒杀', hint: '爆款服务抢购', icon: iconToolFlashSale, iconClass: 'mmk-tool-icon-flash-sale', available: true, url: '/merchant/pages/marketing/flash/index' },
   { id: 'mmk-tool-referral', title: '裂变拉新', hint: '老带新返券', icon: iconToolReferral, iconClass: 'mmk-tool-icon-referral', available: false, badge: '筹备中' },
   { id: 'mmk-tool-gift', title: '赠品活动', hint: '满额送礼', icon: iconToolGift, iconClass: 'mmk-tool-icon-gift', available: false, badge: '暂不开放' },
   { id: 'mmk-tool-festival', title: '节日营销', hint: '节日主题套餐', icon: iconToolFestival, iconClass: 'mmk-tool-icon-festival', available: true, url: '/merchant/pages/marketing/campaigns/index' },

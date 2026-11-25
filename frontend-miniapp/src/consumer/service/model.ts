@@ -10,12 +10,22 @@ export type FulfillmentType = 'IN_STORE' | 'PICKUP_DELIVERY'
 export type ServiceCoverView = Readonly<{
   coverAssetId: string; coverUrl: string; coverUrlExpiresAt: string
 }>
-/** GET /api/v1/c/stores/{storeId}/services item (list projection, no description, no version). */
+/** 77号 §5 flash-price projection (service flash price P2): nullable fields ride the existing
+ *  /c/services responses; when the switch is off or no flash applies the server omits them and
+ *  every value decodes to null/LIST — behavior identical to today. Optional keys keep preview
+ *  fixtures (and any literal constructed before P2) valid; the decoder always fills them. */
+export type FlashPriceSource = 'LIST' | 'FLASH'
 export type ServiceItemView = Readonly<{
   serviceId: string; merchantId: string; storeId: string
   serviceName: string; categoryId: string; categoryName: string
   salePrice: string; durationMinutes: number; fulfillmentType: FulfillmentType
   cover: ServiceCoverView | null
+  priceSource?: FlashPriceSource
+  listPrice?: string | null
+  flashPrice?: string | null
+  flashStartAt?: string | null
+  flashEndAt?: string | null
+  flashRemaining?: number | null
 }>
 /** GET /api/v1/c/services/{serviceId} detail = item fields + description. */
 export type ServiceDetailView = Readonly<ServiceItemView & { description: string }>
@@ -58,13 +68,29 @@ function checkServiceFields(v: Record<string, any>): ServiceItemView {
   if (v.fulfillmentType !== 'IN_STORE' && v.fulfillmentType !== 'PICKUP_DELIVERY') invalid()
   return { serviceId: v.serviceId, merchantId: v.merchantId, storeId: v.storeId, serviceName: v.serviceName,
     categoryId: v.categoryId, categoryName: v.categoryName, salePrice: price(v.salePrice),
-    durationMinutes: v.durationMinutes, fulfillmentType: v.fulfillmentType, cover: coverOf(v.cover) }
+    durationMinutes: v.durationMinutes, fulfillmentType: v.fulfillmentType, cover: coverOf(v.cover),
+    ...flashFieldsOf(v) }
+}
+/** 77号 §5 flash projection decode: absent (switch off) or null → LIST/nulls; a FLASH source
+ *  must carry the full window pair and prices (flashRemaining stays null without a total quota). */
+function flashFieldsOf(v: Record<string, any>): Pick<ServiceItemView, 'priceSource' | 'listPrice' | 'flashPrice' | 'flashStartAt' | 'flashEndAt' | 'flashRemaining'> {
+  const source: FlashPriceSource = v.priceSource === undefined || v.priceSource === null ? 'LIST'
+    : v.priceSource === 'LIST' || v.priceSource === 'FLASH' ? v.priceSource
+    : invalid()
+  const listPrice = v.listPrice === undefined || v.listPrice === null ? null : price(v.listPrice)
+  const flashPrice = v.flashPrice === undefined || v.flashPrice === null ? null : price(v.flashPrice)
+  const flashStartAt = v.flashStartAt === undefined || v.flashStartAt === null ? null : instant(v.flashStartAt)
+  const flashEndAt = v.flashEndAt === undefined || v.flashEndAt === null ? null : instant(v.flashEndAt)
+  const flashRemaining = v.flashRemaining === undefined || v.flashRemaining === null ? null
+    : Number.isSafeInteger(v.flashRemaining) && v.flashRemaining >= 0 && v.flashRemaining <= 1000000 ? v.flashRemaining : invalid()
+  if (source === 'FLASH' && (listPrice === null || flashPrice === null || flashStartAt === null || flashEndAt === null)) invalid()
+  return { priceSource: source, listPrice, flashPrice, flashStartAt, flashEndAt, flashRemaining }
 }
 export function decodeServiceItem(value: unknown): ServiceItemView {
-  return checkServiceFields(exact(value, ['serviceId', 'merchantId', 'storeId', 'serviceName', 'categoryId', 'categoryName', 'salePrice', 'durationMinutes', 'fulfillmentType', 'cover']))
+  return checkServiceFields(exact(value, ['serviceId', 'merchantId', 'storeId', 'serviceName', 'categoryId', 'categoryName', 'salePrice', 'durationMinutes', 'fulfillmentType', 'cover', 'priceSource', 'listPrice', 'flashPrice', 'flashStartAt', 'flashEndAt', 'flashRemaining']))
 }
 export function decodeServiceDetail(value: unknown): ServiceDetailView {
-  const v = exact(value, ['serviceId', 'merchantId', 'storeId', 'serviceName', 'categoryId', 'categoryName', 'salePrice', 'durationMinutes', 'fulfillmentType', 'cover', 'description'])
+  const v = exact(value, ['serviceId', 'merchantId', 'storeId', 'serviceName', 'categoryId', 'categoryName', 'salePrice', 'durationMinutes', 'fulfillmentType', 'cover', 'description', 'priceSource', 'listPrice', 'flashPrice', 'flashStartAt', 'flashEndAt', 'flashRemaining'])
   if (typeof v.description !== 'string' || [...v.description].length > 1000) invalid()
   return { ...checkServiceFields(v), description: v.description }
 }
@@ -82,6 +108,52 @@ export function decodeServicePage(value: unknown): ServicePage {
 // as the wire format (SVC-D3). Display trims the zero fraction without touching the value.
 export function formatSalePrice(salePrice: string): string {
   return salePrice.replace(/\.?0+$/, '') || salePrice
+}
+
+// ===== 77号 §5 flash-price display projection (P2) — pure, no Taro/network =====
+/** A live flash offer for rendering: FLASH source, window still open (now < flashEndAt) and the
+ *  effective price pair present. soldOut = quota exhausted (remaining reported as 0). When the
+ *  offer is absent the caller renders exactly the pre-P2 output (fields missing ⇒ unchanged). */
+export type FlashOffer = Readonly<{
+  flashPrice: string; listPrice: string; startAt: string; endAt: string
+  remaining: number | null; soldOut: boolean
+}>
+export function flashOfferOf(service: Readonly<Pick<ServiceItemView, 'priceSource' | 'flashPrice' | 'listPrice' | 'flashStartAt' | 'flashEndAt' | 'flashRemaining'>>, now: number): FlashOffer | null {
+  if (service.priceSource !== 'FLASH' || service.flashPrice === null || service.flashPrice === undefined
+    || service.listPrice === null || service.listPrice === undefined
+    || service.flashStartAt === null || service.flashStartAt === undefined
+    || service.flashEndAt === null || service.flashEndAt === undefined) return null
+  const end = Date.parse(service.flashEndAt)
+  if (!Number.isFinite(end) || now >= end) return null
+  const remaining = service.flashRemaining === null || service.flashRemaining === undefined ? null : service.flashRemaining
+  return {
+    flashPrice: service.flashPrice, listPrice: service.listPrice,
+    startAt: service.flashStartAt, endAt: service.flashEndAt,
+    remaining, soldOut: remaining !== null && remaining <= 0,
+  }
+}
+
+/** Countdown text to the window end: "1天 02:03:04" past 24h, otherwise "02:03:45"; null once over. */
+export function flashCountdownText(now: number, endAt: string): string | null {
+  const end = Date.parse(endAt)
+  if (!Number.isFinite(end)) return null
+  const diff = end - now
+  if (diff <= 0) return null
+  const totalSeconds = Math.floor(diff / 1000)
+  const days = Math.floor(totalSeconds / 86400)
+  const hours = Math.floor((totalSeconds % 86400) / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  const clock = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+  return days > 0 ? `${days}天 ${clock}` : clock
+}
+
+/** 限时优惠金额（原价−生效价），仅 FLASH 来源且原价>生效价时给出；两位小数字符串。 */
+export function flashDiscountAmount(listPrice: string, effectivePrice: string): string | null {
+  if (!/^\d+\.\d{2}$/.test(listPrice) || !/^\d+\.\d{2}$/.test(effectivePrice)) return null
+  const cents = (value: string): bigint => BigInt(value.slice(0, -3)) * 100n + BigInt(value.slice(-2))
+  const discount = cents(listPrice) - cents(effectivePrice)
+  return discount > 0n ? `${discount / 100n}.${(discount % 100n).toString().padStart(2, '0')}` : null
 }
 
 // Design-sample copy with NO approved contract field yet (list "已售N" counts; store header,
