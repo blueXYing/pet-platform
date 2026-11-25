@@ -137,7 +137,7 @@ class ServiceCategoryAdminHttpTest {
     props.put(
         "pet.auth.admin.encryption-key-base64", Base64.getEncoder().encodeToString(adminAes));
     props.put("pet.auth.admin.audit-path", db.directory.resolve("svccat-audit.bin").toString());
-    props.put("pet.service.command.enabled", true);
+    props.put("pet.private-assets.enabled", true);
     try {
       context =
           stage(
@@ -152,25 +152,21 @@ class ServiceCategoryAdminHttpTest {
                         "svccatDataSource", DataSource.class, () -> db.source);
                     beans.registerBean(
                         "svccatIds", SnowflakeIdGenerator.class, () -> db.ids);
-                    // The dictionary face never consults merchant admission or the outbox;
-                    // these seams satisfy the service-write assembly without another module.
                     beans.registerBean(
-                        "svccatAdmissions",
-                        MerchantAdmissionQueryApi.class,
-                        () ->
-                            new MerchantAdmissionQueryApi() {
-                              @Override
-                              public MerchantMembershipPageDTO listMemberships(
-                                  MerchantMembershipQuery query) {
-                                throw new UnsupportedOperationException();
-                              }
-
-                              @Override
-                              public MerchantAdmissionDTO getAdmission(
-                                  MerchantAdmissionQuery query) {
-                                throw new UnsupportedOperationException();
-                              }
-                            });
+                        "svccatObjectStore",
+                        com.petplatform.thirdparty.biz.application.port.PrivateObjectStore.class,
+                        () -> org.mockito.Mockito.mock(
+                            com.petplatform.thirdparty.biz.application.port.PrivateObjectStore.class));
+                    beans.registerBean(
+                        "svccatProtection",
+                        com.petplatform.merchant.biz.application.ApplicationValidationPorts.ProtectedValuePort.class,
+                        () -> org.mockito.Mockito.mock(
+                            com.petplatform.merchant.biz.application.ApplicationValidationPorts.ProtectedValuePort.class));
+                    beans.registerBean(
+                        "svccatSubjects",
+                        com.petplatform.merchant.biz.application.SubjectCredentialPort.class,
+                        () -> org.mockito.Mockito.mock(
+                            com.petplatform.merchant.biz.application.SubjectCredentialPort.class));
                   })
               .run());
       base = "http://127.0.0.1:" + context.getEnvironment().getProperty("local.server.port");

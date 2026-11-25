@@ -127,7 +127,7 @@ class ServiceQueryHttpTest {
     // comes from the trusted catalog (open+no stores = empty page, not 400).
     props.put("pet.merchant.application.open-cities[1].code", "shanghai");
     props.put("pet.merchant.application.open-cities[1].name", "上海");
-    props.put("pet.merchant.application.enabled", true);
+    props.put("pet.private-assets.enabled", true);
     props.put("pet.merchant.application.notifications-enabled", true);
     props.put("pet.outbox.enabled", true);
     props.put("pet.service.query.enabled", true);
@@ -141,6 +141,7 @@ class ServiceQueryHttpTest {
                     var beans = (GenericApplicationContext) ctx;
                     beans.registerBean(
                         "svcDataSource", javax.sql.DataSource.class, () -> db.source);
+                    beans.registerBean("qaStubObjectStore", com.petplatform.thirdparty.biz.application.port.PrivateObjectStore.class, () -> org.mockito.Mockito.mock(com.petplatform.thirdparty.biz.application.port.PrivateObjectStore.class));
                     beans.registerBean("svcIds", SnowflakeIdGenerator.class, () -> db.ids);
                     beans.registerBean(
                         "svcWechat",

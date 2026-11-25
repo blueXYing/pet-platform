@@ -127,7 +127,7 @@ class ScheduleCapacityHttpTest {
     props.put("pet.auth.admin.audit-path", db.directory.resolve("sch-audit.bin"));
     props.put("pet.merchant.application.open-cities[0].code", "chengdu");
     props.put("pet.merchant.application.open-cities[0].name", "成都");
-    props.put("pet.merchant.application.enabled", true);
+    props.put("pet.private-assets.enabled", true);
     props.put("pet.outbox.enabled", true);
     props.put("pet.service.query.enabled", true);
     props.put("pet.service.command.enabled", true);
@@ -140,6 +140,7 @@ class ScheduleCapacityHttpTest {
                     var beans = (GenericApplicationContext) ctx;
                     beans.registerBean(
                         "schDataSource", javax.sql.DataSource.class, () -> db.source);
+                    beans.registerBean("qaStubObjectStore", com.petplatform.thirdparty.biz.application.port.PrivateObjectStore.class, () -> org.mockito.Mockito.mock(com.petplatform.thirdparty.biz.application.port.PrivateObjectStore.class));
                     beans.registerBean("schIds", SnowflakeIdGenerator.class, () -> db.ids);
                     beans.registerBean(
                         "schWechat",

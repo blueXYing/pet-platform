@@ -123,7 +123,7 @@ class MerchantStaffAcceptanceHttpTest {
     props.put("pet.auth.admin.audit-path", db.directory.resolve("staff-audit.bin"));
     props.put("pet.merchant.application.open-cities[0].code", "chengdu");
     props.put("pet.merchant.application.open-cities[0].name", "成都");
-    props.put("pet.merchant.application.enabled", true);
+    props.put("pet.private-assets.enabled", true);
     props.put("pet.merchant.staff.enabled", true);
     props.put("pet.outbox.enabled", true);
     props.put("pet.service.query.enabled", true);
@@ -136,6 +136,7 @@ class MerchantStaffAcceptanceHttpTest {
                   ctx -> {
                     var beans = (GenericApplicationContext) ctx;
                     beans.registerBean("staffAcceptanceDataSource", javax.sql.DataSource.class, () -> db.source);
+                    beans.registerBean("qaStubObjectStore", com.petplatform.thirdparty.biz.application.port.PrivateObjectStore.class, () -> org.mockito.Mockito.mock(com.petplatform.thirdparty.biz.application.port.PrivateObjectStore.class));
                     beans.registerBean("staffAcceptanceIds", SnowflakeIdGenerator.class, () -> db.ids);
                     beans.registerBean(
                         "staffAcceptanceWechat",
@@ -425,42 +426,10 @@ class MerchantStaffAcceptanceHttpTest {
   }
 
   @Test
-  void explicitOffSwitchOmitsStaffRoutesAndEnabledSwitchStillHasNoDisableHandler() throws Exception {
+  void staffRoutesAreAlwaysAssembledAndNeverExposeADisableHandler() throws Exception {
     assertEquals(1, context.getBeansOfType(MerchantStaffController.class).size());
     assertFalse(staffMappings(context).stream().anyMatch(route -> route.contains("/disable")));
-    String token = str(consumerLogin("staff-default-off", "13800007887"), "accessToken");
-    context.close();
-    context = null;
-    context =
-        new SpringApplicationBuilder(PetPlatformApplication.class)
-            .initializers(
-                ctx -> {
-                  var beans = (GenericApplicationContext) ctx;
-                  beans.registerBean("staffOffDataSource", javax.sql.DataSource.class, () -> db.source);
-                  beans.registerBean("staffOffIds", SnowflakeIdGenerator.class, () -> db.ids);
-                  beans.registerBean(
-                      "staffOffWechat", WechatSessionProvider.class, CAuthHttpTest.FixedWechatProvider::new);
-                })
-            .run(
-                "--server.port=0",
-                "--spring.flyway.enabled=false",
-                "--spring.main.banner-mode=off",
-                "--spring.jmx.enabled=false",
-                // Ruling 35 (2026-10-16) defaults the staff kernel ON; this negative keeps its
-                // fail-closed semantics with the switch explicitly closed.
-                "--pet.merchant.staff.enabled=false",
-                "--pet.auth.c.enabled=true",
-                "--pet.auth.c.redis-host=" + db.redisHost,
-                "--pet.auth.c.redis-port=" + db.redisPort,
-                "--pet.auth.c.cache-prefix=" + db.prefix);
-    origin = "http://127.0.0.1:" + context.getEnvironment().getProperty("local.server.port");
-    assertTrue(context.getBeansOfType(MerchantStaffController.class).isEmpty());
-    assertTrue(context.getBeansOfType(MerchantStaffApiImpl.class).isEmpty());
-    assertTrue(staffMappings(context).isEmpty());
-    assertEquals(
-        403,
-        send("GET", "/api/v1/merchant/staff?merchantId=1&storeId=1", null, bearer(token))
-            .status());
+    String token = str(consumerLogin("staff-no-disable", "13800007887"), "accessToken");
     assertEquals(
         403,
         send(

@@ -23,13 +23,15 @@ import org.springframework.context.annotation.Configuration;
 @ConditionalOnProperty(prefix = "pet.private-assets", name = "enabled", havingValue = "true")
 public class ServiceCoverSigningConfiguration {
   @Bean(destroyMethod = "close")
+  @org.springframework.boot.autoconfigure.condition.ConditionalOnBean(OssConnection.class)
   @ConditionalOnMissingBean(ServiceCoverObjectSigner.class)
   S3ServiceCoverObjectSigner serviceCoverObjectSigner(OssConnection connection,
-      ObjectProvider<Clock> clocks, @Value("${pet.service.cover-signing.window-seconds}") long window) {
+      ObjectProvider<Clock> clocks, @Value("${pet.service.cover-signing.window-seconds:3600}") long window) {
     return new S3ServiceCoverObjectSigner(connection, clocks.getIfAvailable(Clock::systemUTC), window);
   }
 
   @Bean
+  @org.springframework.boot.autoconfigure.condition.ConditionalOnBean(ServiceCoverObjectSigner.class)
   @ConditionalOnMissingBean(ServiceCoverSigningApi.class)
   ServiceCoverSigningApi serviceCoverSigningApi(DataSource source, ServiceCoverObjectSigner signer,
       ObjectProvider<Clock> clocks) {
@@ -37,6 +39,7 @@ public class ServiceCoverSigningConfiguration {
   }
 
   @Bean
+  @org.springframework.boot.autoconfigure.condition.ConditionalOnBean(ServiceCoverSigningApi.class)
   @ConditionalOnMissingBean(ServiceCoverUrlPort.class)
   ServiceCoverUrlPort serviceCoverUrls(ServiceCoverSigningApi covers) {
     return assetId -> {

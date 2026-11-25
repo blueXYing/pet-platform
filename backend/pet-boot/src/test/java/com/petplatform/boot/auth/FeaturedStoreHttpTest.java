@@ -117,7 +117,7 @@ class FeaturedStoreHttpTest {
     props.put("pet.merchant.application.open-cities[0].name", "成都");
     props.put("pet.merchant.application.open-cities[1].code", "shanghai");
     props.put("pet.merchant.application.open-cities[1].name", "上海");
-    props.put("pet.merchant.application.enabled", true);
+    props.put("pet.private-assets.enabled", true);
     props.put("pet.outbox.enabled", true);
     props.put("pet.service.query.enabled", true);
     if (reviewEnabled) {
@@ -131,6 +131,7 @@ class FeaturedStoreHttpTest {
                     var beans = (GenericApplicationContext) ctx;
                     beans.registerBean(
                         "featuredDataSource", javax.sql.DataSource.class, () -> db.source);
+                    beans.registerBean("qaStubObjectStore", com.petplatform.thirdparty.biz.application.port.PrivateObjectStore.class, () -> org.mockito.Mockito.mock(com.petplatform.thirdparty.biz.application.port.PrivateObjectStore.class));
                     beans.registerBean("featuredIds", SnowflakeIdGenerator.class, () -> db.ids);
                     beans.registerBean(
                         "featuredWechat",
