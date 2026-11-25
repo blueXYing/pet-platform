@@ -41,8 +41,9 @@ class AdminAuthHttpTest {
         props.put("pet.auth.admin.encryption-key-base64",Base64.getEncoder().encodeToString(fixture.aes));props.put("pet.auth.admin.audit-path",fixture.directory.resolve("audit.bin").toString());
         props.put("spring.jmx.enabled",false);
         try {
-            context=new SpringApplicationBuilder(PetPlatformApplication.class).properties(props)
-                    .initializers(c->{var beans=(GenericApplicationContext)c;beans.registerBean("qaAuthDataSource",DataSource.class,()->fixture.source);beans.registerBean("qaAuthHutool",SnowflakeIdGenerator.class,()->fixture.ids);}).run();
+            context=new SpringApplicationBuilder(PetPlatformApplication.class)
+                    .initializers(c->{var beans=(GenericApplicationContext)c;beans.registerBean("qaAuthDataSource",DataSource.class,()->fixture.source);beans.registerBean("qaAuthHutool",SnowflakeIdGenerator.class,()->fixture.ids);})
+                    .run(props.entrySet().stream().map(e->"--"+e.getKey()+"="+e.getValue()).toArray(String[]::new));
             base="http://127.0.0.1:"+context.getEnvironment().getProperty("local.server.port")+"/api/v1/admin/auth";
             context.getBean(AdminAuthService.class).bootstrap("qa-owner","QA Owner",PASSWORD.toCharArray(),"HTTP isolated initialization");
         } catch(Exception failure){if(context!=null)context.close();fixture.close();throw failure;}

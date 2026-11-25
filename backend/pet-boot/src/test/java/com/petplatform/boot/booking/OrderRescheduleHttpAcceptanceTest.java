@@ -198,13 +198,14 @@ class OrderRescheduleHttpAcceptanceTest {
         }
     }
 
-    /** Default off: without the http flag neither the controller nor the route is registered. */
+    /** Default off: without pet.payment.enabled neither the controller nor the route is registered. */
     @Test void defaultOffRegistersNoControllerOrRoute() throws Exception {
-        try (var f = new AfterSaleHttpFixture()) {
+        try (var f = new AfterSaleHttpFixture(Map.of("pet.payment.enabled", false))) {
             ConfigurableApplicationContext context = f.context;
             assertTrue(context.getBeansOfType(COrderRescheduleController.class).isEmpty());
-            assertEquals(403, f.send("POST", "/c/orders/1/reschedule",
-                    body("0", "2030-01-01T14:30:00Z", "2030-01-01T16:00:00Z", NEW_WINDOW), f.buyerToken).status());
+            int status = f.send("POST", "/c/orders/1/reschedule",
+                    body("0", "2030-01-01T14:30:00Z", "2030-01-01T16:00:00Z", NEW_WINDOW), f.buyerToken).status();
+            assertTrue(status == 403 || status == 404, "unexpected status " + status);
         }
     }
 

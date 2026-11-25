@@ -75,6 +75,10 @@ class AdminFacesFixRegressionHttpTest {
         props.put("pet.auth.c.redis-port", fixture.redisPort);
         props.put("pet.auth.c.cache-prefix", "auth001c_facesfix:");
         props.put("pet.private-assets.enabled", true);
+        props.put("PRIVATE_ASSET_GRANT_KEY_VERSION", "qa-faces-grant");
+        props.put("PRIVATE_ASSET_GRANT_HMAC_KEY_BASE64", Base64.getEncoder().encodeToString(key(29)));
+        props.put("PRIVATE_ASSET_REASON_KEY_VERSION", "qa-faces-reason");
+        props.put("PRIVATE_ASSET_REASON_AES_KEY_BASE64", Base64.getEncoder().encodeToString(key(31)));
         props.put("pet.payment.enabled", true);
         props.put("pet.payment.lakala.channel-time-zone", "Asia/Shanghai");
         props.put("pet.payment.lakala.platform.merchant-no", "QA8220000000002");
@@ -111,6 +115,9 @@ class AdminFacesFixRegressionHttpTest {
                                 com.petplatform.thirdparty.biz.application.port.PrivateObjectStore.class,
                                 () -> org.mockito.Mockito.mock(
                                         com.petplatform.thirdparty.biz.application.port.PrivateObjectStore.class));
+                        beans.registerBean("facesFixAssetScanner",
+                                com.petplatform.thirdparty.biz.application.port.PrivateAssetScanner.class,
+                                () -> bytes -> new com.petplatform.thirdparty.biz.application.port.PrivateAssetScanner.ScanResult(true, "QA_ONLY_SCANNER", "CLEAN"));
                         beans.registerBean("facesFixProtection",
                                 com.petplatform.merchant.biz.application.ApplicationValidationPorts.ProtectedValuePort.class,
                                 () -> org.mockito.Mockito.mock(

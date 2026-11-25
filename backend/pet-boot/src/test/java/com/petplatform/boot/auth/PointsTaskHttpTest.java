@@ -86,12 +86,13 @@ class PointsTaskHttpTest {
     props.put("pet.auth.admin.mac-key-base64", Base64.getEncoder().encodeToString(adminMac));
     props.put("pet.auth.admin.encryption-key-base64", Base64.getEncoder().encodeToString(adminAes));
     props.put("pet.auth.admin.audit-path", db.directory.resolve("points-audit.bin").toString());
-    props.put("pet.points.task.enabled", true);
-    props.put("pet.points.task.http.enabled", true);
+    props.put("pet.auth.c.enabled", true);
+    props.put("pet.auth.c.redis-host", db.redisHost);
+    props.put("pet.auth.c.redis-port", db.redisPort);
+    props.put("pet.auth.c.cache-prefix", db.prefix);
     try {
       context =
           new SpringApplicationBuilder(PetPlatformApplication.class)
-              .properties(props)
               .initializers(
                   c -> {
                     var beans = (GenericApplicationContext) c;
@@ -103,12 +104,9 @@ class PointsTaskHttpTest {
                         CAuthHttpTest.FixedWechatProvider::new);
                   })
               .run(
-                  "--pet.auth.c.enabled=true",
-                  "--pet.auth.c.redis-host=" + db.redisHost,
-                  "--pet.auth.c.redis-port=" + db.redisPort,
-                  "--pet.auth.c.cache-prefix=" + db.prefix,
-                  "--pet.points.task.enabled=true",
-                  "--pet.points.task.http.enabled=true");
+                  props.entrySet().stream()
+                      .map(e -> "--" + e.getKey() + "=" + e.getValue())
+                      .toArray(String[]::new));
       base =
           "http://127.0.0.1:"
               + context.getEnvironment().getProperty("local.server.port")

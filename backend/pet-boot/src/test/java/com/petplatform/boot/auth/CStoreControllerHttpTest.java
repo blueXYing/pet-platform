@@ -660,6 +660,14 @@ class CStoreControllerHttpTest {
                           SubjectCredentialPort.class,
                           () ->
                               new MainlandSubjectCredentialProvider(protector, "qa-only-v1", key(63)));
+                      beans.registerBean(
+                          "closedObjectStore",
+                          com.petplatform.thirdparty.biz.application.port.PrivateObjectStore.class,
+                          () -> org.mockito.Mockito.mock(com.petplatform.thirdparty.biz.application.port.PrivateObjectStore.class));
+                      beans.registerBean(
+                          "closedAssetScanner",
+                          com.petplatform.thirdparty.biz.application.port.PrivateAssetScanner.class,
+                          () -> bytes -> new com.petplatform.thirdparty.biz.application.port.PrivateAssetScanner.ScanResult(true, "QA_ONLY_SCANNER", "CLEAN"));
                     })
                 .run(
                     "--server.port=0",
@@ -681,10 +689,11 @@ class CStoreControllerHttpTest {
                     "--pet.auth.admin.encryption-key-base64="
                         + Base64.getEncoder().encodeToString(adminAes),
                     "--pet.auth.admin.audit-path=" + isolated.directory.resolve("closed-audit.bin"),
-                    "--pet.merchant.application.enabled=true",
-                    "--pet.merchant.application.notifications-enabled=true",
-                    "--pet.outbox.enabled=true",
-                    "--pet.store.query.enabled=true");
+                    "--pet.private-assets.enabled=true",
+                    "--PRIVATE_ASSET_GRANT_KEY_VERSION=qa-closed-grant",
+                    "--PRIVATE_ASSET_GRANT_HMAC_KEY_BASE64=" + base64(41),
+                    "--PRIVATE_ASSET_REASON_KEY_VERSION=qa-closed-reason",
+                    "--PRIVATE_ASSET_REASON_AES_KEY_BASE64=" + base64(53));
         String closedOrigin =
             "http://127.0.0.1:" + closed.getEnvironment().getProperty("local.server.port");
         Reply unavailable =

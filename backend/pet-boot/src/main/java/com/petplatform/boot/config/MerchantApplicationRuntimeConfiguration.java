@@ -105,6 +105,7 @@ public class MerchantApplicationRuntimeConfiguration {
   }
 
   @Bean
+  @ConditionalOnMissingBean(ApplicationReviewFactsReader.class)
   ApplicationReviewFactsReader merchantApplicationReviewFacts(
       DataSource source, SnowflakeIdGenerator ids) {
     return new PersistentApplicationReviewFactsReader(source, ids);

@@ -118,6 +118,10 @@ class FeaturedStoreHttpTest {
     props.put("pet.merchant.application.open-cities[1].code", "shanghai");
     props.put("pet.merchant.application.open-cities[1].name", "上海");
     props.put("pet.private-assets.enabled", true);
+    props.put("PRIVATE_ASSET_GRANT_KEY_VERSION", "qa-featured-grant");
+    props.put("PRIVATE_ASSET_GRANT_HMAC_KEY_BASE64", Base64.getEncoder().encodeToString(key(29)));
+    props.put("PRIVATE_ASSET_REASON_KEY_VERSION", "qa-featured-reason");
+    props.put("PRIVATE_ASSET_REASON_AES_KEY_BASE64", Base64.getEncoder().encodeToString(key(31)));
     props.put("pet.outbox.enabled", true);
     props.put("pet.service.query.enabled", true);
     if (reviewEnabled) {
@@ -132,6 +136,7 @@ class FeaturedStoreHttpTest {
                     beans.registerBean(
                         "featuredDataSource", javax.sql.DataSource.class, () -> db.source);
                     beans.registerBean("qaStubObjectStore", com.petplatform.thirdparty.biz.application.port.PrivateObjectStore.class, () -> org.mockito.Mockito.mock(com.petplatform.thirdparty.biz.application.port.PrivateObjectStore.class));
+                    beans.registerBean("qaStubAssetScanner", com.petplatform.thirdparty.biz.application.port.PrivateAssetScanner.class, () -> bytes -> new com.petplatform.thirdparty.biz.application.port.PrivateAssetScanner.ScanResult(true, "QA_ONLY_SCANNER", "CLEAN"));
                     beans.registerBean("featuredIds", SnowflakeIdGenerator.class, () -> db.ids);
                     beans.registerBean(
                         "featuredWechat",

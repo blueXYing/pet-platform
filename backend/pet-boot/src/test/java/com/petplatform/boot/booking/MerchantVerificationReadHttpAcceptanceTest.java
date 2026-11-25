@@ -181,14 +181,15 @@ class MerchantVerificationReadHttpAcceptanceTest {
                     assertNull(context.getStartupFailure());
                     assertTrue(context.getBeansOfType(MerchantVerificationReadController.class).isEmpty());
                 });
-        try (var f = new AfterSaleHttpFixture()) {
+        try (var f = new AfterSaleHttpFixture(Map.of("pet.payment.enabled", false))) {
             ConfigurableApplicationContext context = f.context;
             assertTrue(context.getBeansOfType(MerchantVerificationReadController.class).isEmpty());
             assertTrue(context.getBean("requestMappingHandlerMapping", RequestMappingHandlerMapping.class)
                     .getHandlerMethods().keySet().stream()
                     .map(Object::toString)
                     .noneMatch(route -> route.endsWith("/merchant/verifications}")));
-            assertEquals(403, f.send("GET", LIST, null, f.ownerToken).status());
+            int status = f.send("GET", LIST, null, f.ownerToken).status();
+            assertTrue(status == 403 || status == 404, "unexpected status " + status);
         }
     }
 

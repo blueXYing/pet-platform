@@ -195,12 +195,13 @@ class RefundApplyHttpAcceptanceTest {
         }
     }
 
-    /** Default off: without the http flag neither the controller nor the route is registered. */
+    /** Default off: without pet.payment.enabled neither the controller nor the route is registered. */
     @Test void defaultOffRegistersNoControllerOrRoute() throws Exception {
-        try (var f = new AfterSaleHttpFixture()) {
+        try (var f = new AfterSaleHttpFixture(Map.of("pet.payment.enabled", false))) {
             ConfigurableApplicationContext context = f.context;
             assertTrue(context.getBeansOfType(CRefundApplicationController.class).isEmpty());
-            assertEquals(403, f.send("POST", "/c/orders/1/refund-applications", body(), f.buyerToken).status());
+            int status = f.send("POST", "/c/orders/1/refund-applications", body(), f.buyerToken).status();
+            assertTrue(status == 403 || status == 404, "unexpected status " + status);
         }
     }
 

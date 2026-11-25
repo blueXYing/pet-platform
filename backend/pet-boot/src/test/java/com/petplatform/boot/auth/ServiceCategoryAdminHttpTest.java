@@ -138,13 +138,20 @@ class ServiceCategoryAdminHttpTest {
         "pet.auth.admin.encryption-key-base64", Base64.getEncoder().encodeToString(adminAes));
     props.put("pet.auth.admin.audit-path", db.directory.resolve("svccat-audit.bin").toString());
     props.put("pet.private-assets.enabled", true);
+    props.put("PRIVATE_ASSET_GRANT_KEY_VERSION", "qa-svccat-grant");
+    byte[] svccatGrantKey = new byte[32];
+    java.util.Arrays.fill(svccatGrantKey, (byte) 17);
+    props.put("PRIVATE_ASSET_GRANT_HMAC_KEY_BASE64", Base64.getEncoder().encodeToString(svccatGrantKey));
+    props.put("PRIVATE_ASSET_REASON_KEY_VERSION", "qa-svccat-reason");
+    byte[] svccatReasonKey = new byte[32];
+    java.util.Arrays.fill(svccatReasonKey, (byte) 19);
+    props.put("PRIVATE_ASSET_REASON_AES_KEY_BASE64", Base64.getEncoder().encodeToString(svccatReasonKey));
     try {
       context =
           stage(
               "boot",
               () ->
                   new SpringApplicationBuilder(PetPlatformApplication.class)
-              .properties(props)
               .initializers(
                   ctx -> {
                     var beans = (GenericApplicationContext) ctx;
@@ -158,6 +165,10 @@ class ServiceCategoryAdminHttpTest {
                         () -> org.mockito.Mockito.mock(
                             com.petplatform.thirdparty.biz.application.port.PrivateObjectStore.class));
                     beans.registerBean(
+                        "svccatAssetScanner",
+                        com.petplatform.thirdparty.biz.application.port.PrivateAssetScanner.class,
+                        () -> bytes -> new com.petplatform.thirdparty.biz.application.port.PrivateAssetScanner.ScanResult(true, "QA_ONLY_SCANNER", "CLEAN"));
+                    beans.registerBean(
                         "svccatProtection",
                         com.petplatform.merchant.biz.application.ApplicationValidationPorts.ProtectedValuePort.class,
                         () -> org.mockito.Mockito.mock(
@@ -168,7 +179,10 @@ class ServiceCategoryAdminHttpTest {
                         () -> org.mockito.Mockito.mock(
                             com.petplatform.merchant.biz.application.SubjectCredentialPort.class));
                   })
-              .run());
+              .run(
+                  props.entrySet().stream()
+                      .map(e -> "--" + e.getKey() + "=" + e.getValue())
+                      .toArray(String[]::new)));
       base = "http://127.0.0.1:" + context.getEnvironment().getProperty("local.server.port");
       AdminAuthService auth = context.getBean(AdminAuthService.class);
       stage(
