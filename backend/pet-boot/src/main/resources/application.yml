@@ -165,10 +165,24 @@ pet:
         enabled: false
         max-amount: 0.01
     settlement:
-      # 阶段 2 订单分账与结算总开关（默认关闭；开启须先启用 pet.payment.enabled）
+      # 阶段 2~3 订单分账、回退与结算总开关（默认关闭；开启须先启用 pet.payment.enabled）
       enabled: false
       lowest-ratio: ${LAKALA_SPLIT_LOWEST_RATIO:0}
       org-code: ${LAKALA_ORG_CODE:}
       notify-url: ${LAKALA_SEPARATE_NOTIFY_URL:}
       migration-enabled: false
       migration-database: ""
+      http:
+        enabled: false
+    receiver:
+      # 阶段 4 分账接收方开通（默认关闭；开启须先启用 pet.payment.settlement.enabled）
+      enabled: false
+      aes-key-path: ${SETTLEMENT_RECEIVER_AES_KEY_PATH:}
+      ledger-notify-url: ${LAKALA_LEDGER_NOTIFY_URL:}
+    wallet:
+      # 阶段 5 商家钱包与 D1 提现（默认关闭；开启须先启用 pet.payment.receiver.enabled）
+      enabled: false
+      withdraw-notify-url: ${LAKALA_WITHDRAW_NOTIFY_URL:}
+    reconcile:
+      # 阶段 6 补偿扫描、日对账与平台补贴应付报表（默认关闭；开启须先启用 pet.payment.settlement.enabled）
+      enabled: false
