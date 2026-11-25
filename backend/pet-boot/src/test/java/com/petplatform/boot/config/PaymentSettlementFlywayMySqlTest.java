@@ -56,13 +56,15 @@ class PaymentSettlementFlywayMySqlTest {
             var cfg = new PaymentSettlementConfiguration();
             cfg.settlementMigration(ds, new PaymentSettlementConfiguration.SettlementSettings(
                     false, "0", null, null, true, dbName));
+            // V38..V42 contiguous settlement, fallback, receiver, wallet, and reconcile tables (12 tables).
             try (Connection c = ds.getConnection(); Statement s = c.createStatement();
                  ResultSet rs = s.executeQuery("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='"
                          + dbName + "' AND table_name IN ('settlement_config','settlement_config_audit',"
                          + "'settlement_order','settlement_instruction','settlement_instruction_receipt',"
-                         + "'settlement_action_request')")) {
+                         + "'settlement_action_request','settlement_receiver_account','settlement_receiver_audit',"
+                         + "'withdrawal_order','withdrawal_receipt','reconcile_job_run','reconcile_diff')")) {
                 rs.next();
-                assertEquals(6, rs.getInt(1));
+                assertEquals(12, rs.getInt(1));
             }
             // V39 fallback linkage columns on settlement_instruction.
             try (Connection c = ds.getConnection(); Statement s = c.createStatement();
