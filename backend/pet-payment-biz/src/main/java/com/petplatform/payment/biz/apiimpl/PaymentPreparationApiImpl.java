@@ -4,6 +4,7 @@ import com.petplatform.order.api.query.OrderPaymentFactsApi;
 import com.petplatform.payment.api.command.PaymentPreparationApi;
 import com.petplatform.payment.api.dto.PaymentPreparationTypes.*;
 import com.petplatform.payment.biz.application.PaymentMerchantBindings;
+import com.petplatform.payment.biz.center.PaymentCenterBizPolicy;
 import com.petplatform.payment.biz.infrastructure.persistence.PaymentFoundationStore;
 import com.petplatform.schedule.api.protection.ScheduleCapacityGuardApi;
 import com.petplatform.user.api.query.BookingUserFactsApi;
@@ -72,7 +73,7 @@ public final class PaymentPreparationApiImpl implements PaymentPreparationApi {
                 var binding=bindings.require(order.merchantId(),storeId);
                 if(binding==null || !valid(binding.merchantNo(),32) || !valid(binding.termNo(),32) || !valid(binding.subAppId(),64))throw unavailable();
                 long paymentId=nextId(),paymentNo=nextId();
-                store.mapper.insertPayment(PaymentFoundationStore.values("id",paymentId,"paymentNo",paymentNo,"orderId",id(c.orderId()),"amount",order.payAmount(),"expires",PaymentFoundationStore.utc(order.paymentExpireAt()),"storeId",id(storeId),"merchantId",id(order.merchantId()),"userId",id(order.userId()),"merchantNo",binding.merchantNo(),"termNo",binding.termNo(),"subAppId",binding.subAppId(),"settleType",settleType));
+                store.mapper.insertPayment(PaymentFoundationStore.values("id",paymentId,"paymentNo",paymentNo,"orderId",id(c.orderId()),"bizType",PaymentCenterBizPolicy.BOOKING_ORDER,"bizNo",c.orderId(),"amount",order.payAmount(),"expires",PaymentFoundationStore.utc(order.paymentExpireAt()),"storeId",id(storeId),"merchantId",id(order.merchantId()),"userId",id(order.userId()),"merchantNo",binding.merchantNo(),"termNo",binding.termNo(),"subAppId",binding.subAppId(),"settleType",settleType));
                 store.mapper.insertPreparedDispatch(paymentId);
                 store.mapper.bindIntent(paymentId,key);
                 return result(store.byId(paymentId,true),false);

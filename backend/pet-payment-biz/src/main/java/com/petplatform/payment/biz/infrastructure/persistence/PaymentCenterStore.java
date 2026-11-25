@@ -39,6 +39,17 @@ public final class PaymentCenterStore {
         public boolean isCenter() {
             return orderId == null && storeId == null && merchantId == null && bizType != null && bizNo != null;
         }
+
+        /**
+         * Stage 8 unified read guard: true for pure payment center rows (e.g. DEMO) as well as
+         * Stage 8 unified BOOKING_ORDER rows whose {@code biz_no} matches {@code order_id}.
+         */
+        public boolean isReadableBizRow() {
+            if (isCenter()) return true;
+            return orderId != null
+                    && "BOOKING_ORDER".equals(bizType)
+                    && Long.toString(orderId).equals(bizNo);
+        }
     }
 
     public record Route(long id, String bizType, Long orderId) {}

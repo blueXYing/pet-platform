@@ -10,6 +10,7 @@ import com.petplatform.payment.biz.settlement.ReceiverAccountService;
 import com.petplatform.payment.biz.settlement.ReceiverAttachmentProvider;
 import com.petplatform.payment.biz.settlement.ReceiverChannel;
 import com.petplatform.payment.biz.settlement.ReceiverSensitiveCipher;
+import com.petplatform.payment.biz.settlement.SettlementCompensationScanner;
 import com.petplatform.payment.biz.settlement.SettlementReceiverLookup;
 import com.petplatform.payment.biz.task.ReceiverBindQueryTask;
 import com.petplatform.task.core.AsyncTaskWorker;
@@ -194,6 +195,12 @@ public class PaymentReceiverConfiguration {
         @Primary
         SettlementReceiverLookup dbSettlementReceiverLookup(DataSource source) {
             return new DbSettlementReceiverLookup(source);
+        }
+
+        @Bean
+        SettlementCompensationScanner.CompensationHook stuckReceiverBindCompensationHook(
+                ReceiverAccountService receiverAccountService) {
+            return receiverAccountService::scanStuckBindApplies;
         }
 
         private static String requirePlatformMerchantNo(PaymentMerchantBindings bindings) {

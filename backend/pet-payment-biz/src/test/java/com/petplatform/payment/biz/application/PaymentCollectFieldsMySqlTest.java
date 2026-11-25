@@ -77,8 +77,8 @@ class PaymentCollectFieldsMySqlTest {
             assertEquals("1", db.text("SELECT settle_type FROM payment_order WHERE order_id=" + orderOne));
             assertEquals("0", db.text("SELECT settle_type FROM payment_order WHERE order_id=" + orderTwo));
             assertEquals("0", db.text("SELECT settle_type FROM payment_order WHERE order_id=" + orderThree));
-            assertEquals(3L, db.count("SELECT COUNT(*) FROM payment_order WHERE biz_type IS NULL"
-                    + " AND biz_no IS NULL AND log_no IS NULL AND log_date IS NULL"));
+            assertEquals(3L, db.count("SELECT COUNT(*) FROM payment_order WHERE biz_type='BOOKING_ORDER'"
+                    + " AND biz_no=CAST(order_id AS CHAR) AND log_no IS NULL AND log_date IS NULL"));
         }
     }
 
@@ -108,10 +108,12 @@ class PaymentCollectFieldsMySqlTest {
             assertEquals(names[i], components[components.length - tail.length + i].getName());
         }
         assertEquals(LocalDate.class, components[components.length - 1].getType());
-        // The ORDER insert persists settle_type but never invents biz_type/biz_no/log columns.
+        // Stage 8: the ORDER insert persists settle_type and BOOKING_ORDER biz identity, never log columns.
         String insert = xml.substring(xml.indexOf("<insert id=\"insertPayment\">"), xml.indexOf("</insert>", xml.indexOf("<insert id=\"insertPayment\">")));
         assertTrue(insert.contains("settle_type") && insert.contains("#{settleType}"));
-        assertFalse(insert.contains("biz_type") || insert.contains("log_no"));
+        assertTrue(insert.contains("biz_type") && insert.contains("#{bizType}")
+                && insert.contains("biz_no") && insert.contains("#{bizNo}"));
+        assertFalse(insert.contains("log_no") || insert.contains("log_date"));
         String fill = xml.substring(xml.indexOf("<update id=\"fillCollectTrace\">"), xml.indexOf("</update>", xml.indexOf("<update id=\"fillCollectTrace\">")));
         assertTrue(fill.contains("log_no IS NULL AND log_date IS NULL") && fill.contains("status='PAID'"));
     }

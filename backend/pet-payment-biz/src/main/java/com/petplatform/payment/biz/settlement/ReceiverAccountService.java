@@ -40,6 +40,8 @@ import com.petplatform.payment.biz.infrastructure.provider.LakalaV2Protocol.Rela
 import com.petplatform.payment.biz.infrastructure.provider.LakalaV2Protocol.UploadFileInput;
 import com.petplatform.payment.biz.settlement.ReceiverAttachmentProvider.AssetContent;
 import com.petplatform.payment.biz.task.ReceiverBindQueryTask;
+import com.petplatform.task.core.JdbcAsyncTaskRecoverer;
+import com.petplatform.task.core.JdbcAsyncTaskStatusReader;
 import com.petplatform.task.core.JdbcAsyncTaskSubmitter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -48,6 +50,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -61,6 +64,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import javax.sql.DataSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -74,12 +79,15 @@ import org.springframework.transaction.support.TransactionTemplate;
  * 1872 poll reconciliation, AES-256-GCM storage, masked reads, and audited plaintext reveal.
  */
 public final class ReceiverAccountService implements ReceiverAccountApi, ReceiverQueryApi {
+    private static final Logger LOG = LoggerFactory.getLogger(ReceiverAccountService.class);
     private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final TypeReference<List<ReceiverAttachmentRef>> ATTACH_LIST_TYPE = new TypeReference<>() {};
     private static final DateTimeFormatter ORDER_NO_TIME = DateTimeFormatter.ofPattern("uuuuMMddHHmmss");
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final int MAX_PAGE_SIZE = 100;
+    private static final Duration STUCK_BIND_GRACE = Duration.ofMinutes(5);
+    private static final Set<String> ALIVE_TASK_STATES = Set.of("READY", "RUNNING", "RETRY_WAIT");
 
     private static final String FIELD_ACCT_NO = "acct_no";
     private static final String FIELD_ACCT_CERT_NO = "acct_cert_no";
@@ -125,6 +133,8 @@ public final class ReceiverAccountService implements ReceiverAccountApi, Receive
     private final ReceiverAttachmentProvider attachmentProvider;
     private final ReceiverChannel channel;
     private final JdbcAsyncTaskSubmitter tasks;
+    private final JdbcAsyncTaskStatusReader taskReader;
+    private final JdbcAsyncTaskRecoverer taskRecoverer;
     private final BindNotificationVerifier notificationVerifier;
     private final Settings settings;
     private final Clock clock;
@@ -146,6 +156,8 @@ public final class ReceiverAccountService implements ReceiverAccountApi, Receive
         this.attachmentProvider = Objects.requireNonNull(attachmentProvider, "attachmentProvider");
         this.channel = Objects.requireNonNull(channel, "channel");
         this.tasks = Objects.requireNonNull(tasks, "tasks");
+        this.taskReader = new JdbcAsyncTaskStatusReader(source);
+        this.taskRecoverer = new JdbcAsyncTaskRecoverer(source, ids);
         this.notificationVerifier = Objects.requireNonNull(notificationVerifier, "notificationVerifier");
         this.settings = Objects.requireNonNull(settings, "settings");
         this.clock = Objects.requireNonNull(clock, "clock");
@@ -650,6 +662,79 @@ public final class ReceiverAccountService implements ReceiverAccountApi, Receive
                 matched.auditStatus(), matched.remark(), "BIND_POLL",
                 OperatorType.SYSTEM.name(), null);
         return ReceiverBindQueryTask.Outcome.DONE;
+    }
+
+    /** Stage 6 compensation hook: recovers stuck {@code BIND_APPLYING} receivers missing an alive 1872 poll task. */
+    public int scanStuckBindApplies() {
+        noOuterTransaction();
+        OffsetDateTime now = clock.instant().atOffset(ZoneOffset.UTC).truncatedTo(ChronoUnit.MILLIS);
+        OffsetDateTime cutoffTime = now.minus(STUCK_BIND_GRACE).truncatedTo(ChronoUnit.MILLIS);
+        List<ReceiverAccountRow> candidates = store.receiver.selectStuckBindApplyingAccounts(
+                PaymentFoundationStore.values("cutoff", PaymentReceiverStore.utc(cutoffTime), "limit", 100));
+        int recovered = 0;
+        for (ReceiverAccountRow candidate : candidates) {
+            if (candidate.applyId == null || candidate.applyId.isBlank()) continue;
+            String taskKey = ReceiverBindQueryTask.taskKey(candidate.merchantId, candidate.applyId);
+            if (isAliveTask(taskReader.status(taskKey))) continue;
+
+            Boolean ok = tx.execute(st -> {
+                store.session();
+                ReceiverAccountRow locked = store.receiver.selectByIdForUpdate(candidate.id);
+                if (locked == null || !"BIND_APPLYING".equals(locked.status)
+                        || locked.applyId == null || locked.applyId.isBlank()
+                        || locked.updatedAt == null) {
+                    return Boolean.FALSE;
+                }
+                OffsetDateTime updated = PaymentReceiverStore.offset(locked.updatedAt).truncatedTo(ChronoUnit.MILLIS);
+                if (updated.isAfter(cutoffTime)) {
+                    return Boolean.FALSE;
+                }
+                String lockedKey = ReceiverBindQueryTask.taskKey(locked.merchantId, locked.applyId);
+                if (isAliveTask(taskReader.status(lockedKey))) {
+                    return Boolean.FALSE;
+                }
+                OffsetDateTime anchor = (locked.lastSyncedAt != null
+                        ? PaymentReceiverStore.offset(locked.lastSyncedAt)
+                        : updated).plus(ReceiverBindQueryTask.FIRST_DELAY).truncatedTo(ChronoUnit.MILLIS);
+                try {
+                    taskRecoverer.recover(
+                            lockedKey,
+                            ReceiverBindQueryTask.OWNER_MODULE,
+                            ReceiverBindQueryTask.TASK_TYPE,
+                            ReceiverBindQueryTask.BIZ_TYPE,
+                            locked.merchantId,
+                            null,
+                            ReceiverBindQueryTask.payload(locked.merchantId, locked.applyId),
+                            ReceiverBindQueryTask.MAX_RETRY_COUNT,
+                            ReceiverBindQueryTask.RETRY_POLICY,
+                            anchor);
+                    return Boolean.TRUE;
+                } catch (IllegalArgumentException fallbackToNullSchedule) {
+                    taskRecoverer.recover(
+                            lockedKey,
+                            ReceiverBindQueryTask.OWNER_MODULE,
+                            ReceiverBindQueryTask.TASK_TYPE,
+                            ReceiverBindQueryTask.BIZ_TYPE,
+                            locked.merchantId,
+                            null,
+                            ReceiverBindQueryTask.payload(locked.merchantId, locked.applyId),
+                            ReceiverBindQueryTask.MAX_RETRY_COUNT,
+                            ReceiverBindQueryTask.RETRY_POLICY,
+                            null);
+                    return Boolean.TRUE;
+                }
+            });
+            if (Boolean.TRUE.equals(ok)) {
+                recovered++;
+                LOG.warn("Recovered stuck RECEIVER_BIND_QUERY task merchantId={} applyId={}",
+                        IDS.toApi(candidate.merchantId), candidate.applyId);
+            }
+        }
+        return recovered;
+    }
+
+    private static boolean isAliveTask(String status) {
+        return status != null && ALIVE_TASK_STATES.contains(status);
     }
 
     // ---- ReceiverQueryApi ------------------------------------------------------------------

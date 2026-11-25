@@ -47,6 +47,17 @@
       AND receiver_no &lt;&gt; ''
   </select>
 
+  <select id="selectStuckBindApplyingAccounts" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentReceiverMapper$ReceiverAccountRow">
+    SELECT <include refid="accountColumns"/>
+    FROM settlement_receiver_account
+    WHERE status='BIND_APPLYING'
+      AND apply_id IS NOT NULL
+      AND apply_id &lt;&gt; ''
+      AND updated_at &lt;= #{cutoff}
+    ORDER BY updated_at ASC, id ASC
+    LIMIT #{limit}
+  </select>
+
   <sql id="listAccountFilter">
     <where>
       <if test="merchantId != null">AND merchant_id=#{merchantId}</if>

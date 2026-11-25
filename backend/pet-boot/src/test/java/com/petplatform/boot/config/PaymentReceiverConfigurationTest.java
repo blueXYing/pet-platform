@@ -18,6 +18,7 @@ import com.petplatform.payment.biz.settlement.ReceiverAttachmentProvider;
 import com.petplatform.payment.biz.settlement.ReceiverChannel;
 import com.petplatform.payment.biz.settlement.ReceiverSensitiveCipher;
 import com.petplatform.payment.biz.settlement.SettlementChannel;
+import com.petplatform.payment.biz.settlement.SettlementCompensationScanner;
 import com.petplatform.payment.biz.settlement.SettlementReceiverLookup;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -74,6 +75,7 @@ class PaymentReceiverConfigurationTest {
             assertThat(ctx).doesNotHaveBean(ReceiverQueryApi.class);
             assertThat(ctx).doesNotHaveBean(ReceiverSensitiveCipher.class);
             assertThat(ctx).doesNotHaveBean(DbSettlementReceiverLookup.class);
+            assertThat(ctx).doesNotHaveBean(SettlementCompensationScanner.CompensationHook.class);
         });
     }
 
@@ -110,6 +112,7 @@ class PaymentReceiverConfigurationTest {
                     assertThat(ctx).hasSingleBean(ReceiverAttachmentProvider.class);
                     assertThat(ctx.getBean(SettlementReceiverLookup.class))
                             .isInstanceOf(DbSettlementReceiverLookup.class);
+                    assertThat(ctx).hasSingleBean(SettlementCompensationScanner.CompensationHook.class);
                     assertThat(ctx.getBeanNamesForAnnotation(RestController.class)).isEmpty();
                 });
 
@@ -126,6 +129,7 @@ class PaymentReceiverConfigurationTest {
                     assertThat(ctx).hasNotFailed();
                     assertThat(ctx.getBean(SettlementReceiverLookup.class))
                             .isInstanceOf(DbSettlementReceiverLookup.class);
+                    assertThat(ctx).hasSingleBean(SettlementCompensationScanner.CompensationHook.class);
                     assertThat(ctx.getBeanNamesForAnnotation(RestController.class)).isEmpty();
                 });
     }

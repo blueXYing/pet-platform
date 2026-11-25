@@ -13,6 +13,7 @@ public interface PaymentReceiverMapper {
     ReceiverAccountRow selectByReceiverNo(String receiverNo);
     ReceiverAccountRow selectByApplyId(String applyId);
     ReceiverAccountRow selectActiveByMerchantId(long merchantId);
+    List<ReceiverAccountRow> selectStuckBindApplyingAccounts(Map<String, Object> params);
     List<ReceiverAccountRow> listAccounts(Map<String, Object> params);
     long countAccounts(Map<String, Object> params);
     int insertAccount(Map<String, Object> params);
