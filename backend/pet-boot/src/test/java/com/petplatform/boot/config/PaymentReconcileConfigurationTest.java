@@ -22,24 +22,21 @@ import org.springframework.web.bind.annotation.RestController;
 class PaymentReconcileConfigurationTest {
 
     @Test
-    void flagAndScheduleValidationMatrix() {
+    void scheduleValidationMatrix() {
         assertThatCode(() -> PaymentReconcileConfiguration.check(
-                false, new PaymentReconcileConfiguration.ReconcileSettings(false, false, null, 0)))
+                false, new PaymentReconcileConfiguration.ReconcileSettings("invalid", -1)))
                 .doesNotThrowAnyException();
         assertThatCode(() -> PaymentReconcileConfiguration.check(
-                true, new PaymentReconcileConfiguration.ReconcileSettings(true, true, "03:30", 5)))
+                true, new PaymentReconcileConfiguration.ReconcileSettings("03:30", 5)))
                 .doesNotThrowAnyException();
         assertThatThrownBy(() -> PaymentReconcileConfiguration.check(
-                false, new PaymentReconcileConfiguration.ReconcileSettings(true, false, null, 5)))
-                .hasMessage(PaymentReconcileConfiguration.REQUIRES_SETTLEMENT);
-        assertThatThrownBy(() -> PaymentReconcileConfiguration.check(
-                true, new PaymentReconcileConfiguration.ReconcileSettings(true, true, "25:99", 5)))
+                true, new PaymentReconcileConfiguration.ReconcileSettings("25:99", 5)))
                 .hasMessage(PaymentReconcileConfiguration.INVALID_DAILY_RUN_TIME);
         assertThatThrownBy(() -> PaymentReconcileConfiguration.check(
-                true, new PaymentReconcileConfiguration.ReconcileSettings(true, false, "03:00", -1)))
+                true, new PaymentReconcileConfiguration.ReconcileSettings("03:00", -1)))
                 .hasMessage(PaymentReconcileConfiguration.INVALID_SCAN_INTERVAL);
         assertThatThrownBy(() -> PaymentReconcileConfiguration.check(
-                true, new PaymentReconcileConfiguration.ReconcileSettings(true, false, "03:00", 1441)))
+                true, new PaymentReconcileConfiguration.ReconcileSettings("03:00", 1441)))
                 .hasMessage(PaymentReconcileConfiguration.INVALID_SCAN_INTERVAL);
     }
 
@@ -74,28 +71,17 @@ class PaymentReconcileConfigurationTest {
     }
 
     @Test
-    void enabledWithoutSettlementFailsStartup() {
-        runner().withPropertyValues("pet.payment.reconcile.enabled=true").run(ctx ->
-                assertThat(ctx).getFailure().hasStackTraceContaining(PaymentReconcileConfiguration.REQUIRES_SETTLEMENT));
+    void invalidScheduleFailsStartupWhenPaymentEnabled() {
+        runner().withPropertyValues(
+                "pet.payment.enabled=true",
+                "pet.payment.reconcile.daily-run-time=99:99").run(ctx ->
+                assertThat(ctx).getFailure().hasStackTraceContaining(PaymentReconcileConfiguration.INVALID_DAILY_RUN_TIME));
     }
 
     @Test
-    void enabledWithSettlementWiresStage6BeansAndOptionalSchedulerWithoutControllers() {
+    void paymentEnabledWiresStage6BeansAndDailySchedulerWithoutSubSwitches() {
         runner().withPropertyValues(
-                "pet.payment.settlement.enabled=true",
-                "pet.payment.reconcile.enabled=true").run(ctx -> {
-            assertThat(ctx).hasNotFailed();
-            assertThat(ctx).hasSingleBean(SubsidyReportQueryApi.class);
-            assertThat(ctx).hasSingleBean(ReconcileAdminApi.class);
-            assertThat(ctx).hasSingleBean(SettlementCompensationScanner.class);
-            assertThat(ctx).doesNotHaveBean(PaymentReconcileConfiguration.DailyReconcileScheduler.class);
-            assertThat(ctx.getBeanNamesForAnnotation(RestController.class)).isEmpty();
-        });
-
-        runner().withPropertyValues(
-                "pet.payment.settlement.enabled=true",
-                "pet.payment.reconcile.enabled=true",
-                "pet.payment.reconcile.daily-schedule-enabled=true",
+                "pet.payment.enabled=true",
                 "pet.payment.reconcile.daily-run-time=03:15",
                 "pet.payment.reconcile.scan-interval-minutes=10").run(ctx -> {
             assertThat(ctx).hasNotFailed();

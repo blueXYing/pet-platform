@@ -36,34 +36,29 @@ import org.springframework.web.bind.annotation.RestController;
 class PaymentReceiverConfigurationTest {
 
     @Test
-    void guardCheckEnforcesSettlementDependencyAnd32ByteAesKeyFile(@TempDir Path dir) throws Exception {
+    void guardCheckEnforces32ByteAesKeyFileWhenPaymentEnabled(@TempDir Path dir) throws Exception {
         Path validKey = writeKey(dir.resolve("valid.key"), 32);
         Path shortKey = writeKey(dir.resolve("short.key"), 16);
 
-        // Disabled passes even without settlement or key file.
+        // Payment disabled passes even without key file.
         assertThatCode(() -> PaymentReceiverConfiguration.check(
-                false, new PaymentReceiverConfiguration.ReceiverSettings(false, null, null)))
+                false, new PaymentReceiverConfiguration.ReceiverSettings(null, null)))
                 .doesNotThrowAnyException();
 
-        // Enabled with settlement + valid 32-byte key passes.
+        // Payment enabled with valid 32-byte key passes.
         assertThatCode(() -> PaymentReceiverConfiguration.check(
-                true, new PaymentReceiverConfiguration.ReceiverSettings(true, validKey.toString(), null)))
+                true, new PaymentReceiverConfiguration.ReceiverSettings(validKey.toString(), null)))
                 .doesNotThrowAnyException();
 
-        // Enabled without settlement fails closed.
+        // Payment enabled with missing or invalid key file fails closed.
         assertThatThrownBy(() -> PaymentReceiverConfiguration.check(
-                false, new PaymentReceiverConfiguration.ReceiverSettings(true, validKey.toString(), null)))
-                .hasMessage(PaymentReceiverConfiguration.REQUIRES_SETTLEMENT);
-
-        // Enabled with missing or invalid key file fails closed.
-        assertThatThrownBy(() -> PaymentReceiverConfiguration.check(
-                true, new PaymentReceiverConfiguration.ReceiverSettings(true, "", null)))
+                true, new PaymentReceiverConfiguration.ReceiverSettings("", null)))
                 .hasMessage(PaymentReceiverConfiguration.INVALID_AES_KEY);
         assertThatThrownBy(() -> PaymentReceiverConfiguration.check(
-                true, new PaymentReceiverConfiguration.ReceiverSettings(true, shortKey.toString(), null)))
+                true, new PaymentReceiverConfiguration.ReceiverSettings(shortKey.toString(), null)))
                 .hasMessage(PaymentReceiverConfiguration.INVALID_AES_KEY);
         assertThatThrownBy(() -> PaymentReceiverConfiguration.check(
-                true, new PaymentReceiverConfiguration.ReceiverSettings(true, dir.resolve("absent.key").toString(), null)))
+                true, new PaymentReceiverConfiguration.ReceiverSettings(dir.resolve("absent.key").toString(), null)))
                 .hasMessage(PaymentReceiverConfiguration.INVALID_AES_KEY);
     }
 
@@ -80,14 +75,11 @@ class PaymentReceiverConfigurationTest {
     }
 
     @Test
-    void enabledWithoutSettlementFailsStartup(@TempDir Path dir) throws Exception {
-        Path validKey = writeKey(dir.resolve("valid.key"), 32);
+    void enabledWithoutValidAesKeyFailsStartup() {
         runner(PaymentReceiverConfiguration.class)
-                .withPropertyValues(
-                        "pet.payment.receiver.enabled=true",
-                        "pet.payment.receiver.aes-key-path=" + validKey)
+                .withPropertyValues("pet.payment.enabled=true")
                 .run(ctx -> assertThat(ctx).getFailure()
-                        .hasStackTraceContaining(PaymentReceiverConfiguration.REQUIRES_SETTLEMENT));
+                        .hasStackTraceContaining(PaymentReceiverConfiguration.INVALID_AES_KEY));
     }
 
     @Test
@@ -98,9 +90,7 @@ class PaymentReceiverConfigurationTest {
         runner(PaymentSettlementConfiguration.class, PaymentReceiverConfiguration.class)
                 .withPropertyValues(
                         "pet.payment.enabled=true",
-                        "pet.payment.settlement.enabled=true",
                         "pet.payment.settlement.org-code=200669",
-                        "pet.payment.receiver.enabled=true",
                         "pet.payment.receiver.aes-key-path=" + validKey,
                         "pet.payment.receiver.ledger-notify-url=https://notify.invalid/api/v1/callbacks/lakala/ledger")
                 .run(ctx -> {
@@ -120,9 +110,7 @@ class PaymentReceiverConfigurationTest {
         runner(PaymentReceiverConfiguration.class, PaymentSettlementConfiguration.class)
                 .withPropertyValues(
                         "pet.payment.enabled=true",
-                        "pet.payment.settlement.enabled=true",
                         "pet.payment.settlement.org-code=200669",
-                        "pet.payment.receiver.enabled=true",
                         "pet.payment.receiver.aes-key-path=" + validKey,
                         "pet.payment.receiver.ledger-notify-url=https://notify.invalid/api/v1/callbacks/lakala/ledger")
                 .run(ctx -> {

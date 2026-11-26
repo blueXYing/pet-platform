@@ -26,47 +26,30 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import javax.sql.DataSource;
-import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.DependsOn;
 
 /**
- * Contract 80 §7 merchant wallet & D1 withdrawal configuration (CCR-PAY-CENTER-001 Stage 5).
- * Default off ({@code pet.payment.wallet.enabled=false}); enabling requires
- * {@code pet.payment.receiver.enabled=true} (which in turn requires {@code pet.payment.settlement.enabled=true}).
- * Reuses Stage 4's {@link LakalaV2HttpClient} and registers a Stage 6 compensation hook automatically.
+ * Contract 80 merchant wallet &amp; D1 withdrawal configuration (CCR-PAY-CENTER-001 Stage 5).
+ * Wired directly under the unified payment base switch {@code pet.payment.enabled=true}
+ * (per PR #234 single-switch architecture). Reuses Stage 4's {@link LakalaV2HttpClient} and
+ * registers a Stage 6 compensation hook automatically.
  */
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(PaymentWalletConfiguration.WalletSettings.class)
 public class PaymentWalletConfiguration {
-    static final String REQUIRES_RECEIVER = "Payment wallet requires pet.payment.receiver.enabled=true";
 
     @ConfigurationProperties(prefix = "pet.payment.wallet")
-    public record WalletSettings(boolean enabled, String withdrawNotifyUrl) {}
-
-    @Bean
-    InitializingBean paymentWalletConfigurationGuard(
-            @Value("${pet.payment.receiver.enabled:false}") boolean receiverEnabled,
-            WalletSettings settings) {
-        return () -> check(receiverEnabled, settings);
-    }
-
-    /** Pure startup guard check, unit-tested offline. */
-    static void check(boolean receiverEnabled, WalletSettings settings) {
-        if (!settings.enabled()) return;
-        if (!receiverEnabled) throw new IllegalStateException(REQUIRES_RECEIVER);
-    }
+    public record WalletSettings(String withdrawNotifyUrl) {}
 
     @Configuration(proxyBeanMethods = false)
-    @ConditionalOnExpression(
-            "'${pet.payment.wallet.enabled:false}' == 'true' and '${pet.payment.receiver.enabled:false}' == 'true'")
+    @ConditionalOnProperty(prefix = "pet.payment", name = "enabled", havingValue = "true")
     static class Runtime {
 
         @Bean
@@ -95,7 +78,6 @@ public class PaymentWalletConfiguration {
         }
 
         @Bean
-        @DependsOn("paymentWalletConfigurationGuard")
         WalletReceiptWriter walletReceiptWriter(
                 DataSource source,
                 SnowflakeIdGenerator ids,
@@ -109,7 +91,6 @@ public class PaymentWalletConfiguration {
         }
 
         @Bean
-        @DependsOn("paymentWalletConfigurationGuard")
         WalletService walletService(
                 DataSource source,
                 SnowflakeIdGenerator ids,
@@ -131,7 +112,6 @@ public class PaymentWalletConfiguration {
         }
 
         @Bean(initMethod = "start", destroyMethod = "close")
-        @DependsOn("paymentWalletConfigurationGuard")
         AsyncTaskWorker walletQueryWorker(
                 DataSource source,
                 SnowflakeIdGenerator ids,

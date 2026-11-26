@@ -68,7 +68,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 /**
  * Contract 80 Stage 7-BE HTTP tests:
  * <ul>
- *   <li>Startup guard & default-off isolation for {@code pet.payment.settlement.http.enabled}</li>
+ *   <li>Unified {@code pet.payment.enabled} (+ admin/c base switch) controller wiring with zero sub-switches</li>
  *   <li>AdminSettlementController RBAC enforcement (401/403), X-Request-Id checks, read-only subsidy/withdrawals</li>
  *   <li>MerchantWalletController OWNER-only enforcement (STAFF -> 403), no SMS OTP / extra fields, read-only receiver</li>
  *   <li>LakalaCallbackController 1009 raw-byte delegation, exact Lakala SUCCESS ack, bad-signature 400</li>
@@ -78,7 +78,7 @@ class PaymentSettlementHttpControllerTest {
     private static final OffsetDateTime NOW = OffsetDateTime.of(2026, 11, 25, 10, 0, 0, 0, ZoneOffset.UTC);
 
     @Test
-    void httpConfigDefaultsOffAndRequiresSettlementEnabled() {
+    void httpControllersFollowBaseSwitchesWithoutSubSwitches() {
         new ApplicationContextRunner()
                 .withUserConfiguration(PaymentSettlementHttpConfiguration.class,
                         AdminSettlementController.class, MerchantWalletController.class,
@@ -91,10 +91,19 @@ class PaymentSettlementHttpControllerTest {
                 });
 
         new ApplicationContextRunner()
-                .withUserConfiguration(PaymentSettlementHttpConfiguration.class)
-                .withPropertyValues("pet.payment.settlement.http.enabled=true")
-                .run(ctx -> assertThat(ctx).getFailure()
-                        .hasStackTraceContaining("pet.payment.settlement.enabled=true"));
+                .withUserConfiguration(PaymentSettlementHttpConfiguration.class,
+                        AdminSettlementController.class, MerchantWalletController.class,
+                        LakalaCallbackController.class)
+                .withPropertyValues(
+                        "pet.payment.enabled=true",
+                        "pet.auth.admin.enabled=true",
+                        "pet.auth.c.enabled=true")
+                .run(ctx -> {
+                    assertThat(ctx).hasNotFailed();
+                    assertThat(ctx).hasSingleBean(AdminSettlementController.class);
+                    assertThat(ctx).hasSingleBean(MerchantWalletController.class);
+                    assertThat(ctx).hasSingleBean(LakalaCallbackController.class);
+                });
     }
 
     @Test

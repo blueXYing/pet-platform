@@ -59,19 +59,17 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Contract 78 settlement configuration (CCR-PAY-CENTER-001 stage 2).
- * Default off ({@code pet.payment.settlement.enabled=false}); enabling requires {@code pet.payment.enabled=true}
- * and platform merchant configuration. No public HTTP controller is registered in stage 2.
+ * Contract 78 settlement configuration (CCR-PAY-CENTER-001 stages 2-3).
+ * Wired directly under the unified payment base switch {@code pet.payment.enabled=true}
+ * (per PR #234 single-switch architecture).
  */
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(PaymentSettlementConfiguration.SettlementSettings.class)
 public class PaymentSettlementConfiguration {
-    static final String REQUIRES_PAYMENT = "Payment settlement requires pet.payment.enabled=true";
     static final String INVALID_LOWEST_RATIO = "pet.payment.settlement.lowest-ratio must be in [0, 1) with at most 4 decimals";
 
     @ConfigurationProperties(prefix = "pet.payment.settlement")
     public record SettlementSettings(
-            boolean enabled,
             String lowestRatio,
             String orgCode,
             String notifyUrl,
@@ -94,10 +92,9 @@ public class PaymentSettlementConfiguration {
         return () -> check(paymentEnabled, settings);
     }
 
-    /** Pure flag and ratio check, unit-tested offline. */
+    /** Pure ratio check, unit-tested offline. */
     static void check(boolean paymentEnabled, SettlementSettings settings) {
-        if (!settings.enabled()) return;
-        if (!paymentEnabled) throw new IllegalStateException(REQUIRES_PAYMENT);
+        if (!paymentEnabled) return;
         settings.parsedLowestRatio();
     }
 
@@ -124,7 +121,7 @@ public class PaymentSettlementConfiguration {
     }
 
     @Configuration(proxyBeanMethods = false)
-    @ConditionalOnProperty(prefix = "pet.payment.settlement", name = "enabled", havingValue = "true")
+    @ConditionalOnProperty(prefix = "pet.payment", name = "enabled", havingValue = "true")
     static class Runtime {
 
         @Bean @ConditionalOnMissingBean(OrderSettlementFactsApi.class)

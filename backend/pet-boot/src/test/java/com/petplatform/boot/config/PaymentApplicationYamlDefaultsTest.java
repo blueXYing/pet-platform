@@ -28,6 +28,12 @@ class PaymentApplicationYamlDefaultsTest {
         assertThat(raw(base, "pet.payment.enabled")).isEqualTo("false");
         assertThat(raw(base, "pet.payment.center.demo.enabled")).isEqualTo("false");
         assertThat(base.getProperty("spring.profiles.active")).isNull();
+        // PR #234 single-switch rule: no redundant sub-switches under pet.payment.*
+        for (String key : base.getPropertyNames()) {
+            if (key.startsWith("pet.payment.") && key.endsWith(".enabled")) {
+                assertThat(key).isIn("pet.payment.enabled", "pet.payment.center.demo.enabled");
+            }
+        }
 
         for (String profile : List.of("application-dev.yml", "application-test.yml", "application-prod.yml")) {
             var p = yaml(profile);

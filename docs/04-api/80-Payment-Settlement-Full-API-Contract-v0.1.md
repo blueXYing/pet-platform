@@ -189,12 +189,11 @@
 
 ---
 
-## 7. 配置开关（全部默认 `false`）
+## 7. 配置收口（遵循 PR #234 单开关架构，不新增子开关）
 
-| 开关 | 依赖 | 说明 |
-|---|---|---|
-| `pet.payment.settlement.enabled` | `pet.payment.enabled=true` | 阶段 2～3 结算单、分账与回退 |
-| `pet.payment.receiver.enabled` | `pet.payment.settlement.enabled=true` + `SETTLEMENT_RECEIVER_AES_KEY_PATH` | 阶段 4 分账接收方开通与实库查表 |
-| `pet.payment.wallet.enabled` | `pet.payment.receiver.enabled=true` | 阶段 5 商家钱包与 D1 提现 |
-| `pet.payment.reconcile.enabled` | `pet.payment.settlement.enabled=true` | 阶段 6 日对账、补偿扫描与补贴报表 |
-| `pet.payment.settlement.http.enabled` | `pet.payment.settlement.enabled=true` | 阶段 7 运营/商家/公开回调 HTTP 路由 |
+阶段 2～8 的分账结算、接收方管理、商家钱包提现、日对账与补偿扫描、以及运营/商家/拉卡拉回调 HTTP 路由**全部归入唯一支付底座总开关 `pet.payment.enabled`**（`application.yml` 默认 `false` 供隔离单测，`application-dev/test/prod.yml` 统一 `true`），不再拆分子开关：
+
+- 运营端控制器 `/api/v1/admin/settlement/**` 随 `pet.auth.admin.enabled=true` 且 `pet.payment.enabled=true` 装配；
+- 商家端控制器 `/api/v1/merchant/{settlement/receiver,wallet,wallet/withdrawals}` 随 `pet.auth.c.enabled=true` 且 `pet.payment.enabled=true` 装配；
+- 拉卡拉 4 条公开回调 `/api/v1/callbacks/lakala/{pay,separate,withdrawals,ledger}` 随 `pet.payment.enabled=true` 装配；
+- 仅通过环境变量/配置参数控制凭据与行为参数：`SETTLEMENT_RECEIVER_AES_KEY_PATH`（缺配启动 fail-closed）、`LAKALA_ORG_CODE`、`LAKALA_SPLIT_LOWEST_RATIO`、`LAKALA_SEPARATE_NOTIFY_URL`、`LAKALA_LEDGER_NOTIFY_URL`、`LAKALA_WITHDRAW_NOTIFY_URL`、`pet.payment.lakala.settle-type`（`0` 普通收单 / `1` 分账收单）。

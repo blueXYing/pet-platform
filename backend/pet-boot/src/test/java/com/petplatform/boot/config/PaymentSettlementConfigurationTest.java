@@ -30,19 +30,16 @@ import org.springframework.web.bind.annotation.RestController;
 class PaymentSettlementConfigurationTest {
 
     @Test
-    void flagAndLowestRatioMatrix() {
+    void lowestRatioValidationMatrix() {
         assertThatCode(() -> PaymentSettlementConfiguration.check(
-                false, new PaymentSettlementConfiguration.SettlementSettings(false, "0", null, null, false, null)))
+                false, new PaymentSettlementConfiguration.SettlementSettings("invalid", null, null, false, null)))
                 .doesNotThrowAnyException();
         assertThatCode(() -> PaymentSettlementConfiguration.check(
-                true, new PaymentSettlementConfiguration.SettlementSettings(true, "0.05", null, null, false, null)))
+                true, new PaymentSettlementConfiguration.SettlementSettings("0.05", null, null, false, null)))
                 .doesNotThrowAnyException();
-        assertThatThrownBy(() -> PaymentSettlementConfiguration.check(
-                false, new PaymentSettlementConfiguration.SettlementSettings(true, "0", null, null, false, null)))
-                .hasMessage(PaymentSettlementConfiguration.REQUIRES_PAYMENT);
         for (String bad : new String[] {"-0.01", "1", "1.0000", "0.12345", "abc"}) {
             assertThatThrownBy(() -> PaymentSettlementConfiguration.check(
-                    true, new PaymentSettlementConfiguration.SettlementSettings(true, bad, null, null, false, null)))
+                    true, new PaymentSettlementConfiguration.SettlementSettings(bad, null, null, false, null)))
                     .as(bad).hasMessage(PaymentSettlementConfiguration.INVALID_LOWEST_RATIO);
         }
     }
@@ -85,16 +82,17 @@ class PaymentSettlementConfigurationTest {
     }
 
     @Test
-    void enabledWithoutPaymentFailsStartup() {
-        runner(platform()).withPropertyValues("pet.payment.settlement.enabled=true").run(ctx ->
-                assertThat(ctx).getFailure().hasStackTraceContaining(PaymentSettlementConfiguration.REQUIRES_PAYMENT));
+    void invalidLowestRatioFailsStartupWhenPaymentEnabled() {
+        runner(platform()).withPropertyValues(
+                "pet.payment.enabled=true",
+                "pet.payment.settlement.lowest-ratio=1.5").run(ctx ->
+                assertThat(ctx).getFailure().hasStackTraceContaining(PaymentSettlementConfiguration.INVALID_LOWEST_RATIO));
     }
 
     @Test
     void enabledWithPaymentWiresServicesWorkerAndConsumersWithoutControllers() {
         runner(platform()).withPropertyValues(
                 "pet.payment.enabled=true",
-                "pet.payment.settlement.enabled=true",
                 "pet.payment.settlement.lowest-ratio=0.02").run(ctx -> {
             assertThat(ctx).hasNotFailed();
             assertThat(ctx).hasSingleBean(SettlementAdminApi.class);

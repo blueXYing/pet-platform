@@ -139,7 +139,7 @@ public class AdminAuthSecurityConfiguration {
                 .permitAll();
             // CCR-PAY-CENTER-001 Stage 7 (contract 80 §4): Bearer & 5 settlement RBAC action codes
             // are strictly enforced by AdminBearerAuthenticationFilter + AdminSettlementController
-            // (and routes stay fail-closed 404 unless pet.payment.settlement.http.enabled=true).
+            // (controllers are wired directly under pet.auth.admin.enabled + pet.payment.enabled).
             a.requestMatchers("/api/v1/admin/settlement/**").permitAll();
             a.requestMatchers(
                     HttpMethod.GET,

@@ -45,35 +45,32 @@ import org.springframework.context.annotation.DependsOn;
 import org.springframework.context.annotation.Primary;
 
 /**
- * Contract 80 §7 split-receiver configuration (CCR-PAY-CENTER-001 Stage 4).
- * Default off ({@code pet.payment.receiver.enabled=false}); enabling requires
- * {@code pet.payment.settlement.enabled=true} and a valid 32-byte Base64 AES-256 key file at
- * {@code pet.payment.receiver.aes-key-path}. When enabled, supersedes Stage 2's fail-closed
+ * Contract 80 split-receiver configuration (CCR-PAY-CENTER-001 Stage 4).
+ * Wired directly under the unified payment base switch {@code pet.payment.enabled=true}
+ * (per PR #234 single-switch architecture); requires a valid 32-byte Base64 AES-256 key file at
+ * {@code pet.payment.receiver.aes-key-path}. Supersedes Stage 2's fail-closed
  * {@link SettlementReceiverLookup} with {@link DbSettlementReceiverLookup}.
  */
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(PaymentReceiverConfiguration.ReceiverSettings.class)
 public class PaymentReceiverConfiguration {
-    static final String REQUIRES_SETTLEMENT = "Payment receiver requires pet.payment.settlement.enabled=true";
     static final String INVALID_AES_KEY = "pet.payment.receiver.aes-key-path must point to a valid 32-byte Base64 AES key file";
 
     @ConfigurationProperties(prefix = "pet.payment.receiver")
     public record ReceiverSettings(
-            boolean enabled,
             String aesKeyPath,
             String ledgerNotifyUrl) {}
 
     @Bean
     InitializingBean paymentReceiverConfigurationGuard(
-            @Value("${pet.payment.settlement.enabled:false}") boolean settlementEnabled,
+            @Value("${pet.payment.enabled:false}") boolean paymentEnabled,
             ReceiverSettings settings) {
-        return () -> check(settlementEnabled, settings);
+        return () -> check(paymentEnabled, settings);
     }
 
     /** Pure startup guard check, unit-tested offline. */
-    static void check(boolean settlementEnabled, ReceiverSettings settings) {
-        if (!settings.enabled()) return;
-        if (!settlementEnabled) throw new IllegalStateException(REQUIRES_SETTLEMENT);
+    static void check(boolean paymentEnabled, ReceiverSettings settings) {
+        if (!paymentEnabled) return;
         try {
             ReceiverSensitiveCipher.loadKeyFromFile(settings.aesKeyPath());
         } catch (RuntimeException invalid) {
@@ -82,7 +79,7 @@ public class PaymentReceiverConfiguration {
     }
 
     @Configuration(proxyBeanMethods = false)
-    @ConditionalOnProperty(prefix = "pet.payment.receiver", name = "enabled", havingValue = "true")
+    @ConditionalOnProperty(prefix = "pet.payment", name = "enabled", havingValue = "true")
     static class Runtime {
 
         @Bean

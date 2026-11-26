@@ -36,7 +36,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -64,8 +64,7 @@ import tools.jackson.databind.ObjectReader;
  */
 @RestController
 @RequestMapping(value = "/api/v1/merchant", produces = MediaType.APPLICATION_JSON_VALUE)
-@ConditionalOnExpression(
-        "'${pet.payment.settlement.http.enabled:false}' == 'true' and '${pet.payment.settlement.enabled:false}' == 'true'")
+@ConditionalOnProperty(prefix = "pet", name = {"auth.c.enabled", "payment.enabled"}, havingValue = "true")
 public final class MerchantWalletController {
     private static final ObjectReader STRICT = MerchantJsonReaderFactory.strictReader();
     private static final Set<String> WITHDRAWAL_STATUSES = Set.of("CREATED", "PROCESSING", "SUCCEEDED", "FAILED");

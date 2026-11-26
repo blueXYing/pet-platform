@@ -14,7 +14,7 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -39,8 +39,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping(value = "/api/v1/callbacks/lakala",
         consumes = MediaType.APPLICATION_JSON_VALUE,
         produces = MediaType.APPLICATION_JSON_VALUE)
-@ConditionalOnExpression(
-        "'${pet.payment.settlement.http.enabled:false}' == 'true' and '${pet.payment.settlement.enabled:false}' == 'true'")
+@ConditionalOnProperty(prefix = "pet.payment", name = "enabled", havingValue = "true")
 public final class LakalaCallbackController {
     private static final Logger LOG = LoggerFactory.getLogger(LakalaCallbackController.class);
     private static final String ACK = LakalaV2Protocol.NOTIFICATION_ACK_JSON;

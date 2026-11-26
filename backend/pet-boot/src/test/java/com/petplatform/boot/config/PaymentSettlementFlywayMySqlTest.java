@@ -55,7 +55,7 @@ class PaymentSettlementFlywayMySqlTest {
             // 1. Run isolated Flyway migration V38 through PaymentSettlementConfiguration.
             var cfg = new PaymentSettlementConfiguration();
             cfg.settlementMigration(ds, new PaymentSettlementConfiguration.SettlementSettings(
-                    false, "0", null, null, true, dbName));
+                    "0", null, null, true, dbName));
             // V38..V42 contiguous settlement, fallback, receiver, wallet, and reconcile tables (12 tables).
             try (Connection c = ds.getConnection(); Statement s = c.createStatement();
                  ResultSet rs = s.executeQuery("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='"

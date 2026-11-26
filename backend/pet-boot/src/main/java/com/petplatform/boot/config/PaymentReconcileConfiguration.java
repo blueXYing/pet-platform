@@ -40,7 +40,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -52,20 +51,17 @@ import org.springframework.context.annotation.Configuration;
  * Contract 80 Stage 6 configuration: compensation scanner, Lakala 1879/1877 daily reconciliation,
  * and strictly read-only platform subsidy payable report.
  *
- * <p>Default off ({@code pet.payment.reconcile.enabled=false}); enabling requires
- * {@code pet.payment.settlement.enabled=true}. No HTTP controller is registered in Stage 6.
+ * <p>Wired directly under the unified payment base switch {@code pet.payment.enabled=true}
+ * (per PR #234 single-switch architecture).
  */
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(PaymentReconcileConfiguration.ReconcileSettings.class)
 public class PaymentReconcileConfiguration {
-    static final String REQUIRES_SETTLEMENT = "Payment reconcile requires pet.payment.settlement.enabled=true";
     static final String INVALID_DAILY_RUN_TIME = "pet.payment.reconcile.daily-run-time must be valid ISO local time (HH:mm)";
     static final String INVALID_SCAN_INTERVAL = "pet.payment.reconcile.scan-interval-minutes must be in [0, 1440]";
 
     @ConfigurationProperties(prefix = "pet.payment.reconcile")
     public record ReconcileSettings(
-            boolean enabled,
-            boolean dailyScheduleEnabled,
             String dailyRunTime,
             long scanIntervalMinutes) {
 
@@ -85,15 +81,14 @@ public class PaymentReconcileConfiguration {
 
     @Bean
     InitializingBean paymentReconcileConfigurationGuard(
-            @Value("${pet.payment.settlement.enabled:false}") boolean settlementEnabled,
+            @Value("${pet.payment.enabled:false}") boolean paymentEnabled,
             ReconcileSettings settings) {
-        return () -> check(settlementEnabled, settings);
+        return () -> check(paymentEnabled, settings);
     }
 
-    /** Pure flag and schedule check, unit-tested offline. */
-    static void check(boolean settlementEnabled, ReconcileSettings settings) {
-        if (!settings.enabled()) return;
-        if (!settlementEnabled) throw new IllegalStateException(REQUIRES_SETTLEMENT);
+    /** Pure schedule check, unit-tested offline. */
+    static void check(boolean paymentEnabled, ReconcileSettings settings) {
+        if (!paymentEnabled) return;
         if (settings.scanIntervalMinutes() < 0 || settings.scanIntervalMinutes() > 1440) {
             throw new IllegalStateException(INVALID_SCAN_INTERVAL);
         }
@@ -101,8 +96,7 @@ public class PaymentReconcileConfiguration {
     }
 
     @Configuration(proxyBeanMethods = false)
-    @ConditionalOnExpression(
-            "'${pet.payment.reconcile.enabled:false}' == 'true' and '${pet.payment.settlement.enabled:false}' == 'true'")
+    @ConditionalOnProperty(prefix = "pet.payment", name = "enabled", havingValue = "true")
     static class Runtime {
 
         @Bean @ConditionalOnMissingBean(SettlementReconcileChannel.class)
@@ -170,7 +164,6 @@ public class PaymentReconcileConfiguration {
         }
 
         @Bean(initMethod = "start", destroyMethod = "close")
-        @ConditionalOnProperty(prefix = "pet.payment.reconcile", name = "daily-schedule-enabled", havingValue = "true")
         DailyReconcileScheduler dailyReconcileScheduler(
                 ReconcileAdminApi reconcileAdminApi,
                 PaymentFoundationConfiguration.LakalaSettings lakala,
@@ -214,7 +207,7 @@ public class PaymentReconcileConfiguration {
         }
     }
 
-    /** Optional daily T-1 SACS reconciliation trigger (opt-in via daily-schedule-enabled=true). */
+    /** Daily T-1 SACS reconciliation trigger (scheduled automatically under pet.payment.enabled=true). */
     public static final class DailyReconcileScheduler implements AutoCloseable {
         private static final Logger LOG = LoggerFactory.getLogger(DailyReconcileScheduler.class);
 

@@ -62,7 +62,7 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -90,8 +90,7 @@ import tools.jackson.databind.ObjectReader;
  */
 @RestController
 @RequestMapping(value = "/api/v1/admin/settlement", produces = MediaType.APPLICATION_JSON_VALUE)
-@ConditionalOnExpression(
-        "'${pet.payment.settlement.http.enabled:false}' == 'true' and '${pet.payment.settlement.enabled:false}' == 'true'")
+@ConditionalOnProperty(prefix = "pet", name = {"auth.admin.enabled", "payment.enabled"}, havingValue = "true")
 public final class AdminSettlementController {
     private static final ObjectReader STRICT = MerchantJsonReaderFactory.strictReader();
     private static final Pattern ID_PATTERN = Pattern.compile("[1-9][0-9]{0,18}");

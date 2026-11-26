@@ -215,7 +215,7 @@ public class CSessionSecurityConfiguration {
             a.requestMatchers("/api/v1/merchant/marketing/**").permitAll();
             // CCR-PAY-CENTER-001 Stage 7 (contract 80 §5): merchant OWNER-only wallet & read-only
             // receiver status routes (Bearer verified by CBearerSessionFilter; OWNER enforced in controller;
-            // routes stay absent unless pet.payment.settlement.http.enabled=true).
+            // controllers are wired directly under pet.auth.c.enabled + pet.payment.enabled).
             a.requestMatchers(HttpMethod.GET,
                     "/api/v1/merchant/settlement/receiver",
                     "/api/v1/merchant/wallet",

@@ -1,8 +1,6 @@
 package com.petplatform.boot.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
 import com.petplatform.common.SnowflakeIdGenerator;
@@ -20,21 +18,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Offline Contract 80 Stage 5 wallet configuration matrix tests. No MySQL required. */
+/** Offline Contract 80 Stage 5 wallet configuration tests under unified pet.payment.enabled. */
 class PaymentWalletConfigurationTest {
-
-    @Test
-    void flagGuardMatrix() {
-        assertThatCode(() -> PaymentWalletConfiguration.check(
-                false, new PaymentWalletConfiguration.WalletSettings(false, null)))
-                .doesNotThrowAnyException();
-        assertThatCode(() -> PaymentWalletConfiguration.check(
-                true, new PaymentWalletConfiguration.WalletSettings(true, "https://api.example.com/cb")))
-                .doesNotThrowAnyException();
-        assertThatThrownBy(() -> PaymentWalletConfiguration.check(
-                false, new PaymentWalletConfiguration.WalletSettings(true, null)))
-                .hasMessage(PaymentWalletConfiguration.REQUIRES_RECEIVER);
-    }
 
     private ApplicationContextRunner runner() {
         var lakala = new PaymentFoundationConfiguration.LakalaSettings(Map.of(), null, "Asia/Shanghai", null, "1");
@@ -59,16 +44,9 @@ class PaymentWalletConfigurationTest {
     }
 
     @Test
-    void enabledWithoutReceiverFailsStartup() {
-        runner().withPropertyValues("pet.payment.wallet.enabled=true").run(ctx ->
-                assertThat(ctx).getFailure().hasStackTraceContaining(PaymentWalletConfiguration.REQUIRES_RECEIVER));
-    }
-
-    @Test
-    void enabledWithReceiverWiresStage5BeansWithoutControllers() {
+    void paymentEnabledWiresStage5BeansWithoutSubSwitches() {
         runner().withPropertyValues(
-                "pet.payment.receiver.enabled=true",
-                "pet.payment.wallet.enabled=true",
+                "pet.payment.enabled=true",
                 "pet.payment.settlement.org-code=1950836",
                 "pet.payment.wallet.withdraw-notify-url=https://api.example.com/api/v1/callbacks/lakala/withdrawals")
                 .run(ctx -> {
