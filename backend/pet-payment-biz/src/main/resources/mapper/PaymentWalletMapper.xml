@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- Contract 80 / SQL81 Stage 5 merchant wallet & D1 withdrawal persistence. -->
+<mapper namespace="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentWalletMapper">
+
+  <sql id="withdrawalColumns">
+    id,mer_order_no,merchant_id,receiver_no,amount,fee_amount,net_amount,draw_mode,
+    status,draw_jnl,channel_state,settle_no,fail_reason,requested_by_user_id,
+    request_fingerprint,submit_response_sha256,terminal_receipt_sha256,result_event_id,
+    requested_at,sent_at,finished_at,version,created_at,updated_at
+  </sql>
+
+  <insert id="insertWithdrawal">
+    INSERT INTO withdrawal_order(
+      id,mer_order_no,merchant_id,receiver_no,amount,fee_amount,net_amount,draw_mode,
+      status,draw_jnl,channel_state,settle_no,fail_reason,requested_by_user_id,
+      request_key,request_fingerprint,submit_response_sha256,terminal_receipt_sha256,
+      result_event_id,requested_at,sent_at,finished_at,version,created_at,updated_at)
+    VALUES(
+      #{id},#{merOrderNo},#{merchantId},#{receiverNo},#{amount},NULL,NULL,'D1',
+      'CREATED',NULL,NULL,NULL,NULL,#{requestedByUserId},
+      #{requestKey},#{requestFingerprint},NULL,NULL,
+      NULL,#{now},NULL,NULL,0,#{now},#{now})
+  </insert>
+
+  <select id="selectById"
+          resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentWalletMapper$WithdrawalRow">
+    SELECT <include refid="withdrawalColumns"/> FROM withdrawal_order WHERE id=#{id}
+  </select>
+
+  <select id="selectByIdForUpdate"
+          resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentWalletMapper$WithdrawalRow">
+    SELECT <include refid="withdrawalColumns"/> FROM withdrawal_order WHERE id=#{id} FOR UPDATE
+  </select>
+
+  <select id="selectByRequestKeyForUpdate"
+          resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentWalletMapper$WithdrawalRow">
+    SELECT <include refid="withdrawalColumns"/> FROM withdrawal_order WHERE request_key=#{requestKey} FOR UPDATE
+  </select>
+
+  <select id="selectByMerOrderNoForUpdate"
+          resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentWalletMapper$WithdrawalRow">
+    SELECT <include refid="withdrawalColumns"/> FROM withdrawal_order WHERE mer_order_no=#{merOrderNo} FOR UPDATE
+  </select>
+
+  <select id="selectByDrawJnlForUpdate"
+          resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentWalletMapper$WithdrawalRow">
+    SELECT <include refid="withdrawalColumns"/> FROM withdrawal_order WHERE draw_jnl=#{drawJnl} FOR UPDATE
+  </select>
+
+  <update id="markProcessing">
+    UPDATE withdrawal_order
+    SET status='PROCESSING',
+        draw_jnl=#{drawJnl},
+        channel_state='DRAW.ACCEPTED',
+        submit_response_sha256=#{submitResponseSha256},
+        sent_at=#{now},
+        version=version+1,
+        updated_at=#{now}
+    WHERE id=#{id} AND version=#{version} AND status='CREATED'
+  </update>
+
+  <update id="markProcessingUnknown">
+    UPDATE withdrawal_order
+    SET status='PROCESSING',
+        channel_state=#{channelState},
+        sent_at=COALESCE(sent_at, #{now}),
+        version=version+1,
+        updated_at=#{now}
+    WHERE id=#{id} AND version=#{version} AND status='CREATED'
+  </update>
+
+  <update id="updateNonTerminalState">
+    UPDATE withdrawal_order
+    SET status='PROCESSING',
+        draw_jnl=COALESCE(draw_jnl, #{drawJnl}),
+        channel_state=#{channelState},
+        fee_amount=COALESCE(#{feeAmount}, fee_amount),
+        net_amount=COALESCE(#{netAmount}, net_amount),
+        settle_no=COALESCE(#{settleNo}, settle_no),
+        version=version+1,
+        updated_at=#{now}
+    WHERE id=#{id} AND version=#{version} AND status IN ('CREATED','PROCESSING')
+  </update>
+
+  <update id="markSucceeded">
+    UPDATE withdrawal_order
+    SET status='SUCCEEDED',
+        draw_jnl=COALESCE(draw_jnl, #{drawJnl}),
+        channel_state=#{channelState},
+        fee_amount=#{feeAmount},
+        net_amount=#{netAmount},
+        settle_no=COALESCE(#{settleNo}, settle_no),
+        fail_reason=NULL,
+        terminal_receipt_sha256=#{terminalReceiptSha256},
+        result_event_id=#{resultEventId},
+        finished_at=#{finishedAt},
+        version=version+1,
+        updated_at=#{now}
+    WHERE id=#{id} AND version=#{version} AND status IN ('CREATED','PROCESSING')
+  </update>
+
+  <update id="markFailed">
+    UPDATE withdrawal_order
+    SET status='FAILED',
+        draw_jnl=COALESCE(draw_jnl, #{drawJnl}),
+        channel_state=#{channelState},
+        fail_reason=#{failReason},
+        terminal_receipt_sha256=#{terminalReceiptSha256},
+        result_event_id=#{resultEventId},
+        finished_at=#{finishedAt},
+        version=version+1,
+        updated_at=#{now}
+    WHERE id=#{id} AND version=#{version} AND status IN ('CREATED','PROCESSING')
+  </update>
+
+  <sql id="withdrawalFilterWhere">
+    <where>
+      <if test="merchantId != null">AND merchant_id=#{merchantId}</if>
+      <if test="status != null">AND status=#{status}</if>
+    </where>
+  </sql>
+
+  <select id="countWithdrawals" resultType="java.lang.Long">
+    SELECT COUNT(*) FROM withdrawal_order
+    <include refid="withdrawalFilterWhere"/>
+  </select>
+
+  <select id="listWithdrawals"
+          resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentWalletMapper$WithdrawalRow">
+    SELECT <include refid="withdrawalColumns"/> FROM withdrawal_order
+    <include refid="withdrawalFilterWhere"/>
+    ORDER BY created_at DESC, id DESC
+    LIMIT #{limit} OFFSET #{offset}
+  </select>
+
+  <select id="selectStuckWithdrawals"
+          resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentWalletMapper$StuckWithdrawalRow">
+    SELECT id,status,sent_at,created_at,updated_at
+    FROM withdrawal_order
+    WHERE status IN ('CREATED','PROCESSING')
+      AND updated_at &lt;= #{cutoff}
+    ORDER BY updated_at ASC, id ASC
+    LIMIT #{limit}
+  </select>
+
+  <!-- ==================== withdrawal_receipt ==================== -->
+
+  <insert id="insertReceiptIgnore">
+    INSERT INTO withdrawal_receipt(
+      id,withdrawal_id,receipt_sha256,receipt_source,channel_response_sha256,
+      draw_jnl,draw_state,draw_amount,fee_amount,memo,complete_time,received_at)
+    VALUES(
+      #{id},#{withdrawalId},#{receiptSha256},#{receiptSource},#{channelResponseSha256},
+      #{drawJnl},#{drawState},#{drawAmount},#{feeAmount},#{memo},#{completeTime},#{receivedAt})
+    ON DUPLICATE KEY UPDATE id=id
+  </insert>
+
+  <!-- ==================== Read-only Wallet Projections ==================== -->
+  <!-- Ruling 40 §5.5 / §9: pending settlement sums merchant_share of unsettled orders only, NEVER platform_subsidy_due. -->
+
+  <select id="selectPendingSettlementSummary"
+          resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentWalletMapper$PendingSettlementRow">
+    SELECT
+      COUNT(*) AS pending_count,
+      COALESCE(SUM(merchant_share), 0.00) AS pending_amount
+    FROM settlement_order
+    WHERE merchant_id=#{merchantId}
+      AND status IN ('PENDING_TRIGGER','WAITING','ON_HOLD','SPLITTING','SPLIT_FAILED')
+  </select>
+
+  <select id="selectReceiverSnapshot"
+          resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentWalletMapper$ReceiverSnapshotRow">
+    SELECT status,receiver_no
+    FROM settlement_receiver_account
+    WHERE merchant_id=#{merchantId}
+  </select>
+
+  <select id="selectMerchantAcquiringAccount"
+          resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentWalletMapper$AcquiringMerchantRow">
+    SELECT enabled,lakala_merchant_no,lakala_term_no
+    FROM settlement_config
+    WHERE merchant_id=#{merchantId}
+  </select>
+</mapper>

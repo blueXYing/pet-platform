@@ -195,6 +195,17 @@ export function isMerchantMarketingPath(spec: RequestSpec): boolean {
   return ['GET', 'POST', 'PUT'].includes(spec.method)
     && /^\/api\/v1\/merchant\/marketing\/[a-z0-9/-]+$/.test(spec.path)
 }
+// Contract 80 §5 merchant settlement receiver (read-only) and wallet/withdrawal routes
+// (OWNER-only; switches pet.payment.wallet.enabled / pet.payment.settlement.http.enabled
+// default OFF): merchant ownership is resolved server-side from the MINIAPP OWNER session.
+export function isMerchantWalletPath(spec: RequestSpec): boolean {
+  if (spec.method === 'GET') {
+    return spec.path === '/api/v1/merchant/settlement/receiver'
+      || spec.path === '/api/v1/merchant/wallet'
+      || spec.path === '/api/v1/merchant/wallet/withdrawals'
+  }
+  return spec.method === 'POST' && spec.path === '/api/v1/merchant/wallet/withdrawals'
+}
 export function decodePrivateAsset(value: unknown): PrivateAssetReceipt {
   const v = object(value)
   if (Object.keys(v).sort().join(',') !== 'assetId,bytes,mediaType,objectSha256,status' || v.status !== 'READY' || typeof v.objectSha256 !== 'string' || !/^[a-f0-9]{64}(?![\s\S])/.test(v.objectSha256) || !['image/jpeg', 'image/png'].includes(v.mediaType) || !Number.isSafeInteger(v.bytes) || v.bytes < 1 || v.bytes > 10485760) throw new Error('INVALID_RESPONSE')
@@ -317,26 +328,29 @@ export class ConsumerApi {
     // Merchant service flash-price family (77号): path-targeted on the service; same
     // envelope discipline as the other merchant route families.
     const merchantFlashPricePath = isMerchantFlashPricePath(spec)
+    // Merchant settlement receiver (read-only) and wallet/withdrawal routes (Contract 80 §5).
+    const merchantWalletPath = isMerchantWalletPath(spec)
     if (/^\/api\/v1\/(c|merchant)\/aftersale/.test(spec.path) && !afterSalePath) throw new Error('INVALID_PATH')
     if (/^\/api\/v1\/merchant\/reviews(\/|$)/.test(spec.path) && !merchantReviewPath) throw new Error('INVALID_PATH')
+    if (/^\/api\/v1\/merchant\/(wallet|settlement)(\/|$)/.test(spec.path) && !merchantWalletPath) throw new Error('INVALID_PATH')
     if (/^\/api\/v1\/c\/(favorites|footprints)(\/|$)/.test(spec.path) && !favoriteFootprintPath) throw new Error('INVALID_PATH')
-    if (!/^\/api\/v1\/c\/[a-z0-9/-]+$/.test(spec.path) && !agreementPath && !admissionPath && !categoryPath && !serviceCommandPath && !afterSalePath && !schedulePath && !verificationPath && !merchantOrderAction && !merchantOrderList && !merchantVerificationRecords && !merchantReviewPath && !merchantRefundPath && !merchantCustomerPath && !merchantStatsPath && !merchantStoreProfilePath && !merchantMarketingPath && !merchantStaffMemberPath && !favoriteFootprintPath && !merchantFlashPricePath) throw new Error('INVALID_PATH')
+    if (!/^\/api\/v1\/c\/[a-z0-9/-]+$/.test(spec.path) && !agreementPath && !admissionPath && !categoryPath && !serviceCommandPath && !afterSalePath && !schedulePath && !verificationPath && !merchantOrderAction && !merchantOrderList && !merchantVerificationRecords && !merchantReviewPath && !merchantRefundPath && !merchantCustomerPath && !merchantStatsPath && !merchantStoreProfilePath && !merchantMarketingPath && !merchantStaffMemberPath && !favoriteFootprintPath && !merchantFlashPricePath && !merchantWalletPath) throw new Error('INVALID_PATH')
     if (spec.method !== 'GET' && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?![\s\S])/i.test(spec.requestId || '')) throw new Error('REQUEST_ID_REQUIRED')
     const response = await this.transport({ ...spec, headers: { 'Content-Type': 'application/json', ...(spec.requestId ? { 'X-Request-Id': spec.requestId } : {}), ...headers } })
     if (afterSalePath) return afterSaleEnvelope(response)
     const body = object(response.data)
-    if (response.statusCode < 200 || response.statusCode >= 300 || body.code !== 'SUCCESS') throw new ApiError(typeof body.code === 'string' ? body.code : 'INVALID_RESPONSE', response.statusCode)
+    if (response.statusCode < 200 || response.statusCode >= 300 || body.code !== 'SUCCESS') throw new ApiError(typeof body.code === 'string' ? body.code : 'INVALID_RESPONSE', response.statusCode, typeof body.message === 'string' ? body.message : undefined)
     const applicationPath = /^\/api\/v1\/c\/merchant-applications(?:\/|$)/.test(spec.path) || spec.path === '/api/v1/c/merchant-application-cities'
-    if ((agreementPath || applicationPath || admissionPath || categoryPath || serviceCommandPath || schedulePath || verificationPath || merchantOrderAction || merchantOrderList || merchantVerificationRecords || merchantRefundPath || merchantCustomerPath || merchantStatsPath || merchantStoreProfilePath || merchantMarketingPath || merchantStaffMemberPath || merchantFlashPricePath) && body.success !== true) throw new Error('INVALID_RESPONSE')
+    if ((agreementPath || applicationPath || admissionPath || categoryPath || serviceCommandPath || schedulePath || verificationPath || merchantOrderAction || merchantOrderList || merchantVerificationRecords || merchantRefundPath || merchantCustomerPath || merchantStatsPath || merchantStoreProfilePath || merchantMarketingPath || merchantStaffMemberPath || merchantFlashPricePath || merchantWalletPath) && body.success !== true) throw new Error('INVALID_RESPONSE')
     return body.data
   }
   private clear() {
     this.credential = null; this.currentSession = null; this.attempt = null; this.authCommand = null; this.authStep = 'idle'
-    // Unknown aftersale/verification/merchant-decision/refund-decision outcomes survive
-    // credential expiry and explicit logout. Their owner-bound slots remain inaccessible
+    // Unknown aftersale/verification/merchant-decision/refund-decision/wallet-withdrawal outcomes
+    // survive credential expiry and explicit logout. Their owner-bound slots remain inaccessible
     // until a fresh server session is verified (and retrying must keep the terminal key
     // instead of minting a new one, 23号 §5.7).
-    this.pending = Object.fromEntries(Object.entries(this.pending).filter(([slot, saved]) => (slot.startsWith('aftersale:') || slot.startsWith('merchant-verify:') || slot.startsWith('merchant-confirm:') || slot.startsWith('merchant-reject:') || slot.startsWith('merchant-review-appeal:') || slot.startsWith('merchant-refund:')) && saved.command))
+    this.pending = Object.fromEntries(Object.entries(this.pending).filter(([slot, saved]) => (slot.startsWith('aftersale:') || slot.startsWith('merchant-verify:') || slot.startsWith('merchant-confirm:') || slot.startsWith('merchant-reject:') || slot.startsWith('merchant-review-appeal:') || slot.startsWith('merchant-refund:') || slot.startsWith('merchant-wallet-withdraw:')) && saved.command))
     this.writes.clear(); this.writeSpecs.clear()
     this.scope.replace(null)
     this.store.remove(SESSION_KEY)
@@ -439,6 +453,7 @@ export class ConsumerApi {
   if (/^\/api\/v1\/(c|merchant)\/aftersale/.test(spec.path) && !isAfterSalePath(spec)) throw new Error('INVALID_PATH')
   if (/^\/api\/v1\/merchant\/reviews(\/|$)/.test(spec.path) && !isMerchantReviewPath(spec)) throw new Error('INVALID_PATH')
   if (/^\/api\/v1\/merchant\/services\/[1-9][0-9]{0,18}\/flash-prices(\/|$)/.test(spec.path) && !isMerchantFlashPricePath(spec)) throw new Error('INVALID_PATH')
+  if (/^\/api\/v1\/merchant\/(wallet|settlement)(\/|$)/.test(spec.path) && !isMerchantWalletPath(spec)) throw new Error('INVALID_PATH')
     const ticket = this.scope.capture()
     if (!this.credential || !this.currentSession || this.currentSession.userId !== ticket.context.userId) throw new ApiError('COMMON_UNAUTHORIZED', 401)
     const merchantRequest = spec.path.startsWith('/api/v1/merchant/')
@@ -508,7 +523,8 @@ export class ConsumerApi {
       if (merchantStaffMemberPath && (!ticket.context.storeId
         || spec.data?.merchantId !== ticket.context.merchantId
         || spec.data?.storeId !== ticket.context.storeId)) throw new Error('WORKSPACE_PATH_MISMATCH')
-      const targetFree = spec.path === '/api/v1/merchant/service-categories' || afterSalePath && spec.path !== '/api/v1/merchant/aftersales' || verificationPath || merchantOrderAction || merchantRefundDecision || merchantFlashPricePath
+      const merchantWalletPath = isMerchantWalletPath(spec)
+      const targetFree = spec.path === '/api/v1/merchant/service-categories' || afterSalePath && spec.path !== '/api/v1/merchant/aftersales' || verificationPath || merchantOrderAction || merchantRefundDecision || merchantFlashPricePath || merchantWalletPath
       if (!targetFree && spec.data?.merchantId !== ticket.context.merchantId) throw new Error('WORKSPACE_PATH_MISMATCH')
     } else if (ticket.context.workspace !== 'consumer'
       && !isStaffInvitationPath(spec.path) && !isNotificationInboxPath(spec.path)) throw new Error('WORKSPACE_PATH_MISMATCH')

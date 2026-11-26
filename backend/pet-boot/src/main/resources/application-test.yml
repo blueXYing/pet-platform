@@ -1,9 +1,14 @@
 # ==============================================================================
-# 测试 / SIT 环境非敏感配置（SPRING_PROFILES_ACTIVE=test）
+# 测试环境非敏感配置（SPRING_PROFILES_ACTIVE=test）
 # ------------------------------------------------------------------------------
-# 与 dev / prod 装配完全一致的业务能力；对接拉卡拉 SIT 通道，开启 DEMO 支付联调。
-# 注意：本文件面向部署测试环境（SIT），自动化单测不会激活 test profile。
+# 与 dev / prod 装配完全一致的业务能力；拉卡拉默认对接 PRODUCTION 网关（通过环境变量
+# 注入测试商户/测试证书，正式上线时替换为正式商户/正式证书），禁止 HTTP 素材与 DEMO。
+# 注意：本文件面向部署测试环境，自动化单测不会激活 test profile。
 # ==============================================================================
+
+spring:
+  config:
+    import: classpath:aftersale-catalog.yml
 
 pet:
   auth:
@@ -13,15 +18,20 @@ pet:
       enabled: true
   private-assets:
     enabled: true
+  merchant:
+    application:
+      open-cities:
+        - code: chengdu
+          name: 成都
   payment:
     enabled: true
     dispatch:
-      environment: SIT
+      environment: ${LAKALA_ENV:PRODUCTION}
     lakala:
-      settle-type: 1
+      settle-type: ${LAKALA_SETTLE_TYPE:1}
     center:
       demo:
-        enabled: true
+        enabled: false
   marketing:
     asset:
       allow-http: false

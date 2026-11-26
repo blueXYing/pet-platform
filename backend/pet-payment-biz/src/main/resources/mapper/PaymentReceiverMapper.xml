@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- Contract 80 / V40 split-receiver tables. Matched by PaymentMybatis classpath*:mapper/Payment*Mapper.xml. -->
+<mapper namespace="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentReceiverMapper">
+
+  <sql id="accountColumns">
+    id,merchant_id,receiver_name,receiver_type,acct_name,acct_type_code,acct_certificate_type,
+    acct_open_bank_code,acct_open_bank_name,acct_clear_bank_code,
+    license_name,legal_person_name,legal_person_cert_type,
+    acct_no_cipher,acct_cert_no_cipher,contact_mobile_cipher,license_no_cipher,legal_cert_no_cipher,
+    acct_no_masked,acct_no_last4,acct_cert_no_masked,contact_mobile_masked,
+    license_no_masked,legal_cert_no_masked,
+    status,receiver_no,apply_id,settle_type,attachments_json,cooperation_asset_id,
+    reject_reason,last_channel_order_no,last_synced_at,version,created_at,updated_at
+  </sql>
+
+  <select id="selectById" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentReceiverMapper$ReceiverAccountRow">
+    SELECT <include refid="accountColumns"/> FROM settlement_receiver_account WHERE id=#{id}
+  </select>
+
+  <select id="selectByIdForUpdate" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentReceiverMapper$ReceiverAccountRow">
+    SELECT <include refid="accountColumns"/> FROM settlement_receiver_account WHERE id=#{id} FOR UPDATE
+  </select>
+
+  <select id="selectByMerchantId" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentReceiverMapper$ReceiverAccountRow">
+    SELECT <include refid="accountColumns"/> FROM settlement_receiver_account WHERE merchant_id=#{merchantId}
+  </select>
+
+  <select id="selectByMerchantIdForUpdate" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentReceiverMapper$ReceiverAccountRow">
+    SELECT <include refid="accountColumns"/> FROM settlement_receiver_account WHERE merchant_id=#{merchantId} FOR UPDATE
+  </select>
+
+  <select id="selectByReceiverNo" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentReceiverMapper$ReceiverAccountRow">
+    SELECT <include refid="accountColumns"/> FROM settlement_receiver_account WHERE receiver_no=#{receiverNo}
+  </select>
+
+  <select id="selectByApplyId" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentReceiverMapper$ReceiverAccountRow">
+    SELECT <include refid="accountColumns"/> FROM settlement_receiver_account WHERE apply_id=#{applyId}
+  </select>
+
+  <select id="selectActiveByMerchantId" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentReceiverMapper$ReceiverAccountRow">
+    SELECT <include refid="accountColumns"/>
+    FROM settlement_receiver_account
+    WHERE merchant_id=#{merchantId}
+      AND status='ACTIVE'
+      AND receiver_no IS NOT NULL
+      AND receiver_no &lt;&gt; ''
+  </select>
+
+  <select id="selectStuckBindApplyingAccounts" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentReceiverMapper$ReceiverAccountRow">
+    SELECT <include refid="accountColumns"/>
+    FROM settlement_receiver_account
+    WHERE status='BIND_APPLYING'
+      AND apply_id IS NOT NULL
+      AND apply_id &lt;&gt; ''
+      AND updated_at &lt;= #{cutoff}
+    ORDER BY updated_at ASC, id ASC
+    LIMIT #{limit}
+  </select>
+
+  <sql id="listAccountFilter">
+    <where>
+      <if test="merchantId != null">AND merchant_id=#{merchantId}</if>
+      <if test="status != null">AND status=#{status}</if>
+    </where>
+  </sql>
+
+  <select id="listAccounts" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentReceiverMapper$ReceiverAccountRow">
+    SELECT <include refid="accountColumns"/>
+    FROM settlement_receiver_account
+    <include refid="listAccountFilter"/>
+    ORDER BY updated_at DESC, id DESC
+    LIMIT #{limit} OFFSET #{offset}
+  </select>
+
+  <select id="countAccounts" resultType="long">
+    SELECT COUNT(*) FROM settlement_receiver_account
+    <include refid="listAccountFilter"/>
+  </select>
+
+  <insert id="insertAccount">
+    INSERT INTO settlement_receiver_account(
+      id,merchant_id,receiver_name,receiver_type,acct_name,acct_type_code,acct_certificate_type,
+      acct_open_bank_code,acct_open_bank_name,acct_clear_bank_code,
+      license_name,legal_person_name,legal_person_cert_type,
+      acct_no_cipher,acct_cert_no_cipher,contact_mobile_cipher,license_no_cipher,legal_cert_no_cipher,
+      acct_no_masked,acct_no_last4,acct_cert_no_masked,contact_mobile_masked,
+      license_no_masked,legal_cert_no_masked,
+      status,receiver_no,apply_id,settle_type,attachments_json,cooperation_asset_id,
+      reject_reason,last_channel_order_no,last_synced_at,version,created_at,updated_at)
+    VALUES(
+      #{id},#{merchantId},#{receiverName},#{receiverType},#{acctName},#{acctTypeCode},#{acctCertificateType},
+      #{acctOpenBankCode},#{acctOpenBankName},#{acctClearBankCode},
+      #{licenseName},#{legalPersonName},#{legalPersonCertType},
+      #{acctNoCipher},#{acctCertNoCipher},#{contactMobileCipher},#{licenseNoCipher},#{legalCertNoCipher},
+      #{acctNoMasked},#{acctNoLast4},#{acctCertNoMasked},#{contactMobileMasked},
+      #{licenseNoMasked},#{legalCertNoMasked},
+      #{status},#{receiverNo},#{applyId},'01',#{attachmentsJson},#{cooperationAssetId},
+      #{rejectReason},#{lastChannelOrderNo},#{lastSyncedAt},0,#{now},#{now})
+  </insert>
+
+  <update id="updateAccount">
+    UPDATE settlement_receiver_account
+    SET receiver_name=#{receiverName},
+        receiver_type=#{receiverType},
+        acct_name=#{acctName},
+        acct_type_code=#{acctTypeCode},
+        acct_certificate_type=#{acctCertificateType},
+        acct_open_bank_code=#{acctOpenBankCode},
+        acct_open_bank_name=#{acctOpenBankName},
+        acct_clear_bank_code=#{acctClearBankCode},
+        license_name=#{licenseName},
+        legal_person_name=#{legalPersonName},
+        legal_person_cert_type=#{legalPersonCertType},
+        acct_no_cipher=#{acctNoCipher},
+        acct_cert_no_cipher=#{acctCertNoCipher},
+        contact_mobile_cipher=#{contactMobileCipher},
+        license_no_cipher=#{licenseNoCipher},
+        legal_cert_no_cipher=#{legalCertNoCipher},
+        acct_no_masked=#{acctNoMasked},
+        acct_no_last4=#{acctNoLast4},
+        acct_cert_no_masked=#{acctCertNoMasked},
+        contact_mobile_masked=#{contactMobileMasked},
+        license_no_masked=#{licenseNoMasked},
+        legal_cert_no_masked=#{legalCertNoMasked},
+        status=#{status},
+        settle_type='01',
+        attachments_json=#{attachmentsJson},
+        reject_reason=#{rejectReason},
+        last_channel_order_no=#{lastChannelOrderNo},
+        last_synced_at=#{lastSyncedAt},
+        version=version+1,
+        updated_at=#{now}
+    WHERE id=#{id} AND version=#{version}
+  </update>
+
+  <update id="updateAccountState">
+    UPDATE settlement_receiver_account
+    SET status=#{status},
+        receiver_no=#{receiverNo},
+        apply_id=#{applyId},
+        cooperation_asset_id=#{cooperationAssetId},
+        reject_reason=#{rejectReason},
+        last_channel_order_no=#{lastChannelOrderNo},
+        last_synced_at=#{lastSyncedAt},
+        version=version+1,
+        updated_at=#{now}
+    WHERE id=#{id} AND version=#{version}
+  </update>
+
+  <sql id="auditColumns">
+    id,merchant_id,receiver_account_id,action_type,request_key,request_fingerprint,
+    operator_type,operator_id,reason,detail_json,created_at
+  </sql>
+
+  <select id="selectAuditByRequestKeyForUpdate" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentReceiverMapper$ReceiverAuditRow">
+    SELECT <include refid="auditColumns"/>
+    FROM settlement_receiver_audit
+    WHERE request_key=#{requestKey}
+    FOR UPDATE
+  </select>
+
+  <insert id="insertAudit">
+    INSERT INTO settlement_receiver_audit(
+      id,merchant_id,receiver_account_id,action_type,request_key,request_fingerprint,
+      operator_type,operator_id,reason,detail_json,created_at)
+    VALUES(
+      #{id},#{merchantId},#{receiverAccountId},#{actionType},
+      #{requestKey,jdbcType=VARBINARY},#{requestFingerprint},
+      #{operatorType},#{operatorId},#{reason},#{detailJson},#{now})
+  </insert>
+
+  <select id="listAuditsByMerchant" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentReceiverMapper$ReceiverAuditRow">
+    SELECT <include refid="auditColumns"/>
+    FROM settlement_receiver_audit
+    WHERE merchant_id=#{merchantId}
+    ORDER BY created_at ASC, id ASC
+  </select>
+</mapper>

@@ -371,7 +371,7 @@ public final class PaymentCenterService implements PaymentCenterApi {
         try { row = store.center.selectCenterByBiz(query.bizType(), query.bizNo()); }
         catch (RuntimeException failure) { throw unavailable(); }
         // Not found and somebody else's payment are indistinguishable to a USER.
-        if (row == null || !row.isCenter() || (actor != 0L && !Objects.equals(row.userId(), actor)))
+        if (row == null || !row.isReadableBizRow() || (actor != 0L && !Objects.equals(row.userId(), actor)))
             throw new ApiException(CommonApiCodes.NOT_FOUND, "payment center payment not found");
         return new CenterPaymentView(Long.toString(row.id()), Long.toString(row.no()), row.bizType(), row.bizNo(),
                 row.amount(), row.currency(), row.status(), row.paidAmount(),

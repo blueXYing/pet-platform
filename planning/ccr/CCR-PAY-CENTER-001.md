@@ -197,12 +197,18 @@ Outbox 投递 MQ，延迟消息唤醒查询任务。数据库状态仍为准，�
 
 每阶段独立 PR，开关默认关闭；不授权合并、生产迁移或启用。
 
-## 13. 渠道文档核实结果（2026-11-04，本地资料 `planning/local/lakala/`）
+## 13. 渠道文档核实结果（2026-11-04 初核；2026-11-25 统一归档至 `C:\Users\Administrator\Desktop\拉卡拉文档`）
+
+> **跨分支/跨 worktree 统一文档位置**：原 `planning/local/lakala/` 资料及后续补充 PDF 已统一归档到本机共享目录 `C:\Users\Administrator\Desktop\拉卡拉文档`（含索引 `README.md`，不入 Git）。后续所有分支/Agent 核对拉卡拉接口字段、报文格式、错误码与 SDK 字段参考时，一律以此目录为准。
 
 ### 13.1 已核实
 
 | 接口 | 结论 | 对设计的影响 |
 |---|---|---|
+| 1111 聚合扫码交易查询 `/api/v3/labs/query/tradequery`（2026-11-25 补核） | 响应含 `log_no`（String 14，M，即 `trade_no` 后 14 位）、`trade_no`（String 32，前 8 位为日期如 `20210907`）、`trade_req_date`（String 8，M，`yyyyMMdd`）、`trade_time`（String 14，C，`yyyyMMddHHmmss`）；**无 `log_date` 字段** | **关键发现**：阶段 1 `LakalaProtocol` 当前把 `log_no` 与响应字段 `log_date` 成对强绑，会导致真实查单时两者均落 NULL；阶段 2 实施前须经契约修订确认 `log_date` 权威来源（`trade_req_date` / `trade_no` 前 8 位 / `trade_time` 前 8 位，以 1293/2396 的 `log_date` 定义及 SIT 实测为准） |
+| 1112 聚合扫码交易通知（2026-11-25 补核） | 通知报文含 `log_no`（String 14，M）、`trade_no`（String 32，M）、`trade_req_date`（String 8，O）、`trade_time`（String 14，C）；**无 `log_date` 字段**；商户应答须返回 `{"code":"SUCCESS","message":"执行成功"}` | 同 1111；支付回调 HTTP 应答体按该格式实现 |
+| 1879 分账结果列表查询 `/api/v3/sacs/queryResultList`（2026-11-25 补核） | 查询条件 5 选 1（`out_separate_no` / `separate_no` / `log_no` / `start_date+end_date+merchant_no` / `start_date+end_date+lkl_org_no`）；日期跨度 ≤7 天；`page_size ≤ 50`；明细 `datas` 含 `merchant_no`/`out_separate_no`/`separate_no`/`log_no`/`amt`/`separate_date`/`cmd_type`/`recv_no_list`/`fail_reason`/`status`/`front_rule_id`/`actual_amt`/`total_fee_amt` | 阶段 6 日对账按单日或 ≤7 天分页拉取，核对 `amt`/`actual_amt`/`total_fee_amt`/`status` |
+| 1877 分账明细查询 `/api/v3/sacs/queryDetail`（2026-11-25 补核） | 按 `merchant_no`/`recv_no`/`cmd_type`/`separate_no`/`out_separate_no`/`log_no`/`start_date`～`end_date`（跨度 ≤30 天）、`page_no`/`page_size`（≤50）查询；明细 `datas` 含 `merchant_no`/`separate_no`/`out_separate_no`/`merchant_name`/`cmd_type`/`recv_no`/`amt`/`log_no`/`log_date`/`status`/`finish_date`/`request_time`/`front_rule_id`/`actual_amt`/`fee_amt`/`remark` | 阶段 6 按接收方或单笔明细对账，核对单笔接收方 `actual_amt`/`fee_amt`/`finish_date` |
 | 1293 订单分账 `/api/v3/sacs/separate` | 异步；同步响应 `code=SACS0000` 且 `status=PROCESSING/ACCEPTED`；文档建议发出后 ≥15 秒再查询 | 分账查询退避首档改为 15s（15s/1m/5m/15m/1h/6h） |
 | 2396 可分账金额 `/api/v3/sacs/queryAmt` | 返回 `total_separate_amt`、`can_separate_amt`（分） | 分账前先查，实分金额以它为上限 |
 | 1297 分账结果通知 | `cmd_type` = SEPARATE/CANCEL/FALLBACK；`status`/`final_status`；应答必须返回 `code=SUCCESS`，否则重复通知 | 一个回调入口处理分账、撤销、回退三类 |
@@ -239,3 +245,23 @@ Outbox 投递 MQ，延迟消息唤醒查询任务。数据库状态仍为准，�
 | 渠道时间时区（`LAKALA_CHANNEL_TIMEZONE`） | 向拉卡拉确认 |
 | 商家钱包是否展示平台补贴待结算 | 默认不展示 |
 | 分账合作协议模板 | 向拉卡拉客户经理索取 |
+
+## 14. 2026-11-26 架构修订（模式 A：商家独立收单路由与反向分账）
+
+依据 2026-11-26 产品负责人裁决（见 [40 号裁决补充 §10](../../docs/01-prd/40-支付中心订单分账与提现裁决补充-v1.0.md#10-2026-11-26-人工裁决修订模式-a商家独立收单--分账给平台接收方)）：
+
+1. **Schema 增量（`V43__payment_merchant_acquiring.sql` / `83-Payment-Merchant-Acquiring-Schema-v0.1.sql`）**：
+   - `settlement_config` 新增成对可空列 `lakala_merchant_no VARCHAR(32)`、`lakala_term_no VARCHAR(32)`（含 `CHECK` 约束保证同空或同非空）及索引 `idx_settlement_config_lkl_merchant`；
+   - `settlement_config_audit` 新增 `before/after_lakala_merchant_no`、`before/after_lakala_term_no` 审计快照列。
+2. **收单路由（`DbMerchantPaymentBindings`）**：
+   - `PaymentMerchantBindings.require(merchantId, storeId)` 从 `settlement_config` 读取该商家启用的 `(lakala_merchant_no, lakala_term_no)` + 平台小程序 `sub_appid`；未配置或停用 fail-closed（不回退平台主体 `822651053990MW8`）；
+   - `requirePlatform()` 继续保留平台主体配置供非订单 DEMO 使用。
+3. **分账与回退（1293 / 2395）**：
+   - 2396/1293 以订单实际收单 `payment_order.merchant_no` 发起；`recv_datas` 中商家留存份额走 `recv_merchant_no = payment_order.merchant_no`，平台手续费份额（> 0 时）走 `recv_no = pet.payment.settlement.platform-receiver-no`（`LAKALA_PLATFORM_RECEIVER_NO`，支持 `SR...` 或 `82...` 平台自有商户号；自营同号时合并为单条 `recv_merchant_no`）；
+   - 若 `platformAmount > 0` 且 `LAKALA_PLATFORM_RECEIVER_NO` 未配置，结算单进入 `ON_HOLD`（`PLATFORM_RECEIVER_NOT_CONFIGURED`），绝不发出非法报文；
+   - 2395 回退按比例从平台接收方回退 `originSplit.platformAmount` 至收单商家；`platformAmount == 0` 时无需 2395 直接放行 1077 退款；
+   - 1296/1297 实收明细优先按 `recv_merchant_no == instr.merchantNo` 解析商家实收 `actual_merchant_amount`。
+4. **钱包提现（1269 / 1319）与日对账（1879 / 1877）**：
+   - 商家配置 `lakala_merchant_no` 时，1269/1319 使用 `merchantNo = lakala_merchant_no` + `payType="01"`（收款账户）；
+   - 1879/1877 日对账扫描 `settlement_config`（已配 `lakala_merchant_no`）与当日 `settlement_instruction` 去重商户号逐一执行并汇总。
+5. **配置约束（遵守 PR #234 单开关红线）**：不新增任何 `.enabled` 子开关，仅新增一个平台接收方编号参数 `pet.payment.settlement.platform-receiver-no`（环境变量 `LAKALA_PLATFORM_RECEIVER_NO`）。

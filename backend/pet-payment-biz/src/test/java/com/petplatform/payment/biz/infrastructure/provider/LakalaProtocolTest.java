@@ -129,7 +129,9 @@ class LakalaProtocolTest {
                 "OP123", at, "123456", "TERM1", "2100001", new BigDecimal("1.23"),
                 "宠物服务", "wx-sub-app", "sub-open-id", "127.0.0.1",
                 "https://example.test/notify", 9));
-        assertEquals("9", JSON.readTree(bounded.rawBody()).path("req_data")
+        JsonNode boundedReqData = JSON.readTree(bounded.rawBody()).path("req_data");
+        assertTrue(boundedReqData.path("timeout_express").isMissingNode());
+        assertEquals("9", boundedReqData.path("acc_busi_fields")
                 .path("timeout_express").asText());
         assertFalse(new LakalaProtocol.PreorderInput("OP123", at, "123456", "TERM1",
                 "2100001", new BigDecimal("1.23"), "宠物服务", "wx-sub-app",
@@ -187,6 +189,23 @@ class LakalaProtocolTest {
         assertThrows(ProtocolException.class, () -> LakalaProtocol.verifyResponse(
                 responseHeaders(close), (new String(close, StandardCharsets.UTF_8) + " ")
                         .getBytes(StandardCharsets.UTF_8), "app-1", "serial-1", keys.getPublic()));
+    }
+
+    @Test
+    void responseVerificationAcceptsCanonicalHexSerialWithoutLeadingZero() throws Exception {
+        byte[] body = "{\"code\":\"BBS00000\"}".getBytes(StandardCharsets.UTF_8);
+        String time = "1727499000", nonce = "AbCd12345678", wireSerial = "1752b7386f8";
+        Map<String, String> headers = Map.of(
+                "Lklapi-Appid", "OP10004396",
+                "Lklapi-Serial", wireSerial,
+                "Lklapi-Timestamp", time,
+                "Lklapi-Nonce", nonce,
+                "Lklapi-Signature", sign(concat("OP10004396\n" + wireSerial + "\n" + time + "\n" + nonce + "\n",
+                        body, "\n")));
+        LakalaProtocol.verifyResponse(
+                headers, body, "OP10004396", "01752B7386F8", keys.getPublic());
+        assertThrows(ProtocolException.class, () -> LakalaProtocol.verifyResponse(
+                headers, body, "OP10004396", "01752B7386F9", keys.getPublic()));
     }
 
     @Test

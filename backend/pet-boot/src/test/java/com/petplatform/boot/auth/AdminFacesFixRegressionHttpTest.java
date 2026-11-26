@@ -87,7 +87,9 @@ class AdminFacesFixRegressionHttpTest {
         Path paramKeyFile = Files.writeString(fixture.directory.resolve("param.key"),
                 Base64.getEncoder().encodeToString(key(37)));
         props.put("pet.payment.dispatch.parameter-key-path", paramKeyFile.toString());
+        props.put("pet.payment.receiver.aes-key-path", paramKeyFile.toString());
         props.put("pet.payment.dispatch.out-org-code", "QA-ORG");
+        props.put("pet.payment.settlement.org-code", "QA-ORG");
         props.put("pet.payment.dispatch.subject", "QA facesfix order");
         props.put("pet.payment.dispatch.request-ip", "127.0.0.1");
         props.put("pet.payment.dispatch.notify-url", "https://faces.example.invalid/notify");
@@ -130,6 +132,22 @@ class AdminFacesFixRegressionHttpTest {
                                 com.petplatform.payment.biz.application.PaymentChannel.class,
                                 () -> org.mockito.Mockito.mock(
                                         com.petplatform.payment.biz.application.PaymentChannel.class));
+                        beans.registerBean("facesFixSettlementChannel",
+                                com.petplatform.payment.biz.settlement.SettlementChannel.class,
+                                () -> org.mockito.Mockito.mock(
+                                        com.petplatform.payment.biz.settlement.SettlementChannel.class));
+                        beans.registerBean("facesFixReceiverChannel",
+                                com.petplatform.payment.biz.settlement.ReceiverChannel.class,
+                                () -> org.mockito.Mockito.mock(
+                                        com.petplatform.payment.biz.settlement.ReceiverChannel.class));
+                        beans.registerBean("facesFixWalletChannel",
+                                com.petplatform.payment.biz.settlement.WalletChannel.class,
+                                () -> org.mockito.Mockito.mock(
+                                        com.petplatform.payment.biz.settlement.WalletChannel.class));
+                        beans.registerBean("facesFixReconcileChannel",
+                                com.petplatform.payment.biz.settlement.SettlementReconcileChannel.class,
+                                () -> org.mockito.Mockito.mock(
+                                        com.petplatform.payment.biz.settlement.SettlementReconcileChannel.class));
                         beans.registerBean("facesFixRefundModeration",
                                 com.petplatform.refund.biz.application.RefundApplicationPorts.Moderation.class,
                                 () -> value -> new com.petplatform.refund.biz.application.RefundApplicationPorts.Approval(
@@ -475,7 +493,13 @@ class AdminFacesFixRegressionHttpTest {
                             "63-Admin-Trade-Disposition-Schema-v0.1.sql",
                             "60-Points-Task-Schema-v0.1.sql",
                             "62-Baike-Content-Schema-v0.1.sql",
-                            "75-Payment-Center-Schema-v0.1.sql")) {
+                            "75-Payment-Center-Schema-v0.1.sql",
+                            "78-Payment-Settlement-Schema-v0.1.sql",
+                            "79-Payment-Settlement-Fallback-Schema-v0.1.sql",
+                            "80-Payment-Receiver-Schema-v0.1.sql",
+                            "81-Payment-Wallet-Schema-v0.1.sql",
+                            "82-Payment-Reconcile-Schema-v0.1.sql",
+                            "83-Payment-Merchant-Acquiring-Schema-v0.1.sql")) {
                         ScriptUtils.executeSqlScript(connection, new FileSystemResource(
                                 root.resolve("docs/03-database/" + schema)));
                     }

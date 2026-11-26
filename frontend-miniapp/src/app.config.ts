@@ -61,8 +61,10 @@ export default defineAppConfig({
       'pages/marketing/flash/index',
       'pages/marketing/flash/edit',
       // 2026-11-04 user-approved merchant bottom tab (Figma 149:926): the "mine" hub
-      // aggregates only already-approved M entries; funds/settings stay out of scope.
-      'pages/mine/index'] },
+      // aggregates only already-approved M entries; CCR-PAY-CENTER-001 Stage 7 adds
+      // OWNER-only wallet/withdrawal and read-only settlement receiver status pages.
+      'pages/mine/index',
+      'pages/wallet/index', 'pages/wallet/withdrawals', 'pages/wallet/receiver'] },
     // Contract 68 (2026-10-19 ruling): vaccine/deworming record add forms ride the pet-archive
     // subpackage (the two design frames 96:2580/96:3006), one compact line per the convention.
     { root: 'consumer/pages/pet-archive', pages: ['index', 'detail', 'form', 'vaccine-form', 'deworm-form'] },

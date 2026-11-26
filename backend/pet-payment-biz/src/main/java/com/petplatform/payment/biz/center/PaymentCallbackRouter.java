@@ -40,7 +40,10 @@ public final class PaymentCallbackRouter {
         catch (Exception failure) { throw unavailable(); }
         if (route == null) throw unavailable();
         if (route.bizType() != null && route.orderId() == null) return center.receiveNotification(headers, body);
-        if (route.bizType() == null && route.orderId() != null) return orders.receive(headers, body);
+        if (route.orderId() != null && (route.bizType() == null
+                || PaymentCenterBizPolicy.BOOKING_ORDER.equals(route.bizType()))) {
+            return orders.receive(headers, body);
+        }
         throw unavailable();
     }
 

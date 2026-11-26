@@ -1,6 +1,5 @@
 package com.petplatform.payment.biz.application;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.petplatform.common.ApiException;
 import com.petplatform.common.CommandContext;
 import com.petplatform.common.CommonApiCodes;
@@ -25,7 +24,6 @@ import com.petplatform.schedule.api.protection.ScheduleCapacityGuardApi;
 import com.petplatform.user.api.dto.PaymentIdentity;
 import com.petplatform.user.api.query.PaymentIdentityApi;
 import java.math.BigDecimal;
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
@@ -37,15 +35,10 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
-import java.util.Arrays;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Objects;
-import javax.crypto.Cipher;
-import javax.crypto.Mac;
 import javax.crypto.SecretKey;
-import javax.crypto.spec.GCMParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
 import javax.sql.DataSource;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -55,7 +48,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 /** Durable PAYMENT dispatch and expiry coordination. Never performs network I/O in a DB transaction. */
 public final class PaymentDispatchService implements PaymentInitiationApi, PaymentExpiryCoordinationApi {
     private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
-    private static final ObjectMapper JSON = new ObjectMapper();
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final char[] NONCE_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".toCharArray();
     private final DataSource source;
@@ -67,6 +59,7 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
     private final PaymentChannel channel;
     private final PaymentNotificationService notifications;
     private final Settings settings;
+    private final PaymentParameterCipher cipher;
     private final Clock clock;
     private final PaymentFoundationStore payments;
     private final TransactionTemplate tx;
@@ -98,6 +91,11 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
         this.channel = Objects.requireNonNull(channel);
         this.notifications = Objects.requireNonNull(notifications);
         this.settings = Objects.requireNonNull(settings);
+        this.cipher = new PaymentParameterCipher(
+                settings.parameterKey(),
+                PaymentParameterCipher.ORDER_AAD_DOMAIN,
+                PaymentParameterCipher.ORDER_IDENTITY_DOMAIN,
+                "payment dispatch requires reconciliation");
         this.clock = Objects.requireNonNull(clock);
         this.payments = new PaymentFoundationStore(source);
         this.tx = new TransactionTemplate(new DataSourceTransactionManager(source));
@@ -295,10 +293,9 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
             return;
         }
         WechatPayParameters parameters = parameters(verified.result());
-        byte[] iv = new byte[12]; RANDOM.nextBytes(iv);
-        byte[] ciphertext = encrypt(payment, parameters, iv);
+        PaymentParameterCipher.Sealed sealed = cipher.encrypt(payment.id(), payment.no(), parameters);
         payments.mapper.saveParameters(PaymentFoundationStore.values(
-                "sha",verified.responseSha256(),"ciphertext",ciphertext,"iv",iv,
+                "sha",verified.responseSha256(),"ciphertext",sealed.ciphertext(),"iv",sealed.iv(),
                 "validUntil",validUntil,"paymentId",payment.id()));
         return;
     }
@@ -516,62 +513,15 @@ public final class PaymentDispatchService implements PaymentInitiationApi, Payme
                 result.packageValue(), result.signType(), result.paySign());
     }
 
-    private byte[] encrypt(PaymentFoundationStore.Row payment, WechatPayParameters value,
-            byte[] iv) {
-        try {
-            byte[] plain = JSON.writeValueAsBytes(value);
-            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-            cipher.init(Cipher.ENCRYPT_MODE, settings.parameterKey(), new GCMParameterSpec(128, iv));
-            cipher.updateAAD(aad(payment));
-            byte[] encrypted = cipher.doFinal(plain);
-            Arrays.fill(plain, (byte) 0);
-            if (encrypted.length > 2048) throw unavailable();
-            return encrypted;
-        } catch (ApiException known) { throw known; }
-        catch (Exception failed) { throw unavailable(); }
-    }
     private WechatPayParameters decrypt(PaymentFoundationStore.Row payment, Dispatch dispatch) {
-        try {
-            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-            cipher.init(Cipher.DECRYPT_MODE, settings.parameterKey(),
-                    new GCMParameterSpec(128, dispatch.parametersIv()));
-            cipher.updateAAD(aad(payment));
-            byte[] plain = cipher.doFinal(dispatch.parametersCiphertext());
-            var result = JSON.readValue(plain, WechatPayParameters.class);
-            Arrays.fill(plain, (byte) 0);
-            if (result == null || blank(result.paySign()) || blank(result.packageValue()))
-                throw unavailable();
-            return result;
-        } catch (ApiException known) { throw known; }
-        catch (Exception failed) { throw unavailable(); }
-    }
-    private static byte[] aad(PaymentFoundationStore.Row payment) {
-        return ("PAYMENT_PARAMETERS_V1:" + payment.id() + ":" + payment.no())
-                .getBytes(StandardCharsets.US_ASCII);
+        return cipher.decrypt(payment.id(), payment.no(), dispatch.parametersCiphertext(),
+                dispatch.parametersIv(), false);
     }
     private String identityHmac(PaymentIdentity identity) {
-        try {
-            byte[] key = settings.parameterKey().getEncoded();
-            Mac derive = Mac.getInstance("HmacSHA256");
-            derive.init(new SecretKeySpec(key, "HmacSHA256"));
-            byte[] separate = derive.doFinal("PAYMENT_IDENTITY_KEY_V1".getBytes(StandardCharsets.US_ASCII));
-            Arrays.fill(key, (byte) 0);
-            Mac mac = Mac.getInstance("HmacSHA256");
-            mac.init(new SecretKeySpec(separate, "HmacSHA256"));
-            Arrays.fill(separate, (byte) 0);
-            byte[] app = identity.appId().getBytes(StandardCharsets.UTF_8);
-            byte[] open = identity.openId().getBytes(StandardCharsets.UTF_8);
-            mac.update(ByteBuffer.allocate(4).putInt(app.length).array());
-            mac.update(app);
-            mac.update(ByteBuffer.allocate(4).putInt(open.length).array());
-            mac.update(open);
-            return HexFormat.of().formatHex(mac.doFinal());
-        } catch (Exception failed) { throw unavailable(); }
+        return cipher.identityHmac(identity);
     }
-
     private static boolean constantEqual(String left, String right) {
-        return left != null && right != null && MessageDigest.isEqual(
-                left.getBytes(StandardCharsets.US_ASCII), right.getBytes(StandardCharsets.US_ASCII));
+        return PaymentParameterCipher.constantEqual(left, right);
     }
     private static boolean digest(String value) {
         return value != null && value.matches("[0-9a-f]{64}");

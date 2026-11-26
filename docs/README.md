@@ -12,6 +12,7 @@
 | Event/Scheduler | 05-events/08事件v0.6、06-scheduler/09调度重试补偿v0.5 |
 | 测试 | 07-testing/14全链路、15并发故障、16发布门禁、21前端与小程序验收补充 |
 | 协作 | 08-engineering/18与19、根AGENTS/WORK_EXECUTION_PROTOCOL、repository-policy.md |
+| 支付渠道本地资料 | 支付中心裁决见 [40号裁决补充](01-prd/40-支付中心订单分账与提现裁决补充-v1.0.md) 与 `planning/ccr/CCR-PAY-CENTER-001.md`；拉卡拉原始接口 PDF/Word/SDK 参考统一归档于本机共享目录 `C:\Users\Administrator\Desktop\拉卡拉文档`（不入 Git，跨分支/worktree 共用，见该目录 `README.md`） |
 
 上述22份编号资料的原始SHA-256见 `08-engineering/evidence/GOV-001/original-sha256.json`（同时覆盖全部430份导入文件）。旧MANIFEST.csv及BOOTSTRAP_STATS.json作为历史资料保留，不能当作本次新增文件的实时清单。
 

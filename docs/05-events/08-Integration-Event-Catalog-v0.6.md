@@ -566,3 +566,19 @@ public record PaymentCenterSucceededPayload(
 - payload 不含 openid、商户号、`log_no`/`log_date`、原始报文或签名。
 - 消费者按 `bizType` 过滤，只处理自己的类型；必须在消费日志同一事务内调用 `PaymentCenterFactsApi.requireSucceeded` 读取权威事实，事件本身不是成功证明。
 - 阶段1消费者：`payment-demo-confirm`（`DemoPaymentConfirmConsumer`，开关 `pet.payment.center.demo.enabled`，默认关闭）。非 DEMO 类型仅记录消费（NOOP）。DEMO 关闭时无消费者，事件滞留 outbox（OutboxDispatcher 对无消费者事件只释放不丢弃）。
+
+## SettlementSplitSucceededEvent.v1 / SettlementSplitFailedEvent.v1（CCR-PAY-CENTER-001 阶段2，78号契约 §6，待审批）
+
+状态：随支付中心阶段 2 实现登记（`pet.payment.settlement.enabled` 默认关闭）。由 `PAYMENT` 域 `SettlementReceiptWriter` 在确认拉卡拉 1296 查询或 1297 通知终态的同一本地事务内经 Transactional Outbox 唯一发布（`aggregateType=SETTLEMENT`、`aggregateId=settlementOrderId`、`eventVersion=1`、`eventId=settlement_instruction.result_event_id`）。
+
+- `SettlementSplitSucceededPayload`：`settlementOrderId`、`instructionId`、`paymentId`、`orderId`（可空）、`bizType`、`bizNo`、`merchantId`、`outSeparateNo`、`separateNo`、`splitAmount`、`actualMerchantAmount`、`channelSplitFee`、`platformSubsidyDue`、`settledAt`（UTC 毫秒 ISO-8601）。
+- `SettlementSplitFailedPayload`：`settlementOrderId`、`instructionId`、`paymentId`、`orderId`（可空）、`bizType`、`bizNo`、`merchantId`、`outSeparateNo`、`separateNo`（可空）、`splitAmount`、`reasonCode`、`reasonDetail`、`failedAt`（UTC 毫秒 ISO-8601）。
+- 通知与查单竞争由 `settlement_order`/`settlement_instruction` 行锁、回执摘要去重与 `result_event_id` 唯一约束保证至多发布一次；payload 不含敏感密钥、银行卡/证件原文或原始签名报文。
+
+## WithdrawalSucceededEvent.v1 / WithdrawalFailedEvent.v1（CCR-PAY-CENTER-001 阶段5，80号契约，待审批）
+
+状态：随支付中心阶段 5 钱包与提现契约冻结登记（`pet.payment.wallet.enabled` 默认关闭）。由 `PAYMENT` 域提现回执写入器在确认拉卡拉 1271 查单或 1272 通知终态的同一本地事务内经 Transactional Outbox 唯一发布（`aggregateType=WITHDRAWAL`、`aggregateId=withdrawalId`、`eventVersion=1`、`eventId=withdrawal_order.result_event_id`）。
+
+- `WithdrawalSucceededPayload`：`withdrawalId`、`merOrderNo`、`merchantId`、`receiverNo`、`amount`、`feeAmount`、`netAmount`、`drawJnl`、`succeededAt`（UTC 毫秒 ISO-8601）。
+- `WithdrawalFailedPayload`：`withdrawalId`、`merOrderNo`、`merchantId`、`receiverNo`、`amount`、`drawJnl`（可空）、`failReason`、`failedAt`（UTC 毫秒 ISO-8601）。
+- 通知与查单竞争由 `withdrawal_order` 行锁、回执摘要去重与 `result_event_id` 唯一约束保证至多发布一次；payload 不含卡号/身份证/手机号明文。

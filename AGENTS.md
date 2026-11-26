@@ -58,3 +58,12 @@ V1单运营、无内部双人审批/复核；运营编辑获权直接发布；�
 
 ## 已批准MFA裁决
 V1取消额外MFA认证及以MFA作为高权限动作门禁；普通登录、手机号校验/找回证明、后端RBAC和审计不因此取消。执行SSOT §25及docs/01-prd/24-取消MFA人工裁决补充-v1.0.md，覆盖原PRD/草案中的MFA条款。
+
+## 本地固定端口拓扑与启动约定（所有 Agent 强制统一）
+禁止任何 Agent 自行另起临时端口或更改默认端口；所有本地启动、联调与穿透配置必须遵循下表：
+- `127.0.0.1:8090`：本机统一 Nginx 反向代理入口（NATAPP 等公网 HTTPS 隧道唯一指向端口；`/api/**` 与 `/actuator/health` 转发至 `8080`，`/` 托管 `frontend-admin/dist`，运营端登录两条 attempt GET 自动按同源规则补发 `Origin`；配置模板见 `ops/nginx/pet-platform-local.conf`）；
+- `127.0.0.1:8080`：后端 `pet-boot` 唯一 HTTP 端口（不直接暴露给公网隧道）；
+- `127.0.0.1:5173`：运营端 `frontend-admin` Vite 开发热更新端口（仅开发热更新使用）；
+- `127.0.0.1:4173` / `4174`：运营端 Playwright 自动化测试专用保留端口（禁止手动占用）；
+- `127.0.0.1:3306` / `6379`：本机 MySQL 8 / Redis；
+- 公网联调域名（如 NATAPP HTTPS 域名）仅通过宿主机环境变量 `ADMIN_AUTH_ORIGIN`、`LAKALA_*_NOTIFY_URL`、`PET_C_API_ORIGIN` 注入，不硬编码进仓库代码。

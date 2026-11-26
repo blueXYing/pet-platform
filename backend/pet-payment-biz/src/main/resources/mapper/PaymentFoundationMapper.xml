@@ -31,9 +31,9 @@
     UPDATE payment_intent_request SET payment_id=#{paymentId} WHERE request_key=#{key}
   </update>
   <insert id="insertPayment">
-    INSERT INTO payment_order(id,payment_no,order_id,amount,status,channel,expire_at,created_at,updated_at,
+    INSERT INTO payment_order(id,payment_no,order_id,biz_type,biz_no,amount,status,channel,expire_at,created_at,updated_at,
       store_id,merchant_id,user_id,merchant_no,term_no,sub_appid,currency,dispatch_state,settle_type)
-    VALUES(#{id},#{paymentNo},#{orderId},#{amount},'INIT','LAKALA_WECHAT',#{expires},
+    VALUES(#{id},#{paymentNo},#{orderId},#{bizType},#{bizNo},#{amount},'INIT','LAKALA_WECHAT',#{expires},
       UTC_TIMESTAMP(3),UTC_TIMESTAMP(3),#{storeId},#{merchantId},#{userId},#{merchantNo},#{termNo},#{subAppId},'CNY','PREPARED',#{settleType})
   </insert>
   <insert id="insertPreparedDispatch">

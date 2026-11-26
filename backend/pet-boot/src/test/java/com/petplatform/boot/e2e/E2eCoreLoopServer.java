@@ -382,6 +382,22 @@ public final class E2eCoreLoopServer {
                     });
                 beans.registerBean("e2ePaymentChannel", PaymentChannel.class,
                     () -> sandbox.channel());
+                beans.registerBean("e2eSettlementChannel",
+                    com.petplatform.payment.biz.settlement.SettlementChannel.class,
+                    () -> org.mockito.Mockito.mock(
+                        com.petplatform.payment.biz.settlement.SettlementChannel.class));
+                beans.registerBean("e2eReceiverChannel",
+                    com.petplatform.payment.biz.settlement.ReceiverChannel.class,
+                    () -> org.mockito.Mockito.mock(
+                        com.petplatform.payment.biz.settlement.ReceiverChannel.class));
+                beans.registerBean("e2eWalletChannel",
+                    com.petplatform.payment.biz.settlement.WalletChannel.class,
+                    () -> org.mockito.Mockito.mock(
+                        com.petplatform.payment.biz.settlement.WalletChannel.class));
+                beans.registerBean("e2eReconcileChannel",
+                    com.petplatform.payment.biz.settlement.SettlementReconcileChannel.class,
+                    () -> org.mockito.Mockito.mock(
+                        com.petplatform.payment.biz.settlement.SettlementReconcileChannel.class));
                 beans.registerBean("e2eReceiptVerifier", PaymentReceiptVerifier.class,
                     () -> sandbox.verifier());
                 beans.registerBean("e2eRefundChannel", PaymentRefundChannel.class,
@@ -511,7 +527,9 @@ public final class E2eCoreLoopServer {
                   "--pet.payment.enabled=true",
                   "--pet.payment.lakala.channel-time-zone=Asia/Shanghai",
                   "--pet.payment.dispatch.parameterKeyPath=" + parameterKeyFile,
+                  "--pet.payment.receiver.aes-key-path=" + parameterKeyFile,
                   "--pet.payment.dispatch.outOrgCode=E2E-ORG-001",
+                  "--pet.payment.settlement.org-code=E2E-ORG-001",
                   "--pet.payment.dispatch.subject=E2E宠物服务订单",
                   "--pet.payment.dispatch.requestIp=127.0.0.1",
                   "--pet.payment.dispatch.notify-url=https://e2e.example.invalid/notify",
@@ -1492,8 +1510,14 @@ public final class E2eCoreLoopServer {
         // CCR-MKT-001/002/003 marketing center + home blocks and CCR-COM-001 community.
         "63-Marketing-Storage-v0.1.sql",
         "64-Community-Storage-v0.1.sql",
-        // CCR-PAY-CENTER-001 stage 1: payment_order biz/settle/log columns (requires 40/41).
+        // CCR-PAY-CENTER-001 stages 1-8: payment center + settlement/fallback/receiver/wallet/reconcile.
         "75-Payment-Center-Schema-v0.1.sql",
+        "78-Payment-Settlement-Schema-v0.1.sql",
+        "79-Payment-Settlement-Fallback-Schema-v0.1.sql",
+        "80-Payment-Receiver-Schema-v0.1.sql",
+        "81-Payment-Wallet-Schema-v0.1.sql",
+        "82-Payment-Reconcile-Schema-v0.1.sql",
+        "83-Payment-Merchant-Acquiring-Schema-v0.1.sql",
         // CCR-SVC-FLASH-PRICE-001 (contract 77): service flash-price four tables. The
         // pet_order snapshot columns ride 06 itself (kept in sync there).
         "73-Service-Flash-Price-Schema-v0.1.sql"));

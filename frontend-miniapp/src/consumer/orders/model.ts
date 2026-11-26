@@ -65,6 +65,10 @@ export type OrderDetailView = Readonly<{
   // §3.7 联系电话增补（2026-10-19 裁决，PRD 5.1.17 唤起拨号）：商家业务电话，掩码展示 +
   // 完整号码拨号（仅详情读侧携带）；门店无电话/商家事实不可用时为 null（登记的不对称降级）。
   merchantContact: MerchantContact | null
+  // 77号 §6.5 闪购价格快照尾字段（CCR-SVC-FLASH-PRICE-001，详情读侧携带；列表项缺失按 null 读）。
+  priceSource: 'LIST' | 'FLASH' | null
+  originalPrice: string | null
+  flashDiscount: string | null
 }>
 
 /** §3.7 merchantContact 节：phoneMasked 展示、phone 拨号；两者可独立为 null（门店无电话）。 */
@@ -74,9 +78,9 @@ export type MerchantContact = Readonly<{ phoneMasked: string | null; phone: stri
 export type OrderPage = Readonly<{ items: readonly OrderDetailView[]; page: number; pageSize: number; total: number }>
 
 const invalid = (): never => { throw new Error('INVALID_RESPONSE') }
-/** OrderDetailData 全键集合（11号 schema）：exact-key 白名单。 */
-const orderDetailKeys = ['actions', 'afterSaleStatus', 'appointmentEnd', 'appointmentStart', 'displayStatus', 'merchantContact', 'orderId',
-  'orderNo', 'orderStage', 'orderVersion', 'payAmount', 'paymentStatus', 'refundApplicationStatus', 'refundStatus',
+/** OrderDetailData 全键集合（11号 schema + 77号 §6.5 闪购价格快照）：exact-key 白名单。 */
+const orderDetailKeys = ['actions', 'afterSaleStatus', 'appointmentEnd', 'appointmentStart', 'displayStatus', 'flashDiscount', 'merchantContact', 'orderId',
+  'orderNo', 'orderStage', 'orderVersion', 'originalPrice', 'payAmount', 'paymentStatus', 'priceSource', 'refundApplicationStatus', 'refundStatus',
   'serviceId', 'storeId', 'verifiedAt', 'verificationStatus']
 /** 严格 exact-key：只允许 OrderDetailData 键集合，未知键失败关闭（沿仓库惯例）。 */
 function exactObject(value: unknown): Record<string, any> {
@@ -159,6 +163,9 @@ export function decodeOrderDetail(value: unknown): OrderDetailView {
     storeId: optionalField(v, 'storeId', isIdText),
     orderVersion: optionalField(v, 'orderVersion', x => typeof x === 'string' && /^(0|[1-9][0-9]{0,18})(?![\s\S])/.test(x) ? x : invalid()),
     merchantContact: optionalField(v, 'merchantContact', decodeMerchantContact),
+    priceSource: optionalField(v, 'priceSource', x => oneOf(x, ['LIST', 'FLASH'] as const)),
+    originalPrice: optionalField(v, 'originalPrice', amount),
+    flashDiscount: optionalField(v, 'flashDiscount', amount),
   }
 }
 
@@ -328,7 +335,8 @@ type Fixture = (Partial<OrderDetailView> & Pick<OrderDetailView, 'orderId' | 'or
 const base = (over: Fixture): OrderDetailView => ({
   orderStage: null, paymentStatus: null, verificationStatus: null, refundApplicationStatus: null,
   refundStatus: null, afterSaleStatus: null, verifiedAt: null, actions: null,
-  serviceId: null, storeId: null, orderVersion: null, merchantContact: null, ...over,
+  serviceId: null, storeId: null, orderVersion: null, merchantContact: null,
+  priceSource: null, originalPrice: null, flashDiscount: null, ...over,
 })
 
 // 十个 displayStatus 全覆盖 + 一单一事实：核销码入口（PENDING_SERVICE+canShowVerificationCode）、

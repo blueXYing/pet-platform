@@ -18,6 +18,7 @@ spring:
     name: pet-platform
   config:
     # 本地开发可选加载唯一 git-ignored 的 .env.local；生产直接由进程环境变量注入
+    # 售后正式目录 classpath:aftersale-catalog.yml 由 dev/test/prod profile 显式导入，避免污染默认无 profile 单测
     import: optional:file:./.env.local[.properties],optional:file:../.env.local[.properties]
   datasource:
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:pet_platform}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
@@ -132,6 +133,7 @@ pet:
   refund:
     application:
       protection-key: ${REFUND_APPLICATION_PROTECTION_KEY:}
+      reason-codes: USER_REQUEST,SCHEDULE_CONFLICT,PLAN_CHANGED,SERVICE_ISSUE,OTHER
   aftersale:
     protection-key: ${AFTERSALE_PROTECTION_KEY:}
 
@@ -154,7 +156,7 @@ pet:
     lakala:
       notification-certificate-path: ${LAKALA_NOTIFY_CERT_PATH:}
       channel-time-zone: ${LAKALA_CHANNEL_TIMEZONE:Asia/Shanghai}
-      settle-type: 0
+      settle-type: ${LAKALA_SETTLE_TYPE:0}
       platform:
         merchant-no: ${LAKALA_MERCHANT_NO:}
         term-no: ${LAKALA_TERM_NO:}
@@ -164,3 +166,17 @@ pet:
         # 仅开发/测试环境按需开启；PRODUCTION 环境下 guard 强制拒绝启动
         enabled: false
         max-amount: 0.01
+    settlement:
+      # 跟随统一总开关 pet.payment.enabled，此处仅保留非开关参数
+      lowest-ratio: ${LAKALA_SPLIT_LOWEST_RATIO:0}
+      org-code: ${LAKALA_ORG_CODE:}
+      platform-receiver-no: ${LAKALA_PLATFORM_RECEIVER_NO:}
+      notify-url: ${LAKALA_SEPARATE_NOTIFY_URL:}
+    receiver:
+      aes-key-path: ${SETTLEMENT_RECEIVER_AES_KEY_PATH:}
+      ledger-notify-url: ${LAKALA_LEDGER_NOTIFY_URL:}
+    wallet:
+      withdraw-notify-url: ${LAKALA_WITHDRAW_NOTIFY_URL:}
+    reconcile:
+      daily-run-time: "03:00"
+      scan-interval-minutes: 5

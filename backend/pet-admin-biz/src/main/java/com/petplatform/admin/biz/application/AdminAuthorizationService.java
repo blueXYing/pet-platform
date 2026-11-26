@@ -97,7 +97,9 @@ public final class AdminAuthorizationService implements AdminAuthorizationQueryA
             || "community.report.read".equals(query.actionCode())
             // CCR-SVC-CAT-001 B-SVC-02 admin service category list entry check.
             || "service.category.read".equals(query.actionCode())
-            || "coupon.campaign.read".equals(query.actionCode()))
+            || "coupon.campaign.read".equals(query.actionCode())
+            // CCR-PAY-CENTER-001 (contract 80 §2): settlement & reconciliation read-only collection entry.
+            || "settlement.report.read".equals(query.actionCode()))
         || query.phase() != AdminActionCheckQuery.CheckPhase.READ_RESULT)
       throw AdminAuthFailure.invalid();
     return checkCurrent(

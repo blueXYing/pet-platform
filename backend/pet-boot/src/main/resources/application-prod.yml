@@ -5,6 +5,10 @@
 # 所有密钥、密码、证书路径统一由宿主机/容器环境变量注入，禁止写入本文件。
 # ==============================================================================
 
+spring:
+  config:
+    import: classpath:aftersale-catalog.yml
+
 pet:
   auth:
     admin:
@@ -14,12 +18,15 @@ pet:
       enabled: true
   private-assets:
     enabled: true
+  merchant:
+    application:
+      open-cities:
+        - code: chengdu
+          name: 成都
   payment:
     enabled: true
     dispatch:
       environment: PRODUCTION
-    lakala:
-      settle-type: 0
     center:
       demo:
         enabled: false

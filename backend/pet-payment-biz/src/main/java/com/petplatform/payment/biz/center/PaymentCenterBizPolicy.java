@@ -15,6 +15,8 @@ import java.util.regex.Pattern;
  */
 public final class PaymentCenterBizPolicy {
     public static final String DEMO = "DEMO";
+    /** Stage 8 unified bizType persisted on ORDER payment_order rows (biz_no = decimal orderId). */
+    public static final String BOOKING_ORDER = "BOOKING_ORDER";
     static final Duration MIN_REMAINING = Duration.ofMinutes(1);
     private static final Pattern BIZ_TYPE = Pattern.compile("[A-Z][A-Z0-9_]{0,31}");
     private static final Pattern BIZ_NO = Pattern.compile("[A-Za-z0-9_-]{1,64}");

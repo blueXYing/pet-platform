@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- Contract 80 / SQL82 Stage 6 reconcile tables + read-only subsidy report and scan queries. -->
+<mapper namespace="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentReconcileMapper">
+
+  <!-- ==================== reconcile_job_run ==================== -->
+
+  <sql id="jobRunColumns">
+    id,reconcile_date,merchant_no,status,channel_count,local_count,diff_count,
+    error_message,started_at,finished_at,created_at
+  </sql>
+
+  <select id="selectJobRunByDateAndMerchantForUpdate"
+          resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentReconcileMapper$JobRunRow">
+    SELECT <include refid="jobRunColumns"/>
+    FROM reconcile_job_run
+    WHERE reconcile_date=#{reconcileDate} AND merchant_no=#{merchantNo}
+    FOR UPDATE
+  </select>
+
+  <select id="selectJobRunById"
+          resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentReconcileMapper$JobRunRow">
+    SELECT <include refid="jobRunColumns"/>
+    FROM reconcile_job_run
+    WHERE id=#{id}
+  </select>
+
+  <insert id="insertJobRun">
+    INSERT INTO reconcile_job_run(
+      id,reconcile_date,merchant_no,status,channel_count,local_count,diff_count,
+      error_message,started_at,finished_at,created_at)
+    VALUES(
+      #{id},#{reconcileDate},#{merchantNo},'RUNNING',0,0,0,
+      NULL,#{now},NULL,#{now})
+  </insert>
+
+  <update id="restartJobRun">
+    UPDATE reconcile_job_run
+    SET status='RUNNING',channel_count=0,local_count=0,diff_count=0,
+        error_message=NULL,started_at=#{now},finished_at=NULL
+    WHERE id=#{id}
+  </update>
+
+  <update id="completeJobRun">
+    UPDATE reconcile_job_run
+    SET status='COMPLETED',channel_count=#{channelCount},local_count=#{localCount},
+        diff_count=#{diffCount},error_message=NULL,finished_at=#{now}
+    WHERE id=#{id}
+  </update>
+
+  <update id="failJobRun">
+    UPDATE reconcile_job_run
+    SET status='FAILED',error_message=#{errorMessage},finished_at=#{now}
+    WHERE id=#{id}
+  </update>
+
+  <!-- ==================== reconcile_diff ==================== -->
+
+  <sql id="diffColumns">
+    id,reconcile_date,diff_key,biz_type,diff_type,
+    settlement_order_id,instruction_id,out_separate_no,separate_no,merchant_id,
+    local_amount,channel_amount,local_fee_amount,channel_fee_amount,
+    local_status,channel_status,detail,status,
+    resolved_by_operator_id,resolve_note,resolved_at,version,created_at,updated_at
+  </sql>
+
+  <insert id="insertDiffIgnore">
+    INSERT INTO reconcile_diff(
+      id,reconcile_date,diff_key,biz_type,diff_type,
+      settlement_order_id,instruction_id,out_separate_no,separate_no,merchant_id,
+      local_amount,channel_amount,local_fee_amount,channel_fee_amount,
+      local_status,channel_status,detail,status,version,created_at,updated_at)
+    VALUES(
+      #{id},#{reconcileDate},#{diffKey},#{bizType},#{diffType},
+      #{settlementOrderId},#{instructionId},#{outSeparateNo},#{separateNo},#{merchantId},
+      #{localAmount},#{channelAmount},#{localFeeAmount},#{channelFeeAmount},
+      #{localStatus},#{channelStatus},#{detail},'OPEN',0,#{now},#{now})
+    ON DUPLICATE KEY UPDATE id=id
+  </insert>
+
+  <select id="selectDiffById"
+          resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentReconcileMapper$DiffRow">
+    SELECT <include refid="diffColumns"/> FROM reconcile_diff WHERE id=#{id}
+  </select>
+
+  <select id="selectDiffByIdForUpdate"
+          resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentReconcileMapper$DiffRow">
+    SELECT <include refid="diffColumns"/> FROM reconcile_diff WHERE id=#{id} FOR UPDATE
+  </select>
+
+  <select id="selectDiffByResolveRequestKeyForUpdate"
+          resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentReconcileMapper$DiffRow">
+    SELECT <include refid="diffColumns"/> FROM reconcile_diff WHERE resolve_request_key=#{resolveRequestKey} FOR UPDATE
+  </select>
+
+  <update id="resolveDiff">
+    UPDATE reconcile_diff
+    SET status='RESOLVED',
+        resolved_by_operator_id=#{operatorId},
+        resolve_request_key=#{resolveRequestKey},
+        resolve_note=#{resolveNote},
+        resolved_at=#{now},
+        version=version+1,
+        updated_at=#{now}
+    WHERE id=#{id} AND version=#{version} AND status='OPEN'
+  </update>
+
+  <sql id="diffFilterWhere">
+    <where>
+      <if test="reconcileDate != null">AND reconcile_date=#{reconcileDate}</if>
+      <if test="diffType != null">AND diff_type=#{diffType}</if>
+      <if test="status != null">AND status=#{status}</if>
+    </where>
+  </sql>
+
+  <select id="countDiffs" resultType="java.lang.Long">
+    SELECT COUNT(*) FROM reconcile_diff
+    <include refid="diffFilterWhere"/>
+  </select>
+
+  <select id="listDiffs"
+          resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentReconcileMapper$DiffRow">
+    SELECT <include refid="diffColumns"/> FROM reconcile_diff
+    <include refid="diffFilterWhere"/>
+    ORDER BY reconcile_date DESC, created_at DESC, id DESC
+    LIMIT #{limit} OFFSET #{offset}
+  </select>
+
+  <!-- ==================== Read-only Platform Subsidy Payable Report ==================== -->
+
+  <sql id="subsidyReportWhere">
+    WHERE platform_subsidy_due &gt; 0.00
+      AND status IN ('SPLIT_SUCCEEDED','REVERSING','PARTIALLY_REVERSED','REVERSED','REVERSE_FAILED')
+    <if test="merchantId != null">
+      AND merchant_id=#{merchantId}
+    </if>
+    <if test="fromAt != null">
+      AND updated_at &gt;= #{fromAt}
+    </if>
+    <if test="toAtExclusive != null">
+      AND updated_at &lt; #{toAtExclusive}
+    </if>
+  </sql>
+
+  <select id="selectSubsidyReportSummary"
+          resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentReconcileMapper$SubsidySummaryRow">
+    SELECT
+      COUNT(*) AS total_order_count,
+      COALESCE(SUM(merchant_share), 0.00) AS total_merchant_share,
+      COALESCE(SUM(COALESCE(split_amount, 0.00)), 0.00) AS total_split_amount,
+      COALESCE(SUM(platform_subsidy_due), 0.00) AS total_subsidy_due
+    FROM settlement_order
+    <include refid="subsidyReportWhere"/>
+  </select>
+
+  <select id="countSubsidyReportGroups" resultType="java.lang.Long">
+    SELECT COUNT(*) FROM (
+      SELECT merchant_id, DATE_FORMAT(updated_at, '%Y-%m') AS period
+      FROM settlement_order
+      <include refid="subsidyReportWhere"/>
+      GROUP BY merchant_id, DATE_FORMAT(updated_at, '%Y-%m')
+    ) AS grouped_subsidy
+  </select>
+
+  <select id="listSubsidyReportRows"
+          resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentReconcileMapper$SubsidyGroupRow">
+    SELECT
+      merchant_id,
+      DATE_FORMAT(updated_at, '%Y-%m') AS period,
+      COUNT(*) AS order_count,
+      COALESCE(SUM(paid_amount), 0.00) AS total_paid_amount,
+      COALESCE(SUM(merchant_share), 0.00) AS total_merchant_share,
+      COALESCE(SUM(COALESCE(split_amount, 0.00)), 0.00) AS total_split_amount,
+      COALESCE(SUM(reversed_amount), 0.00) AS total_reversed_amount,
+      COALESCE(SUM(platform_subsidy_due), 0.00) AS total_subsidy_due
+    FROM settlement_order
+    <include refid="subsidyReportWhere"/>
+    GROUP BY merchant_id, DATE_FORMAT(updated_at, '%Y-%m')
+    ORDER BY period DESC, merchant_id ASC
+    LIMIT #{limit} OFFSET #{offset}
+  </select>
+
+  <!-- ==================== Read-only Reconcile & Compensation Scans ==================== -->
+
+  <sql id="reconcileInstructionColumns">
+    id,settlement_order_id,merchant_id,instruction_type,out_separate_no,separate_no,
+    merchant_no,receiver_no,log_no,log_date,total_amount,merchant_amount,
+    actual_separate_amount,total_fee_amount,merchant_fee_amount,status,finish_date,sent_at,created_at
+  </sql>
+
+  <select id="selectDistinctReconcileMerchantNos" resultType="java.lang.String">
+    SELECT merchant_no FROM (
+      SELECT DISTINCT lakala_merchant_no AS merchant_no
+      FROM settlement_config
+      WHERE enabled=1 AND lakala_merchant_no IS NOT NULL AND lakala_merchant_no != ''
+      UNION
+      SELECT DISTINCT merchant_no
+      FROM settlement_instruction
+      WHERE (sent_at &gt;= #{dayStartUtc} AND sent_at &lt; #{dayEndUtcExclusive})
+         OR (sent_at IS NULL AND created_at &gt;= #{dayStartUtc} AND created_at &lt; #{dayEndUtcExclusive})
+         OR finish_date=#{reconcileDate}
+    ) AS active_merchants
+    ORDER BY merchant_no ASC
+  </select>
+
+  <select id="selectInstructionsForReconcileDate"
+          resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentReconcileMapper$ReconcileInstructionRow">
+    SELECT <include refid="reconcileInstructionColumns"/>
+    FROM settlement_instruction
+    WHERE merchant_no=#{merchantNo}
+      AND (
+        (sent_at &gt;= #{dayStartUtc} AND sent_at &lt; #{dayEndUtcExclusive})
+        OR (sent_at IS NULL AND created_at &gt;= #{dayStartUtc} AND created_at &lt; #{dayEndUtcExclusive})
+        OR finish_date=#{reconcileDate}
+      )
+    ORDER BY id ASC
+  </select>
+
+  <select id="selectInstructionByOutSeparateNo"
+          resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentReconcileMapper$ReconcileInstructionRow">
+    SELECT <include refid="reconcileInstructionColumns"/>
+    FROM settlement_instruction
+    WHERE out_separate_no=#{outSeparateNo}
+  </select>
+
+  <select id="selectInstructionBySeparateNo"
+          resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentReconcileMapper$ReconcileInstructionRow">
+    SELECT <include refid="reconcileInstructionColumns"/>
+    FROM settlement_instruction
+    WHERE separate_no=#{separateNo}
+  </select>
+
+  <select id="selectOverdueWaitingOrders"
+          resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentReconcileMapper$WaitingOrderScanRow">
+    SELECT id,status,eligible_at,due_schedule_round,updated_at
+    FROM settlement_order
+    WHERE status='WAITING'
+      AND eligible_at IS NOT NULL
+      AND eligible_at &lt;= #{cutoff}
+      AND due_schedule_round &gt; 0
+    ORDER BY eligible_at ASC, id ASC
+    LIMIT #{limit}
+  </select>
+
+  <select id="selectWaitingOrderByIdForUpdate"
+          resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentReconcileMapper$WaitingOrderScanRow">
+    SELECT id,status,eligible_at,due_schedule_round,updated_at
+    FROM settlement_order
+    WHERE id=#{id}
+    FOR UPDATE
+  </select>
+
+  <select id="selectStuckInstructions"
+          resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentReconcileMapper$StuckInstructionScanRow">
+    SELECT id,settlement_order_id,status,sent_at,created_at,updated_at
+    FROM settlement_instruction
+    WHERE status IN ('SENT','PROCESSING')
+      AND updated_at &lt;= #{cutoff}
+    ORDER BY updated_at ASC, id ASC
+    LIMIT #{limit}
+  </select>
+
+  <select id="selectStuckInstructionByIdForUpdate"
+          resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentReconcileMapper$StuckInstructionScanRow">
+    SELECT id,settlement_order_id,status,sent_at,created_at,updated_at
+    FROM settlement_instruction
+    WHERE id=#{id}
+    FOR UPDATE
+  </select>
+</mapper>

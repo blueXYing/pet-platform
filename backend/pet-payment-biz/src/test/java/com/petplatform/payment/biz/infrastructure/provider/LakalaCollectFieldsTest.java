@@ -155,6 +155,59 @@ class LakalaCollectFieldsTest {
         }
     }
 
+    @Test
+    void real1111And1112ResolveLogDateFromTradeReqDateOrTradeNoPrefix() throws Exception {
+        // Real 1111 sample shape: log_no + trade_req_date + trade_no (yyyyMMdd + log_no), no log_date.
+        byte[] query = ("{\"code\":\"BBS00000\",\"resp_data\":{\"merchant_no\":\"123456\","
+                + "\"out_trade_no\":\"2100001\",\"trade_no\":\"2021090766210003630077\","
+                + "\"log_no\":\"66210003630077\",\"trade_req_date\":\"20210907\","
+                + "\"trade_state\":\"SUCCESS\",\"total_amount\":\"123\",\"payer_amount\":\"120\","
+                + "\"trade_time\":\"20210907150327\",\"account_type\":\"WECHAT\"}}")
+                .getBytes(StandardCharsets.UTF_8);
+        QueryResult q = LakalaProtocol.verifyQueryResponse(responseHeaders(query), query,
+                "app-1", "serial-1", keys.getPublic(), EXPECTED);
+        assertTrue(q.isSuccess());
+        assertEquals("66210003630077", q.logNo());
+        assertEquals(LocalDate.of(2021, 9, 7), q.logDate());
+
+        // Real 1112 sample shape: log_no + trade_no (yyyyMMdd + log_no), neither log_date nor trade_req_date.
+        byte[] noticeBody = ("{\"merchant_no\":\"123456\",\"out_trade_no\":\"2100001\","
+                + "\"trade_no\":\"2022031566210203291925\",\"log_no\":\"66210203291925\","
+                + "\"trade_status\":\"SUCCESS\",\"total_amount\":\"123\",\"payer_amount\":\"120\","
+                + "\"trade_time\":\"20220315163808\",\"account_type\":\"WECHAT\"}")
+                .getBytes(StandardCharsets.UTF_8);
+        NotificationReceipt n = LakalaProtocol.verifyNotification(
+                noticeHeaders(noticeBody), noticeBody, keys.getPublic(), EXPECTED);
+        assertTrue(n.isSuccess());
+        assertEquals("66210203291925", n.logNo());
+        assertEquals(LocalDate.of(2022, 3, 15), n.logDate());
+
+        // Real production 32-digit trade_no shape: yyyyMMdd + 10-digit middle + 14-digit log_no.
+        byte[] prodNotice = ("{\"merchant_no\":\"123456\",\"out_trade_no\":\"2100001\","
+                + "\"trade_no\":\"20261124110113130266233000000001\",\"log_no\":\"66233000000001\","
+                + "\"trade_status\":\"SUCCESS\",\"total_amount\":\"123\",\"payer_amount\":\"120\","
+                + "\"trade_time\":\"20261124111257\",\"account_type\":\"WECHAT\"}")
+                .getBytes(StandardCharsets.UTF_8);
+        NotificationReceipt pn = LakalaProtocol.verifyNotification(
+                noticeHeaders(prodNotice), prodNotice, keys.getPublic(), EXPECTED);
+        assertTrue(pn.isSuccess());
+        assertEquals("66233000000001", pn.logNo());
+        assertEquals(LocalDate.of(2026, 11, 24), pn.logDate());
+
+        // Conflicting trade_req_date vs trade_no prefix fails safe to (null, null) without blocking SUCCESS.
+        byte[] conflict = ("{\"code\":\"BBS00000\",\"resp_data\":{\"merchant_no\":\"123456\","
+                + "\"out_trade_no\":\"2100001\",\"trade_no\":\"2021090766210003630077\","
+                + "\"log_no\":\"66210003630077\",\"trade_req_date\":\"20210908\","
+                + "\"trade_state\":\"SUCCESS\",\"total_amount\":\"123\",\"payer_amount\":\"120\","
+                + "\"trade_time\":\"20210907150327\",\"account_type\":\"WECHAT\"}}")
+                .getBytes(StandardCharsets.UTF_8);
+        QueryResult c = LakalaProtocol.verifyQueryResponse(responseHeaders(conflict), conflict,
+                "app-1", "serial-1", keys.getPublic(), EXPECTED);
+        assertTrue(c.isSuccess());
+        assertNull(c.logNo());
+        assertNull(c.logDate());
+    }
+
     // ---- query trace -------------------------------------------------------------------
 
     @Test

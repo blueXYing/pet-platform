@@ -37,7 +37,7 @@ public final class PaymentCenterFactsApiImpl implements PaymentCenterFactsApi {
                 || !holder.isSynchronizedWithTransaction()) throw unavailable();
         try {
             CenterRow r = store.center.selectCenterByBizForUpdate(bizType, bizNo);
-            if (r == null || !r.isCenter() || r.userId() == null || r.userId() <= 0
+            if (r == null || !r.isReadableBizRow() || r.userId() == null || r.userId() <= 0
                     || !"PAID".equals(r.status()) || !"OBSERVED".equals(r.dispatchState())
                     || !"CNY".equals(r.currency()) || !"LAKALA_WECHAT".equals(r.channel())
                     || r.tradeNo() == null || r.tradeNo().isBlank() || r.paidAmount() == null

@@ -16,15 +16,16 @@ import {
 import { paymentSlot, RealBookingRepository } from '../../booking/repository'
 import './booking.css'
 
-// 支付发起页（10号 §3.6）。设计源登记表 §4.3：原稿 690:4837「确认支付」含支付方式选择
-// （微信支付/支付宝）与 690:5424「完成支付-支付成功」，与契约冲突——§3.6 裁决 V1 小程序不
-// 展示支付方式选择（channel 客户端固定 WECHAT_MINI_PROGRAM），且支付渠道为无正式渠道参数的
-// 沙箱态（40号）：本页如实呈现 POST payments 契约回执（paymentId/paymentNo/channel/
-// wechatPayParameters），不虚构支付成功、不调起收银台，发起后引导回订单详情/列表查看状态。
-// 入口：下单成功回执（booking/create）或订单详情（未支付单 actions.canPay，§3.7 #123）。
-// 金额/订单信息来自 §3.7 订单详情只读投影；发起走幂等槽 order-pay:{orderId}（23号重放）。
-// ARCH-005 分工：页面不触碰订单事实字段，展示状态经 orders/model.orderStatusBadge 现成展示值。
+// 支付发起页（10号 §3.6 / 40 号裁决 §1 / CCR-PAY-CENTER-001 阶段 7）。
+// - V1 小程序不展示支付方式选择（channel 客户端固定 WECHAT_MINI_PROGRAM）；
+// - 真实模式调用 POST /api/v1/c/orders/{orderId}/payments 获取渠道支付参数后，调用微信原生
+//   Taro.requestPayment(...) 调起收银台；无论调起成功与否绝不本地虚构“已支付”态，支付终态一律以
+//   服务端订单详情异步回调/查单结果为准；
+// - preview=1 只读预览模式不调用 Taro.requestPayment，仅呈现样例回执；
+// - ARCH-005 分工：页面不触碰订单事实字段，展示状态经 orders/model.orderStatusBadge 现成展示值。
 type Phase = 'loading' | 'ready' | 'invalid' | 'missing' | 'expired' | 'load-error' | 'receipt'
+
+const REAL_PAYMENT_SUBMITTED_NOTICE = '微信支付已提交，正在确认订单支付结果，请前往订单详情查看最终状态。'
 
 export default function BookingPayPage() {
   const route = useRouter()
@@ -96,8 +97,33 @@ function PayScreen({ preview, scenario, orderId }: { preview: boolean; scenario:
     try {
       const paid = await scope.run(undefined, () => bookingRepository.pay(orderId))
       if (!mounted.current) return
-      receiptRef.current = true
-      setReceipt(paid); setPhase('receipt')
+      if (preview) {
+        receiptRef.current = true
+        setReceipt(paid); setPhase('receipt')
+        return
+      }
+      try {
+        await Taro.requestPayment({
+          timeStamp: paid.wechatPayParameters.timeStamp,
+          nonceStr: paid.wechatPayParameters.nonceStr,
+          package: paid.wechatPayParameters.package,
+          signType: paid.wechatPayParameters.signType as 'RSA' | 'MD5',
+          paySign: paid.wechatPayParameters.paySign,
+        })
+        if (!mounted.current) return
+        receiptRef.current = true
+        setReceipt(paid); setPhase('receipt')
+      } catch (payError) {
+        if (!mounted.current) return
+        const errMsg = extractRequestPaymentErrMsg(payError)
+        if (/cancel/i.test(errMsg)) {
+          setNotice('已取消微信支付，可点击按钮重新发起。')
+        } else {
+          setNotice(errMsg
+            ? `微信支付未完成（${errMsg}），请前往订单详情查看或重试。`
+            : '微信支付未完成，请前往订单详情查看或重试。')
+        }
+      }
     } catch (error) {
       if (mounted.current) setNotice(bookingPaymentMessage(error))
     } finally {
@@ -176,19 +202,27 @@ function PayScreen({ preview, scenario, orderId }: { preview: boolean; scenario:
         <View className='bkg-service-card'>
           <View className='bkg-card-head'>
             <Text className='bkg-card-no'>支付单号 {receipt.paymentNo}</Text>
-            <Text className='bkg-badge is-pending-payment'>已发起</Text>
+            <Text className='bkg-badge is-pending-payment'>{preview ? '已发起' : '确认中'}</Text>
           </View>
           <View className='bkg-fact-row'><Text className='bkg-fact-label'>支付单ID</Text><Text className='bkg-fact-value'>{receipt.paymentId}</Text></View>
           <View className='bkg-fact-row'><Text className='bkg-fact-label'>支付渠道</Text><Text className='bkg-fact-value'>{receipt.channel}</Text></View>
           <Text className='bkg-hint'>渠道支付参数已按契约返回（签名方式 {receipt.wechatPayParameters.signType}）。</Text>
         </View>
-        <View className='bkg-slot-error' role='status'><Text id='bkp-sandbox'>{paymentSandboxNotice}</Text></View>
+        <View className='bkg-slot-error' role='status'><Text id='bkp-sandbox'>{preview ? paymentSandboxNotice : REAL_PAYMENT_SUBMITTED_NOTICE}</Text></View>
         <Button id='bkp-receipt-order' className='bkg-primary' onClick={goOrderDetail}>查看订单支付状态</Button>
         <Button id='bkp-receipt-list' className='bkg-secondary' onClick={goOrderList}>返回我的订单</Button>
-        <View className='bkg-preview-note'><Text>{preview ? '只读预览：本地样例回执，不发起真实请求。' : '页面数据：真实接口（发起支付回执）。'}</Text></View>
+        <View className='bkg-preview-note'><Text>{preview ? '只读预览：本地样例回执，不发起真实请求。' : '页面数据：真实接口（最终支付结果以订单详情为准）。'}</Text></View>
       </View>}
     </View>
   </ConsumerPageLayout>
+}
+
+function extractRequestPaymentErrMsg(error: unknown): string {
+  if (typeof error === 'object' && error !== null && 'errMsg' in error) {
+    const raw = (error as { errMsg?: unknown }).errMsg
+    if (typeof raw === 'string') return raw.trim()
+  }
+  return error instanceof Error ? error.message.trim() : ''
 }
 
 function isContractId(value: string): boolean {
