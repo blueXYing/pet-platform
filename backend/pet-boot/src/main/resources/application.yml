@@ -18,7 +18,7 @@ spring:
     name: pet-platform
   config:
     # 本地开发可选加载唯一 git-ignored 的 .env.local；生产直接由进程环境变量注入
-    import: optional:file:./.env.local[.properties],optional:file:../.env.local[.properties]
+    import: classpath:aftersale-catalog.yml,optional:file:./.env.local[.properties],optional:file:../.env.local[.properties]
   datasource:
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:pet_platform}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
     username: ${DB_USER:pet}
@@ -132,6 +132,7 @@ pet:
   refund:
     application:
       protection-key: ${REFUND_APPLICATION_PROTECTION_KEY:}
+      reason-codes: USER_REQUEST,SCHEDULE_CONFLICT,PLAN_CHANGED,SERVICE_ISSUE,OTHER
   aftersale:
     protection-key: ${AFTERSALE_PROTECTION_KEY:}
 

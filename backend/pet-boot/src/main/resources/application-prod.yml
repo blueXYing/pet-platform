@@ -14,6 +14,11 @@ pet:
       enabled: true
   private-assets:
     enabled: true
+  merchant:
+    application:
+      open-cities:
+        - code: chengdu
+          name: 成都
   payment:
     enabled: true
     dispatch:
