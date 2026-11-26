@@ -198,4 +198,4 @@
 - 运营端控制器 `/api/v1/admin/settlement/**` 随 `pet.auth.admin.enabled=true` 且 `pet.payment.enabled=true` 装配；
 - 商家端控制器 `/api/v1/merchant/{settlement/receiver,wallet,wallet/withdrawals}` 随 `pet.auth.c.enabled=true` 且 `pet.payment.enabled=true` 装配；
 - 拉卡拉 4 条公开回调 `/api/v1/callbacks/lakala/{pay,separate,withdrawals,ledger}` 随 `pet.payment.enabled=true` 装配；
-- 仅通过环境变量/配置参数控制凭据与行为参数：`SETTLEMENT_RECEIVER_AES_KEY_PATH`（缺配启动 fail-closed）、`LAKALA_ORG_CODE`、`LAKALA_PLATFORM_RECEIVER_NO`（模式 A 平台分账接收方编号 `SR...`）、`LAKALA_SPLIT_LOWEST_RATIO`、`LAKALA_SEPARATE_NOTIFY_URL`、`LAKALA_LEDGER_NOTIFY_URL`、`LAKALA_WITHDRAW_NOTIFY_URL`、`pet.payment.lakala.settle-type`（`0` 普通收单 / `1` 分账收单）。
+- 仅通过环境变量/配置参数控制凭据与行为参数：`SETTLEMENT_RECEIVER_AES_KEY_PATH`（缺配启动 fail-closed）、`LAKALA_ORG_CODE`、`LAKALA_PLATFORM_RECEIVER_NO`（模式 A 平台分账接收方编号，支持 `SR...` 或 `82...` 平台自有商户号）、`LAKALA_SPLIT_LOWEST_RATIO`、`LAKALA_SEPARATE_NOTIFY_URL`、`LAKALA_LEDGER_NOTIFY_URL`、`LAKALA_WITHDRAW_NOTIFY_URL`、`pet.payment.lakala.settle-type`（`0` 普通收单 / `1` 分账收单）。

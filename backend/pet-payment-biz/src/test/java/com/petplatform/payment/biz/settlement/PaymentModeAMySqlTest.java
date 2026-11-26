@@ -255,6 +255,25 @@ class PaymentModeAMySqlTest {
                     List.of(new SplitDetail(MERCHANT_2_MCH, null, 1L, 1L, 0L, null))));
             assertEquals(SettlementQueryTask.Outcome.DONE, queryCoord.execute(Long.parseLong(pennyInstr.instructionId())));
             assertEquals("SPLIT_SUCCEEDED", admin.getById(so2.settlementOrderId(), sysQuery()).status());
+
+            // 3. 82-prefix platform merchant number used directly as platformReceiverNo (recv_no="822651053990MW8").
+            db.insertPaidPayment(10003L, 710301L, MERCHANT_1_MCH, new BigDecimal("100.00"),
+                    "LOG10003", LocalDate.of(2026, 11, 18));
+            SettlementOrderView so3 = registerAndVerify(admin, "10003", "20003", "710301",
+                    new BigDecimal("100.00"), BigDecimal.ZERO, new BigDecimal("100.00"),
+                    OffsetDateTime.parse("2026-11-18T10:00:00Z"));
+            channel.canSeparateCents = 10000L;
+            var execWith82PlatformRecv = db.executionService(channel, PLATFORM_MCH, clock);
+            assertTrue(execWith82PlatformRecv.executeDue(Long.parseLong(so3.settlementOrderId()), 1)
+                    instanceof SettlementDueTask.Outcome.Done);
+            SeparateInput sent82 = channel.separateInputs.get(2);
+            assertEquals(List.of(
+                    ReceiverShare.toSelf(MERCHANT_1_MCH, 9940L),
+                    ReceiverShare.toReceiver(PLATFORM_MCH, 60L)), sent82.recvDatas());
+            // Self-operated same-merchant edge case combines into single recv_merchant_no share.
+            assertEquals(List.of(ReceiverShare.toSelf(PLATFORM_MCH, 10000L)),
+                    SettlementExecutionService.buildModeAReceiverShares(
+                            PLATFORM_MCH, PLATFORM_MCH, new BigDecimal("0.60"), new BigDecimal("99.40")));
         }
     }
 

@@ -350,7 +350,10 @@ public final class SettlementExecutionService {
             long instructionId = nextId();
             String outSeparateNo = "SP" + IDS.toApi(instructionId);
             String instructionReceiverNo = preflight.modeA()
-                    ? (allocation.platformRetainedAmount().signum() > 0 ? settings.platformReceiverNo() : null)
+                    ? (allocation.platformRetainedAmount().signum() > 0
+                            && settings.platformReceiverNo() != null
+                            && !preflight.acquiringMerchantNo().equals(settings.platformReceiverNo())
+                            ? settings.platformReceiverNo() : null)
                     : preflight.receiverNo();
             store.settlement.insertInstruction(PaymentFoundationStore.values(
                     "id", instructionId,
@@ -458,12 +461,21 @@ public final class SettlementExecutionService {
         return shares;
     }
 
-    /** Mode A (Ruling 40 §10): merchant receives self-split ({@code recv_merchant_no}), platform receives fee ({@code recv_no}). */
+    /**
+     * Mode A (Ruling 40 §10): merchant receives self-split ({@code recv_merchant_no}), platform receives fee
+     * ({@code recv_no}, accepting either {@code SR...} or an {@code 82...} platform merchant number).
+     * When {@code acquiringMerchantNo.equals(platformReceiverNo)} (self-operated store), combines into one
+     * {@code recv_merchant_no} self-share.
+     */
     static List<ReceiverShare> buildModeAReceiverShares(String acquiringMerchantNo, String platformReceiverNo,
             BigDecimal platformRetainedAmount, BigDecimal merchantSplitAmount) {
         List<ReceiverShare> shares = new ArrayList<>(2);
         long merchantCents = SettlementAmountCalculator.toCents(merchantSplitAmount);
         long platformCents = SettlementAmountCalculator.toCents(platformRetainedAmount);
+        if (platformCents > 0 && acquiringMerchantNo.equals(platformReceiverNo)) {
+            shares.add(ReceiverShare.toSelf(acquiringMerchantNo, Math.addExact(merchantCents, platformCents)));
+            return shares;
+        }
         if (merchantCents > 0) {
             shares.add(ReceiverShare.toSelf(acquiringMerchantNo, merchantCents));
         }

@@ -257,7 +257,7 @@ Outbox 投递 MQ，延迟消息唤醒查询任务。数据库状态仍为准，�
    - `PaymentMerchantBindings.require(merchantId, storeId)` 从 `settlement_config` 读取该商家启用的 `(lakala_merchant_no, lakala_term_no)` + 平台小程序 `sub_appid`；未配置或停用 fail-closed（不回退平台主体 `822651053990MW8`）；
    - `requirePlatform()` 继续保留平台主体配置供非订单 DEMO 使用。
 3. **分账与回退（1293 / 2395）**：
-   - 2396/1293 以订单实际收单 `payment_order.merchant_no` 发起；`recv_datas` 中商家留存份额走 `recv_merchant_no = payment_order.merchant_no`，平台手续费份额（> 0 时）走 `recv_no = pet.payment.settlement.platform-receiver-no`（`LAKALA_PLATFORM_RECEIVER_NO`）；
+   - 2396/1293 以订单实际收单 `payment_order.merchant_no` 发起；`recv_datas` 中商家留存份额走 `recv_merchant_no = payment_order.merchant_no`，平台手续费份额（> 0 时）走 `recv_no = pet.payment.settlement.platform-receiver-no`（`LAKALA_PLATFORM_RECEIVER_NO`，支持 `SR...` 或 `82...` 平台自有商户号；自营同号时合并为单条 `recv_merchant_no`）；
    - 若 `platformAmount > 0` 且 `LAKALA_PLATFORM_RECEIVER_NO` 未配置，结算单进入 `ON_HOLD`（`PLATFORM_RECEIVER_NOT_CONFIGURED`），绝不发出非法报文；
    - 2395 回退按比例从平台接收方回退 `originSplit.platformAmount` 至收单商家；`platformAmount == 0` 时无需 2395 直接放行 1077 退款；
    - 1296/1297 实收明细优先按 `recv_merchant_no == instr.merchantNo` 解析商家实收 `actual_merchant_amount`。
