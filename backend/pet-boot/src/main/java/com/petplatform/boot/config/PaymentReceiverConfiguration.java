@@ -174,7 +174,8 @@ public class PaymentReceiverConfiguration {
             return new ReceiverAccountService(
                     source, ids, cipher, attachmentProvider, channel,
                     new JdbcAsyncTaskSubmitter(source, ids),
-                    notificationVerifier, settings, clocks.getIfAvailable(Clock::systemUTC));
+                    notificationVerifier, settings, clocks.getIfAvailable(Clock::systemUTC),
+                    bindings::findAcquiringMerchantNo);
         }
 
         @Bean(initMethod = "start", destroyMethod = "close")

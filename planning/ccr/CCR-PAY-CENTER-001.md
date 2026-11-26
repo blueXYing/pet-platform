@@ -245,3 +245,23 @@ Outbox 投递 MQ，延迟消息唤醒查询任务。数据库状态仍为准，�
 | 渠道时间时区（`LAKALA_CHANNEL_TIMEZONE`） | 向拉卡拉确认 |
 | 商家钱包是否展示平台补贴待结算 | 默认不展示 |
 | 分账合作协议模板 | 向拉卡拉客户经理索取 |
+
+## 14. 2026-11-26 架构修订（模式 A：商家独立收单路由与反向分账）
+
+依据 2026-11-26 产品负责人裁决（见 [40 号裁决补充 §10](../../docs/01-prd/40-支付中心订单分账与提现裁决补充-v1.0.md#10-2026-11-26-人工裁决修订模式-a商家独立收单--分账给平台接收方)）：
+
+1. **Schema 增量（`V43__payment_merchant_acquiring.sql` / `83-Payment-Merchant-Acquiring-Schema-v0.1.sql`）**：
+   - `settlement_config` 新增成对可空列 `lakala_merchant_no VARCHAR(32)`、`lakala_term_no VARCHAR(32)`（含 `CHECK` 约束保证同空或同非空）及索引 `idx_settlement_config_lkl_merchant`；
+   - `settlement_config_audit` 新增 `before/after_lakala_merchant_no`、`before/after_lakala_term_no` 审计快照列。
+2. **收单路由（`DbMerchantPaymentBindings`）**：
+   - `PaymentMerchantBindings.require(merchantId, storeId)` 从 `settlement_config` 读取该商家启用的 `(lakala_merchant_no, lakala_term_no)` + 平台小程序 `sub_appid`；未配置或停用 fail-closed（不回退平台主体 `822651053990MW8`）；
+   - `requirePlatform()` 继续保留平台主体配置供非订单 DEMO 使用。
+3. **分账与回退（1293 / 2395）**：
+   - 2396/1293 以订单实际收单 `payment_order.merchant_no` 发起；`recv_datas` 中商家留存份额走 `recv_merchant_no = payment_order.merchant_no`，平台手续费份额（> 0 时）走 `recv_no = pet.payment.settlement.platform-receiver-no`（`LAKALA_PLATFORM_RECEIVER_NO`）；
+   - 若 `platformAmount > 0` 且 `LAKALA_PLATFORM_RECEIVER_NO` 未配置，结算单进入 `ON_HOLD`（`PLATFORM_RECEIVER_NOT_CONFIGURED`），绝不发出非法报文；
+   - 2395 回退按比例从平台接收方回退 `originSplit.platformAmount` 至收单商家；`platformAmount == 0` 时无需 2395 直接放行 1077 退款；
+   - 1296/1297 实收明细优先按 `recv_merchant_no == instr.merchantNo` 解析商家实收 `actual_merchant_amount`。
+4. **钱包提现（1269 / 1319）与日对账（1879 / 1877）**：
+   - 商家配置 `lakala_merchant_no` 时，1269/1319 使用 `merchantNo = lakala_merchant_no` + `payType="01"`（收款账户）；
+   - 1879/1877 日对账扫描 `settlement_config`（已配 `lakala_merchant_no`）与当日 `settlement_instruction` 去重商户号逐一执行并汇总。
+5. **配置约束（遵守 PR #234 单开关红线）**：不新增任何 `.enabled` 子开关，仅新增一个平台接收方编号参数 `pet.payment.settlement.platform-receiver-no`（环境变量 `LAKALA_PLATFORM_RECEIVER_NO`）。

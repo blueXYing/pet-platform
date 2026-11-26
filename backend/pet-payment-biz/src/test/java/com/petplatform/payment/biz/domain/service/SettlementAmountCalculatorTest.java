@@ -144,4 +144,33 @@ class SettlementAmountCalculatorTest {
         assertFalse(SettlementAmountCalculator.isWithinFallbackWindow(splitAt, splitAt.plusDays(180).plusSeconds(1)));
         assertFalse(SettlementAmountCalculator.isWithinFallbackWindow(null, splitAt));
     }
+
+    @Test
+    void modeAPlatformFallbackAmountProRatesAndClearsRemainderOnFinalRefund() {
+        // Paid 100.00, fee 0.6%, platform split 0.60
+        // Partial refund 50.00 -> floor(50 * 0.006) = 0.30
+        BigDecimal fb1 = SettlementAmountCalculator.computePlatformFallbackAmount(
+                new BigDecimal("100.00"), BigDecimal.ZERO, new BigDecimal("50.00"),
+                new BigDecimal("0.6000"), new BigDecimal("0.60"), BigDecimal.ZERO);
+        assertEquals(new BigDecimal("0.30"), fb1);
+
+        // Final refund 50.00 -> returns all remaining 0.30
+        BigDecimal fb2 = SettlementAmountCalculator.computePlatformFallbackAmount(
+                new BigDecimal("100.00"), new BigDecimal("50.00"), new BigDecimal("50.00"),
+                new BigDecimal("0.6000"), new BigDecimal("0.60"), new BigDecimal("0.30"));
+        assertEquals(new BigDecimal("0.30"), fb2);
+
+        // Zero platform split (e.g. ¥0.01 or platform-coupon order) -> 0.00 (skip 2395)
+        assertEquals(new BigDecimal("0.00"), SettlementAmountCalculator.computePlatformFallbackAmount(
+                new BigDecimal("80.00"), BigDecimal.ZERO, new BigDecimal("80.00"),
+                new BigDecimal("0.6000"), BigDecimal.ZERO, BigDecimal.ZERO));
+
+        // Partial refund where floor(refund * feeRate) == 0 returns 0.00; final refund clears full remainder
+        assertEquals(new BigDecimal("0.00"), SettlementAmountCalculator.computePlatformFallbackAmount(
+                new BigDecimal("100.00"), BigDecimal.ZERO, new BigDecimal("1.00"),
+                new BigDecimal("0.6000"), new BigDecimal("0.60"), BigDecimal.ZERO));
+        assertEquals(new BigDecimal("0.60"), SettlementAmountCalculator.computePlatformFallbackAmount(
+                new BigDecimal("100.00"), new BigDecimal("1.00"), new BigDecimal("99.00"),
+                new BigDecimal("0.6000"), new BigDecimal("0.60"), BigDecimal.ZERO));
+    }
 }

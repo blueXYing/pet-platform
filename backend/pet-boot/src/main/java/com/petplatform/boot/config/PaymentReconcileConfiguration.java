@@ -137,12 +137,14 @@ public class PaymentReconcileConfiguration {
                 SettlementReconcileChannel channel,
                 PaymentMerchantBindings bindings,
                 PaymentFoundationConfiguration.LakalaSettings lakala,
+                @Value("${pet.payment.settlement.platform-receiver-no:}") String platformReceiverNo,
                 ObjectProvider<Clock> clocks) {
             return new SettlementReconcileService(
                     source,
                     ids,
                     channel,
                     requirePlatformMerchantNo(bindings),
+                    platformReceiverNo,
                     requireChannelZone(lakala),
                     clocks.getIfAvailable(Clock::systemUTC));
         }

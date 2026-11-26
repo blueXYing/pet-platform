@@ -53,7 +53,16 @@ public class PaymentFoundationConfiguration {
         return new OrderPaymentFactsApiImpl(source,guard);
     }
     @Bean @ConditionalOnMissingBean(PaymentMerchantBindings.class)
+    PaymentMerchantBindings paymentMerchantBindings(LakalaSettings settings, ObjectProvider<DataSource> dataSources){
+        return createMerchantBindings(settings, dataSources == null ? null : dataSources.getIfAvailable());
+    }
+
+    /** Package-private offline helper for unit tests without a DataSource bean. */
     PaymentMerchantBindings paymentMerchantBindings(LakalaSettings settings){
+        return createMerchantBindings(settings, null);
+    }
+
+    private static PaymentMerchantBindings createMerchantBindings(LakalaSettings settings, DataSource source){
         PlatformMerchant platform=settings.platform();
         boolean platformConfigured=platform!=null&&!platform.blank();
         if(platformConfigured&&!settings.stores().isEmpty())
@@ -61,6 +70,9 @@ public class PaymentFoundationConfiguration {
         if(platformConfigured){
             if(!platform.complete())throw new IllegalStateException("Payment platform merchant configuration is incomplete");
             var binding=new PaymentMerchantBindings.Binding(platform.merchantNo(),platform.termNo(),platform.subAppId());
+            if(source!=null){
+                return new com.petplatform.payment.biz.settlement.DbMerchantPaymentBindings(source, binding);
+            }
             return new PaymentMerchantBindings(){
                 @Override public Binding require(String merchantId,String storeId){
                     if(merchantId==null||merchantId.isBlank()||storeId==null||storeId.isBlank())throw unavailable();

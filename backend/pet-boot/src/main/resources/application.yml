@@ -169,6 +169,7 @@ pet:
       # 跟随统一总开关 pet.payment.enabled，此处仅保留非开关参数
       lowest-ratio: ${LAKALA_SPLIT_LOWEST_RATIO:0}
       org-code: ${LAKALA_ORG_CODE:}
+      platform-receiver-no: ${LAKALA_PLATFORM_RECEIVER_NO:}
       notify-url: ${LAKALA_SEPARATE_NOTIFY_URL:}
     receiver:
       aes-key-path: ${SETTLEMENT_RECEIVER_AES_KEY_PATH:}

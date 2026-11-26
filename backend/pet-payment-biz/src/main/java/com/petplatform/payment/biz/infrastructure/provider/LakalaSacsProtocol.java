@@ -76,7 +76,10 @@ public final class LakalaSacsProtocol {
         public BigDecimal canSeparateAmount() { return BigDecimal.valueOf(canSeparateCents, 2); }
     }
 
-    /** One entry in 1293 req_data.recv_datas: either recv_merchant_no (platform) or recv_no (merchant). */
+    /**
+     * One entry in 1293 {@code req_data.recv_datas}: either {@code recv_merchant_no} (self-split to
+     * {@code req_data.merchant_no}) or {@code recv_no} (external split receiver {@code SR...}).
+     */
     public record ReceiverShare(String recvMerchantNo, String recvNo, long amountCents) {
         public ReceiverShare {
             boolean hasMerchant = recvMerchantNo != null && !recvMerchantNo.isBlank();
@@ -86,8 +89,13 @@ public final class LakalaSacsProtocol {
             if (hasRecv) required(recvNo, 32);
         }
 
-        public static ReceiverShare toPlatform(String merchantNo, long amountCents) {
+        /** Self-split share back to the acquiring {@code req_data.merchant_no} ({@code recv_merchant_no}). */
+        public static ReceiverShare toSelf(String merchantNo, long amountCents) {
             return new ReceiverShare(merchantNo, null, amountCents);
+        }
+
+        public static ReceiverShare toPlatform(String merchantNo, long amountCents) {
+            return toSelf(merchantNo, amountCents);
         }
 
         public static ReceiverShare toReceiver(String receiverNo, long amountCents) {
@@ -167,6 +175,11 @@ public final class LakalaSacsProtocol {
         public Optional<SplitDetail> findReceiverDetail(String receiverNo) {
             if (receiverNo == null || receiverNo.isBlank()) return Optional.empty();
             return details.stream().filter(d -> receiverNo.equals(d.recvNo())).findFirst();
+        }
+
+        public Optional<SplitDetail> findMerchantDetail(String merchantNo) {
+            if (merchantNo == null || merchantNo.isBlank()) return Optional.empty();
+            return details.stream().filter(d -> merchantNo.equals(d.recvMerchantNo())).findFirst();
         }
     }
 

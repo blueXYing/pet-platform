@@ -32,14 +32,14 @@ class PaymentSettlementConfigurationTest {
     @Test
     void lowestRatioValidationMatrix() {
         assertThatCode(() -> PaymentSettlementConfiguration.check(
-                false, new PaymentSettlementConfiguration.SettlementSettings("invalid", null, null, false, null)))
+                false, new PaymentSettlementConfiguration.SettlementSettings("invalid", null, null, false, null, null)))
                 .doesNotThrowAnyException();
         assertThatCode(() -> PaymentSettlementConfiguration.check(
-                true, new PaymentSettlementConfiguration.SettlementSettings("0.05", null, null, false, null)))
+                true, new PaymentSettlementConfiguration.SettlementSettings("0.05", null, null, false, null, "SR_PLATFORM")))
                 .doesNotThrowAnyException();
         for (String bad : new String[] {"-0.01", "1", "1.0000", "0.12345", "abc"}) {
             assertThatThrownBy(() -> PaymentSettlementConfiguration.check(
-                    true, new PaymentSettlementConfiguration.SettlementSettings(bad, null, null, false, null)))
+                    true, new PaymentSettlementConfiguration.SettlementSettings(bad, null, null, false, null, null)))
                     .as(bad).hasMessage(PaymentSettlementConfiguration.INVALID_LOWEST_RATIO);
         }
     }
@@ -93,8 +93,11 @@ class PaymentSettlementConfigurationTest {
     void enabledWithPaymentWiresServicesWorkerAndConsumersWithoutControllers() {
         runner(platform()).withPropertyValues(
                 "pet.payment.enabled=true",
-                "pet.payment.settlement.lowest-ratio=0.02").run(ctx -> {
+                "pet.payment.settlement.lowest-ratio=0.02",
+                "pet.payment.settlement.platform-receiver-no=SR_PLATFORM_01").run(ctx -> {
             assertThat(ctx).hasNotFailed();
+            assertThat(ctx.getBean(PaymentSettlementConfiguration.SettlementSettings.class)
+                    .normalizedPlatformReceiverNo()).isEqualTo("SR_PLATFORM_01");
             assertThat(ctx).hasSingleBean(SettlementAdminApi.class);
             assertThat(ctx).hasSingleBean(SettlementTriggerApi.class);
             assertThat(ctx).hasSingleBean(SettlementQueryApi.class);

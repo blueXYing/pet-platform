@@ -16,10 +16,12 @@ import com.petplatform.payment.api.dto.WalletTypes.WithdrawalOrderView;
 import com.petplatform.payment.api.query.WalletQueryApi;
 import com.petplatform.payment.biz.infrastructure.persistence.PaymentFoundationStore;
 import com.petplatform.payment.biz.infrastructure.persistence.PaymentWalletStore;
+import com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentWalletMapper.AcquiringMerchantRow;
 import com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentWalletMapper.PendingSettlementRow;
 import com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentWalletMapper.ReceiverSnapshotRow;
 import com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentWalletMapper.StuckWithdrawalRow;
 import com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentWalletMapper.WithdrawalRow;
+import com.petplatform.payment.biz.infrastructure.provider.LakalaLaepProtocol;
 import com.petplatform.payment.biz.infrastructure.provider.LakalaLaepProtocol.BalanceQueryInput;
 import com.petplatform.payment.biz.infrastructure.provider.LakalaLaepProtocol.WithdrawD1Input;
 import com.petplatform.payment.biz.infrastructure.provider.LakalaLaepProtocol.WithdrawQueryInput;
@@ -144,8 +146,8 @@ public final class WalletService implements WalletCommandApi, WalletQueryApi {
         BigDecimal pendingAmount = pending == null || pending.pendingAmount == null
                 ? ZERO : pending.pendingAmount.setScale(2, RoundingMode.UNNECESSARY);
 
-        Optional<SettlementReceiverLookup.ActiveReceiver> activeReceiver = receiverLookup.findActiveByMerchantId(merchant);
-        boolean receiverActive = activeReceiver.isPresent();
+        Optional<WalletAccount> account = resolveActiveAccount(merchant);
+        boolean receiverActive = account.isPresent();
         String receiverStatus = receiverActive
                 ? "ACTIVE"
                 : (snapshot != null && snapshot.status != null ? snapshot.status : "UNCONFIGURED");
@@ -155,10 +157,10 @@ public final class WalletService implements WalletCommandApi, WalletQueryApi {
                     CURRENCY_CNY, null, false);
         }
 
-        // Outside DB tx: query live available balance from Lakala 1269 (payType="04", yuan).
+        // Outside DB tx: query live available balance from Lakala 1269 (Mode A payType="01", legacy "04", yuan).
         try {
             var verified = channel.queryBalance(
-                    new BalanceQueryInput(settings.orgNo(), activeReceiver.get().receiverNo()));
+                    new BalanceQueryInput(settings.orgNo(), account.get().accountNo(), account.get().payType()));
             OffsetDateTime asOf = clock.instant().atOffset(ZoneOffset.UTC).truncatedTo(ChronoUnit.MILLIS);
             BigDecimal available = verified.result().curBalance().setScale(2, RoundingMode.UNNECESSARY);
             return new MerchantWalletView(receiverStatus, true, available, pendingAmount, pendingCount,
@@ -166,8 +168,8 @@ public final class WalletService implements WalletCommandApi, WalletQueryApi {
         } catch (LakalaV2HttpClient.ChannelUnknownException
                 | LakalaV2HttpClient.ChannelRejectedException
                 | LakalaV2Protocol.ProtocolException degraded) {
-            LOG.warn("Lakala 1269 balance query unavailable merchantId={} receiverNo={} reason={}",
-                    merchantId, activeReceiver.get().receiverNo(), degraded.getMessage());
+            LOG.warn("Lakala 1269 balance query unavailable merchantId={} accountNo={} payType={} reason={}",
+                    merchantId, account.get().accountNo(), account.get().payType(), degraded.getMessage());
             return new MerchantWalletView(receiverStatus, true, ZERO, pendingAmount, pendingCount,
                     CURRENCY_CNY, null, false);
         }
@@ -235,14 +237,15 @@ public final class WalletService implements WalletCommandApi, WalletQueryApi {
                 if (!fingerprint.equals(existing.requestFingerprint)) {
                     throw idempotencyConflict("withdrawal requestId already used with different amount");
                 }
+                String payType = resolvePayType(merchantId, existing.receiverNo);
                 if (!"CREATED".equals(existing.status)) {
-                    return new Phase1Result(existing, true);
+                    return new Phase1Result(existing, true, payType);
                 }
-                return new Phase1Result(existing, false);
+                return new Phase1Result(existing, false, payType);
             }
 
-            SettlementReceiverLookup.ActiveReceiver receiver = receiverLookup.findActiveByMerchantId(merchantId)
-                    .orElseThrow(() -> conflict("active split receiver is required before withdrawal"));
+            WalletAccount account = resolveActiveAccount(merchantId)
+                    .orElseThrow(() -> conflict("active merchant acquiring account or split receiver is required before withdrawal"));
 
             long id = nextId();
             String merOrderNo = "WD" + id;
@@ -251,7 +254,7 @@ public final class WalletService implements WalletCommandApi, WalletQueryApi {
                         "id", id,
                         "merOrderNo", merOrderNo,
                         "merchantId", merchantId,
-                        "receiverNo", receiver.receiverNo(),
+                        "receiverNo", account.accountNo(),
                         "amount", amount,
                         "requestedByUserId", requestedByUserId,
                         "requestKey", requestKey,
@@ -260,7 +263,7 @@ public final class WalletService implements WalletCommandApi, WalletQueryApi {
             } catch (DuplicateKeyException race) {
                 throw idempotencyConflict("concurrent withdrawal requestId collision");
             }
-            return new Phase1Result(store.wallet.selectById(id), false);
+            return new Phase1Result(store.wallet.selectById(id), false, account.payType());
         });
 
         if (phase1.replayed()) {
@@ -270,7 +273,8 @@ public final class WalletService implements WalletCommandApi, WalletQueryApi {
         WithdrawalRow created = phase1.row();
         // Phase 2 (strictly outside DB tx): pre-check 1269 available balance if reachable, then invoke 1319 D1 withdraw.
         try {
-            var balance = channel.queryBalance(new BalanceQueryInput(settings.orgNo(), created.receiverNo));
+            var balance = channel.queryBalance(
+                    new BalanceQueryInput(settings.orgNo(), created.receiverNo, phase1.payType()));
             if (!balance.result().isAccountNormal()) {
                 failSubmitAndThrow(created, "Receiver channel account is not NORMAL: " + balance.result().acctSt());
             }
@@ -297,7 +301,8 @@ public final class WalletService implements WalletCommandApi, WalletQueryApi {
                     created.amount,
                     created.merOrderNo,
                     settings.withdrawNotifyUrl(),
-                    "merchant-" + created.merchantId));
+                    "merchant-" + created.merchantId,
+                    phase1.payType()));
         } catch (LakalaV2HttpClient.ChannelRejectedException rejected) {
             failSubmitAndThrow(created, formatReject(rejected));
             throw new AssertionError(); // unreachable
@@ -432,7 +437,30 @@ public final class WalletService implements WalletCommandApi, WalletQueryApi {
 
     // ---- Internal Helpers ------------------------------------------------------------------
 
-    private record Phase1Result(WithdrawalRow row, boolean replayed) {}
+    private record WalletAccount(String accountNo, String payType) {}
+
+    private record Phase1Result(WithdrawalRow row, boolean replayed, String payType) {}
+
+    private Optional<WalletAccount> resolveActiveAccount(long merchantId) {
+        AcquiringMerchantRow acquiring = store.wallet.selectMerchantAcquiringAccount(merchantId);
+        if (acquiring != null && acquiring.enabled
+                && acquiring.lakalaMerchantNo != null && !acquiring.lakalaMerchantNo.isBlank()) {
+            return Optional.of(new WalletAccount(
+                    acquiring.lakalaMerchantNo.trim(),
+                    LakalaLaepProtocol.PAY_TYPE_MERCHANT_COLLECT));
+        }
+        return receiverLookup.findActiveByMerchantId(merchantId)
+                .map(r -> new WalletAccount(r.receiverNo(), LakalaLaepProtocol.PAY_TYPE_RECEIVER));
+    }
+
+    private String resolvePayType(long merchantId, String accountNo) {
+        AcquiringMerchantRow acquiring = store.wallet.selectMerchantAcquiringAccount(merchantId);
+        if (acquiring != null && acquiring.lakalaMerchantNo != null
+                && acquiring.lakalaMerchantNo.trim().equals(accountNo)) {
+            return LakalaLaepProtocol.PAY_TYPE_MERCHANT_COLLECT;
+        }
+        return LakalaLaepProtocol.PAY_TYPE_RECEIVER;
+    }
 
     private void failSubmitAndThrow(WithdrawalRow created, String reason) {
         tx.executeWithoutResult(st -> {

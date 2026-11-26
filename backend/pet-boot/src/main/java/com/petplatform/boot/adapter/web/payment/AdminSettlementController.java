@@ -145,9 +145,12 @@ public final class AdminSettlementController {
         int settleDays = requiredInt(body, "settleDays");
         BigDecimal feeRate = requiredRate(body, "feeRate");
         boolean enabled = requiredBool(body, "enabled");
+        String lakalaMerchantNo = optionalString(body, "lakalaMerchantNo");
+        String lakalaTermNo = optionalString(body, "lakalaTermNo");
         String reason = optionalString(body, "reason");
         SettlementConfigView saved = api.upsertConfig(new UpsertSettlementConfigCommand(
-                adminCommand(req, session, true), requireId(merchantId), settleDays, feeRate, enabled, reason));
+                adminCommand(req, session, true), requireId(merchantId), settleDays, feeRate, enabled,
+                lakalaMerchantNo, lakalaTermNo, reason));
         return ok(configView(saved), req);
     }
 
@@ -470,6 +473,8 @@ public final class AdminSettlementController {
         m.put("feeRate", formatRate(view.feeRate()));
         m.put("enabled", view.enabled());
         m.put("configured", view.configured());
+        m.put("lakalaMerchantNo", view.lakalaMerchantNo());
+        m.put("lakalaTermNo", view.lakalaTermNo());
         m.put("version", view.version());
         m.put("updatedAt", formatTime(view.updatedAt()));
         return m;

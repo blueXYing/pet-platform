@@ -17,7 +17,19 @@ public final class SettlementTypes {
             int settleDays,
             BigDecimal feeRate,
             boolean enabled,
-            String reason) {}
+            String lakalaMerchantNo,
+            String lakalaTermNo,
+            String reason) {
+        public UpsertSettlementConfigCommand(
+                CommandContext context,
+                String merchantId,
+                int settleDays,
+                BigDecimal feeRate,
+                boolean enabled,
+                String reason) {
+            this(context, merchantId, settleDays, feeRate, enabled, null, null, reason);
+        }
+    }
 
     public record SettlementConfigView(
             String merchantId,
@@ -25,8 +37,21 @@ public final class SettlementTypes {
             BigDecimal feeRate,
             boolean enabled,
             boolean configured,
+            String lakalaMerchantNo,
+            String lakalaTermNo,
             long version,
-            OffsetDateTime updatedAt) {}
+            OffsetDateTime updatedAt) {
+        public SettlementConfigView(
+                String merchantId,
+                int settleDays,
+                BigDecimal feeRate,
+                boolean enabled,
+                boolean configured,
+                long version,
+                OffsetDateTime updatedAt) {
+            this(merchantId, settleDays, feeRate, enabled, configured, null, null, version, updatedAt);
+        }
+    }
 
     public record ResumeSettlementCommand(
             CommandContext context,

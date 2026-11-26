@@ -79,6 +79,7 @@ public final class SettlementReconcileService implements ReconcileAdminApi {
     private final PaymentReconcileStore store;
     private final SettlementReconcileChannel channel;
     private final String platformMerchantNo;
+    private final String platformReceiverNo;
     private final ZoneId channelTimeZone;
     private final Clock clock;
     private final TransactionTemplate tx;
@@ -90,6 +91,17 @@ public final class SettlementReconcileService implements ReconcileAdminApi {
             String platformMerchantNo,
             ZoneId channelTimeZone,
             Clock clock) {
+        this(source, ids, channel, platformMerchantNo, null, channelTimeZone, clock);
+    }
+
+    public SettlementReconcileService(
+            DataSource source,
+            SnowflakeIdGenerator ids,
+            SettlementReconcileChannel channel,
+            String platformMerchantNo,
+            String platformReceiverNo,
+            ZoneId channelTimeZone,
+            Clock clock) {
         Objects.requireNonNull(source, "source");
         this.ids = Objects.requireNonNull(ids, "ids");
         this.channel = Objects.requireNonNull(channel, "channel");
@@ -97,6 +109,8 @@ public final class SettlementReconcileService implements ReconcileAdminApi {
             throw new IllegalArgumentException("platformMerchantNo is required");
         }
         this.platformMerchantNo = platformMerchantNo.trim();
+        this.platformReceiverNo = platformReceiverNo == null || platformReceiverNo.isBlank()
+                ? null : platformReceiverNo.trim();
         this.channelTimeZone = Objects.requireNonNull(channelTimeZone, "channelTimeZone");
         this.clock = Objects.requireNonNull(clock, "clock");
         this.store = new PaymentReconcileStore(source);
@@ -187,19 +201,66 @@ public final class SettlementReconcileService implements ReconcileAdminApi {
         if (date == null || context == null) throw invalid("reconcileDate and context are required");
         requireAdminOrSystem(context);
 
-        long runId = startOrRestartJobRun(date);
-        try {
-            // Phase 1 (outside DB tx): fetch all 1879 pages for this business date.
-            Map<String, ResultListItem> channelByOutNo = fetchAllResultListItems(date);
+        LocalDateTime dayStartUtc = date.atStartOfDay(channelTimeZone)
+                .withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
+        LocalDateTime dayEndUtcExclusive = date.plusDays(1).atStartOfDay(channelTimeZone)
+                .withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
 
-            // Phase 2 (read-only DB): load local instructions for this business date.
-            LocalDateTime dayStartUtc = date.atStartOfDay(channelTimeZone)
-                    .withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
-            LocalDateTime dayEndUtcExclusive = date.plusDays(1).atStartOfDay(channelTimeZone)
-                    .withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime();
+        List<String> merchantNos = store.reconcile.selectDistinctReconcileMerchantNos(
+                PaymentFoundationStore.values(
+                        "dayStartUtc", dayStartUtc,
+                        "dayEndUtcExclusive", dayEndUtcExclusive,
+                        "reconcileDate", date));
+        if (merchantNos == null || merchantNos.isEmpty()) {
+            merchantNos = List.of(platformMerchantNo);
+        }
+        if (merchantNos.size() == 1) {
+            return runDailyReconcileForMerchant(date, merchantNos.getFirst(), dayStartUtc, dayEndUtcExclusive);
+        }
+
+        List<ReconcileRunSummary> completed = new ArrayList<>(merchantNos.size());
+        RuntimeException firstFailure = null;
+        for (String merchantNo : merchantNos) {
+            try {
+                completed.add(runDailyReconcileForMerchant(date, merchantNo, dayStartUtc, dayEndUtcExclusive));
+            } catch (RuntimeException failure) {
+                if (firstFailure == null) {
+                    firstFailure = failure;
+                }
+            }
+        }
+        if (firstFailure != null) {
+            throw firstFailure;
+        }
+        ReconcileRunSummary first = completed.getFirst();
+        ReconcileRunSummary last = completed.getLast();
+        int totalChannel = completed.stream().mapToInt(ReconcileRunSummary::channelCount).sum();
+        int totalLocal = completed.stream().mapToInt(ReconcileRunSummary::localCount).sum();
+        int totalDiff = completed.stream().mapToInt(ReconcileRunSummary::diffCount).sum();
+        return new ReconcileRunSummary(
+                last.runId(),
+                date,
+                "MULTI(" + completed.size() + ")",
+                "COMPLETED",
+                totalChannel,
+                totalLocal,
+                totalDiff,
+                null,
+                first.startedAt(),
+                last.finishedAt());
+    }
+
+    private ReconcileRunSummary runDailyReconcileForMerchant(
+            LocalDate date, String merchantNo, LocalDateTime dayStartUtc, LocalDateTime dayEndUtcExclusive) {
+        long runId = startOrRestartJobRun(date, merchantNo);
+        try {
+            // Phase 1 (outside DB tx): fetch all 1879 pages for this business date & acquiring merchant.
+            Map<String, ResultListItem> channelByOutNo = fetchAllResultListItems(date, merchantNo);
+
+            // Phase 2 (read-only DB): load local instructions for this business date & acquiring merchant.
             List<ReconcileInstructionRow> localRows = store.reconcile.selectInstructionsForReconcileDate(
                     PaymentFoundationStore.values(
-                            "merchantNo", platformMerchantNo,
+                            "merchantNo", merchantNo,
                             "dayStartUtc", dayStartUtc,
                             "dayEndUtcExclusive", dayEndUtcExclusive,
                             "reconcileDate", date));
@@ -209,34 +270,34 @@ public final class SettlementReconcileService implements ReconcileAdminApi {
             }
 
             // Phase 3 (outside DB tx): compare channel vs local; fetch 1877 details as needed.
-            List<PendingDiff> diffs = compareChannelAndLocal(date, channelByOutNo, localByOutNo);
+            List<PendingDiff> diffs = compareChannelAndLocal(date, merchantNo, channelByOutNo, localByOutNo);
 
             // Phase 4 (short DB tx): persist deduped reconcile_diff alerts + job run summary.
             int channelCount = channelByOutNo.size();
             int localCount = localByOutNo.size();
             int diffCount = diffs.size();
-            return finishJobRun(runId, date, channelCount, localCount, diffCount, diffs);
+            return finishJobRun(runId, date, merchantNo, channelCount, localCount, diffCount, diffs);
         } catch (ChannelUnknownException channelFailure) {
-            markJobRunFailed(runId, date, "CHANNEL_UNKNOWN:" + channelFailure.reason().name());
+            markJobRunFailed(runId, date, merchantNo, "CHANNEL_UNKNOWN:" + channelFailure.reason().name());
             throw unavailable("Lakala 1879/1877 reconciliation query failed: " + channelFailure.reason());
         } catch (RuntimeException failure) {
-            markJobRunFailed(runId, date, failure.getMessage() != null
+            markJobRunFailed(runId, date, merchantNo, failure.getMessage() != null
                     ? failure.getMessage() : failure.getClass().getSimpleName());
             throw failure;
         }
     }
 
-    private long startOrRestartJobRun(LocalDate date) {
+    private long startOrRestartJobRun(LocalDate date, String merchantNo) {
         return tx.execute(status -> {
             store.session();
             OffsetDateTime now = store.now();
             JobRunRow existing = store.reconcile.selectJobRunByDateAndMerchantForUpdate(
-                    PaymentFoundationStore.values("reconcileDate", date, "merchantNo", platformMerchantNo));
+                    PaymentFoundationStore.values("reconcileDate", date, "merchantNo", merchantNo));
             if (existing == null) {
                 long id = nextId();
                 try {
                     store.reconcile.insertJobRun(PaymentFoundationStore.values(
-                            "id", id, "reconcileDate", date, "merchantNo", platformMerchantNo,
+                            "id", id, "reconcileDate", date, "merchantNo", merchantNo,
                             "now", PaymentReconcileStore.utc(now)));
                     return id;
                 } catch (DuplicateKeyException race) {
@@ -253,14 +314,14 @@ public final class SettlementReconcileService implements ReconcileAdminApi {
         });
     }
 
-    private Map<String, ResultListItem> fetchAllResultListItems(LocalDate date) {
+    private Map<String, ResultListItem> fetchAllResultListItems(LocalDate date, String merchantNo) {
         Map<String, ResultListItem> byOutNo = new LinkedHashMap<>();
         int pageNo = 1;
         int totalPages = 1;
         while (pageNo <= totalPages && pageNo <= MAX_CHANNEL_PAGES) {
             VerifiedResultListPage verified = channel.queryResultList(
                     QueryResultListInput.byDateRange(
-                            channelNow(), platformMerchantNo, date, date, pageNo, CHANNEL_PAGE_SIZE));
+                            channelNow(), merchantNo, date, date, pageNo, CHANNEL_PAGE_SIZE));
             var page = verified.page();
             totalPages = Math.max(page.totalPageNum(), 0);
             for (ResultListItem item : page.datas()) {
@@ -274,14 +335,14 @@ public final class SettlementReconcileService implements ReconcileAdminApi {
         return byOutNo;
     }
 
-    private List<DetailItem> fetchDetailsForInstruction(String outSeparateNo) {
+    private List<DetailItem> fetchDetailsForInstruction(String merchantNo, String outSeparateNo) {
         List<DetailItem> all = new ArrayList<>();
         int pageNo = 1;
         int totalPages = 1;
         while (pageNo <= totalPages && pageNo <= MAX_CHANNEL_PAGES) {
             VerifiedDetailPage verified = channel.queryDetail(
                     QueryDetailInput.byOutSeparateNo(
-                            channelNow(), platformMerchantNo, outSeparateNo, pageNo, CHANNEL_PAGE_SIZE));
+                            channelNow(), merchantNo, outSeparateNo, pageNo, CHANNEL_PAGE_SIZE));
             var page = verified.page();
             totalPages = Math.max(page.totalPageNum(), 0);
             all.addAll(page.datas());
@@ -295,6 +356,7 @@ public final class SettlementReconcileService implements ReconcileAdminApi {
 
     private List<PendingDiff> compareChannelAndLocal(
             LocalDate date,
+            String merchantNo,
             Map<String, ResultListItem> channelByOutNo,
             Map<String, ReconcileInstructionRow> localByOutNo) {
         List<PendingDiff> diffs = new ArrayList<>();
@@ -332,10 +394,10 @@ public final class SettlementReconcileService implements ReconcileAdminApi {
             List<DetailItem> details = List.of();
             if (needsDetail) {
                 try {
-                    details = fetchDetailsForInstruction(item.outSeparateNo());
+                    details = fetchDetailsForInstruction(merchantNo, item.outSeparateNo());
                 } catch (ChannelUnknownException detailUnavailable) {
-                    LOG.warn("Lakala 1877 detail enrichment unavailable outSeparateNo={} reason={}",
-                            item.outSeparateNo(), detailUnavailable.reason());
+                    LOG.warn("Lakala 1877 detail enrichment unavailable merchantNo={} outSeparateNo={} reason={}",
+                            merchantNo, item.outSeparateNo(), detailUnavailable.reason());
                 }
             }
 
@@ -356,9 +418,22 @@ public final class SettlementReconcileService implements ReconcileAdminApi {
                                 + (item.failReason() != null ? " (" + item.failReason() + ")" : ""), 512)));
             }
 
-            DetailItem merchantDetail = findMerchantDetail(details, local.receiverNo);
-            boolean receiverAmtMismatch = merchantDetail != null
-                    && merchantDetail.amount().compareTo(local.merchantAmount) != 0;
+            boolean modeA = SettlementModeDetector.isModeA(
+                    local.merchantNo, local.receiverNo, platformMerchantNo, platformReceiverNo);
+            DetailItem expectedDetail;
+            BigDecimal expectedDetailAmt;
+            if ("FALLBACK".equals(local.instructionType)) {
+                expectedDetail = findDetailByRecv(details, local.receiverNo);
+                expectedDetailAmt = local.totalAmount;
+            } else if (modeA) {
+                expectedDetail = findDetailByRecv(details, local.merchantNo);
+                expectedDetailAmt = local.merchantAmount;
+            } else {
+                expectedDetail = findDetailByRecv(details, local.receiverNo);
+                expectedDetailAmt = local.merchantAmount;
+            }
+            boolean receiverAmtMismatch = expectedDetail != null
+                    && expectedDetail.amount().compareTo(expectedDetailAmt) != 0;
             boolean actualAmtMismatch = "SUCCEEDED".equals(local.status)
                     && isChannelSucceeded(item.status(), item.cmdType())
                     && item.actualAmount() != null
@@ -368,13 +443,13 @@ public final class SettlementReconcileService implements ReconcileAdminApi {
                 String reason = !totalAmountMatch
                         ? "Total amount mismatch: local=" + local.totalAmount + ", channel=" + item.amount()
                         : receiverAmtMismatch
-                                ? "Receiver detail amount mismatch: localMerchant=" + local.merchantAmount
-                                        + ", channelDetail=" + merchantDetail.amount()
+                                ? "Receiver detail amount mismatch: localExpected=" + expectedDetailAmt
+                                        + ", channelDetail=" + expectedDetail.amount()
                                 : "Actual settled amount mismatch: localActual=" + local.actualSeparateAmount
                                         + ", channelActual=" + item.actualAmount();
-                BigDecimal reportedLocal = receiverAmtMismatch ? local.merchantAmount
+                BigDecimal reportedLocal = receiverAmtMismatch ? expectedDetailAmt
                         : actualAmtMismatch ? local.actualSeparateAmount : local.totalAmount;
-                BigDecimal reportedChannel = receiverAmtMismatch ? merchantDetail.amount()
+                BigDecimal reportedChannel = receiverAmtMismatch ? expectedDetail.amount()
                         : actualAmtMismatch ? item.actualAmount() : item.amount();
                 diffs.add(new PendingDiff(
                         diffKey(date, bizType, "AMOUNT_MISMATCH", local.outSeparateNo),
@@ -422,7 +497,8 @@ public final class SettlementReconcileService implements ReconcileAdminApi {
     }
 
     private ReconcileRunSummary finishJobRun(
-            long runId, LocalDate date, int channelCount, int localCount, int diffCount, List<PendingDiff> diffs) {
+            long runId, LocalDate date, String merchantNo,
+            int channelCount, int localCount, int diffCount, List<PendingDiff> diffs) {
         return tx.execute(status -> {
             store.session();
             OffsetDateTime now = store.now();
@@ -459,7 +535,7 @@ public final class SettlementReconcileService implements ReconcileAdminApi {
                     @Override public void afterCommit() {
                         LOG.error("Daily SACS reconciliation alert: discrepancies detected "
                                         + "reconcileDate={} merchantNo={} channelCount={} localCount={} diffCount={}",
-                                date, platformMerchantNo, channelCount, localCount, diffCount);
+                                date, merchantNo, channelCount, localCount, diffCount);
                     }
                 });
             }
@@ -467,7 +543,7 @@ public final class SettlementReconcileService implements ReconcileAdminApi {
         });
     }
 
-    private void markJobRunFailed(long runId, LocalDate date, String errorMessage) {
+    private void markJobRunFailed(long runId, LocalDate date, String merchantNo, String errorMessage) {
         try {
             tx.executeWithoutResult(status -> {
                 store.session();
@@ -477,11 +553,11 @@ public final class SettlementReconcileService implements ReconcileAdminApi {
                         "now", PaymentReconcileStore.utc(store.now())));
             });
         } catch (RuntimeException secondary) {
-            LOG.error("Failed to persist reconcile_job_run FAILED state runId={} reconcileDate={}",
-                    runId, date, secondary);
+            LOG.error("Failed to persist reconcile_job_run FAILED state runId={} reconcileDate={} merchantNo={}",
+                    runId, date, merchantNo, secondary);
         }
         LOG.error("Daily SACS reconciliation failed reconcileDate={} merchantNo={} error={}",
-                date, platformMerchantNo, truncate(errorMessage, 256));
+                date, merchantNo, truncate(errorMessage, 256));
     }
 
     // ---- Comparison helpers ----------------------------------------------------------------
@@ -529,10 +605,10 @@ public final class SettlementReconcileService implements ReconcileAdminApi {
         return anyFee ? sum.setScale(2) : null;
     }
 
-    private static DetailItem findMerchantDetail(List<DetailItem> details, String receiverNo) {
-        if (details == null || details.isEmpty() || receiverNo == null || receiverNo.isBlank()) return null;
+    private static DetailItem findDetailByRecv(List<DetailItem> details, String targetRecv) {
+        if (details == null || details.isEmpty() || targetRecv == null || targetRecv.isBlank()) return null;
         for (DetailItem detail : details) {
-            if (receiverNo.equals(detail.recvNo())) {
+            if (targetRecv.equals(detail.recvNo())) {
                 return detail;
             }
         }

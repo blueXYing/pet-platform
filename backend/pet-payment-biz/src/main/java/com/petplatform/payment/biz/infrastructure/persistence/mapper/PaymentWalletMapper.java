@@ -34,6 +34,7 @@ public interface PaymentWalletMapper {
     // ---- Read-only Wallet Projections ----
     PendingSettlementRow selectPendingSettlementSummary(long merchantId);
     ReceiverSnapshotRow selectReceiverSnapshot(long merchantId);
+    AcquiringMerchantRow selectMerchantAcquiringAccount(long merchantId);
 
     final class WithdrawalRow {
         public long id;
@@ -78,5 +79,11 @@ public interface PaymentWalletMapper {
     final class ReceiverSnapshotRow {
         public String status;
         public String receiverNo;
+    }
+
+    final class AcquiringMerchantRow {
+        public boolean enabled;
+        public String lakalaMerchantNo;
+        public String lakalaTermNo;
     }
 }

@@ -152,6 +152,40 @@ public final class SettlementAmountCalculator {
     }
 
     /**
+     * Computes platform fee share fallback amount for a Mode A post-split refund (Ruling 40 §10.3).
+     *
+     * <p>Under Mode A, the acquiring merchant retains its own split share ({@code recv_merchant_no}),
+     * while only {@code platformSplitAmount} was transferred out to {@code platformReceiverNo}
+     * ({@code recv_no}). Full or cumulative-final refunds pull back all remaining platform split funds;
+     * partial refunds pull back {@code min(remainingReversible, floor(refundAmount * feeRate / 100))}.
+     */
+    public static BigDecimal computePlatformFallbackAmount(
+            BigDecimal paidAmount,
+            BigDecimal priorRefundedAmount,
+            BigDecimal refundAmount,
+            BigDecimal feeRatePercent,
+            BigDecimal platformSplitAmount,
+            BigDecimal priorReversedAmount) {
+        BigDecimal paid = requirePositiveMoney(paidAmount, "paidAmount");
+        BigDecimal priorRefunded = requireNonNegativeMoney(priorRefundedAmount, "priorRefundedAmount");
+        BigDecimal refund = requirePositiveMoney(refundAmount, "refundAmount");
+        BigDecimal ratePercent = validateFeeRate(feeRatePercent);
+        BigDecimal platformSplit = requireNonNegativeMoney(platformSplitAmount, "platformSplitAmount");
+        BigDecimal reversed = requireNonNegativeMoney(priorReversedAmount, "priorReversedAmount");
+
+        BigDecimal remainingReversible = platformSplit.subtract(reversed);
+        if (remainingReversible.signum() <= 0) {
+            return ZERO;
+        }
+        if (priorRefunded.add(refund).compareTo(paid) >= 0) {
+            return remainingReversible.setScale(2, RoundingMode.UNNECESSARY);
+        }
+        BigDecimal feeRatio = ratePercent.movePointLeft(2);
+        BigDecimal rawFallback = refund.multiply(feeRatio).setScale(2, RoundingMode.FLOOR);
+        return rawFallback.min(remainingReversible).setScale(2, RoundingMode.UNNECESSARY);
+    }
+
+    /**
      * Recomputes off-channel platform subsidy payable after a post-split refund so that
      * {@code (splitAmount - reversedAmount) + platformSubsidyDue == newMerchantShare} (floored at 0).
      */

@@ -188,6 +188,21 @@
     actual_separate_amount,total_fee_amount,merchant_fee_amount,status,finish_date,sent_at,created_at
   </sql>
 
+  <select id="selectDistinctReconcileMerchantNos" resultType="java.lang.String">
+    SELECT merchant_no FROM (
+      SELECT DISTINCT lakala_merchant_no AS merchant_no
+      FROM settlement_config
+      WHERE enabled=1 AND lakala_merchant_no IS NOT NULL AND lakala_merchant_no != ''
+      UNION
+      SELECT DISTINCT merchant_no
+      FROM settlement_instruction
+      WHERE (sent_at &gt;= #{dayStartUtc} AND sent_at &lt; #{dayEndUtcExclusive})
+         OR (sent_at IS NULL AND created_at &gt;= #{dayStartUtc} AND created_at &lt; #{dayEndUtcExclusive})
+         OR finish_date=#{reconcileDate}
+    ) AS active_merchants
+    ORDER BY merchant_no ASC
+  </select>
+
   <select id="selectInstructionsForReconcileDate"
           resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentReconcileMapper$ReconcileInstructionRow">
     SELECT <include refid="reconcileInstructionColumns"/>

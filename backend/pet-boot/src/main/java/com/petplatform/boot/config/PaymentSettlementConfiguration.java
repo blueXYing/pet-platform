@@ -74,7 +74,8 @@ public class PaymentSettlementConfiguration {
             String orgCode,
             String notifyUrl,
             boolean migrationEnabled,
-            String migrationDatabase) {
+            String migrationDatabase,
+            String platformReceiverNo) {
         public BigDecimal parsedLowestRatio() {
             String raw = lowestRatio == null || lowestRatio.isBlank() ? "0" : lowestRatio.trim();
             try {
@@ -82,6 +83,13 @@ public class PaymentSettlementConfiguration {
             } catch (RuntimeException invalid) {
                 throw new IllegalStateException(INVALID_LOWEST_RATIO);
             }
+        }
+
+        public String normalizedPlatformReceiverNo() {
+            if (platformReceiverNo == null || platformReceiverNo.isBlank()) {
+                return null;
+            }
+            return platformReceiverNo.trim();
         }
     }
 
@@ -188,18 +196,26 @@ public class PaymentSettlementConfiguration {
                 DataSource source,
                 SnowflakeIdGenerator ids,
                 SettlementChannel channel,
+                PaymentMerchantBindings bindings,
                 PaymentFoundationConfiguration.LakalaSettings lakala,
+                SettlementSettings settlementSettings,
                 ObjectProvider<Clock> clocks) {
             return new SettlementFallbackService(
                     source, ids, channel, new JdbcAsyncTaskSubmitter(source, ids),
-                    requireChannelZone(lakala), clocks.getIfAvailable(Clock::systemUTC));
+                    requireChannelZone(lakala), clocks.getIfAvailable(Clock::systemUTC),
+                    requirePlatformMerchantNo(bindings), settlementSettings.normalizedPlatformReceiverNo());
         }
 
         @Bean
-        SettlementAdminService settlementAdminService(DataSource source, SnowflakeIdGenerator ids,
-                SettlementFallbackService fallbackService) {
+        SettlementAdminService settlementAdminService(
+                DataSource source,
+                SnowflakeIdGenerator ids,
+                SettlementFallbackService fallbackService,
+                PaymentMerchantBindings bindings,
+                SettlementSettings settlementSettings) {
             return new SettlementAdminService(source, ids, new JdbcAsyncTaskSubmitter(source, ids),
-                    fallbackService::retryFailedFallback);
+                    fallbackService::retryFailedFallback,
+                    requirePlatformMerchantNo(bindings), settlementSettings.normalizedPlatformReceiverNo());
         }
 
         @Bean
@@ -217,7 +233,8 @@ public class PaymentSettlementConfiguration {
             ZoneId zone = requireChannelZone(lakala);
             var settings = new SettlementExecutionService.Settings(
                     merchantNo, zone, settlementSettings.parsedLowestRatio(),
-                    settlementSettings.orgCode(), settlementSettings.notifyUrl());
+                    settlementSettings.orgCode(), settlementSettings.notifyUrl(),
+                    settlementSettings.normalizedPlatformReceiverNo());
             return new SettlementExecutionService(source, ids, channel, receivers, blockers,
                     new JdbcAsyncTaskSubmitter(source, ids), settings,
                     clocks.getIfAvailable(Clock::systemUTC));
@@ -228,8 +245,11 @@ public class PaymentSettlementConfiguration {
                 DataSource source,
                 SnowflakeIdGenerator ids,
                 SettlementReceiptWriter.NotificationVerifier verifier,
-                IntegrationEventPublisher publisher) {
-            return new SettlementReceiptWriter(source, ids, verifier, publisher);
+                IntegrationEventPublisher publisher,
+                PaymentMerchantBindings bindings,
+                SettlementSettings settlementSettings) {
+            return new SettlementReceiptWriter(source, ids, verifier, publisher,
+                    requirePlatformMerchantNo(bindings), settlementSettings.normalizedPlatformReceiverNo());
         }
 
         @Bean

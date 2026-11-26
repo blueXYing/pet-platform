@@ -26,7 +26,9 @@ import java.util.regex.Pattern;
  * All LAEP monetary fields are in <b>yuan</b> (unlike SACS v3 cents). No network call happens here.
  */
 public final class LakalaLaepProtocol {
-    /** Account type "04" = 分账接收方账户 (split-receiver account; default if omitted is "01"). */
+    /** Account type "01" = 收款账户 (merchant acquiring account, Mode A / Ruling 40 §10.4). */
+    public static final String PAY_TYPE_MERCHANT_COLLECT = "01";
+    /** Account type "04" = 分账接收方账户 (split-receiver account; legacy default). */
     public static final String PAY_TYPE_RECEIVER = "04";
     public static final String DRAW_MODE_D1 = "D1";
 
@@ -67,7 +69,15 @@ public final class LakalaLaepProtocol {
 
     // ---- 1269 Balance Query ----------------------------------------------------------------
 
-    public record BalanceQueryInput(String orgNo, String receiverNo) {}
+    public record BalanceQueryInput(String orgNo, String receiverNo, String payType) {
+        public BalanceQueryInput(String orgNo, String receiverNo) {
+            this(orgNo, receiverNo, PAY_TYPE_RECEIVER);
+        }
+
+        public BalanceQueryInput {
+            payType = hasText(payType) ? payType.trim() : PAY_TYPE_RECEIVER;
+        }
+    }
 
     public record BalanceResult(
             String payNo,
@@ -89,7 +99,22 @@ public final class LakalaLaepProtocol {
             BigDecimal drawAmt,
             String merOrderNo,
             String notifyUrl,
-            String remark) {}
+            String remark,
+            String payType) {
+        public WithdrawD1Input(
+                String orgNo,
+                String receiverNo,
+                BigDecimal drawAmt,
+                String merOrderNo,
+                String notifyUrl,
+                String remark) {
+            this(orgNo, receiverNo, drawAmt, merOrderNo, notifyUrl, remark, PAY_TYPE_RECEIVER);
+        }
+
+        public WithdrawD1Input {
+            payType = hasText(payType) ? payType.trim() : PAY_TYPE_RECEIVER;
+        }
+    }
 
     public record WithdrawD1Result(String drawJnl, String merOrderNo) {}
 
@@ -127,7 +152,7 @@ public final class LakalaLaepProtocol {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("orgNo", required(input.orgNo(), 32));
         data.put("merchantNo", required(input.receiverNo(), 32));
-        data.put("payType", PAY_TYPE_RECEIVER);
+        data.put("payType", validPayType(input.payType()));
         return LakalaV2Protocol.buildV2Request(
                 LakalaV2Protocol.EWALLET_BALANCE_QUERY_PATH, data, timestampMillis, reqId);
     }
@@ -144,7 +169,7 @@ public final class LakalaLaepProtocol {
             data.put("notifyUrl", required(input.notifyUrl(), 256));
         }
         data.put("merOrderNo", required(input.merOrderNo(), 32));
-        data.put("payType", PAY_TYPE_RECEIVER);
+        data.put("payType", validPayType(input.payType()));
         if (hasText(input.remark())) {
             data.put("remark", required(input.remark(), 64));
         }
@@ -302,6 +327,14 @@ public final class LakalaLaepProtocol {
         if (text.isEmpty()) return null;
         if (text.codePoints().anyMatch(Character::isISOControl)) invalid();
         return text.length() > max ? text.substring(0, max) : text;
+    }
+
+    private static String validPayType(String payType) {
+        if (PAY_TYPE_MERCHANT_COLLECT.equals(payType) || PAY_TYPE_RECEIVER.equals(payType)) {
+            return payType;
+        }
+        invalid();
+        throw new AssertionError();
     }
 
     private static boolean hasText(String value) {

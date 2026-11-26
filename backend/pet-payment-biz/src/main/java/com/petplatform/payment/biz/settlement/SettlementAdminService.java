@@ -69,18 +69,29 @@ public final class SettlementAdminService implements SettlementAdminApi, Settlem
     private final PaymentSettlementStore store;
     private final JdbcAsyncTaskSubmitter tasks;
     private final FallbackRetryDelegate fallbackRetrier;
+    private final String platformMerchantNo;
+    private final String platformReceiverNo;
     private final TransactionTemplate tx;
 
     public SettlementAdminService(DataSource source, SnowflakeIdGenerator ids, JdbcAsyncTaskSubmitter tasks) {
-        this(source, ids, tasks, null);
+        this(source, ids, tasks, null, null, null);
     }
 
     public SettlementAdminService(DataSource source, SnowflakeIdGenerator ids, JdbcAsyncTaskSubmitter tasks,
             FallbackRetryDelegate fallbackRetrier) {
+        this(source, ids, tasks, fallbackRetrier, null, null);
+    }
+
+    public SettlementAdminService(DataSource source, SnowflakeIdGenerator ids, JdbcAsyncTaskSubmitter tasks,
+            FallbackRetryDelegate fallbackRetrier, String platformMerchantNo, String platformReceiverNo) {
         Objects.requireNonNull(source, "source");
         this.ids = Objects.requireNonNull(ids, "ids");
         this.tasks = Objects.requireNonNull(tasks, "tasks");
         this.fallbackRetrier = fallbackRetrier;
+        this.platformMerchantNo = platformMerchantNo == null || platformMerchantNo.isBlank()
+                ? null : platformMerchantNo.trim();
+        this.platformReceiverNo = platformReceiverNo == null || platformReceiverNo.isBlank()
+                ? null : platformReceiverNo.trim();
         this.store = new PaymentSettlementStore(source);
         this.tx = new TransactionTemplate(new DataSourceTransactionManager(source));
         this.tx.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
@@ -104,6 +115,11 @@ public final class SettlementAdminService implements SettlementAdminApi, Settlem
             throw invalid(bad.getMessage());
         }
         String reason = normalizeReason(command.reason());
+        String lakalaMerchantNo = normalizeAcquiringToken(command.lakalaMerchantNo(), "lakalaMerchantNo");
+        String lakalaTermNo = normalizeAcquiringToken(command.lakalaTermNo(), "lakalaTermNo");
+        if ((lakalaMerchantNo == null) != (lakalaTermNo == null)) {
+            throw invalid("lakalaMerchantNo and lakalaTermNo must be configured together");
+        }
         byte[] requestKey = requestKey("settlement.config.upsert", command.context(), requestId);
         Long operatorId = parseNullableId(command.context().operatorId());
 
@@ -115,7 +131,9 @@ public final class SettlementAdminService implements SettlementAdminApi, Settlem
                 if (existingAudit.merchantId != merchantId
                         || existingAudit.afterSettleDays != command.settleDays()
                         || existingAudit.afterFeeRate.compareTo(feeRate) != 0
-                        || existingAudit.afterEnabled != command.enabled()) {
+                        || existingAudit.afterEnabled != command.enabled()
+                        || !Objects.equals(existingAudit.afterLakalaMerchantNo, lakalaMerchantNo)
+                        || !Objects.equals(existingAudit.afterLakalaTermNo, lakalaTermNo)) {
                     throw idempotencyConflict("settlement config requestId conflict");
                 }
                 ConfigRow current = store.settlement.selectConfigByMerchant(merchantId);
@@ -126,13 +144,18 @@ public final class SettlementAdminService implements SettlementAdminApi, Settlem
             Integer beforeDays = null;
             BigDecimal beforeFee = null;
             Boolean beforeEnabled = null;
+            String beforeLklMerchant = null;
+            String beforeLklTerm = null;
             if (existing == null) {
                 configId = nextId();
                 try {
                     store.settlement.insertConfig(PaymentFoundationStore.values(
                             "id", configId, "merchantId", merchantId,
                             "settleDays", command.settleDays(), "feeRate", feeRate,
-                            "enabled", command.enabled(), "now", PaymentSettlementStore.utc(now)));
+                            "enabled", command.enabled(),
+                            "lakalaMerchantNo", lakalaMerchantNo,
+                            "lakalaTermNo", lakalaTermNo,
+                            "now", PaymentSettlementStore.utc(now)));
                 } catch (DuplicateKeyException race) {
                     throw conflict("concurrent settlement config creation, retry with same requestId");
                 }
@@ -141,10 +164,15 @@ public final class SettlementAdminService implements SettlementAdminApi, Settlem
                 beforeDays = existing.settleDays;
                 beforeFee = existing.feeRate;
                 beforeEnabled = existing.enabled;
+                beforeLklMerchant = existing.lakalaMerchantNo;
+                beforeLklTerm = existing.lakalaTermNo;
                 int updated = store.settlement.updateConfig(PaymentFoundationStore.values(
                         "id", existing.id, "version", existing.version,
                         "settleDays", command.settleDays(), "feeRate", feeRate,
-                        "enabled", command.enabled(), "now", PaymentSettlementStore.utc(now)));
+                        "enabled", command.enabled(),
+                        "lakalaMerchantNo", lakalaMerchantNo,
+                        "lakalaTermNo", lakalaTermNo,
+                        "now", PaymentSettlementStore.utc(now)));
                 if (updated != 1) throw conflict("settlement config changed concurrently");
             }
             store.settlement.insertConfigAudit(PaymentFoundationStore.values(
@@ -153,6 +181,8 @@ public final class SettlementAdminService implements SettlementAdminApi, Settlem
                     "beforeSettleDays", beforeDays, "afterSettleDays", command.settleDays(),
                     "beforeFeeRate", beforeFee, "afterFeeRate", feeRate,
                     "beforeEnabled", beforeEnabled, "afterEnabled", command.enabled(),
+                    "beforeLakalaMerchantNo", beforeLklMerchant, "afterLakalaMerchantNo", lakalaMerchantNo,
+                    "beforeLakalaTermNo", beforeLklTerm, "afterLakalaTermNo", lakalaTermNo,
                     "operatorType", command.context().operatorType().name(),
                     "operatorId", operatorId, "reason", reason,
                     "now", PaymentSettlementStore.utc(now)));
@@ -431,8 +461,14 @@ public final class SettlementAdminService implements SettlementAdminApi, Settlem
                             row.originalPrice, row.flashDiscountAmount, row.merchantDiscountAmount,
                             row.paidAmount, totalRefundedAmount, row.feeRateSnapshot);
                     BigDecimal splitAmt = row.splitAmount != null ? row.splitAmount : SettlementAmountCalculator.ZERO;
+                    InstructionRow originSplit = store.settlement.selectSucceededSplitInstruction(row.id);
+                    boolean modeA = SettlementModeDetector.isModeAInstruction(
+                            originSplit, platformMerchantNo, platformReceiverNo);
+                    BigDecimal merchantNetReversed = modeA
+                            ? totalRefundedAmount.subtract(row.reversedAmount).max(SettlementAmountCalculator.ZERO)
+                            : row.reversedAmount;
                     BigDecimal newSubsidyDue = SettlementAmountCalculator.recomputePlatformSubsidyDue(
-                            postCalc.merchantShare(), splitAmt, row.reversedAmount);
+                            postCalc.merchantShare(), splitAmt, merchantNetReversed);
                     store.settlement.updatePostSplitRefundProjection(PaymentFoundationStore.values(
                             "id", row.id, "version", row.version,
                             "refundedAmount", totalRefundedAmount.setScale(2),
@@ -556,11 +592,12 @@ public final class SettlementAdminService implements SettlementAdminApi, Settlem
                     IDS.toApi(merchantId),
                     SettlementAmountCalculator.DEFAULT_SETTLE_DAYS,
                     SettlementAmountCalculator.DEFAULT_FEE_RATE,
-                    true, false, 0L, null);
+                    true, false, null, null, 0L, null);
         }
         return new SettlementConfigView(
                 IDS.toApi(row.merchantId), row.settleDays, row.feeRate,
-                row.enabled, true, row.version, PaymentSettlementStore.offset(row.updatedAt));
+                row.enabled, true, row.lakalaMerchantNo, row.lakalaTermNo,
+                row.version, PaymentSettlementStore.offset(row.updatedAt));
     }
 
     static SettlementOrderView toOrderView(OrderRow r) {
@@ -664,6 +701,15 @@ public final class SettlementAdminService implements SettlementAdminApi, Settlem
             throw invalid("invalid " + field);
         }
         return raw;
+    }
+
+    private static String normalizeAcquiringToken(String raw, String field) {
+        if (raw == null || raw.isBlank()) return null;
+        String trimmed = raw.trim();
+        if (trimmed.length() > 32 || !trimmed.matches("[A-Za-z0-9]+")) {
+            throw invalid("invalid " + field);
+        }
+        return trimmed;
     }
 
     private static String normalizeReason(String reason) {

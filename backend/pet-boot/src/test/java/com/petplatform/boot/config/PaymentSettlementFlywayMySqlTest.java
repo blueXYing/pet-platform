@@ -52,11 +52,11 @@ class PaymentSettlementFlywayMySqlTest {
             ds.setUser(user);
             ds.setPassword(pass);
 
-            // 1. Run isolated Flyway migration V38 through PaymentSettlementConfiguration.
+            // 1. Run isolated Flyway migration V38..V43 through PaymentSettlementConfiguration.
             var cfg = new PaymentSettlementConfiguration();
             cfg.settlementMigration(ds, new PaymentSettlementConfiguration.SettlementSettings(
-                    "0", null, null, true, dbName));
-            // V38..V42 contiguous settlement, fallback, receiver, wallet, and reconcile tables (12 tables).
+                    "0", null, null, true, dbName, null));
+            // V38..V43 contiguous settlement, fallback, receiver, wallet, reconcile, and acquiring tables (12 tables).
             try (Connection c = ds.getConnection(); Statement s = c.createStatement();
                  ResultSet rs = s.executeQuery("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='"
                          + dbName + "' AND table_name IN ('settlement_config','settlement_config_audit',"
@@ -73,6 +73,22 @@ class PaymentSettlementFlywayMySqlTest {
                          + "('refund_order_id','origin_instruction_id','fallback_reason')")) {
                 rs.next();
                 assertEquals(3, rs.getInt(1));
+            }
+            // V43 Mode A acquiring columns on settlement_config and settlement_config_audit.
+            try (Connection c = ds.getConnection(); Statement s = c.createStatement();
+                 ResultSet rs = s.executeQuery("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='"
+                         + dbName + "' AND table_name='settlement_config' AND column_name IN "
+                         + "('lakala_merchant_no','lakala_term_no')")) {
+                rs.next();
+                assertEquals(2, rs.getInt(1));
+            }
+            try (Connection c = ds.getConnection(); Statement s = c.createStatement();
+                 ResultSet rs = s.executeQuery("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='"
+                         + dbName + "' AND table_name='settlement_config_audit' AND column_name IN "
+                         + "('before_lakala_merchant_no','after_lakala_merchant_no',"
+                         + "'before_lakala_term_no','after_lakala_term_no')")) {
+                rs.next();
+                assertEquals(4, rs.getInt(1));
             }
 
             // 2. Apply SQL06 and verify OrderSettlementFactsApiImpl reads original_price/flash_discount/discount_amount.

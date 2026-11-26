@@ -68,14 +68,26 @@ public final class SettlementReceiptWriter {
     private final PaymentSettlementStore store;
     private final NotificationVerifier verifier;
     private final IntegrationEventPublisher publisher;
+    private final String platformMerchantNo;
+    private final String platformReceiverNo;
     private final TransactionTemplate tx;
 
     public SettlementReceiptWriter(DataSource source, SnowflakeIdGenerator ids,
             NotificationVerifier verifier, IntegrationEventPublisher publisher) {
+        this(source, ids, verifier, publisher, null, null);
+    }
+
+    public SettlementReceiptWriter(DataSource source, SnowflakeIdGenerator ids,
+            NotificationVerifier verifier, IntegrationEventPublisher publisher,
+            String platformMerchantNo, String platformReceiverNo) {
         Objects.requireNonNull(source, "source");
         this.ids = Objects.requireNonNull(ids, "ids");
         this.verifier = Objects.requireNonNull(verifier, "verifier");
         this.publisher = Objects.requireNonNull(publisher, "publisher");
+        this.platformMerchantNo = platformMerchantNo == null || platformMerchantNo.isBlank()
+                ? null : platformMerchantNo.trim();
+        this.platformReceiverNo = platformReceiverNo == null || platformReceiverNo.isBlank()
+                ? null : platformReceiverNo.trim();
         this.store = new PaymentSettlementStore(source);
         this.tx = new TransactionTemplate(new DataSourceTransactionManager(source));
         this.tx.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
@@ -176,7 +188,11 @@ public final class SettlementReceiptWriter {
             if (outcome.isSuccess()) {
                 BigDecimal actualSeparate = outcome.actualSeparateCents() != null
                         ? BigDecimal.valueOf(outcome.actualSeparateCents(), 2) : instr.totalAmount;
-                SplitDetail merchantDetail = outcome.findReceiverDetail(instr.receiverNo).orElse(null);
+                boolean modeA = SettlementModeDetector.isModeAInstruction(
+                        instr, platformMerchantNo, platformReceiverNo);
+                SplitDetail merchantDetail = (modeA
+                        ? outcome.findMerchantDetail(instr.merchantNo)
+                        : outcome.findReceiverDetail(instr.receiverNo)).orElse(null);
                 BigDecimal actualMerchant = merchantDetail != null && merchantDetail.actualAmount() != null
                         ? merchantDetail.actualAmount() : instr.merchantAmount;
                 BigDecimal merchantFee = merchantDetail != null && merchantDetail.feeAmount() != null
@@ -289,11 +305,17 @@ public final class SettlementReceiptWriter {
                     ? BigDecimal.valueOf(outcome.actualSeparateCents(), 2) : instr.totalAmount;
             BigDecimal totalFee = outcome.totalFeeCents() != null
                     ? BigDecimal.valueOf(outcome.totalFeeCents(), 2) : SettlementAmountCalculator.ZERO;
+            InstructionRow originSplit = instr.originInstructionId != null
+                    ? store.settlement.selectInstructionById(instr.originInstructionId)
+                    : store.settlement.selectSucceededSplitInstruction(order.id);
+            boolean modeA = SettlementModeDetector.isModeAInstruction(
+                    originSplit != null ? originSplit : instr, platformMerchantNo, platformReceiverNo);
+
             int updatedInstr = store.settlement.markInstructionSucceeded(PaymentFoundationStore.values(
                     "id", instr.id, "version", instr.version,
                     "separateNo", outcome.separateNo(),
                     "actualSeparateAmount", actualSeparate,
-                    "actualMerchantAmount", actualSeparate,
+                    "actualMerchantAmount", modeA ? SettlementAmountCalculator.ZERO : actualSeparate,
                     "totalFeeAmount", totalFee,
                     "merchantFeeAmount", SettlementAmountCalculator.ZERO,
                     "channelStatus", outcome.rawStatus(),
@@ -304,14 +326,18 @@ public final class SettlementReceiptWriter {
                     "now", PaymentSettlementStore.utc(now)));
             if (updatedInstr != 1) throw unavailable("concurrent fallback instruction state change");
 
-            InstructionRow originSplit = instr.originInstructionId != null
-                    ? store.settlement.selectInstructionById(instr.originInstructionId)
-                    : store.settlement.selectSucceededSplitInstruction(order.id);
-            BigDecimal originalMerchantSplit = originSplit != null
-                    ? originSplit.merchantAmount
-                    : (order.splitAmount != null ? order.splitAmount : instr.merchantAmount);
-            BigDecimal newReversed = order.reversedAmount.add(instr.merchantAmount).setScale(2);
-            String newOrderStatus = newReversed.compareTo(originalMerchantSplit) >= 0
+            BigDecimal reversibleTotal;
+            if (modeA) {
+                reversibleTotal = originSplit != null
+                        ? originSplit.platformAmount
+                        : (order.platformRetainedAmount != null ? order.platformRetainedAmount : instr.totalAmount);
+            } else {
+                reversibleTotal = originSplit != null
+                        ? originSplit.merchantAmount
+                        : (order.splitAmount != null ? order.splitAmount : instr.merchantAmount);
+            }
+            BigDecimal newReversed = order.reversedAmount.add(instr.totalAmount).setScale(2);
+            String newOrderStatus = newReversed.compareTo(reversibleTotal) >= 0
                     ? "REVERSED" : "PARTIALLY_REVERSED";
 
             int updatedOrder = store.settlement.markOrderFallbackSucceeded(PaymentFoundationStore.values(

@@ -22,6 +22,13 @@ function normalizeFeeRate(raw: string): string | null {
   return `${intNum}.${fracPart.padEnd(4, '0')}`;
 }
 
+function normalizeLakalaCode(raw: string): { value: string | null; valid: boolean } {
+  const trimmed = raw.trim();
+  if (!trimmed) return { value: null, valid: true };
+  if (!/^[0-9A-Za-z]{1,32}$/.test(trimmed)) return { value: null, valid: false };
+  return { value: trimmed, valid: true };
+}
+
 export default function SettlementConfigPage({ client, canWrite, onAuthLost }: {
   client: SettlementAdminClient;
   canWrite: boolean;
@@ -32,6 +39,8 @@ export default function SettlementConfigPage({ client, canWrite, onAuthLost }: {
   const [settleDays, setSettleDays] = useState<number>(7);
   const [feeRate, setFeeRate] = useState<string>('0.6000');
   const [enabled, setEnabled] = useState<boolean>(true);
+  const [lakalaMerchantNo, setLakalaMerchantNo] = useState<string>('');
+  const [lakalaTermNo, setLakalaTermNo] = useState<string>('');
   const [reason, setReason] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -51,6 +60,8 @@ export default function SettlementConfigPage({ client, canWrite, onAuthLost }: {
     setSettleDays(view.settleDays);
     setFeeRate(normalizeFeeRate(String(view.feeRate)) ?? String(view.feeRate));
     setEnabled(view.enabled);
+    setLakalaMerchantNo(view.lakalaMerchantNo ?? '');
+    setLakalaTermNo(view.lakalaTermNo ?? '');
     setReason('');
     requestIdRef.current = crypto.randomUUID();
   }
@@ -93,6 +104,20 @@ export default function SettlementConfigPage({ client, canWrite, onAuthLost }: {
       setError('对外手续费率必须为 0.0000 ～ 99.9999 之间的合法百分比（最多 4 位小数）。');
       return;
     }
+    const parsedMerchantNo = normalizeLakalaCode(lakalaMerchantNo);
+    const parsedTermNo = normalizeLakalaCode(lakalaTermNo);
+    if (!parsedMerchantNo.valid) {
+      setError('拉卡拉收单商户号必须为 1～32 位 ASCII 字母或数字。');
+      return;
+    }
+    if (!parsedTermNo.valid) {
+      setError('拉卡拉终端号必须为 1～32 位 ASCII 字母或数字。');
+      return;
+    }
+    if ((parsedMerchantNo.value === null) !== (parsedTermNo.value === null)) {
+      setError('拉卡拉收单商户号与拉卡拉终端号必须成对填写，或同时留空。');
+      return;
+    }
     if (reason.trim().length > 256) {
       setError('变更原因不能超过 256 字。');
       return;
@@ -108,6 +133,8 @@ export default function SettlementConfigPage({ client, canWrite, onAuthLost }: {
           settleDays,
           feeRate: normalizedRate,
           enabled,
+          lakalaMerchantNo: parsedMerchantNo.value,
+          lakalaTermNo: parsedTermNo.value,
           ...(reason.trim() ? { reason: reason.trim() } : {}),
         },
         requestIdRef.current,
@@ -132,7 +159,7 @@ export default function SettlementConfigPage({ client, canWrite, onAuthLost }: {
 
   return <PageContainer
     title="商家结算配置"
-    hint="按商家配置 T+d 结算周期（T 为核销完成时间，d 范围 7～30 天）与商家对外手续费率（百分比，保留 4 位小数，默认 0.6000%）。支付成功时快照对外费率，核销完成时快照结算天数，修改配置不影响已生成快照的既有订单。">
+    hint="按商家配置拉卡拉收单商户号与终端号（模式 A：商家独立收单、未配置将拦截支付）、T+d 结算周期（7～30 天）与对外手续费率（百分比，保留 4 位小数，默认 0.6000%）。修改配置仅影响后续新订单，不溯及既有结算单快照。">
     <form className="filter-bar" onSubmit={event => { event.preventDefault(); void lookup(); }}>
       <label className="filter-item">
         商家 ID
@@ -161,11 +188,27 @@ export default function SettlementConfigPage({ client, canWrite, onAuthLost }: {
 
     {config && <>
       <Section title={`当前生效快照 · 商家 ${config.merchantId}`}>
+        {(!config.lakalaMerchantNo || !config.lakalaTermNo) && (
+          <Alert
+            type="warning"
+            showIcon
+            style={{ marginBottom: 16 }}
+            message="该商家尚未配置拉卡拉收单商户号与终端号：C 端下单发起微信支付将被拦截（不会回退到平台主体商户号），请线下完成拉卡拉进件后在此成对录入。"
+          />
+        )}
         <FactList column={2} items={[
           { label: '商家 ID', value: <code>{config.merchantId}</code> },
           {
             label: '配置来源',
             value: <StatusTag label={config.configured ? '已单独配置' : '平台默认值'} status={config.configured ? 'ACTIVE' : 'DRAFT'} />,
+          },
+          {
+            label: '拉卡拉收单商户号',
+            value: config.lakalaMerchantNo ? <code>{config.lakalaMerchantNo}</code> : '未配置',
+          },
+          {
+            label: '拉卡拉终端号',
+            value: config.lakalaTermNo ? <code>{config.lakalaTermNo}</code> : '未配置',
           },
           { label: '结算周期 (T+d)', value: `T + ${config.settleDays} 天` },
           { label: '对外手续费率', value: formatPercentRate(config.feeRate) },
@@ -180,6 +223,39 @@ export default function SettlementConfigPage({ client, canWrite, onAuthLost }: {
 
       <Section title="修改结算配置">
         <form onSubmit={event => { event.preventDefault(); void save(); }}>
+          <div className="filter-item">
+            <label htmlFor="settlement-lakala-merchant-no">拉卡拉收单商户号（merchant_no，1～32 位字母/数字，与终端号成对填写）</label>
+            <Input
+              id="settlement-lakala-merchant-no"
+              style={{ width: 320 }}
+              maxLength={32}
+              value={lakalaMerchantNo}
+              disabled={!canWrite || saving}
+              placeholder="例如 82266507295001Z"
+              onChange={event => {
+                setLakalaMerchantNo(event.target.value);
+                resetCommandKey();
+              }}
+            />
+            <span className="hint">对应拉卡拉 1075 预下单的 merchant_no；每个商家独立收单，未配置或停用时禁止发起支付。</span>
+          </div>
+
+          <div className="filter-item">
+            <label htmlFor="settlement-lakala-term-no">拉卡拉终端号（term_no，1～32 位字母/数字，与商户号成对填写）</label>
+            <Input
+              id="settlement-lakala-term-no"
+              style={{ width: 320 }}
+              maxLength={32}
+              value={lakalaTermNo}
+              disabled={!canWrite || saving}
+              placeholder="例如 Q6426723"
+              onChange={event => {
+                setLakalaTermNo(event.target.value);
+                resetCommandKey();
+              }}
+            />
+            <span className="hint">对应拉卡拉 1075 预下单的 term_no，须归属于上方填写的拉卡拉收单商户号。</span>
+          </div>
           <div className="filter-item">
             <label htmlFor="settlement-days">T+d 结算天数（7～30 天）</label>
             <InputNumber

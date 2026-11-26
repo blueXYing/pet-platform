@@ -60,7 +60,17 @@ public final class SettlementExecutionService {
             ZoneId channelTimeZone,
             BigDecimal lowestRatio,
             String lklOrgNo,
-            String notifyUrl) {
+            String notifyUrl,
+            String platformReceiverNo) {
+        public Settings(
+                String platformMerchantNo,
+                ZoneId channelTimeZone,
+                BigDecimal lowestRatio,
+                String lklOrgNo,
+                String notifyUrl) {
+            this(platformMerchantNo, channelTimeZone, lowestRatio, lklOrgNo, notifyUrl, null);
+        }
+
         public Settings {
             if (platformMerchantNo == null || platformMerchantNo.isBlank() || platformMerchantNo.length() > 32) {
                 throw new IllegalArgumentException("platformMerchantNo is required");
@@ -70,6 +80,11 @@ public final class SettlementExecutionService {
                     lowestRatio == null ? BigDecimal.ZERO : lowestRatio);
             lklOrgNo = lklOrgNo == null || lklOrgNo.isBlank() ? null : lklOrgNo.trim();
             notifyUrl = notifyUrl == null || notifyUrl.isBlank() ? null : notifyUrl.trim();
+            platformReceiverNo = platformReceiverNo == null || platformReceiverNo.isBlank()
+                    ? null : platformReceiverNo.trim();
+            if (platformReceiverNo != null && platformReceiverNo.length() > 32) {
+                throw new IllegalArgumentException("platformReceiverNo must not exceed 32 characters");
+            }
         }
     }
 
@@ -113,11 +128,11 @@ public final class SettlementExecutionService {
             return preflight.earlyOutcome();
         }
 
-        // Phase 2: Query Lakala 2396 outside transaction.
+        // Phase 2: Query Lakala 2396 outside transaction under the order's actual acquiring merchant.
         VerifiedQueryAmt amtResult;
         try {
             amtResult = channel.querySeparableAmount(new QueryAmtInput(
-                    channelNow(), settings.platformMerchantNo(), preflight.logNo(), preflight.logDate()));
+                    channelNow(), preflight.acquiringMerchantNo(), preflight.logNo(), preflight.logDate()));
         } catch (ChannelUnknownException unknown) {
             return new SettlementDueTask.Outcome.Retry("SACS_QUERY_AMT_" + unknown.reason().name());
         }
@@ -132,6 +147,16 @@ public final class SettlementExecutionService {
         SplitAllocation allocation = SettlementAmountCalculator.computeSplitAllocation(
                 preflight.merchantShare(), preflight.paidAmount(), canSeparate, settings.lowestRatio());
 
+        // Mode A guard: when platform fee share > 0, platformReceiverNo (SR...) must be configured before send fence.
+        if (preflight.modeA() && allocation.platformRetainedAmount().signum() > 0
+                && (settings.platformReceiverNo() == null || settings.platformReceiverNo().isBlank())) {
+            markHeldIfUnchanged(settlementOrderId, preflight.version(),
+                    "PLATFORM_RECEIVER_NOT_CONFIGURED",
+                    "PLATFORM_RECEIVER_NOT_CONFIGURED",
+                    "Platform split receiver (LAKALA_PLATFORM_RECEIVER_NO) is not configured for positive platform share");
+            return new SettlementDueTask.Outcome.Held("PLATFORM_RECEIVER_NOT_CONFIGURED");
+        }
+
         // Phase 3: Atomic send fence transaction — persist SENT instruction + enqueue 15s query task.
         PersistedInstruction persisted = persistSendFence(preflight, canSeparate, allocation);
         if (persisted.earlyOutcome() != null) {
@@ -139,14 +164,16 @@ public final class SettlementExecutionService {
         }
 
         // Phase 4: Submit Lakala 1293 outside transaction. Unknown outcome stays SENT for query task.
-        List<ReceiverShare> shares = buildReceiverShares(
-                settings.platformMerchantNo(), persisted.receiverNo(),
-                allocation.platformRetainedAmount(), allocation.splitAmount());
+        List<ReceiverShare> shares = preflight.modeA()
+                ? buildModeAReceiverShares(preflight.acquiringMerchantNo(), persisted.receiverNo(),
+                        allocation.platformRetainedAmount(), allocation.splitAmount())
+                : buildReceiverShares(preflight.acquiringMerchantNo(), persisted.receiverNo(),
+                        allocation.platformRetainedAmount(), allocation.splitAmount());
         long totalCents = SettlementAmountCalculator.toCents(canSeparate);
         try {
             VerifiedSeparateSubmit submitted = channel.submitSeparate(new SeparateInput(
                     channelNow(),
-                    settings.platformMerchantNo(),
+                    preflight.acquiringMerchantNo(),
                     persisted.logNo(),
                     persisted.logDate(),
                     persisted.outSeparateNo(),
@@ -170,11 +197,13 @@ public final class SettlementExecutionService {
             long version,
             BigDecimal paidAmount,
             BigDecimal merchantShare,
+            String acquiringMerchantNo,
             String logNo,
             LocalDate logDate,
-            String receiverNo) {
+            String receiverNo,
+            boolean modeA) {
         static Preflight stop(SettlementDueTask.Outcome outcome) {
-            return new Preflight(outcome, 0, 0, 0, 0, null, null, null, null, null);
+            return new Preflight(outcome, 0, 0, 0, 0, null, null, null, null, null, null, false);
         }
     }
 
@@ -256,29 +285,38 @@ public final class SettlementExecutionService {
                 }
             }
 
-            // Re-check receiver ACTIVE (Ruling 40 §4.3: pause, never skip or reroute).
-            if (activeReceiver.isEmpty()) {
+            // Re-check authoritative payment_order trace (Contract 75 §3: NULL log_no/log_date fails closed).
+            CenterRow payment = store.center.selectCenterById(row.paymentId);
+            if (payment == null || !"PAID".equals(payment.status()) || !"1".equals(payment.settleType())
+                    || payment.merchantNo() == null || payment.merchantNo().isBlank()) {
+                holdRow(row.id, currentVersion, "PAYMENT_INELIGIBLE", "PAYMENT_INELIGIBLE",
+                        "Payment row is missing, unpaid, non-split or acquiring merchant absent", now);
+                return Preflight.stop(new SettlementDueTask.Outcome.Held("PAYMENT_INELIGIBLE"));
+            }
+
+            // Detect Mode A (merchant-acquiring + reverse split to platform, Ruling 40 §10) vs legacy platform-acquiring.
+            boolean merchantConfiguredAcquiring = cfg != null
+                    && cfg.lakalaMerchantNo != null && !cfg.lakalaMerchantNo.isBlank();
+            boolean modeA = merchantConfiguredAcquiring
+                    || !settings.platformMerchantNo().equals(payment.merchantNo())
+                    || settings.platformReceiverNo() != null;
+
+            // Legacy platform-acquiring requires active merchant SR... receiver; Mode A splits self + optional platform SR....
+            if (!modeA && activeReceiver.isEmpty()) {
                 holdRow(row.id, currentVersion, "RECEIVER_NOT_ACTIVE", null, null, now);
                 return Preflight.stop(new SettlementDueTask.Outcome.Held("RECEIVER_NOT_ACTIVE"));
             }
 
-            // Re-check authoritative payment_order trace (Contract 75 §3: NULL log_no/log_date fails closed).
-            CenterRow payment = store.center.selectCenterById(row.paymentId);
-            if (payment == null || !"PAID".equals(payment.status()) || !"1".equals(payment.settleType())
-                    || !settings.platformMerchantNo().equals(payment.merchantNo())) {
-                holdRow(row.id, currentVersion, "PAYMENT_INELIGIBLE", "PAYMENT_INELIGIBLE",
-                        "Payment row is missing, unpaid, non-split or merchant mismatch", now);
-                return Preflight.stop(new SettlementDueTask.Outcome.Held("PAYMENT_INELIGIBLE"));
-            }
             if (payment.logNo() == null || payment.logNo().isBlank() || payment.logDate() == null) {
                 holdRow(row.id, currentVersion, "MISSING_COLLECT_TRACE", "MISSING_COLLECT_TRACE",
                         "payment_order.log_no/log_date is NULL; manual reconciliation required", now);
                 return Preflight.stop(new SettlementDueTask.Outcome.Held("MISSING_COLLECT_TRACE"));
             }
 
+            String targetReceiverNo = modeA ? settings.platformReceiverNo() : activeReceiver.get().receiverNo();
             return new Preflight(null, row.id, row.paymentId, row.merchantId, currentVersion,
-                    row.paidAmount, currentMerchantShare, payment.logNo(), payment.logDate(),
-                    activeReceiver.get().receiverNo());
+                    row.paidAmount, currentMerchantShare, payment.merchantNo(),
+                    payment.logNo(), payment.logDate(), targetReceiverNo, modeA);
         });
     }
 
@@ -311,6 +349,9 @@ public final class SettlementExecutionService {
             int attemptNo = (maxAttempt == null ? 0 : maxAttempt) + 1;
             long instructionId = nextId();
             String outSeparateNo = "SP" + IDS.toApi(instructionId);
+            String instructionReceiverNo = preflight.modeA()
+                    ? (allocation.platformRetainedAmount().signum() > 0 ? settings.platformReceiverNo() : null)
+                    : preflight.receiverNo();
             store.settlement.insertInstruction(PaymentFoundationStore.values(
                     "id", instructionId,
                     "settlementOrderId", row.id,
@@ -321,8 +362,8 @@ public final class SettlementExecutionService {
                     "instructionType", "SPLIT",
                     "attemptNo", attemptNo,
                     "outSeparateNo", outSeparateNo,
-                    "merchantNo", settings.platformMerchantNo(),
-                    "receiverNo", preflight.receiverNo(),
+                    "merchantNo", preflight.acquiringMerchantNo(),
+                    "receiverNo", instructionReceiverNo,
                     "logNo", preflight.logNo(),
                     "logDate", preflight.logDate(),
                     "totalAmount", canSeparate.setScale(2),
@@ -353,7 +394,7 @@ public final class SettlementExecutionService {
                     SettlementQueryTask.MAX_RETRY_COUNT,
                     SettlementQueryTask.RETRY_POLICY,
                     now.plus(SettlementQueryTask.FIRST_DELAY).truncatedTo(java.time.temporal.ChronoUnit.MILLIS));
-            return new PersistedInstruction(null, instructionId, outSeparateNo, preflight.receiverNo(),
+            return new PersistedInstruction(null, instructionId, outSeparateNo, instructionReceiverNo,
                     preflight.logNo(), preflight.logDate());
         });
     }
@@ -410,6 +451,27 @@ public final class SettlementExecutionService {
         }
         if (merchantCents > 0) {
             shares.add(ReceiverShare.toReceiver(merchantReceiverNo, merchantCents));
+        }
+        if (shares.isEmpty()) {
+            throw new IllegalStateException("split allocation has zero total cents");
+        }
+        return shares;
+    }
+
+    /** Mode A (Ruling 40 §10): merchant receives self-split ({@code recv_merchant_no}), platform receives fee ({@code recv_no}). */
+    static List<ReceiverShare> buildModeAReceiverShares(String acquiringMerchantNo, String platformReceiverNo,
+            BigDecimal platformRetainedAmount, BigDecimal merchantSplitAmount) {
+        List<ReceiverShare> shares = new ArrayList<>(2);
+        long merchantCents = SettlementAmountCalculator.toCents(merchantSplitAmount);
+        long platformCents = SettlementAmountCalculator.toCents(platformRetainedAmount);
+        if (merchantCents > 0) {
+            shares.add(ReceiverShare.toSelf(acquiringMerchantNo, merchantCents));
+        }
+        if (platformCents > 0) {
+            if (platformReceiverNo == null || platformReceiverNo.isBlank()) {
+                throw new IllegalStateException("platformReceiverNo is required when platform share > 0");
+            }
+            shares.add(ReceiverShare.toReceiver(platformReceiverNo, platformCents));
         }
         if (shares.isEmpty()) {
             throw new IllegalStateException("split allocation has zero total cents");

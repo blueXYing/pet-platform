@@ -175,4 +175,11 @@
     FROM settlement_receiver_account
     WHERE merchant_id=#{merchantId}
   </select>
+
+  <select id="selectMerchantAcquiringAccount"
+          resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentWalletMapper$AcquiringMerchantRow">
+    SELECT enabled,lakala_merchant_no,lakala_term_no
+    FROM settlement_config
+    WHERE merchant_id=#{merchantId}
+  </select>
 </mapper>

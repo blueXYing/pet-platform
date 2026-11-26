@@ -11,6 +11,7 @@ import com.petplatform.common.ApiException;
 import com.petplatform.common.CommonApiCodes;
 import com.petplatform.order.api.query.OrderPaymentFactsApi;
 import com.petplatform.payment.biz.application.PaymentMerchantBindings;
+import com.petplatform.payment.biz.settlement.DbMerchantPaymentBindings;
 import com.petplatform.schedule.api.protection.ScheduleCapacityGuardApi;
 import com.petplatform.user.api.query.BookingUserFactsApi;
 import java.util.Map;
@@ -159,6 +160,15 @@ class PaymentFoundationConfigurationTest {
         assertThatThrownBy(() -> new PaymentDispatchConfiguration().paymentChannel(dispatch))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("Payment dispatch credentials or launch configuration unavailable");
+    }
+
+    @Test void platformModeWithDataSourceWiresDbMerchantPaymentBindings() {
+        var provider = mock(org.springframework.beans.factory.ObjectProvider.class);
+        org.mockito.Mockito.when(provider.getIfAvailable()).thenReturn(mock(DataSource.class));
+        var bindings = configuration.paymentMerchantBindings(
+                settings(Map.of(), new PlatformMerchant(M, T, A), "1"), provider);
+        assertThat(bindings).isInstanceOf(DbMerchantPaymentBindings.class);
+        assertThat(bindings.requirePlatform()).isEqualTo(new PaymentMerchantBindings.Binding(M, T, A));
     }
 
     @Test void storesStillBindFromProperties() {

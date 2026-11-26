@@ -82,6 +82,27 @@ class LakalaLaepProtocolTest {
     }
 
     @Test
+    void modeASupportsMerchantCollectPayType01AndRejectsInvalidPayType() throws Exception {
+        PreparedV2Request balReq = LakalaLaepProtocol.prepareBalanceQuery(
+                new BalanceQueryInput("1", "82266507295001Z", LakalaLaepProtocol.PAY_TYPE_MERCHANT_COLLECT),
+                1764050000000L, REQ_ID);
+        JsonNode balData = JSON.readTree(balReq.rawBody()).path("reqData");
+        assertEquals("82266507295001Z", balData.path("merchantNo").textValue());
+        assertEquals("01", balData.path("payType").textValue());
+
+        PreparedV2Request wdReq = LakalaLaepProtocol.prepareWithdrawD1(
+                new WithdrawD1Input("1", "82266507295001Z", new BigDecimal("50.00"),
+                        "WD2001", null, "mode-a", LakalaLaepProtocol.PAY_TYPE_MERCHANT_COLLECT),
+                1764050000000L, REQ_ID);
+        JsonNode wdData = JSON.readTree(wdReq.rawBody()).path("reqData");
+        assertEquals("82266507295001Z", wdData.path("merchantNo").textValue());
+        assertEquals("01", wdData.path("payType").textValue());
+
+        assertThrows(LakalaV2Protocol.ProtocolException.class, () -> LakalaLaepProtocol.prepareBalanceQuery(
+                new BalanceQueryInput("1", "82266507295001Z", "99"), 1L, REQ_ID));
+    }
+
+    @Test
     void queryAnd1272NotificationVerify1009SignatureAndComputeNetAmount() throws Exception {
         PreparedV2Request qReq = LakalaLaepProtocol.prepareWithdrawQuery(
                 new WithdrawQueryInput("1", "SR202611250001", null, "WD1001"), 1764050000000L, REQ_ID);

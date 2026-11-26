@@ -5,7 +5,7 @@
 
   <!-- ==================== settlement_config & audit ==================== -->
 
-  <sql id="configColumns">id,merchant_id,settle_days,fee_rate,enabled,version,created_at,updated_at</sql>
+  <sql id="configColumns">id,merchant_id,settle_days,fee_rate,enabled,lakala_merchant_no,lakala_term_no,version,created_at,updated_at</sql>
 
   <select id="selectConfigByMerchant" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentSettlementMapper$ConfigRow">
     SELECT <include refid="configColumns"/> FROM settlement_config WHERE merchant_id=#{merchantId}
@@ -16,13 +16,14 @@
   </select>
 
   <insert id="insertConfig">
-    INSERT INTO settlement_config(id,merchant_id,settle_days,fee_rate,enabled,version,created_at,updated_at)
-    VALUES(#{id},#{merchantId},#{settleDays},#{feeRate},#{enabled},0,#{now},#{now})
+    INSERT INTO settlement_config(id,merchant_id,settle_days,fee_rate,enabled,lakala_merchant_no,lakala_term_no,version,created_at,updated_at)
+    VALUES(#{id},#{merchantId},#{settleDays},#{feeRate},#{enabled},#{lakalaMerchantNo},#{lakalaTermNo},0,#{now},#{now})
   </insert>
 
   <update id="updateConfig">
     UPDATE settlement_config
     SET settle_days=#{settleDays},fee_rate=#{feeRate},enabled=#{enabled},
+        lakala_merchant_no=#{lakalaMerchantNo},lakala_term_no=#{lakalaTermNo},
         version=version+1,updated_at=#{now}
     WHERE id=#{id} AND version=#{version}
   </update>
@@ -31,16 +32,19 @@
     INSERT INTO settlement_config_audit(
       id,merchant_id,config_id,request_key,before_settle_days,after_settle_days,
       before_fee_rate,after_fee_rate,before_enabled,after_enabled,
+      before_lakala_merchant_no,after_lakala_merchant_no,before_lakala_term_no,after_lakala_term_no,
       operator_type,operator_id,reason,created_at)
     VALUES(
       #{id},#{merchantId},#{configId},#{requestKey},#{beforeSettleDays},#{afterSettleDays},
       #{beforeFeeRate},#{afterFeeRate},#{beforeEnabled},#{afterEnabled},
+      #{beforeLakalaMerchantNo},#{afterLakalaMerchantNo},#{beforeLakalaTermNo},#{afterLakalaTermNo},
       #{operatorType},#{operatorId},#{reason},#{now})
   </insert>
 
   <select id="selectConfigAuditByRequestKey" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentSettlementMapper$ConfigAuditRow">
     SELECT id,merchant_id,config_id,before_settle_days,after_settle_days,
            before_fee_rate,after_fee_rate,before_enabled,after_enabled,
+           before_lakala_merchant_no,after_lakala_merchant_no,before_lakala_term_no,after_lakala_term_no,
            operator_type,operator_id,reason,created_at
     FROM settlement_config_audit WHERE request_key=#{requestKey} FOR UPDATE
   </select>

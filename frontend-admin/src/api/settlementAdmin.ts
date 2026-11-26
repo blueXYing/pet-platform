@@ -22,6 +22,8 @@ export type SettlementConfigView = {
   feeRate: string;
   enabled: boolean;
   configured: boolean;
+  lakalaMerchantNo: string | null;
+  lakalaTermNo: string | null;
   version: number;
   updatedAt: string | null;
 };
@@ -30,6 +32,8 @@ export type UpsertSettlementConfigRequest = {
   settleDays: number;
   feeRate: string;
   enabled: boolean;
+  lakalaMerchantNo?: string | null;
+  lakalaTermNo?: string | null;
   reason?: string;
 };
 

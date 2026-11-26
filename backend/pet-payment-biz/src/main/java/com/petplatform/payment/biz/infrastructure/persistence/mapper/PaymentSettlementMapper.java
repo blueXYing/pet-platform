@@ -69,6 +69,8 @@ public interface PaymentSettlementMapper {
         public int settleDays;
         public BigDecimal feeRate;
         public boolean enabled;
+        public String lakalaMerchantNo;
+        public String lakalaTermNo;
         public long version;
         public LocalDateTime createdAt;
         public LocalDateTime updatedAt;
@@ -84,6 +86,10 @@ public interface PaymentSettlementMapper {
         public BigDecimal afterFeeRate;
         public Boolean beforeEnabled;
         public boolean afterEnabled;
+        public String beforeLakalaMerchantNo;
+        public String afterLakalaMerchantNo;
+        public String beforeLakalaTermNo;
+        public String afterLakalaTermNo;
         public String operatorType;
         public Long operatorId;
         public String reason;

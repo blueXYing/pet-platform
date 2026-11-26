@@ -1516,6 +1516,7 @@ public final class E2eCoreLoopServer {
         "80-Payment-Receiver-Schema-v0.1.sql",
         "81-Payment-Wallet-Schema-v0.1.sql",
         "82-Payment-Reconcile-Schema-v0.1.sql",
+        "83-Payment-Merchant-Acquiring-Schema-v0.1.sql",
         // CCR-SVC-FLASH-PRICE-001 (contract 77): service flash-price four tables. The
         // pet_order snapshot columns ride 06 itself (kept in sync there).
         "73-Service-Flash-Price-Schema-v0.1.sql"));

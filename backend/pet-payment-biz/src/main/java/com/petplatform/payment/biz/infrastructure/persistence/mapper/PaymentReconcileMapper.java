@@ -36,6 +36,7 @@ public interface PaymentReconcileMapper {
     List<SubsidyGroupRow> listSubsidyReportRows(Map<String, Object> params);
 
     // ---- Read-only Reconciliation & Compensation Scan Queries ----
+    List<String> selectDistinctReconcileMerchantNos(Map<String, Object> params);
     List<ReconcileInstructionRow> selectInstructionsForReconcileDate(Map<String, Object> params);
     ReconcileInstructionRow selectInstructionByOutSeparateNo(String outSeparateNo);
     ReconcileInstructionRow selectInstructionBySeparateNo(String separateNo);

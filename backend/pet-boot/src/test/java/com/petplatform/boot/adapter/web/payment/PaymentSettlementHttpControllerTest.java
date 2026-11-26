@@ -117,7 +117,7 @@ class PaymentSettlementHttpControllerTest {
         ReconcileAdminApi reconcileAdmin = mock(ReconcileAdminApi.class);
 
         when(settlementAdmin.upsertConfig(any())).thenReturn(new SettlementConfigView(
-                "5001", 10, new BigDecimal("0.6500"), true, true, 1L, NOW));
+                "5001", 10, new BigDecimal("0.6500"), true, true, "82266507295001Z", "Q6426723", 1L, NOW));
         when(receiverAccount.revealSensitive(any())).thenReturn(new ReceiverSensitiveView(
                 "5001", "6222021234567890", "310101199001011234", "13800138000", null, null));
         when(subsidyQuery.querySubsidyReport(any())).thenReturn(new SubsidyReportResponse(
@@ -183,10 +183,13 @@ class PaymentSettlementHttpControllerTest {
                         .requestAttr(AdminBearerAuthenticationFilter.VIEW, writer)
                         .header("X-Request-Id", "11111111-1111-4111-8111-111111111111")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"settleDays\":10,\"feeRate\":\"0.6500\",\"enabled\":true}"))
+                        .content("{\"settleDays\":10,\"feeRate\":\"0.6500\",\"enabled\":true,"
+                                + "\"lakalaMerchantNo\":\"82266507295001Z\",\"lakalaTermNo\":\"Q6426723\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.feeRate").value("0.6500"))
-                .andExpect(jsonPath("$.data.settleDays").value(10));
+                .andExpect(jsonPath("$.data.settleDays").value(10))
+                .andExpect(jsonPath("$.data.lakalaMerchantNo").value("82266507295001Z"))
+                .andExpect(jsonPath("$.data.lakalaTermNo").value("Q6426723"));
 
         // 5. Audited reveal & diff resolve succeed
         mvc.perform(post("/api/v1/admin/settlement/receivers/5001/reveal")

@@ -66,6 +66,8 @@ public final class SettlementFallbackService implements SettlementRefundGate {
     private final JdbcAsyncTaskSubmitter tasks;
     private final ZoneId channelTimeZone;
     private final Clock clock;
+    private final String platformMerchantNo;
+    private final String platformReceiverNo;
     private final TransactionTemplate tx;
 
     public SettlementFallbackService(
@@ -75,12 +77,28 @@ public final class SettlementFallbackService implements SettlementRefundGate {
             JdbcAsyncTaskSubmitter tasks,
             ZoneId channelTimeZone,
             Clock clock) {
+        this(source, ids, channel, tasks, channelTimeZone, clock, null, null);
+    }
+
+    public SettlementFallbackService(
+            DataSource source,
+            SnowflakeIdGenerator ids,
+            SettlementChannel channel,
+            JdbcAsyncTaskSubmitter tasks,
+            ZoneId channelTimeZone,
+            Clock clock,
+            String platformMerchantNo,
+            String platformReceiverNo) {
         Objects.requireNonNull(source, "source");
         this.ids = Objects.requireNonNull(ids, "ids");
         this.channel = Objects.requireNonNull(channel, "channel");
         this.tasks = Objects.requireNonNull(tasks, "tasks");
         this.channelTimeZone = Objects.requireNonNull(channelTimeZone, "channelTimeZone");
         this.clock = Objects.requireNonNull(clock, "clock");
+        this.platformMerchantNo = platformMerchantNo == null || platformMerchantNo.isBlank()
+                ? null : platformMerchantNo.trim();
+        this.platformReceiverNo = platformReceiverNo == null || platformReceiverNo.isBlank()
+                ? null : platformReceiverNo.trim();
         this.store = new PaymentSettlementStore(source);
         this.tx = new TransactionTemplate(new DataSourceTransactionManager(source));
         this.tx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -167,7 +185,9 @@ public final class SettlementFallbackService implements SettlementRefundGate {
                 throw conflict("split fallback window (180 days) has expired");
             }
             String reason = normalizeReason(command.reason(), failed.fallbackReason);
-            return persistFallbackFence(row, originSplit, refundOrderId, failed.merchantAmount, reason, now);
+            boolean modeA = SettlementModeDetector.isModeAInstruction(
+                    originSplit, platformMerchantNo, platformReceiverNo);
+            return persistFallbackFence(row, originSplit, refundOrderId, failed.totalAmount, reason, modeA, now);
         });
 
         if (submitPlan != null) {
@@ -246,15 +266,29 @@ public final class SettlementFallbackService implements SettlementRefundGate {
             return new GatePlan(new GateDecision.Paused("UNKNOWN_SETTLEMENT_STATUS", row.status), null);
         }
 
-        // Post-split state: compute required merchant fallback amount.
+        // Post-split state: compute required fallback amount (Mode A pulls back platform fee share; legacy pulls back merchant share).
         InstructionRow originSplit = store.settlement.selectSucceededSplitInstruction(row.id);
         if (originSplit == null) {
             return new GatePlan(new GateDecision.Paused(
                     "ORIGIN_SPLIT_NOT_FOUND", "succeeded split instruction missing"), null);
         }
-        BigDecimal fallbackAmount = SettlementAmountCalculator.computeFallbackAmount(
-                row.paidAmount, row.refundedAmount, request.refundAmount(),
-                row.feeRateSnapshot, originSplit.merchantAmount, row.reversedAmount);
+        boolean modeA = SettlementModeDetector.isModeAInstruction(
+                originSplit, platformMerchantNo, platformReceiverNo);
+        final BigDecimal fallbackAmount;
+        if (modeA) {
+            // Mode A: when platform fee share was 0 (or no external receiver was split to), skip 2395 and refund directly.
+            if (originSplit.platformAmount == null || originSplit.platformAmount.signum() <= 0
+                    || originSplit.receiverNo == null || originSplit.receiverNo.isBlank()) {
+                return new GatePlan(new GateDecision.Proceed(), null);
+            }
+            fallbackAmount = SettlementAmountCalculator.computePlatformFallbackAmount(
+                    row.paidAmount, row.refundedAmount, request.refundAmount(),
+                    row.feeRateSnapshot, originSplit.platformAmount, row.reversedAmount);
+        } else {
+            fallbackAmount = SettlementAmountCalculator.computeFallbackAmount(
+                    row.paidAmount, row.refundedAmount, request.refundAmount(),
+                    row.feeRateSnapshot, originSplit.merchantAmount, row.reversedAmount);
+        }
         if (fallbackAmount.signum() <= 0) {
             return new GatePlan(new GateDecision.Proceed(), null);
         }
@@ -289,12 +323,12 @@ public final class SettlementFallbackService implements SettlementRefundGate {
 
         String reason = "REFUND:" + IDS.toApi(request.refundOrderId());
         SubmitPlan submitPlan = persistFallbackFence(
-                row, originSplit, request.refundOrderId(), fallbackAmount, reason, now);
+                row, originSplit, request.refundOrderId(), fallbackAmount, reason, modeA, now);
         return new GatePlan(new GateDecision.Wait(nextCheckAt(now)), submitPlan);
     }
 
     private SubmitPlan persistFallbackFence(OrderRow row, InstructionRow originSplit, long refundOrderId,
-            BigDecimal fallbackAmount, String reason, OffsetDateTime now) {
+            BigDecimal fallbackAmount, String reason, boolean modeA, OffsetDateTime now) {
         Integer maxAttempt = store.settlement.selectMaxAttemptNo(PaymentFoundationStore.values(
                 "settlementOrderId", row.id, "instructionType", "FALLBACK"));
         int attemptNo = (maxAttempt == null ? 0 : maxAttempt) + 1;
@@ -316,8 +350,8 @@ public final class SettlementFallbackService implements SettlementRefundGate {
                 "logNo", originSplit.logNo,
                 "logDate", originSplit.logDate,
                 "totalAmount", fallbackAmount,
-                "merchantAmount", fallbackAmount,
-                "platformAmount", SettlementAmountCalculator.ZERO,
+                "merchantAmount", modeA ? SettlementAmountCalculator.ZERO : fallbackAmount,
+                "platformAmount", modeA ? fallbackAmount : SettlementAmountCalculator.ZERO,
                 "fallbackReason", reason,
                 "now", PaymentSettlementStore.utc(now)));
 

@@ -62,6 +62,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import javax.sql.DataSource;
 import org.slf4j.Logger;
@@ -113,6 +114,15 @@ public final class ReceiverAccountService implements ReceiverAccountApi, Receive
         }
     }
 
+    @FunctionalInterface
+    public interface MerchantAcquiringLookup {
+        Optional<String> findAcquiringMerchantNo(long merchantId);
+
+        static MerchantAcquiringLookup none() {
+            return merchantId -> Optional.empty();
+        }
+    }
+
     public record Settings(
             String orgCode,
             String platformMerCupNo,
@@ -136,6 +146,7 @@ public final class ReceiverAccountService implements ReceiverAccountApi, Receive
     private final JdbcAsyncTaskStatusReader taskReader;
     private final JdbcAsyncTaskRecoverer taskRecoverer;
     private final BindNotificationVerifier notificationVerifier;
+    private final MerchantAcquiringLookup merchantAcquiringLookup;
     private final Settings settings;
     private final Clock clock;
     private final TransactionTemplate tx;
@@ -150,6 +161,21 @@ public final class ReceiverAccountService implements ReceiverAccountApi, Receive
             BindNotificationVerifier notificationVerifier,
             Settings settings,
             Clock clock) {
+        this(source, ids, cipher, attachmentProvider, channel, tasks,
+                notificationVerifier, settings, clock, MerchantAcquiringLookup.none());
+    }
+
+    public ReceiverAccountService(
+            DataSource source,
+            SnowflakeIdGenerator ids,
+            ReceiverSensitiveCipher cipher,
+            ReceiverAttachmentProvider attachmentProvider,
+            ReceiverChannel channel,
+            JdbcAsyncTaskSubmitter tasks,
+            BindNotificationVerifier notificationVerifier,
+            Settings settings,
+            Clock clock,
+            MerchantAcquiringLookup merchantAcquiringLookup) {
         Objects.requireNonNull(source, "source");
         this.ids = Objects.requireNonNull(ids, "ids");
         this.cipher = Objects.requireNonNull(cipher, "cipher");
@@ -159,6 +185,8 @@ public final class ReceiverAccountService implements ReceiverAccountApi, Receive
         this.taskReader = new JdbcAsyncTaskStatusReader(source);
         this.taskRecoverer = new JdbcAsyncTaskRecoverer(source, ids);
         this.notificationVerifier = Objects.requireNonNull(notificationVerifier, "notificationVerifier");
+        this.merchantAcquiringLookup = merchantAcquiringLookup == null
+                ? MerchantAcquiringLookup.none() : merchantAcquiringLookup;
         this.settings = Objects.requireNonNull(settings, "settings");
         this.clock = Objects.requireNonNull(clock, "clock");
         this.store = new PaymentReceiverStore(source);
@@ -453,10 +481,16 @@ public final class ReceiverAccountService implements ReceiverAccountApi, Receive
             throw failure;
         }
 
+        Optional<String> merchantAcquiringNo = merchantAcquiringLookup.findAcquiringMerchantNo(merchantId)
+                .map(String::trim)
+                .filter(s -> !s.isBlank());
+        String bindMerInnerNo = merchantAcquiringNo.isPresent() ? null : settings.platformMerInnerNo();
+        String bindMerCupNo = merchantAcquiringNo.orElse(settings.platformMerCupNo());
+
         final LakalaV2HttpClient.VerifiedApplyBind bound;
         try {
             bound = channel.applyBind(new ApplyBindInput(
-                    orderNo, orgCode, settings.platformMerInnerNo(), settings.platformMerCupNo(),
+                    orderNo, orgCode, bindMerInnerNo, bindMerCupNo,
                     prep.receiverNo(), entrustFileName, entrustFilePath, notifyUrl, List.of()));
         } catch (LakalaV2HttpClient.ChannelRejectedException rejected) {
             String rejectReason = formatRejectReason(rejected.retCode(), rejected.retMsg());

@@ -22,6 +22,7 @@
 | `V40` | 阶段 4（接收方） | `80-Payment-Receiver-Schema-v0.1.sql` | `settlement_receiver_account`, `settlement_receiver_audit` |
 | `V41` | 阶段 5（钱包提现） | `81-Payment-Wallet-Schema-v0.1.sql` | `withdrawal_order`, `withdrawal_receipt` |
 | `V42` | 阶段 6（对账差异） | `82-Payment-Reconcile-Schema-v0.1.sql` | `reconcile_diff`, `reconcile_job_run` |
+| `V43` | 2026-11-26 模式 A | `83-Payment-Merchant-Acquiring-Schema-v0.1.sql` | `settlement_config` 追加 `lakala_merchant_no` / `lakala_term_no`，`settlement_config_audit` 追加对应审计列 |
 
 ---
 
@@ -52,9 +53,10 @@
 
 ### 4.1 商家结算配置
 - `GET /api/v1/admin/settlement/configs/{merchantId}`（权限：`settlement.report.read` 或 `settlement.config.write`）
-  - 返回 `SettlementConfigView`：`{ merchantId, settleDays, feeRate, enabled, configured, version, updatedAt }`
+  - 返回 `SettlementConfigView`：`{ merchantId, settleDays, feeRate, enabled, configured, lakalaMerchantNo, lakalaTermNo, version, updatedAt }`
 - `PUT /api/v1/admin/settlement/configs/{merchantId}`（权限：`settlement.config.write`，`X-Request-Id`）
-  - 请求体：`{ settleDays: number(7..30), feeRate: string("0.6000"), enabled: boolean, reason?: string }`
+  - 请求体：`{ settleDays: number(7..30), feeRate: string("0.6000"), enabled: boolean, lakalaMerchantNo?: string|null, lakalaTermNo?: string|null, reason?: string }`
+  - 校验：`lakalaMerchantNo` 与 `lakalaTermNo` 须成对为空或同时为 1～32 位 ASCII 字母数字；模式 A 下未配置收单商户号/终端号的商家下单支付失败关闭。
   - 返回 `SettlementConfigView`
 
 ### 4.2 分账接收方开通与台账（运营代填，40 号 §4）
@@ -196,4 +198,4 @@
 - 运营端控制器 `/api/v1/admin/settlement/**` 随 `pet.auth.admin.enabled=true` 且 `pet.payment.enabled=true` 装配；
 - 商家端控制器 `/api/v1/merchant/{settlement/receiver,wallet,wallet/withdrawals}` 随 `pet.auth.c.enabled=true` 且 `pet.payment.enabled=true` 装配；
 - 拉卡拉 4 条公开回调 `/api/v1/callbacks/lakala/{pay,separate,withdrawals,ledger}` 随 `pet.payment.enabled=true` 装配；
-- 仅通过环境变量/配置参数控制凭据与行为参数：`SETTLEMENT_RECEIVER_AES_KEY_PATH`（缺配启动 fail-closed）、`LAKALA_ORG_CODE`、`LAKALA_SPLIT_LOWEST_RATIO`、`LAKALA_SEPARATE_NOTIFY_URL`、`LAKALA_LEDGER_NOTIFY_URL`、`LAKALA_WITHDRAW_NOTIFY_URL`、`pet.payment.lakala.settle-type`（`0` 普通收单 / `1` 分账收单）。
+- 仅通过环境变量/配置参数控制凭据与行为参数：`SETTLEMENT_RECEIVER_AES_KEY_PATH`（缺配启动 fail-closed）、`LAKALA_ORG_CODE`、`LAKALA_PLATFORM_RECEIVER_NO`（模式 A 平台分账接收方编号 `SR...`）、`LAKALA_SPLIT_LOWEST_RATIO`、`LAKALA_SEPARATE_NOTIFY_URL`、`LAKALA_LEDGER_NOTIFY_URL`、`LAKALA_WITHDRAW_NOTIFY_URL`、`pet.payment.lakala.settle-type`（`0` 普通收单 / `1` 分账收单）。
