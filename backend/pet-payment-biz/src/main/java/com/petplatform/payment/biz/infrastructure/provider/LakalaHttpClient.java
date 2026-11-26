@@ -36,10 +36,16 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Flow;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /** One application-level signed exchange. There is no Spring bean or automatic channel retry. */
 public final class LakalaHttpClient implements PaymentChannel {
+    private static final Logger LOG = LoggerFactory.getLogger(LakalaHttpClient.class);
+    private static final ObjectMapper DIAG_JSON = new ObjectMapper();
     private static final int MAX_RESPONSE_BYTES = 65_536;
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(3);
     private static final Duration RESPONSE_TIMEOUT = Duration.ofSeconds(8);
@@ -118,6 +124,7 @@ public final class LakalaHttpClient implements PaymentChannel {
                             input.outTradeNo(), input.amount()), input.subAppId());
             return new VerifiedPreorder(result, sha256(response.body()));
         } catch (LakalaProtocol.ProtocolException failure) {
+            logChannelFailure(prepared.path(), 200, Reason.CHANNEL_RESPONSE, response.body());
             throw unknown(Reason.CHANNEL_RESPONSE);
         }
     }
@@ -205,7 +212,10 @@ public final class LakalaHttpClient implements PaymentChannel {
         if (response == null || response.body() == null || response.headers() == null)
             throw unknown(Reason.IO);
         try (InputStream stream = response.body()) {
-            if (response.status() != 200) throw unknown(Reason.HTTP_STATUS);
+            if (response.status() != 200) {
+                logChannelFailure(path, response.status(), Reason.HTTP_STATUS, stream.readNBytes(2048));
+                throw unknown(Reason.HTTP_STATUS);
+            }
             byte[] raw = stream.readNBytes(MAX_RESPONSE_BYTES + 1);
             if (raw.length > MAX_RESPONSE_BYTES) throw unknown(Reason.RESPONSE_TOO_LARGE);
             Map<String, String> headers = headerMap(response.headers());
@@ -217,10 +227,35 @@ public final class LakalaHttpClient implements PaymentChannel {
         } catch (ChannelUnknownException failure) {
             throw failure;
         } catch (LakalaProtocol.ProtocolException failure) {
+            LOG.warn("Lakala response signature/header verification failed path={} reason={}",
+                    path, Reason.RESPONSE_SIGNATURE);
             throw unknown(Reason.RESPONSE_SIGNATURE);
         } catch (IOException | RuntimeException failure) {
             throw unknown(Reason.IO);
         }
+    }
+
+    private static void logChannelFailure(String path, int status, Reason reason, byte[] body) {
+        String code = "-", msg = "-";
+        try {
+            if (body != null && body.length > 0) {
+                JsonNode root = DIAG_JSON.readTree(body);
+                if (root != null && root.isObject()) {
+                    if (root.has("code") && root.get("code").isTextual()) {
+                        String c = root.get("code").textValue();
+                        if (c.matches("[A-Za-z0-9_-]{1,32}")) code = c;
+                    }
+                    if (root.has("msg") && root.get("msg").isTextual()) {
+                        String m = root.get("msg").textValue().replaceAll("[\\r\\n\\t]+", " ");
+                        msg = m.length() > 160 ? m.substring(0, 160) : m;
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+            // Never log raw non-JSON body bytes.
+        }
+        LOG.warn("Lakala gateway call failed path={} status={} reason={} code={} msg={}",
+                path, status, reason, code, msg);
     }
 
     private static Map<String, String> headerMap(HttpHeaders headers) {

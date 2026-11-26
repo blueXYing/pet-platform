@@ -190,6 +190,23 @@ class LakalaProtocolTest {
     }
 
     @Test
+    void responseVerificationAcceptsCanonicalHexSerialWithoutLeadingZero() throws Exception {
+        byte[] body = "{\"code\":\"BBS00000\"}".getBytes(StandardCharsets.UTF_8);
+        String time = "1727499000", nonce = "AbCd12345678", wireSerial = "1752b7386f8";
+        Map<String, String> headers = Map.of(
+                "Lklapi-Appid", "OP10004396",
+                "Lklapi-Serial", wireSerial,
+                "Lklapi-Timestamp", time,
+                "Lklapi-Nonce", nonce,
+                "Lklapi-Signature", sign(concat("OP10004396\n" + wireSerial + "\n" + time + "\n" + nonce + "\n",
+                        body, "\n")));
+        LakalaProtocol.verifyResponse(
+                headers, body, "OP10004396", "01752B7386F8", keys.getPublic());
+        assertThrows(ProtocolException.class, () -> LakalaProtocol.verifyResponse(
+                headers, body, "OP10004396", "01752B7386F9", keys.getPublic()));
+    }
+
+    @Test
     void preorderParametersAreBoundToRequestedSubAppAndPrepayId() throws Exception {
         String fields = "\"app_id\":\"wx-sub-app\",\"prepay_id\":\"wx-prepay\","
                 + "\"pay_sign\":\"" + "S".repeat(344) + "\","

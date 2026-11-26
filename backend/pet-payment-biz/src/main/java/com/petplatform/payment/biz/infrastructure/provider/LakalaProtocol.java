@@ -37,6 +37,7 @@ public final class LakalaProtocol {
             .enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION)
             .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
     private static final Pattern NONCE = Pattern.compile("[A-Za-z0-9]{12}");
+    private static final Pattern HEX_SERIAL = Pattern.compile("[0-9A-Fa-f]{1,64}");
     private static final Pattern TIMESTAMP = Pattern.compile("[1-9][0-9]{0,18}");
     private static final Pattern MONEY = Pattern.compile("[1-9][0-9]{0,11}");
     private static final Pattern NOTIFICATION_AUTH = Pattern.compile(
@@ -233,11 +234,31 @@ public final class LakalaProtocol {
         String app = header(headers, "Lklapi-Appid");
         String serial = header(headers, "Lklapi-Serial");
         if (!app.equals(headerToken(expectedAppId, 64))
-                || !serial.equals(headerToken(expectedPlatformSerial, 64))) invalid();
+                || !serialMatches(serial, headerToken(expectedPlatformSerial, 64))) invalid();
         String time = timestamp(header(headers, "Lklapi-Timestamp"));
         String nonce = nonce(header(headers, "Lklapi-Nonce"));
         verify(fiveLines(app, serial, time, nonce, rawBody),
                 header(headers, "Lklapi-Signature"), trustedPlatformKey);
+    }
+
+    /**
+     * Production Lakala gateway emits X.509 certificate serials via lowercase hex without leading
+     * zeros (e.g. {@code 1752b7386f8}), whereas OpenSSL/portal exports uppercase even-length hex
+     * (e.g. {@code 01752B7386F8}). Compare canonical hex when both are hex while preserving the
+     * exact wire header string in {@code fiveLines} signature verification.
+     */
+    private static boolean serialMatches(String actual, String expected) {
+        if (actual.equals(expected)) return true;
+        if (!HEX_SERIAL.matcher(actual).matches() || !HEX_SERIAL.matcher(expected).matches()) {
+            return false;
+        }
+        return stripLeadingZeros(actual).equalsIgnoreCase(stripLeadingZeros(expected));
+    }
+
+    private static String stripLeadingZeros(String hex) {
+        int i = 0;
+        while (i < hex.length() - 1 && hex.charAt(i) == '0') i++;
+        return hex.substring(i);
     }
 
     /** Official 1009 callback signature verification shared by labs/sacs notifications. */
