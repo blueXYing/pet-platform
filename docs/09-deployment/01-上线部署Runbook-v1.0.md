@@ -39,7 +39,7 @@
 
 ### 1.3 仓库不含、需自备的设施（如实清单）
 
-- 反向代理/静态服务器（Nginx 等）：frontend-admin 构建物为纯静态 `dist/`，且管理端 API 以同源 `/api/v1/...` 访问（`frontend-admin/src/request.ts` 以 `window.location.origin` 解析）——需要反代完成"静态资源 + /api 转发到后端 8080 + TLS 终结"。仓库**无** Nginx 配置文件。
+- 反向代理/静态服务器（Nginx 等）：frontend-admin 构建物为纯静态 `dist/`，且管理端 API 以同源 `/api/v1/...` 访问（`frontend-admin/src/request.ts` 以 `window.location.origin` 解析）——需要反代完成"静态资源 + /api 转发到后端 8080 + TLS 终结"。本机联调标准配置模板见 [ops/nginx/pet-platform-local.conf](../../ops/nginx/pet-platform-local.conf)（生产服务器需自备 TLS 终结与主机路径调整）。
 - Docker/编排、监控告警、日志收集：仓库仅暴露 Spring Actuator（`/actuator/health|info|metrics|prometheus`），接入哪套监控需自备。
 - 真实微信订阅消息投递适配器（见 §2.8）。
 - CI 上传小程序通道：上传体验版只能微信开发者工具手工完成（见 §3.6）。
@@ -284,10 +284,33 @@ java -jar pet-boot-0.1.0-SNAPSHOT-exec.jar \
 cd frontend-admin
 npm ci
 npm run build          # 含 tsc --noEmit 门禁；产物 dist/
-# 部署：把 dist/ 发布到反代的静态根；反代规则（自备，仓库无配置文件）：
-#   /                 → dist/ 静态资源
-#   /api/v1/**        → 反代到 http://127.0.0.1:8080（同源，管理端以 window.location.origin 解析）
+# 部署：把 dist/ 发布到反代的静态根；反代模板见 ops/nginx/pet-platform-local.conf：
+#   /                 → dist/ 静态资源（SPA try_files /index.html）
+#   /api/**           → 反代到 http://127.0.0.1:8080（同源，管理端以 window.location.origin 解析；
+#                        且运营端登录 2 条 attempt GET 路由需在 Sec-Fetch-Site=same-origin 时补发 Origin 头）
 # 整站 TLS：管理端 origin 校验强制 HTTPS（§2.1）
+```
+
+### 3.7 本地联调固定端口拓扑与 Nginx 统一入口（`127.0.0.1:8090`）
+
+为保证所有开发机与 AI Agent 使用完全一致的启动端口，本机联调固定采用以下端口契约（同步固化于 `AGENTS.md`）：
+
+| 端口 | 角色 | 说明 |
+|---|---|---|
+| `127.0.0.1:8090` | 本机 Nginx 统一入口 | NATAPP 等公网 HTTPS 隧道唯一指向端口；同时承载运营端静态页、后端 API、小程序请求与拉卡拉 4 条回调 |
+| `127.0.0.1:8080` | 后端 `pet-boot` | 唯一后端服务端口，仅由 `8090` 反向代理，不直接暴露给公网隧道 |
+| `127.0.0.1:5173` | 运营端 Vite 开发服务 | 仅热更新开发时使用 |
+| `127.0.0.1:4173` / `4174` | Playwright 自动化测试 | 自动化测试保留端口，禁止手动占用 |
+| `127.0.0.1:3306` / `6379` | MySQL 8 / Redis | 本机数据底座 |
+
+本机 Nginx 配置模板位于 [ops/nginx/pet-platform-local.conf](../../ops/nginx/pet-platform-local.conf)（Windows 宿主机安装目录推荐 `C:\Tools\nginx`，通过纯 ASCII NTFS Junction `C:\Tools\nginx\html\pet-admin` 指向当前工作树的 `frontend-admin/dist`，避免中文路径问题）。常用命令：
+
+```powershell
+# 校验配置 / 启动 / 热重载 / 停止（在 C:\Tools\nginx 下或已加入 PATH）
+nginx -t -p C:\Tools\nginx
+Start-Process C:\Tools\nginx\nginx.exe -WorkingDirectory C:\Tools\nginx -WindowStyle Hidden
+nginx -s reload -p C:\Tools\nginx
+nginx -s quit -p C:\Tools\nginx
 ```
 
 **frontend-miniapp（小程序，体验版上传）：**

@@ -9,7 +9,7 @@ pet:
   auth:
     admin:
       enabled: true
-      origin: ${ADMIN_AUTH_ORIGIN:http://127.0.0.1:5173}
+      origin: ${ADMIN_AUTH_ORIGIN:http://127.0.0.1:8090}
     c:
       enabled: true
   private-assets:
