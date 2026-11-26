@@ -374,6 +374,47 @@ public final class PrivateAssetApiImpl implements PrivateAssetApi {
     }
   }
 
+  @Override
+  public PrivateAssetContent readReadyForSystem(String assetId, QueryContext context) {
+    if (context == null || context.operatorType() != OperatorType.SYSTEM) {
+      throw forbidden();
+    }
+    if (TransactionSynchronizationManager.isActualTransactionActive()) {
+      throw dependency();
+    }
+    long id = apiId(assetId);
+    PrivateAssetEntity asset = requireAsset(id);
+    requireReady(asset);
+    if (asset.getObjectKey() == null
+        || asset.getObjectKey().isBlank()
+        || asset.getObjectSha256() == null
+        || asset.getObjectSha256().isBlank()) {
+      throw dependency();
+    }
+    final PrivateObjectStore.StoredContent raw;
+    try {
+      raw = objects.get(asset.getObjectKey(), asset.getObjectVersionRef());
+    } catch (RuntimeException failure) {
+      throw dependency();
+    }
+    if (raw == null
+        || raw.content() == null
+        || raw.content().length == 0
+        || !asset.getObjectSha256().equals(raw.sha256())
+        || !asset.getObjectSha256().equals(sha256Hex(raw.content()))) {
+      throw dependency();
+    }
+    String mediaType =
+        asset.getMediaType() != null && !asset.getMediaType().isBlank()
+            ? asset.getMediaType()
+            : raw.mediaType();
+    if (mediaType == null || mediaType.isBlank()) {
+      throw dependency();
+    }
+    return new PrivateAssetContent(
+        raw.content(), mediaType, asset.getObjectSha256(), raw.content().length);
+  }
+
   private void appendConsumeFailureAudit(
       PrivateAssetGrantEntity grant, ConsumePrivateAssetReadGrantCommand command, String result) {
     repository.transaction(

@@ -440,6 +440,60 @@ class PrivateAssetCoreMySqlTest {
     }
   }
 
+  @Test
+  void readReadyForSystemReturnsUnwatermarkedReadyBytesAndEnforcesSystemGuard() throws Exception {
+    try (var db = new PrivateAssetMySqlTestDatabase()) {
+      var store = new MemoryStore();
+      var api = fixture(db, store, Clock.systemUTC());
+      UploadPrivateAssetResult uploaded =
+          api.upload(upload("42", "00000000-0000-0000-0000-000000000099", SOURCE));
+
+      // Non-SYSTEM callers are forbidden.
+      assertEquals(
+          CommonApiCodes.FORBIDDEN,
+          assertThrows(
+                  ApiException.class,
+                  () ->
+                      api.readReadyForSystem(
+                          uploaded.assetId(), new QueryContext("tr", OperatorType.USER, "42")))
+              .code());
+      assertEquals(
+          CommonApiCodes.FORBIDDEN,
+          assertThrows(ApiException.class, () -> api.readReadyForSystem(uploaded.assetId(), null))
+              .code());
+
+      // Active outer DB transaction fails closed (never perform OSS I/O inside a DB transaction).
+      var sysCtx = new QueryContext("tr-sys", OperatorType.SYSTEM, null);
+      var tx = new TransactionTemplate(new DataSourceTransactionManager(db.dataSource()));
+      assertEquals(
+          CommonApiCodes.DEPENDENCY_UNAVAILABLE,
+          assertThrows(
+                  ApiException.class,
+                  () -> tx.execute(st -> api.readReadyForSystem(uploaded.assetId(), sysCtx)))
+              .code());
+
+      // SYSTEM read returns verified, un-watermarked normalized bytes.
+      PrivateAssetContent content = api.readReadyForSystem(uploaded.assetId(), sysCtx);
+      assertNotNull(content);
+      assertEquals(uploaded.mediaType(), content.mediaType());
+      assertEquals(uploaded.objectSha256(), content.objectSha256());
+      assertEquals(uploaded.bytes(), content.bytes());
+      assertEquals(uploaded.bytes(), content.content().length);
+
+      // Missing asset -> 404 NOT_FOUND; unavailable OSS -> 503 DEPENDENCY_UNAVAILABLE.
+      assertEquals(
+          CommonApiCodes.NOT_FOUND,
+          assertThrows(ApiException.class, () -> api.readReadyForSystem("99999999", sysCtx))
+              .code());
+      store.failGet = true;
+      assertEquals(
+          CommonApiCodes.DEPENDENCY_UNAVAILABLE,
+          assertThrows(
+                  ApiException.class, () -> api.readReadyForSystem(uploaded.assetId(), sysCtx))
+              .code());
+    }
+  }
+
   private static PrivateAssetApiImpl fixture(
       PrivateAssetMySqlTestDatabase db, MemoryStore store, Clock clock) {
     return fixture(db, store, clock, request -> proof(request, store));

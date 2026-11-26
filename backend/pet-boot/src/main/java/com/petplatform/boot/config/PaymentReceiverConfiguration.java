@@ -18,6 +18,7 @@ import com.petplatform.task.core.JdbcAsyncTaskSubmitter;
 import com.petplatform.task.core.TaskRegistration;
 import com.petplatform.task.core.TaskRetryDelays;
 import com.petplatform.task.core.TaskWorkerSettings;
+import com.petplatform.thirdparty.api.PrivateAssetApi;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -94,8 +95,13 @@ public class PaymentReceiverConfiguration {
 
         @Bean
         @ConditionalOnMissingBean(ReceiverAttachmentProvider.class)
-        ReceiverAttachmentProvider receiverAttachmentProvider() {
-            return ReceiverAttachmentProvider.failClosed();
+        ReceiverAttachmentProvider receiverAttachmentProvider(
+                ObjectProvider<PrivateAssetApi> privateAssets) {
+            PrivateAssetApi api = privateAssets.getIfAvailable();
+            if (api == null) {
+                return ReceiverAttachmentProvider.failClosed();
+            }
+            return new PrivateAssetReceiverAttachmentAdapter(api);
         }
 
         @Bean
