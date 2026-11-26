@@ -154,7 +154,7 @@ pet:
     lakala:
       notification-certificate-path: ${LAKALA_NOTIFY_CERT_PATH:}
       channel-time-zone: ${LAKALA_CHANNEL_TIMEZONE:Asia/Shanghai}
-      settle-type: 0
+      settle-type: ${LAKALA_SETTLE_TYPE:0}
       platform:
         merchant-no: ${LAKALA_MERCHANT_NO:}
         term-no: ${LAKALA_TERM_NO:}

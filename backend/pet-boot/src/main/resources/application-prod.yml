@@ -18,8 +18,6 @@ pet:
     enabled: true
     dispatch:
       environment: PRODUCTION
-    lakala:
-      settle-type: 0
     center:
       demo:
         enabled: false

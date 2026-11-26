@@ -1,7 +1,9 @@
 # ==============================================================================
 # 开发环境非敏感配置（SPRING_PROFILES_ACTIVE=dev）
 # ------------------------------------------------------------------------------
-# 与 test / prod 装配完全一致的业务能力，区别仅在于环境地址、拉卡拉 SIT 与本地调试项。
+# 与 test / prod 装配完全一致的业务能力，区别仅在于本地调试项与测试商户凭证。
+# 拉卡拉微信支付无独立 SIT 测试通道，默认对接 PRODUCTION 网关（按环境变量区分测试/正式证书）；
+# 若后续获取 SIT 凭证可通过 LAKALA_ENV=SIT 覆盖。
 # 所有密钥、密码、证书路径统一放在进程环境变量或本地 git-ignored 的 .env.local。
 # ==============================================================================
 
@@ -17,12 +19,10 @@ pet:
   payment:
     enabled: true
     dispatch:
-      environment: SIT
-    lakala:
-      settle-type: 0
+      environment: ${LAKALA_ENV:PRODUCTION}
     center:
       demo:
-        enabled: true
+        enabled: false
   marketing:
     asset:
       allow-http: true
