@@ -6,6 +6,10 @@
 # 注意：本文件面向部署测试环境，自动化单测不会激活 test profile。
 # ==============================================================================
 
+spring:
+  config:
+    import: classpath:aftersale-catalog.yml
+
 pet:
   auth:
     admin:

@@ -30,8 +30,8 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.Base64;
 import java.util.Objects;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.sql.DataSource;
@@ -218,8 +218,16 @@ public class PaymentReconcileConfiguration {
         private final LocalTime runTime;
         private final Clock clock;
         private final AtomicBoolean started = new AtomicBoolean(false);
-        private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(
-                Thread.ofPlatform().daemon().name("settlement-daily-reconcile").factory());
+        private final ScheduledExecutorService scheduler = newScheduler();
+
+        private static ScheduledExecutorService newScheduler() {
+            var executor = new ScheduledThreadPoolExecutor(1,
+                    Thread.ofPlatform().daemon().name("settlement-daily-reconcile").factory());
+            executor.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
+            executor.setContinueExistingPeriodicTasksAfterShutdownPolicy(false);
+            executor.setRemoveOnCancelPolicy(true);
+            return executor;
+        }
 
         DailyReconcileScheduler(ReconcileAdminApi reconcileAdminApi, ZoneId channelTimeZone,
                 LocalTime runTime, Clock clock) {
@@ -261,7 +269,11 @@ public class PaymentReconcileConfiguration {
 
         @Override
         public void close() {
-            scheduler.shutdown();
+            scheduler.shutdownNow();
+        }
+
+        boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException {
+            return scheduler.awaitTermination(timeout, unit);
         }
     }
 }

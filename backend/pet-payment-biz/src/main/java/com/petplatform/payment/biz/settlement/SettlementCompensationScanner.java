@@ -20,8 +20,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.sql.DataSource;
@@ -69,8 +69,16 @@ public final class SettlementCompensationScanner implements AutoCloseable {
     private final int batchLimit;
     private final TransactionTemplate tx;
     private final AtomicBoolean started = new AtomicBoolean(false);
-    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(
-            Thread.ofPlatform().daemon().name("settlement-compensation-scanner").factory());
+    private final ScheduledExecutorService scheduler = newScheduler();
+
+    private static ScheduledExecutorService newScheduler() {
+        var executor = new ScheduledThreadPoolExecutor(1,
+                Thread.ofPlatform().daemon().name("settlement-compensation-scanner").factory());
+        executor.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
+        executor.setContinueExistingPeriodicTasksAfterShutdownPolicy(false);
+        executor.setRemoveOnCancelPolicy(true);
+        return executor;
+    }
 
     public SettlementCompensationScanner(
             DataSource source,
@@ -117,7 +125,7 @@ public final class SettlementCompensationScanner implements AutoCloseable {
 
     @Override
     public void close() {
-        scheduler.shutdown();
+        scheduler.shutdownNow();
     }
 
     /** Executes one synchronous compensation scan pass. Safe for both scheduler and direct testing. */

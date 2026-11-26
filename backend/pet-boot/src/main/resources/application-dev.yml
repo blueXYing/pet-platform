@@ -7,6 +7,10 @@
 # 所有密钥、密码、证书路径统一放在进程环境变量或本地 git-ignored 的 .env.local。
 # ==============================================================================
 
+spring:
+  config:
+    import: classpath:aftersale-catalog.yml
+
 pet:
   auth:
     admin:

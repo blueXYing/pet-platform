@@ -41,9 +41,28 @@ class PaymentApplicationYamlDefaultsTest {
             assertThat(raw(p, "pet.auth.c.enabled")).as(profile).isEqualTo("true");
             assertThat(raw(p, "pet.private-assets.enabled")).as(profile).isEqualTo("true");
             assertThat(raw(p, "pet.payment.enabled")).as(profile).isEqualTo("true");
+            assertThat(raw(p, "spring.config.import")).as(profile).contains("classpath:aftersale-catalog.yml");
         }
+        assertThat(raw(base, "spring.config.import")).doesNotContain("aftersale-catalog.yml");
         assertThat(raw(yaml("application-prod.yml"), "pet.payment.dispatch.environment")).isEqualTo("PRODUCTION");
         assertThat(raw(yaml("application-prod.yml"), "pet.payment.center.demo.enabled")).isEqualTo("false");
+    }
+
+    @Test void profileConfigDataImportsApprovedAftersaleCatalogWithoutError() {
+        for (String profile : List.of("dev", "test", "prod")) {
+            var env = new org.springframework.core.env.StandardEnvironment();
+            env.setActiveProfiles(profile);
+            org.springframework.boot.context.config.ConfigDataEnvironmentPostProcessor.applyTo(env);
+            assertThat(env.getProperty("pet.aftersale.type-codes"))
+                    .as(profile)
+                    .isEqualTo("FEE_DISPUTE,NON_PERFORMANCE,OTHER,PET_SAFETY,SERVICE_QUALITY");
+            assertThat(env.getProperty("pet.aftersale.type-labels[SERVICE_QUALITY]"))
+                    .as(profile)
+                    .isEqualTo("质量问题");
+        }
+        var defaultEnv = new org.springframework.core.env.StandardEnvironment();
+        org.springframework.boot.context.config.ConfigDataEnvironmentPostProcessor.applyTo(defaultEnv);
+        assertThat(defaultEnv.getProperty("pet.aftersale.type-codes")).isNull();
     }
 
     @Test void everyCredentialIsAnEnvironmentPlaceholderWithEmptyDefault() throws Exception {

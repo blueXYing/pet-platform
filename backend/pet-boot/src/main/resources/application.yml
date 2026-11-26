@@ -18,7 +18,8 @@ spring:
     name: pet-platform
   config:
     # 本地开发可选加载唯一 git-ignored 的 .env.local；生产直接由进程环境变量注入
-    import: classpath:aftersale-catalog.yml,optional:file:./.env.local[.properties],optional:file:../.env.local[.properties]
+    # 售后正式目录 classpath:aftersale-catalog.yml 由 dev/test/prod profile 显式导入，避免污染默认无 profile 单测
+    import: optional:file:./.env.local[.properties],optional:file:../.env.local[.properties]
   datasource:
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:pet_platform}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
     username: ${DB_USER:pet}

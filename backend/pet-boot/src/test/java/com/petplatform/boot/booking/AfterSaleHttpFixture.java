@@ -81,7 +81,15 @@ final class AfterSaleHttpFixture implements AutoCloseable {
             db.script("31-Private-Asset-Schema-v0.1.sql");
             db.script("50-AfterSale-Workflow-Schema-v0.1.sql");
             db.script("51-AfterSale-Http-Schema-v0.1.sql");
+            db.script("78-Payment-Settlement-Schema-v0.1.sql");
+            db.script("79-Payment-Settlement-Fallback-Schema-v0.1.sql");
+            db.script("80-Payment-Receiver-Schema-v0.1.sql");
+            db.script("81-Payment-Wallet-Schema-v0.1.sql");
+            db.script("82-Payment-Reconcile-Schema-v0.1.sql");
+            db.script("83-Payment-Merchant-Acquiring-Schema-v0.1.sql");
             jdbc.update("UPDATE merchant_profile_compat SET city_code='chengdu' WHERE merchant_id=710301");
+            jdbc.update("INSERT INTO settlement_config(id,merchant_id,settle_days,fee_rate,enabled,lakala_merchant_no,lakala_term_no,version,created_at,updated_at) "
+                    + "VALUES(710901,710301,7,0.6000,1,'QA8220000000001','QAT00001',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");
             at(Instant.parse("2030-01-01T09:00:00Z"));
             var properties=new LinkedHashMap<String,Object>();
             properties.put("server.port",0);properties.put("spring.jmx.enabled",false);properties.put("spring.flyway.enabled",false);
@@ -111,7 +119,9 @@ final class AfterSaleHttpFixture implements AutoCloseable {
             properties.put("pet.payment.lakala.platform.term-no","QAT00001");
             properties.put("pet.payment.lakala.platform.sub-app-id","qa-afs-http-app");
             properties.put("pet.payment.dispatch.parameter-key-path",paramKeyFile.toString());
+            properties.put("pet.payment.receiver.aes-key-path",paramKeyFile.toString());
             properties.put("pet.payment.dispatch.out-org-code","QA-ORG");
+            properties.put("pet.payment.settlement.org-code","QA-ORG");
             properties.put("pet.payment.dispatch.subject","QA pet order");
             properties.put("pet.payment.dispatch.request-ip","127.0.0.1");properties.put("pet.payment.dispatch.notify-url","https://qa.invalid/refund");
             properties.put("PRIVATE_ASSET_GRANT_KEY_VERSION","qa-http-grant");properties.put("PRIVATE_ASSET_GRANT_HMAC_KEY_BASE64",key(29));
@@ -143,6 +153,10 @@ final class AfterSaleHttpFixture implements AutoCloseable {
                 beans.registerBean("qaAssetScanner",PrivateAssetScanner.class,()->bytes->new PrivateAssetScanner.ScanResult(true,"QA_ONLY_SCANNER","CLEAN"));
                 beans.registerBean("qaAssetObjects",PrivateObjectStore.class,()->objectStore());
                 beans.registerBean("qaForbiddenPaymentChannel",com.petplatform.payment.biz.application.PaymentChannel.class,()->org.mockito.Mockito.mock(com.petplatform.payment.biz.application.PaymentChannel.class,inv->{channelCalls.incrementAndGet();throw new AssertionError("HTTP slice must not call payment channel");}));
+                beans.registerBean("qaForbiddenSettlementChannel",com.petplatform.payment.biz.settlement.SettlementChannel.class,()->org.mockito.Mockito.mock(com.petplatform.payment.biz.settlement.SettlementChannel.class,inv->{channelCalls.incrementAndGet();throw new AssertionError("HTTP slice must not call settlement channel");}));
+                beans.registerBean("qaForbiddenReceiverChannel",com.petplatform.payment.biz.settlement.ReceiverChannel.class,()->org.mockito.Mockito.mock(com.petplatform.payment.biz.settlement.ReceiverChannel.class,inv->{channelCalls.incrementAndGet();throw new AssertionError("HTTP slice must not call receiver channel");}));
+                beans.registerBean("qaForbiddenWalletChannel",com.petplatform.payment.biz.settlement.WalletChannel.class,()->org.mockito.Mockito.mock(com.petplatform.payment.biz.settlement.WalletChannel.class,inv->{channelCalls.incrementAndGet();throw new AssertionError("HTTP slice must not call wallet channel");}));
+                beans.registerBean("qaForbiddenReconcileChannel",com.petplatform.payment.biz.settlement.SettlementReconcileChannel.class,()->org.mockito.Mockito.mock(com.petplatform.payment.biz.settlement.SettlementReconcileChannel.class,inv->{channelCalls.incrementAndGet();throw new AssertionError("HTTP slice must not call reconcile channel");}));
                 beans.registerBean("qaForbiddenRefundChannel",PaymentRefundChannel.class,()->new PaymentRefundChannel(){
                     public VerifiedResult submit(RefundRequest request){channelCalls.incrementAndGet();throw new AssertionError("HTTP slice must not submit money");}
                     public VerifiedResult query(RefundRequest request){channelCalls.incrementAndGet();throw new AssertionError("HTTP slice has no historical money to query");}

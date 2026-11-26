@@ -92,4 +92,16 @@ class PaymentReconcileConfigurationTest {
             assertThat(ctx.getBeanNamesForAnnotation(RestController.class)).isEmpty();
         });
     }
+
+    @Test
+    void dailySchedulerCloseImmediatelyCancelsPendingDelayedRun() throws Exception {
+        var scheduler = new PaymentReconcileConfiguration.DailyReconcileScheduler(
+                mock(ReconcileAdminApi.class),
+                java.time.ZoneId.of("Asia/Shanghai"),
+                java.time.LocalTime.of(3, 15),
+                java.time.Clock.fixed(java.time.Instant.parse("2030-01-01T09:00:00Z"), java.time.ZoneOffset.UTC));
+        scheduler.start();
+        scheduler.close();
+        assertThat(scheduler.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+    }
 }
