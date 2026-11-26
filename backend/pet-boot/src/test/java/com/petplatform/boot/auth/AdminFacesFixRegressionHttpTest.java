@@ -89,6 +89,7 @@ class AdminFacesFixRegressionHttpTest {
         props.put("pet.payment.dispatch.parameter-key-path", paramKeyFile.toString());
         props.put("pet.payment.receiver.aes-key-path", paramKeyFile.toString());
         props.put("pet.payment.dispatch.out-org-code", "QA-ORG");
+        props.put("pet.payment.settlement.org-code", "QA-ORG");
         props.put("pet.payment.dispatch.subject", "QA facesfix order");
         props.put("pet.payment.dispatch.request-ip", "127.0.0.1");
         props.put("pet.payment.dispatch.notify-url", "https://faces.example.invalid/notify");

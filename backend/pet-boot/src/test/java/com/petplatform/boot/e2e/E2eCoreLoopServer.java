@@ -529,6 +529,7 @@ public final class E2eCoreLoopServer {
                   "--pet.payment.dispatch.parameterKeyPath=" + parameterKeyFile,
                   "--pet.payment.receiver.aes-key-path=" + parameterKeyFile,
                   "--pet.payment.dispatch.outOrgCode=E2E-ORG-001",
+                  "--pet.payment.settlement.org-code=E2E-ORG-001",
                   "--pet.payment.dispatch.subject=E2E宠物服务订单",
                   "--pet.payment.dispatch.requestIp=127.0.0.1",
                   "--pet.payment.dispatch.notify-url=https://e2e.example.invalid/notify",
