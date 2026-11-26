@@ -129,7 +129,9 @@ class LakalaProtocolTest {
                 "OP123", at, "123456", "TERM1", "2100001", new BigDecimal("1.23"),
                 "宠物服务", "wx-sub-app", "sub-open-id", "127.0.0.1",
                 "https://example.test/notify", 9));
-        assertEquals("9", JSON.readTree(bounded.rawBody()).path("req_data")
+        JsonNode boundedReqData = JSON.readTree(bounded.rawBody()).path("req_data");
+        assertTrue(boundedReqData.path("timeout_express").isMissingNode());
+        assertEquals("9", boundedReqData.path("acc_busi_fields")
                 .path("timeout_express").asText());
         assertFalse(new LakalaProtocol.PreorderInput("OP123", at, "123456", "TERM1",
                 "2100001", new BigDecimal("1.23"), "宠物服务", "wx-sub-app",

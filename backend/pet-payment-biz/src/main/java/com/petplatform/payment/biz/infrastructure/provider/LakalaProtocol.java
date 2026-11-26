@@ -159,10 +159,6 @@ public final class LakalaProtocol {
         data.put("account_type", "WECHAT");
         data.put("trans_type", "71");
         data.put("total_amount", cents(input.amount()));
-        if (input.timeoutExpressMinutes() != null) {
-            if (input.timeoutExpressMinutes() < 1 || input.timeoutExpressMinutes() > 10) invalid();
-            data.put("timeout_express", input.timeoutExpressMinutes().toString());
-        }
         data.put("location_info", Map.of("request_ip", ip(input.requestIp())));
         data.put("subject", required(input.subject(), 42, "subject"));
         data.put("notify_url", required(input.notifyUrl(), 128, "notify_url"));
@@ -173,9 +169,14 @@ public final class LakalaProtocol {
             if (!"1".equals(settle)) invalid();
             data.put("settle_type", "1");
         }
-        data.put("acc_busi_fields", Map.of(
-                "sub_appid", required(input.subAppId(), 32, "sub_appid"),
-                "user_id", required(input.userId(), 64, "user_id")));
+        Map<String, Object> accBusiFields = new LinkedHashMap<>();
+        if (input.timeoutExpressMinutes() != null) {
+            if (input.timeoutExpressMinutes() < 1 || input.timeoutExpressMinutes() > 10) invalid();
+            accBusiFields.put("timeout_express", input.timeoutExpressMinutes().toString());
+        }
+        accBusiFields.put("sub_appid", required(input.subAppId(), 32, "sub_appid"));
+        accBusiFields.put("user_id", required(input.userId(), 64, "user_id"));
+        data.put("acc_busi_fields", accBusiFields);
         return prepare("/api/v3/labs/trans/preorder", input.outOrgCode(), input.requestTime(), data);
     }
 
