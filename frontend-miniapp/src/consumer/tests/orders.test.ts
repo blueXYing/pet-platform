@@ -172,6 +172,26 @@ test('detail decoder reads the §3.7 merchantContact section and fails closed on
   assert.equal(decodeOrderDetail(JSON.parse(JSON.stringify(wireDetail))).merchantContact, null) // 缺省=null
 })
 
+test('detail decoder reads Contract 77 flash-price tail fields and fails closed on invalid values', () => {
+  const listOrder = decodeOrderDetail(withFields(JSON.parse(JSON.stringify(wireDetail)),
+    { priceSource: 'LIST', originalPrice: '0.01', flashDiscount: '0.00' }))
+  assert.equal(listOrder.priceSource, 'LIST')
+  assert.equal(listOrder.originalPrice, '0.01')
+  assert.equal(listOrder.flashDiscount, '0.00')
+  const flashOrder = decodeOrderDetail(withFields(JSON.parse(JSON.stringify(wireDetail)),
+    { priceSource: 'FLASH', originalPrice: '128.00', flashDiscount: '48.00' }))
+  assert.equal(flashOrder.priceSource, 'FLASH')
+  assert.equal(flashOrder.originalPrice, '128.00')
+  assert.equal(flashOrder.flashDiscount, '48.00')
+  for (const bad of [
+    { priceSource: 'MEMBER' },
+    { originalPrice: '0.1' },
+    { flashDiscount: '-1.00' },
+  ]) {
+    assert.throws(() => decodeOrderDetail(withFields(JSON.parse(JSON.stringify(wireDetail)), bad)), /INVALID_RESPONSE/, JSON.stringify(bad))
+  }
+})
+
 test('page decoder enforces the paging envelope and rejects oversized item arrays', () => {
   const item = JSON.parse(JSON.stringify(wireDetail))
   const decoded = decodeOrderPage({ items: [item, item], page: 1, pageSize: 20, total: 2 })
