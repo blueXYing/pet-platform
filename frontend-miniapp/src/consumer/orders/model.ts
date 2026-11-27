@@ -69,10 +69,6 @@ export type OrderDetailView = Readonly<{
   priceSource: 'LIST' | 'FLASH' | null
   originalPrice: string | null
   flashDiscount: string | null
-  // §3.7 名称增补（2026-11-27 裁决，43 号）：下单时快照的店铺名/服务名（订单域自己的快照事实），
-  // 供确认支付半屏展示；仅详情读侧携带，列表项缺失按 null 读；订单无快照值时为 null。
-  storeName: string | null
-  serviceName: string | null
 }>
 
 /** §3.7 merchantContact 节：phoneMasked 展示、phone 拨号；两者可独立为 null（门店无电话）。 */
@@ -82,10 +78,10 @@ export type MerchantContact = Readonly<{ phoneMasked: string | null; phone: stri
 export type OrderPage = Readonly<{ items: readonly OrderDetailView[]; page: number; pageSize: number; total: number }>
 
 const invalid = (): never => { throw new Error('INVALID_RESPONSE') }
-/** OrderDetailData 全键集合（11号 schema + 77号 §6.5 闪购价格快照 + §3.7 名称增补）：exact-key 白名单。 */
+/** OrderDetailData 全键集合（11号 schema + 77号 §6.5 闪购价格快照）：exact-key 白名单。 */
 const orderDetailKeys = ['actions', 'afterSaleStatus', 'appointmentEnd', 'appointmentStart', 'displayStatus', 'flashDiscount', 'merchantContact', 'orderId',
   'orderNo', 'orderStage', 'orderVersion', 'originalPrice', 'payAmount', 'paymentStatus', 'priceSource', 'refundApplicationStatus', 'refundStatus',
-  'serviceId', 'serviceName', 'storeId', 'storeName', 'verifiedAt', 'verificationStatus']
+  'serviceId', 'storeId', 'verifiedAt', 'verificationStatus']
 /** 严格 exact-key：只允许 OrderDetailData 键集合，未知键失败关闭（沿仓库惯例）。 */
 function exactObject(value: unknown): Record<string, any> {
   const v = objectLike(value)
@@ -170,15 +166,7 @@ export function decodeOrderDetail(value: unknown): OrderDetailView {
     priceSource: optionalField(v, 'priceSource', x => oneOf(x, ['LIST', 'FLASH'] as const)),
     originalPrice: optionalField(v, 'originalPrice', amount),
     flashDiscount: optionalField(v, 'flashDiscount', amount),
-    storeName: optionalField(v, 'storeName', snapshotName),
-    serviceName: optionalField(v, 'serviceName', snapshotName),
   }
-}
-
-// §3.7 名称增补：06 号 order_service_snapshot.store_name / service_name VARCHAR(128)——非空受限长度串原样呈现。
-const snapshotName = (value: any): string => {
-  if (typeof value !== 'string' || value.trim().length < 1 || value.length > 128) invalid()
-  return value
 }
 
 /** §3.7 merchantContact 解码：exact-key 双键，值可为 null 但类型必须正确。 */
@@ -348,16 +336,14 @@ const base = (over: Fixture): OrderDetailView => ({
   orderStage: null, paymentStatus: null, verificationStatus: null, refundApplicationStatus: null,
   refundStatus: null, afterSaleStatus: null, verifiedAt: null, actions: null,
   serviceId: null, storeId: null, orderVersion: null, merchantContact: null,
-  priceSource: null, originalPrice: null, flashDiscount: null, storeName: null, serviceName: null, ...over,
+  priceSource: null, originalPrice: null, flashDiscount: null, ...over,
 })
 
 // 十个 displayStatus 全覆盖 + 一单一事实：核销码入口（PENDING_SERVICE+canShowVerificationCode）、
 // 已核销（COMPLETED+VERIFIED+verifiedAt）、售后（AFTERSALE 三事实串）。金额/时间为契约样例串。
 const normalOrders: readonly OrderDetailView[] = [
-  // 首单（PENDING_PAYMENT + canPay）同时是确认支付半屏的设计验收样例：§3.7 名称增补带下单时快照的店铺名/服务名（43 号）。
   base({ orderId: '900101001990000', orderNo: '2026100100001', displayStatus: 'PENDING_PAYMENT', payAmount: '88.00',
     appointmentStart: at(10, 14, 0), appointmentEnd: at(10, 15, 30), orderStage: 'PENDING_PAYMENT', paymentStatus: 'INIT',
-    storeName: '萌宠之家宠物店', serviceName: '上门喂养',
     actions: { canPay: true, canReschedule: false, canApplyRefund: false, canShowVerificationCode: false, canReview: false, canApplyAfterSale: false } }),
   base({ orderId: '900101001990002', orderNo: '2026100100002', displayStatus: 'PENDING_CONFIRM', payAmount: '128.00',
     appointmentStart: at(11, 9, 30), appointmentEnd: at(11, 11, 0), orderStage: 'PENDING_CONFIRM', paymentStatus: 'PAID',

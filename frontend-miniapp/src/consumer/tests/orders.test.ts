@@ -126,10 +126,8 @@ test('detail decoder reads absent optional keys as null and accepts the §3.7 fa
 
 test('detail decoder fails closed on contract violations', () => {
   for (const over of [
-    // storeName / serviceName 自 43 号裁决（2026-11-27，契约 10 §3.7 名称增补）起属契约键，
-    // 不再当作契约外键；这里改用其余设计原稿字段验证「未知键失败关闭」。
-    { category: '宠物美容' },                                // 契约外键（设计原稿字段）
-    { storeAddress: '成都市锦江区某路 1 号' },                // 契约外键
+    { serviceName: '专业美容套餐' },                       // 契约外键（设计原稿字段）
+    { storeName: '萌宠之家宠物店' },                        // 契约外键
     { displayStatus: 'IN_PROGRESS' },                      // 设计桶枚举不存在于契约
     { payAmount: '80.0' },                                 // 金额一位小数
     { payAmount: '-80.00' },                               // 负数金额

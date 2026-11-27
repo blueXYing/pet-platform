@@ -22038,17 +22038,6 @@ components:
           nullable: true
         merchantContact:
           $ref: '#/components/schemas/OrderMerchantContact'
-        storeName:
-          type: string
-          nullable: true
-          description: §3.7 名称增补（2026-11-27 裁决，43 号）。下单时快照的店铺名（06 号
-            order_service_snapshot.store_name），供 C 端“确认支付”半屏展示；仅详情投影携带、列表项不带；
-            订单无快照行时为 null，由订单域自己的事实读出，不回查商家存储。
-        serviceName:
-          type: string
-          nullable: true
-          description: §3.7 名称增补（2026-11-27 裁决，43 号）。下单时快照的服务名（06 号
-            order_service_snapshot.service_name）；仅详情投影携带、列表项不带；订单无快照行时为 null。
         actions:
           $ref: '#/components/schemas/OrderActions'
     OrderActions:

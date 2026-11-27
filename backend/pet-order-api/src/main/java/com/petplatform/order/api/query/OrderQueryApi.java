@@ -45,21 +45,8 @@ public interface OrderQueryApi {
      */
     java.time.OffsetDateTime firstPaidAt(UserOrderFactQuery query);
 
-    /**
-     * HTTP contract 10 §3.7 name supplement (2026-11-27 ruling, PRD supplement 42 §十三): the
-     * creation-time snapshot names (store, service) of the caller's own order, for the C
-     * confirm-payment sheet. They are the order domain's own snapshot facts — never re-read
-     * from merchant or service storage. Same anti-enumeration as
-     * {@link #getOrder(OrderIdQuery)}: absent and foreign ids are one indistinguishable
-     * COMMON_NOT_FOUND; an own order without a snapshot row reports null names.
-     */
-    OrderNameFacts getOrderNames(OrderIdQuery query);
-
     /** orderId is the canonical decimal string form of the pet_order id. */
     record OrderIdQuery(String orderId, QueryContext context) {}
-
-    /** Creation-time snapshot names; a name is null when the own order has no such snapshot value. */
-    record OrderNameFacts(String storeName, String serviceName) {}
 
     /** displayStatus is one of the ten DisplayOrderStatus values or null; page starts at 1. */
     record MyOrderListQuery(String displayStatus, int page, int pageSize, QueryContext context) {}

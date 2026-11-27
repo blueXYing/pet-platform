@@ -504,17 +504,6 @@ pageSize
 - `priceSource`：`LIST/FLASH`；`originalPrice`=下单时服务原价；`flashDiscount`=原价−生效价；`discountAmount`=券抵扣（61 号）。金额为两位小数字符串。
 - 订单确认（下单前）读取服务详情的生效价与闪价字段（契约 74 §3.8）；下单请求不携带价格。
 
-订单详情同时返回下单时的快照名称（2026-11-27 用户裁决，43 号；供 C 端“确认支付”半屏展示。仅 `GET /api/v1/c/orders/{orderId}` 详情携带，列表项不带）：
-
-```json
-{
-  "storeName": "萌宠之家宠物店",
-  "serviceName": "上门喂养"
-}
-```
-
-- `storeName` / `serviceName`：下单时写入订单快照（06 号 `order_service_snapshot`）的店铺名与服务名，由订单域自己的事实读出，不回查商家 / 服务存储；归属校验与订单详情一致（非本人订单统一 404）。订单无快照行时为 null（登记的不对称降级）。C 端解码器为严格键集，须随后端同批发布；其余客户端忽略无影响。
-
 ---
 
 ## 3.8 改期

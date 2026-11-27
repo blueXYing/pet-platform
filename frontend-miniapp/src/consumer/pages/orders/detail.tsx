@@ -21,14 +21,14 @@ import { canReviewEntry } from '../../orders/review'
 import { RealOrderReadRepository, isOrderReadUnauthorized } from '../../orders/repository'
 // 支付发起入口（booking 切片）：仅凭服务端 OrderActions.canPay（§3.7 #123）挂载，不推导业务真相。
 import { canInitiatePayment } from '../../booking/model'
+// 「去支付」直接拉起微信支付（43 号裁决 2026-11-27）：支付窗口结束后重读本页，支付终态以服务端为准。
+import { usePayLaunch } from '../../booking/use-pay-launch'
 import {
   OrderVerifyController, PreviewOrderVerifyRepository, actionFor, formatCode,
   formatInstant, isOrderId, isOrderVerifyScenario, remainingLabel, statusHints, statusLabels,
   type OrderVerifyScenario,
 } from '../../order-verify/model'
 import { RealOrderVerifyRepository } from '../../order-verify/repository'
-// 确认支付半屏（43 号裁决 2026-11-27）：「去支付」在当前页弹出，支付发起逻辑在 PaySheet 内。
-import { PaySheet } from '../../components/pay-sheet/pay-sheet'
 import './orders.css'
 
 // C-004 切片：订单详情（只读 + 核销码主入口）。契约 10号 §3.7 + 11号 OrderDetailData：字段
@@ -55,8 +55,8 @@ function DetailScreen({ preview, scenario, orderId }: { preview: boolean; scenar
   const [phase, setPhase] = useState<Phase>(isOrderId(orderId) ? 'loading' : 'invalid')
   const [detail, setDetail] = useState<OrderDetailView | null>(null)
   const [notice, setNotice] = useState('')
-  // 确认支付半屏开关（43 号裁决）：「去支付」在当前页弹出，关闭后按需重读订单。
-  const [payOpen, setPayOpen] = useState(false)
+  // 43 号裁决：「去支付」单击即建支付单并拉起微信支付；支付窗口结束后留在本页重读订单（终态以服务端为准）。
+  const { launching: payLaunching, launch: launchPay } = usePayLaunch(preview)
   const mounted = useRef(true)
   const sequence = useRef(0)
   const [platformInfo] = useState(() => Taro.getWindowInfo())
@@ -139,12 +139,12 @@ function DetailScreen({ preview, scenario, orderId }: { preview: boolean; scenar
             <Text className='ordd-amount-value'>¥{detail.payAmount}</Text>
           </View>
         </View>
-        {/* 未支付单支付入口：仅凭服务端 actions.canPay（§3.7），在当前页弹出确认支付半屏
-            （PaySheet，43 号裁决 2026-11-27；booking/pay 整页保留为直连兜底）。
+        {/* 未支付单支付入口：仅凭服务端 actions.canPay（§3.7）。单击即建支付单并拉起微信原生支付
+            （booking/use-pay-launch，43 号裁决 2026-11-27，不再经过确认支付页），支付窗口结束后重读本页。
             按钮形态沿 23:18010 DIV-106（h49.2 r12.8）：主蓝实心=去支付、描边=订单改期。 */}
-        {canInitiatePayment(detail) && <Button id='ord-go-pay' className='ordd-action ordd-action-primary'
-          onClick={() => setPayOpen(true)}>
-          去支付 ¥{detail.payAmount}
+        {canInitiatePayment(detail) && <Button id='ord-go-pay' className='ordd-action ordd-action-primary' disabled={payLaunching}
+          onClick={() => { void launchPay(detail.orderId, { onSubmitted: () => { void load() }, onLoginRequired: goLogin }) }}>
+          {payLaunching ? '正在发起支付…' : `去支付 ¥${detail.payAmount}`}
         </Button>}
         {/* §3.8 改期入口：仅凭服务端 actions.canReschedule（46号准入投影，ARCH-005 不在页面推导），
             进入改期页（新时段选择 + expectedOrderVersion CAS + 46号错误面）。 */}
@@ -209,12 +209,6 @@ function DetailScreen({ preview, scenario, orderId }: { preview: boolean; scenar
         <View className='ord-preview-note'><Text>{preview ? '只读预览：本地样例数据，仅用于设计验收，不发起真实请求。' : '页面数据：真实接口（订单只读 + 核销码 no-store）。'}</Text></View>
       </View>}
     </View>
-    {/* 确认支付半屏（43 号裁决）：叠在订单详情之上；关闭后若本次已向微信提交过支付则重读订单，
-        支付终态以服务端为准（弹层自身不呈现“已支付”）。 */}
-    {payOpen && detail && <PaySheet orderId={detail.orderId} preview={preview}
-      onClose={({ submitted }) => { setPayOpen(false); if (submitted) void load() }}
-      onOpenOrderDetail={() => { setPayOpen(false); void load() }}
-      onOpenOrderList={goOrders} />}
   </ConsumerPageLayout>
 }
 
