@@ -60,6 +60,8 @@ import SettlementSubsidyReportPage from './pages/SettlementSubsidyReportPage';
 import SettlementReconcilePage from './pages/SettlementReconcilePage';
 import { createMerchantCouponAdminClient } from './api/merchantCouponAdmin';
 import MerchantCouponPage from './pages/MerchantCouponPage';
+import { createOnboardingAdminClient } from './api/onboardingAdmin';
+import OnboardingPage from './pages/OnboardingPage';
 
 const READ_ACTION = 'merchant.application.read';
 const auth = createAuthClient();
@@ -83,6 +85,7 @@ const communityAdmin = createCommunityAdminClient();
 const serviceCategories = createServiceCategoryAdminClient();
 const settlementAdmin = createSettlementAdminClient();
 const merchantCouponAdmin = createMerchantCouponAdminClient();
+const onboardingAdmin = createOnboardingAdminClient();
 
 /** 403 文案与旧版逐字一致；缺省兜底是积分任务配置。 */
 const FORBIDDEN_TITLES: Record<string, string> = {
@@ -113,6 +116,7 @@ const FORBIDDEN_TITLES: Record<string, string> = {
   'settlement.receiver.write': '403 · 无分账接收方管理权限',
   'settlement.receiver.read-sensitive': '403 · 无敏感收款信息查看权限',
   'settlement.instruction.retry': '403 · 无结算异常处理权限',
+  'settlement.onboarding.write': '403 · 无商家收单开通权限',
 };
 
 // 2026-11-20 用户裁决：运营端刷新不再丢登录态——token 持久化到 localStorage（登出/失效即清除）。
@@ -152,6 +156,7 @@ export function App() {
     agreementAdmin.resetContext(nextToken);
     settlementAdmin.resetContext(nextToken);
     merchantCouponAdmin.resetContext(nextToken);
+    onboardingAdmin.resetContext(nextToken);
     try {
       const nextSession = await sessions.session(nextToken);
       const nextPermissions = await sessions.permissions(nextToken);
@@ -207,6 +212,7 @@ export function App() {
     agreementAdmin.resetContext();
     settlementAdmin.resetContext();
     merchantCouponAdmin.resetContext();
+    onboardingAdmin.resetContext();
   }, [token]);
 
   if (location.pathname !== '/login' && !token) return <Navigate to="/login" replace />;
@@ -246,6 +252,8 @@ export function App() {
   const canWriteSettlementReceiver = permissions?.actionCodes.includes('settlement.receiver.write') === true;
   const canReadSensitiveReceiver = permissions?.actionCodes.includes('settlement.receiver.read-sensitive') === true;
   const canRetrySettlement = permissions?.actionCodes.includes('settlement.instruction.retry') === true;
+  const canWriteOnboarding = permissions?.actionCodes.includes('settlement.onboarding.write') === true;
+  const canReadSensitiveOnboarding = permissions?.actionCodes.includes('settlement.onboarding.read-sensitive') === true;
   const guard = (element: ReactNode, action: string | readonly string[] = READ_ACTION) => {
     if (!token) return <Navigate to="/login" replace />;
     if (bootstrap === 'loading') return <div className="page"><p role="status">会话加载中</p></div>;
@@ -275,6 +283,7 @@ export function App() {
     { type: 'group', label: '结算资金', children: [
       menuItem('/settlement/configs', '商家结算配置', canReadSettlement || canWriteSettlementConfig),
       menuItem('/settlement/receivers', '分账接收方', canReadSettlement),
+      menuItem('/settlement/onboardings', '商家收单开通', canReadSettlement || canWriteOnboarding),
       menuItem('/settlement/orders', '结算单与指令', canReadSettlement),
       menuItem('/settlement/withdrawals', '商家提现台账', canReadSettlement),
       menuItem('/settlement/subsidy-report', '平台补贴应付报表', canReadSettlement),
@@ -338,6 +347,7 @@ export function App() {
     <Route path="/ops/marketing" element={guard(<MarketingCenterPage client={marketingAdmin} couponClient={couponAdmin} categoryClient={serviceCategories} canManage={canManageMarketing} canPublish={canPublishMarketing} canReview={canReviewMarketing} canCouponManage={canManageCouponCampaigns} canCouponPublish={canPublishCouponCampaigns} onAuthLost={signOut} />, 'marketing.campaign.read')} />
     <Route path="/settlement/configs" element={guard(<SettlementConfigPage client={settlementAdmin} canWrite={canWriteSettlementConfig} onAuthLost={signOut} />, ['settlement.report.read', 'settlement.config.write'])} />
     <Route path="/settlement/receivers" element={guard(<SettlementReceiverPage client={settlementAdmin} canWrite={canWriteSettlementReceiver} canReadSensitive={canReadSensitiveReceiver} onAuthLost={signOut} />, 'settlement.report.read')} />
+    <Route path="/settlement/onboardings" element={guard(<OnboardingPage client={onboardingAdmin} canWrite={canWriteOnboarding} canReadSensitive={canReadSensitiveOnboarding} onAuthLost={signOut} />, ['settlement.report.read', 'settlement.onboarding.write'])} />
     <Route path="/settlement/orders" element={guard(<SettlementOrderListPage client={settlementAdmin} canRetry={canRetrySettlement} onAuthLost={signOut} />, 'settlement.report.read')} />
     <Route path="/settlement/withdrawals" element={guard(<SettlementWithdrawalListPage client={settlementAdmin} onAuthLost={signOut} />, 'settlement.report.read')} />
     <Route path="/settlement/subsidy-report" element={guard(<SettlementSubsidyReportPage client={settlementAdmin} onAuthLost={signOut} />, 'settlement.report.read')} />
