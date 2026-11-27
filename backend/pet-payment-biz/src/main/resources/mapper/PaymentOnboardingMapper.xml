@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- Contract 81 / V44 merchant acquiring onboarding. Matched by PaymentMybatis classpath*:mapper/Payment*Mapper.xml. -->
+<mapper namespace="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentOnboardingMapper">
+
+  <sql id="onboardingColumns">
+    id, merchant_id, status, merchant_type_code, mer_reg_name,
+    mer_biz_name, mer_reg_dist_code, mer_reg_addr, mer_blis_name, mer_blis_no_cipher,
+    mer_blis_no_masked, mer_blis_st_dt, mer_blis_exp_dt, lar_name, lar_id_type,
+    lar_idcard_cipher, lar_idcard_masked, lar_idcard_st_dt, lar_idcard_exp_dt, lar_mobile_cipher,
+    lar_mobile_masked, contact_name, contact_mobile_cipher, contact_mobile_masked, acct_type_code,
+    acct_name, acct_no_cipher, acct_no_masked, acct_no_last4, acct_id_type,
+    acct_idcard_cipher, acct_idcard_masked, acct_id_exp_dt, openning_bank_code, openning_bank_name,
+    clearing_bank_code, pos_type, mcc_code, mer_busi_content, settle_period,
+    fee_data_json, split_lowest_ratio, attachments_json, cooperation_asset_id, ec_order_no,
+    ec_apply_id, ec_sign_url, ec_no, ec_signed_at, contract_order_no,
+    contract_id, contract_status, contract_submitted_at, contract_decided_at, mer_inner_no,
+    mer_cup_no, term_no, ledger_order_no, ledger_apply_id, ledger_submitted_at,
+    ledger_opened_at, bind_order_no, bind_apply_id, bind_submitted_at, bind_approved_at,
+    reject_reason, last_error_code, last_error_message, submitted_at, completed_at,
+    version, created_at, updated_at
+  </sql>
+
+  <select id="selectByMerchantId" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentOnboardingMapper$OnboardingRow">
+    SELECT <include refid="onboardingColumns"/> FROM payment_merchant_onboarding WHERE merchant_id=#{merchantId}
+  </select>
+
+  <select id="selectByMerchantIdForUpdate" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentOnboardingMapper$OnboardingRow">
+    SELECT <include refid="onboardingColumns"/> FROM payment_merchant_onboarding WHERE merchant_id=#{merchantId} FOR UPDATE
+  </select>
+
+  <select id="selectByContractId" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentOnboardingMapper$OnboardingRow">
+    SELECT <include refid="onboardingColumns"/> FROM payment_merchant_onboarding WHERE contract_id=#{contractId}
+  </select>
+
+  <select id="selectByMerCupNo" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentOnboardingMapper$OnboardingRow">
+    SELECT <include refid="onboardingColumns"/> FROM payment_merchant_onboarding WHERE mer_cup_no=#{merCupNo}
+  </select>
+
+  <select id="selectByEcApplyId" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentOnboardingMapper$OnboardingRow">
+    SELECT <include refid="onboardingColumns"/> FROM payment_merchant_onboarding WHERE ec_apply_id=#{ecApplyId}
+  </select>
+
+  <select id="selectByEcOrderNo" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentOnboardingMapper$OnboardingRow">
+    SELECT <include refid="onboardingColumns"/> FROM payment_merchant_onboarding WHERE ec_order_no=#{ecOrderNo}
+  </select>
+
+  <select id="selectByLedgerApplyId" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentOnboardingMapper$OnboardingRow">
+    SELECT <include refid="onboardingColumns"/> FROM payment_merchant_onboarding WHERE ledger_apply_id=#{applyId}
+  </select>
+
+  <select id="selectByBindApplyId" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentOnboardingMapper$OnboardingRow">
+    SELECT <include refid="onboardingColumns"/> FROM payment_merchant_onboarding WHERE bind_apply_id=#{applyId}
+  </select>
+
+  <sql id="listFilter">
+    <where>
+      <if test="merchantId != null">AND merchant_id=#{merchantId}</if>
+      <if test="status != null">AND status=#{status}</if>
+    </where>
+  </sql>
+
+  <select id="listOnboardings" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentOnboardingMapper$OnboardingRow">
+    SELECT <include refid="onboardingColumns"/>
+    FROM payment_merchant_onboarding
+    <include refid="listFilter"/>
+    ORDER BY updated_at DESC, id DESC
+    LIMIT #{limit} OFFSET #{offset}
+  </select>
+
+  <select id="countOnboardings" resultType="long">
+    SELECT COUNT(*) FROM payment_merchant_onboarding
+    <include refid="listFilter"/>
+  </select>
+
+  <!-- Insert binds every column; nullable columns keep the explicit null the caller passes. -->
+  <insert id="insertOnboarding">
+    INSERT INTO payment_merchant_onboarding(
+      id, merchant_id, status, merchant_type_code, 
+      mer_reg_name, mer_biz_name, mer_reg_dist_code, mer_reg_addr, 
+      mer_blis_name, mer_blis_no_cipher, mer_blis_no_masked, mer_blis_st_dt, 
+      mer_blis_exp_dt, lar_name, lar_id_type, lar_idcard_cipher, 
+      lar_idcard_masked, lar_idcard_st_dt, lar_idcard_exp_dt, lar_mobile_cipher, 
+      lar_mobile_masked, contact_name, contact_mobile_cipher, contact_mobile_masked, 
+      acct_type_code, acct_name, acct_no_cipher, acct_no_masked, 
+      acct_no_last4, acct_id_type, acct_idcard_cipher, acct_idcard_masked, 
+      acct_id_exp_dt, openning_bank_code, openning_bank_name, clearing_bank_code, 
+      pos_type, mcc_code, mer_busi_content, settle_period, 
+      fee_data_json, split_lowest_ratio, attachments_json, cooperation_asset_id, 
+      ec_order_no, ec_apply_id, ec_sign_url, ec_no, 
+      ec_signed_at, contract_order_no, contract_id, contract_status, 
+      contract_submitted_at, contract_decided_at, mer_inner_no, mer_cup_no, 
+      term_no, ledger_order_no, ledger_apply_id, ledger_submitted_at, 
+      ledger_opened_at, bind_order_no, bind_apply_id, bind_submitted_at, 
+      bind_approved_at, reject_reason, last_error_code, last_error_message, 
+      submitted_at, completed_at, version, created_at, 
+      updated_at
+    )
+    VALUES(
+      #{id}, #{merchantId}, #{status}, #{merchantTypeCode}, #{merRegName}, 
+      #{merBizName}, #{merRegDistCode}, #{merRegAddr}, #{merBlisName}, #{merBlisNoCipher}, 
+      #{merBlisNoMasked}, #{merBlisStDt}, #{merBlisExpDt}, #{larName}, #{larIdType}, 
+      #{larIdcardCipher}, #{larIdcardMasked}, #{larIdcardStDt}, #{larIdcardExpDt}, #{larMobileCipher}, 
+      #{larMobileMasked}, #{contactName}, #{contactMobileCipher}, #{contactMobileMasked}, #{acctTypeCode}, 
+      #{acctName}, #{acctNoCipher}, #{acctNoMasked}, #{acctNoLast4}, #{acctIdType}, 
+      #{acctIdcardCipher}, #{acctIdcardMasked}, #{acctIdExpDt}, #{openningBankCode}, #{openningBankName}, 
+      #{clearingBankCode}, #{posType}, #{mccCode}, #{merBusiContent}, #{settlePeriod}, 
+      #{feeDataJson}, #{splitLowestRatio}, #{attachmentsJson}, #{cooperationAssetId}, #{ecOrderNo}, 
+      #{ecApplyId}, #{ecSignUrl}, #{ecNo}, #{ecSignedAt}, #{contractOrderNo}, 
+      #{contractId}, #{contractStatus}, #{contractSubmittedAt}, #{contractDecidedAt}, #{merInnerNo}, 
+      #{merCupNo}, #{termNo}, #{ledgerOrderNo}, #{ledgerApplyId}, #{ledgerSubmittedAt}, 
+      #{ledgerOpenedAt}, #{bindOrderNo}, #{bindApplyId}, #{bindSubmittedAt}, #{bindApprovedAt}, 
+      #{rejectReason}, #{lastErrorCode}, #{lastErrorMessage}, #{submittedAt}, #{completedAt}, 
+      #{version}, #{createdAt}, #{updatedAt}
+    )
+  </insert>
+
+  <!-- Whole-row optimistic update: id, merchant_id and created_at never change. -->
+  <update id="updateOnboarding">
+    UPDATE payment_merchant_onboarding
+    SET
+        status=#{status}, merchant_type_code=#{merchantTypeCode}, mer_reg_name=#{merRegName}, 
+        mer_biz_name=#{merBizName}, mer_reg_dist_code=#{merRegDistCode}, mer_reg_addr=#{merRegAddr}, 
+        mer_blis_name=#{merBlisName}, mer_blis_no_cipher=#{merBlisNoCipher}, mer_blis_no_masked=#{merBlisNoMasked}, 
+        mer_blis_st_dt=#{merBlisStDt}, mer_blis_exp_dt=#{merBlisExpDt}, lar_name=#{larName}, 
+        lar_id_type=#{larIdType}, lar_idcard_cipher=#{larIdcardCipher}, lar_idcard_masked=#{larIdcardMasked}, 
+        lar_idcard_st_dt=#{larIdcardStDt}, lar_idcard_exp_dt=#{larIdcardExpDt}, lar_mobile_cipher=#{larMobileCipher}, 
+        lar_mobile_masked=#{larMobileMasked}, contact_name=#{contactName}, contact_mobile_cipher=#{contactMobileCipher}, 
+        contact_mobile_masked=#{contactMobileMasked}, acct_type_code=#{acctTypeCode}, acct_name=#{acctName}, 
+        acct_no_cipher=#{acctNoCipher}, acct_no_masked=#{acctNoMasked}, acct_no_last4=#{acctNoLast4}, 
+        acct_id_type=#{acctIdType}, acct_idcard_cipher=#{acctIdcardCipher}, acct_idcard_masked=#{acctIdcardMasked}, 
+        acct_id_exp_dt=#{acctIdExpDt}, openning_bank_code=#{openningBankCode}, openning_bank_name=#{openningBankName}, 
+        clearing_bank_code=#{clearingBankCode}, pos_type=#{posType}, mcc_code=#{mccCode}, 
+        mer_busi_content=#{merBusiContent}, settle_period=#{settlePeriod}, fee_data_json=#{feeDataJson}, 
+        split_lowest_ratio=#{splitLowestRatio}, attachments_json=#{attachmentsJson}, cooperation_asset_id=#{cooperationAssetId}, 
+        ec_order_no=#{ecOrderNo}, ec_apply_id=#{ecApplyId}, ec_sign_url=#{ecSignUrl}, 
+        ec_no=#{ecNo}, ec_signed_at=#{ecSignedAt}, contract_order_no=#{contractOrderNo}, 
+        contract_id=#{contractId}, contract_status=#{contractStatus}, contract_submitted_at=#{contractSubmittedAt}, 
+        contract_decided_at=#{contractDecidedAt}, mer_inner_no=#{merInnerNo}, mer_cup_no=#{merCupNo}, 
+        term_no=#{termNo}, ledger_order_no=#{ledgerOrderNo}, ledger_apply_id=#{ledgerApplyId}, 
+        ledger_submitted_at=#{ledgerSubmittedAt}, ledger_opened_at=#{ledgerOpenedAt}, bind_order_no=#{bindOrderNo}, 
+        bind_apply_id=#{bindApplyId}, bind_submitted_at=#{bindSubmittedAt}, bind_approved_at=#{bindApprovedAt}, 
+        reject_reason=#{rejectReason}, last_error_code=#{lastErrorCode}, last_error_message=#{lastErrorMessage}, 
+        submitted_at=#{submittedAt}, completed_at=#{completedAt},
+        version=version+1,
+        updated_at=#{updatedAt}
+    WHERE id=#{id} AND version=#{version}
+  </update>
+
+  <sql id="auditColumns">
+    id,merchant_id,onboarding_id,action_type,request_key,request_fingerprint,
+    operator_type,operator_id,reason,detail_json,created_at
+  </sql>
+
+  <select id="selectAuditByRequestKeyForUpdate" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentOnboardingMapper$OnboardingAuditRow">
+    SELECT <include refid="auditColumns"/>
+    FROM payment_merchant_onboarding_audit
+    WHERE request_key=#{requestKey}
+    FOR UPDATE
+  </select>
+
+  <insert id="insertAudit">
+    INSERT INTO payment_merchant_onboarding_audit(
+      id,merchant_id,onboarding_id,action_type,request_key,request_fingerprint,
+      operator_type,operator_id,reason,detail_json,created_at)
+    VALUES(
+      #{id},#{merchantId},#{onboardingId},#{actionType},
+      #{requestKey,jdbcType=VARBINARY},#{requestFingerprint},
+      #{operatorType},#{operatorId},#{reason},#{detailJson},#{now})
+  </insert>
+
+  <select id="listAuditsByMerchant" resultType="com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentOnboardingMapper$OnboardingAuditRow">
+    SELECT <include refid="auditColumns"/>
+    FROM payment_merchant_onboarding_audit
+    WHERE merchant_id=#{merchantId}
+    ORDER BY created_at DESC, id DESC
+    LIMIT #{limit}
+  </select>
+</mapper>

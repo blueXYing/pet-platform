@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- CCR-PAY-ONBOARD-001: acquiring-admission facts for one merchant (06/28/29 tables). Matched by MerchantMybatis classpath*:mapper/Merchant*Mapper.xml. -->
+<mapper namespace="com.petplatform.merchant.biz.infrastructure.persistence.mapper.MerchantAcquiringFactsMapper">
+
+  <!-- Same joins as the contract-64 ledger row; the signing fact follows 28号 (acceptance of the current agreement version). -->
+  <select id="selectFact" resultType="com.petplatform.merchant.biz.infrastructure.persistence.mapper.MerchantAcquiringFactsMapper$MerchantAcquiringFactRow">
+    SELECT m.id, m.owner_user_id, m.merchant_name, m.status,
+      c.merchant_type_code, c.city_code,
+      a.status AS application_status,
+      CASE WHEN acc.accepted_at IS NULL THEN 'NOT_SIGNED' ELSE 'SIGNED' END AS signing_status
+    FROM merchant m
+    LEFT JOIN merchant_profile_compat c ON c.merchant_id = m.id
+    LEFT JOIN merchant_application a ON a.reserved_merchant_id = m.id
+    LEFT JOIN merchant_agreement_current cur ON cur.agreement_key = 'MERCHANT'
+    LEFT JOIN merchant_agreement_acceptance acc
+        ON acc.merchant_id = m.id AND acc.agreement_version_id = cur.agreement_version_id
+    WHERE m.id = #{merchantId}
+  </select>
+</mapper>

@@ -81,6 +81,10 @@ CREATE TABLE payment_merchant_onboarding (
     UNIQUE KEY uk_onboarding_contract_order (contract_order_no),
     UNIQUE KEY uk_onboarding_mer_cup_no (mer_cup_no),
     KEY idx_onboarding_status (status, updated_at),
+    KEY idx_onboarding_contract (contract_id),
+    KEY idx_onboarding_ledger_apply (ledger_apply_id),
+    KEY idx_onboarding_bind_apply (bind_apply_id),
+    KEY idx_onboarding_ec_order (ec_order_no),
     CONSTRAINT ck_onboarding_status CHECK (status IN (
         'DRAFT', 'EC_SIGNING', 'CONTRACT_APPLYING', 'CONTRACT_UNKNOWN', 'CONTRACT_REJECTED',
         'LEDGER_APPLYING', 'LEDGER_REJECTED', 'BIND_APPLYING', 'BIND_REJECTED', 'ACTIVE'
