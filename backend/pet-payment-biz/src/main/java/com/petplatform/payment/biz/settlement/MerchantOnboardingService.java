@@ -1314,13 +1314,21 @@ public final class MerchantOnboardingService implements MerchantOnboardingApi, M
                         blank(settle.acctName()) ? existing.acctName : settle.acctName(),
                         blank(settle.acctNo()) ? decrypt(existing, F_ACCT_NO, existing.acctNoCipher) : settle.acctNo(),
                         settle.acctIdType(),
-                        blank(settle.acctIdcard()) ? decrypt(existing, F_ACCT_IDCARD, existing.acctIdcardCipher)
-                                : settle.acctIdcard(),
-                        settle.acctIdExpDt(), settle.openningBankCode(), settle.openningBankName(),
+                        // The stored settler is kept only while the request still declares a settler;
+                        // switching back to "settler is the legal person" (acctIdType blank) clears it.
+                        settlerDeclared(settle) && blank(settle.acctIdcard())
+                                ? decrypt(existing, F_ACCT_IDCARD, existing.acctIdcardCipher) : settle.acctIdcard(),
+                        settlerDeclared(settle) && blank(settle.acctIdExpDt()) && existing.acctIdExpDt != null
+                                ? existing.acctIdExpDt.toString() : settle.acctIdExpDt(),
+                        settle.openningBankCode(), settle.openningBankName(),
                         settle.clearingBankCode()),
                 command.attachments(),
                 blank(command.cooperationAssetId()) ? existing.cooperationAssetId : command.cooperationAssetId(),
                 command.reason());
+    }
+
+    private static boolean settlerDeclared(SettlementProfileInput settle) {
+        return settle.acctIdType() != null && !settle.acctIdType().isBlank();
     }
 
     private static void resetElectronicContract(OnboardingRow row) {

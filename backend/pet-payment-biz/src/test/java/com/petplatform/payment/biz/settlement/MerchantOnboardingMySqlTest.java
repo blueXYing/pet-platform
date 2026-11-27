@@ -517,6 +517,31 @@ class MerchantOnboardingMySqlTest {
         }
     }
 
+    @Test
+    void editingKeepsBlankSecretsIncludingADifferentSettler() throws Exception {
+        try (Fixture f = new Fixture()) {
+            f.service.saveProfile(settler(0, id("save-settler"), "110101199003074258", "2040-01-01"));
+            OnboardingView first = f.view();
+            assertEquals("58", first.settlement().acctTypeCode());
+            assertEquals("01", first.settlement().acctIdType());
+            assertEquals("110****4258", first.settlement().acctIdcardMasked());
+            assertEquals(9, first.attachments().size());
+            // Every sensitive field blank, settler mode still on: the stored settler ID and expiry survive.
+            OnboardingView kept = f.service.saveProfile(keepSettler(first.version(), id("save-keep-settler"), "线下提供"));
+            assertEquals("110****4258", kept.settlement().acctIdcardMasked());
+            assertEquals("110101199003074258", f.service.reveal(new RevealOnboardingCommand(
+                    command("reveal-settler"), MERCHANT, "核对结算人")).acctIdcard());
+            // Switching back to "settler is the legal person" needs the three settler attachments removed.
+            assertEquals(CommonApiCodes.INVALID_ARGUMENT, assertThrows(ApiException.class,
+                    () -> f.service.saveProfile(legalPersonSettler(kept.version(), id("save-legal"), true))).code());
+            OnboardingView legal = f.service.saveProfile(legalPersonSettler(kept.version(), id("save-legal"), false));
+            assertNull(legal.settlement().acctIdType());
+            assertNull(legal.settlement().acctIdcardMasked());
+            assertEquals(6, legal.attachments().size());
+            assertEquals("DRAFT", legal.status());
+        }
+    }
+
     // ---- Fixtures and helpers -------------------------------------------------------------
 
     /** Records every call and answers from a script, so the test states exactly what Lakala did. */
@@ -702,6 +727,74 @@ class MerchantOnboardingMySqlTest {
                 new SettlementProfileInput("58", acctName, acctNo, null, null, null, "102100000030",
                         "中国工商银行北京市分行营业部", "102100099996"),
                 attachments, "201", reason);
+    }
+
+    /** 对私 + 非法人结算人：结算人三项与三张结算人附件齐全。 */
+    private static SaveOnboardingCommand settler(long expectedVersion, String requestId, String settlerId,
+            String settlerExpDt) {
+        Map<String, String> attachments = new LinkedHashMap<>(attachments());
+        attachments.put("ID_CARD_FRONT", "301");
+        attachments.put("ID_CARD_BEHIND", "302");
+        attachments.put("NO_LEGAL_PERSON_SETT_AUTH_LETTER", "303");
+        return new SaveOnboardingCommand(
+                new CommandContext(requestId, null, OperatorType.PLATFORM_OPERATOR, "7", "ADMIN_WEB"),
+                MERCHANT, expectedVersion, merchant(),
+                new SettlementProfileInput("58", "张三", "6212260200102400000", "01", settlerId, settlerExpDt,
+                        "102100000030", "中国工商银行北京市分行营业部", "102100099996"),
+                attachments, "201", "线下提供");
+    }
+
+    /** 已有结算人的记录：敏感字段全部留空（仍声明结算人），结算人证件号与有效期保持原值。 */
+    private static SaveOnboardingCommand keepSettler(long expectedVersion, String requestId, String reason) {
+        Map<String, String> attachments = new LinkedHashMap<>(attachments());
+        attachments.put("ID_CARD_FRONT", "301");
+        attachments.put("ID_CARD_BEHIND", "302");
+        attachments.put("NO_LEGAL_PERSON_SETT_AUTH_LETTER", "303");
+        return new SaveOnboardingCommand(
+                new CommandContext(requestId, null, OperatorType.PLATFORM_OPERATOR, "7", "ADMIN_WEB"),
+                MERCHANT, expectedVersion, blankMerchant(),
+                new SettlementProfileInput("58", "", "", "01", "", "",
+                        "102100000030", "中国工商银行北京市分行营业部", "102100099996"),
+                attachments, "201", reason);
+    }
+
+    private static MerchantProfileInput blankMerchant() {
+        return new MerchantProfileInput("示例宠物医院", null, "510104", "天府大道1号", null, "示例宠物医院",
+                "", "2020-01-01", "2040-01-01", "", "", "1999-05-29", "2039-05-29", "", "", "");
+    }
+
+    /** 结算人改回法人本人：withSettlerAttachments=false 时三张结算人附件已移除。 */
+    private static SaveOnboardingCommand legalPersonSettler(long expectedVersion, String requestId,
+            boolean withSettlerAttachments) {
+        Map<String, String> attachments = attachments();
+        if (withSettlerAttachments) {
+            attachments.put("ID_CARD_FRONT", "301");
+            attachments.put("ID_CARD_BEHIND", "302");
+            attachments.put("NO_LEGAL_PERSON_SETT_AUTH_LETTER", "303");
+        }
+        return new SaveOnboardingCommand(
+                new CommandContext(requestId, null, OperatorType.PLATFORM_OPERATOR, "7", "ADMIN_WEB"),
+                MERCHANT, expectedVersion, merchant(),
+                new SettlementProfileInput("58", "", "", null, null, null,
+                        "102100000030", "中国工商银行北京市分行营业部", "102100099996"),
+                attachments, "201", "线下提供");
+    }
+
+    private static MerchantProfileInput merchant() {
+        return new MerchantProfileInput("示例宠物医院", null, "510104", "天府大道1号", null, "示例宠物医院",
+                "91110108MA2G7LK368", "2020-01-01", "2040-01-01", "张三", LEGAL_ID, "1999-05-29",
+                "2039-05-29", "13800001234", "李四", "13900000000");
+    }
+
+    private static Map<String, String> attachments() {
+        Map<String, String> attachments = new LinkedHashMap<>();
+        attachments.put("FR_ID_CARD_FRONT", "101");
+        attachments.put("FR_ID_CARD_BEHIND", "102");
+        attachments.put("BANK_CARD", "103");
+        attachments.put("BUSINESS_LICENCE", "104");
+        attachments.put("MERCHANT_PHOTO", "105");
+        attachments.put("SHOPINNER", "106");
+        return attachments;
     }
 
     /** Deterministic UUID built from a label, so request ids are stable and distinct per label. */

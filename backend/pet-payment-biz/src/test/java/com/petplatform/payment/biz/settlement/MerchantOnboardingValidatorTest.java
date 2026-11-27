@@ -73,7 +73,7 @@ class MerchantOnboardingValidatorTest {
         assertInvalid(baseMerchant("342523199905298213"), "校验位");
         assertInvalid(baseMerchant("3425231999052982"), "格式");
         assertInvalid(baseMerchant("110101189901074258"), "出生日期");
-        assertInvalid(baseMerchant("110101202611280001"), "出生日期");
+        assertInvalid(baseMerchant("110101209912310001"), "出生日期");
         assertEquals("11010119900307424X", MerchantOnboardingValidator.residentId("11010119900307424x", "身份证"));
         assertEquals("130503670401001", MerchantOnboardingValidator.residentId("130503670401001", "身份证"));
         assertInvalid(baseMerchant(LEGAL_ID, "13800001234", "1999-05-29", "2026-11-26"), "法人身份证已过期");
