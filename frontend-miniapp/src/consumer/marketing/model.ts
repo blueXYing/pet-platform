@@ -27,6 +27,15 @@ export type Promotion = Readonly<{ level: number | null; title: string | null; t
 export const PLACEMENT_POSITION_HOT_SERVICE_TOP = 'HOT_SERVICE_TOP'
 // 71 v0.3 §10：首页内容位落地热门服务二级页的目标类型（targetValue 允许 null）。
 export const HOME_BLOCK_TARGET_HOT_SERVICE = 'HOT_SERVICE'
+// 42 号 §十二：首页默认营销数据长期有效（结束时间写到 2099 年），列表页不展示具体日期。
+export const LONG_RUNNING_END_YEAR = 2099
+
+/** 活动有效期文案：结束时间在 2099 年及以后视为长期有效，否则显示起止日期。 */
+export function campaignValidityLabel(startAt: string, endAt: string): string {
+  return Number(endAt.slice(0, 4)) >= LONG_RUNNING_END_YEAR
+    ? '长期有效'
+    : `${startAt.slice(0, 10)} 至 ${endAt.slice(0, 10)}`
+}
 
 export type StoreCard = Readonly<{
   storeId: string; storeName: string; merchantName: string | null
