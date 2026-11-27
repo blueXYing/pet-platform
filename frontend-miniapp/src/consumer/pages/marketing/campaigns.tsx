@@ -4,7 +4,7 @@ import Taro, { useDidShow } from '@tarojs/taro'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { consumerApi } from '../../../shared/consumer-runtime'
 import { readSelectedCity } from '../../city/model'
-import { MarketingRepository, type CampaignCard, type MarketingTag } from '../../marketing/model'
+import { campaignValidityLabel, MarketingRepository, type CampaignCard, type MarketingTag } from '../../marketing/model'
 import '../../marketing/marketing.css'
 
 const repository = new MarketingRepository(consumerApi)
@@ -70,8 +70,9 @@ export default function MarketingCampaignsPage() {
           <Text className='mkt-campaign-title'>{item.title}</Text>
           {item.subtitle ? <Text className='mkt-campaign-sub'>{item.subtitle}</Text> : null}
           <View className='mkt-campaign-meta'>
-            <Text>{item.storeCount} 家门店参与</Text>
-            <Text>{item.startAt.slice(0, 10)} 至 {item.endAt.slice(0, 10)}</Text>
+            {/* 平台活动可以不关联商家（42 号 §十二）：没有参与门店时不显示"0 家门店参与"。 */}
+            {item.storeCount > 0 ? <Text>{item.storeCount} 家门店参与</Text> : null}
+            <Text>{campaignValidityLabel(item.startAt, item.endAt)}</Text>
           </View>
         </View>
       </View>)}

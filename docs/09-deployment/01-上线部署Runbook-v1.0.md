@@ -231,6 +231,17 @@ mysql -h <PLACEHOLDER:DB_HOST> -u <PLACEHOLDER:业务账号> -p pet_platform < "
 - 关闭营销时不执行 `63/71`；先执行 `70/72` 再开 `pet.service.query/command`；`pet.marketing.campaign.category-validation.enabled` 保持 false，待存量活动分类码清理完成后再开启。
 - 回滚：先关营销开关，保留新表/新列（旧代码忽略）；`71` 的 CHECK 回滚需先停用并删除 `HOT_SERVICE_TOP`/`HOT_SERVICE` 行，再恢复旧 CHECK；执行前全量备份。
 
+**首页默认营销数据（2026-11-27 起，所有环境含生产执行；42 号 §十二）**：
+
+执行 `76-首页运营演示数据种子-v0.1.sql`（内容 v0.2）：3 个平台活动（不关联商家 / 门店）+ 3 个首页活动投放位 + 3 块首页内容位，全部城市生效、长期有效。按业务键幂等，可重复执行；文件第三部分会把已执行过旧版（活动归验收商户）的库升级为平台活动，运营在后台改过的字段保持原样。须在上面的营销增量（`63` / `71`）之后执行，且整份文件在同一个会话里跑（用到会话变量）。活动卡插画固定取自对象存储 bucket `mtxoss2`（完整地址写在数据里），不随部署环境的对象存储配置变化；换 bucket 时修改文件里的 `@seed_bucket` 后重新执行。
+
+```bash
+cd <PLACEHOLDER:仓库检出目录>
+mysql --default-character-set=utf8mb4 -h <PLACEHOLDER:DB_HOST> -u <PLACEHOLDER:业务账号> -p pet_platform < "docs/03-database/76-首页运营演示数据种子-v0.1.sql"
+```
+
+文件末尾自带验收查询：计数期望 3 / 0 / 3 / 3（活动 / 旧版门店关联 / 投放位 / 内容位）；最后一段“未自动升级”应为空，有行说明运营改过该活动，需人工确认归属。
+
 ### 3.3 后端构建
 
 ```bash
@@ -346,6 +357,7 @@ PET_C_API_ORIGIN=https://<PLACEHOLDER:生产域名> npm run build:weapp   # 产�
 | 8 | 交易占位 | C 端下单（券/库存开关 A 类已开） | 201 占位单；10 分钟后自动关闭（`order.expiry.worker` 默认 true） |
 | 9 | B 类未开面 | 对接单/核销/退款域路由发请求（如 M 端核销） | 503 失败关闭（对应内核开关默认关，**不是** 500/404） |
 | 10 | 资金链 | 配齐 §2.3 后：发起支付 → 拉卡拉 SIT/PRODUCTION 回调 | 支付回执验签通过、订单推进；`notify-url` 必须公网可达 |
+| 11 | A 类 | `GET https://<域名>/api/v1/c/marketing/home-blocks` 与 `GET https://<域名>/api/v1/c/marketing/placements?positionCode=HOME_ACTIVITY` | 各 3 条：首页默认营销数据已就位（42 号 §十二、§3.2 的 76 号种子；三张活动卡是平台活动，不关联商家） |
 
 真机验收（字体回退、SVG、多机型）按 35号 §一.2 **延后至正式上线前统一执行**，不在本文冒烟范围。
 

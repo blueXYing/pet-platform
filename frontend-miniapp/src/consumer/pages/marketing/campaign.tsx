@@ -217,15 +217,18 @@ function CampaignContent({ detail, claiming, notice, onClaim, onStore }: {
           claiming={claiming} onClaim={onClaim} />
       : null}
 
-    <View className={`mkt-camp-store-head${detail.couponCampaign ? ' mkt-camp-store-head-coupon' : ''}`}>
-      <Text className='mkt-camp-store-title'>{storeTitle}</Text>
-      <Text className='mkt-camp-store-count'>{detail.stores.length} 家</Text>
-    </View>
-    {detail.stores.length === 0
-      ? <View className='mkt-camp-store-empty'><Text>暂无参与活动商家</Text></View>
-      : <View className='mkt-camp-store-list'>
-        {detail.stores.map(store => <CampaignStoreCard key={store.storeId} store={store} onOpen={onStore} />)}
-      </View>}
+    {/* 平台活动可以不关联商家（42 号 §十二）：没有参与门店时整块不显示，而不是列出"0 家"。 */}
+    {detail.stores.length > 0
+      ? <>
+          <View className={`mkt-camp-store-head${detail.couponCampaign ? ' mkt-camp-store-head-coupon' : ''}`}>
+            <Text className='mkt-camp-store-title'>{storeTitle}</Text>
+            <Text className='mkt-camp-store-count'>{detail.stores.length} 家</Text>
+          </View>
+          <View className='mkt-camp-store-list'>
+            {detail.stores.map(store => <CampaignStoreCard key={store.storeId} store={store} onOpen={onStore} />)}
+          </View>
+        </>
+      : null}
 
     {(richTitle || richParagraphs.length > 0) && <View className='mkt-camp-note'>
       {richTitle ? <Text className='mkt-camp-note-title'>{richTitle}</Text> : null}

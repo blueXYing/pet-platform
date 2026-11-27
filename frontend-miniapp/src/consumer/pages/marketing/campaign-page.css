@@ -320,12 +320,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.mkt-camp-store-empty {
-  padding: calc(var(--mkt-unit) * 48) 0;
-  text-align: center;
-  font-size: calc(var(--mkt-unit) * 13);
-  color: #b89682;
-}
 
 .mkt-camp-state {
   padding: calc(var(--mkt-unit) * 120) calc(var(--mkt-unit) * 32) 0;

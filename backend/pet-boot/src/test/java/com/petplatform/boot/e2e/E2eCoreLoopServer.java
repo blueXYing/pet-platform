@@ -1309,56 +1309,61 @@ public final class E2eCoreLoopServer {
     }
   }
 
+  /** 默认活动卡插画所在的对象存储 bucket（2026-11-27 用户裁决：固定用这个 bucket 的完整地址）。 */
+  private static final String SEED_CARD_IMAGE_BASE =
+      "https://mtxoss2.oss-cn-hangzhou.aliyuncs.com/marketing/fullcard/";
+  /** 默认营销数据的结束时间（列存 UTC）：长期有效，需要下线时在运营后台暂停 / 结束活动。 */
+  private static final String SEED_END_AT = "2099-12-31 00:00:00";
+
   /**
    * 2026-11-20/23 用户裁决：首页运营演示数据（Figma 61-599）——活动钜惠三张卡片 + 热门服务 /
-   * 宠友圈热门 / 植物&异宠三块内容位。与 docs/03-database/76-首页运营演示数据种子-v0.1.sql
-   * 是同一套数据：那份供换环境时手工执行，这里保证 E2E 新库自动初始化。
+   * 宠友圈热门 / 植物&异宠三块内容位。与 docs/03-database/76-首页运营演示数据种子-v0.1.sql（v0.2 内容）
+   * 是同一套数据：那份列入部署 Runbook 的建库清单、所有环境手工执行，这里保证 E2E 新库自动初始化；
+   * DefaultMarketingSeedTest 会比对两处的落库结果，改一处必须同步改另一处。
+   *
+   * <p>2026-11-27 用户裁决（42 号 §十二）：三张活动卡是平台活动，不关联任何商家 / 门店（不写
+   * marketing_campaign_store 行），全部城市生效，长期有效；文案沿用。
    *
    * <p>幂等：按业务键已存在的行一律跳过（运营在后台改过的内容不会被启动覆盖；同理，改了这里的
-   * 种子后需另行修正已在运行的库）。其余错误（约束、必填列）照常抛出——2026-11-23 之前这里用
-   * INSERT IGNORE，活动参与门店行因缺必填列一直插入失败却被吞成警告，日志照常报"seeded"。
+   * 种子后需另行修正已在运行的库——存量库的升级语句只在 76 号 SQL 的第三部分）。其余错误（约束、
+   * 必填列）照常抛出——2026-11-23 之前这里用 INSERT IGNORE，活动参与门店行因缺必填列一直插入失败
+   * 却被吞成警告，日志照常报"seeded"。
    *
-   * <p>起止时间相对当前时刻计算（列存 UTC），演示数据不会因为写死日期过期后整块消失。
-   * 活动卡插画走 OSS（cover_url 只存 Key）；内容位 image_url 留空，由小程序内置的设计稿切图兜底。
+   * <p>开始时间相对当前时刻计算（执行前 30 天），列存 UTC。活动卡插画固定取自 bucket mtxoss2
+   * （cover_url 写完整 https 地址）；内容位 image_url 留空，由小程序内置的设计稿切图兜底。
    */
-  private static void seedMarketing(JdbcTemplate jdbc) {
+  static void seedMarketing(JdbcTemplate jdbc) {
     java.time.format.DateTimeFormatter fmt =
         java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     java.time.LocalDateTime utc = java.time.LocalDateTime.now(java.time.ZoneOffset.UTC);
     String now = utc.truncatedTo(java.time.temporal.ChronoUnit.SECONDS).format(fmt);
     String startAt = utc.minusDays(30).format(fmt);
-    String endAt = utc.plusDays(400).format(fmt);
+    String endAt = SEED_END_AT;
     int inserted = 0;
     List<SeedCampaign> campaigns = List.of(
-        new SeedCampaign(720100L, "MKT-NEW-50", "新客专享·限时5折", "DISPLAY", "新客专享 · 限时 5 折",
-            "新用户下单即享优惠", "full_card", "新客专享", "marketing/fullcard/new-user-clean.png", 300),
-        new SeedCampaign(720101L, "MKT-FIRST-30", "首单立减¥30", "COUPON", "首单立减 ¥30",
-            "新用户下单即享优惠", "full_card", "新客专享", "marketing/fullcard/first-order-clean.png", 200),
-        new SeedCampaign(720102L, "MKT-GROOM-50", "宠物美容狂欢", "DISPLAY", "宠物美容狂欢",
-            "洗澡美容低至 5 折起", "full_card", "限时5折", "marketing/fullcard/grooming-clean.png", 100));
+        new SeedCampaign(720100L, "MKT-NEW-50", "新客专享·限时5折", "新客专享 · 限时 5 折",
+            "新用户下单即享优惠", "full_card", "新客专享", "new-user-clean.png", 300),
+        new SeedCampaign(720101L, "MKT-FIRST-30", "首单立减¥30", "首单立减 ¥30",
+            "新用户下单即享优惠", "full_card", "新客专享", "first-order-clean.png", 200),
+        new SeedCampaign(720102L, "MKT-GROOM-50", "宠物美容狂欢", "宠物美容狂欢",
+            "洗澡美容低至 5 折起", "full_card", "限时5折", "grooming-clean.png", 100));
     for (SeedCampaign c : campaigns) {
+      // 平台活动：不关联商家 / 门店，不写 marketing_campaign_store 行；全部城市生效（city_codes='[]'）。
       inserted += insertIfAbsent(jdbc,
           "SELECT COUNT(*) FROM marketing_campaign WHERE campaign_code=?", new Object[] {c.code()},
           "INSERT INTO marketing_campaign(id,campaign_code,name,owner_type,owner_merchant_id,"
               + "owner_store_id,campaign_type,participation_mode,status,title,subtitle,tag_code,"
               + "tag_name,cover_url,city_codes,start_at,end_at,sort_weight,version,created_by_type,"
-              + "created_by_id,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-          c.id(), c.code(), c.name(), "MERCHANT", MERCHANT, STORE, c.type(), "MERCHANT_ENROLL", "ONLINE",
-          c.title(), c.subtitle(), c.tagCode(), c.tagName(), c.coverKey(), "[\"chengdu\"]",
-          startAt, endAt, c.weight(), 1, "ADMIN", 9001, now, now);
-      // 参与门店：id/merchant_id/source/updated_at 均为必填（63 号 Schema），缺任何一列都会插入失败。
-      inserted += insertIfAbsent(jdbc,
-          "SELECT COUNT(*) FROM marketing_campaign_store WHERE campaign_id=? AND store_id=?",
-          new Object[] {c.id(), STORE},
-          "INSERT INTO marketing_campaign_store(id,campaign_id,merchant_id,store_id,source,status,"
-              + "sort_weight,version,created_at,updated_at) VALUES(?,?,?,?,'MERCHANT_OWN','ACTIVE',?,1,?,?)",
-          c.storeLinkId(), c.id(), MERCHANT, STORE, c.weight(), now, now);
+              + "created_by_id,created_at,updated_at) VALUES(?,?,?,'PLATFORM',NULL,NULL,'DISPLAY',"
+              + "'PLATFORM_SELECTED','ONLINE',?,?,?,?,CONCAT(?, ?),'[]',?,?,?,1,'ADMIN',9001,?,?)",
+          c.id(), c.code(), c.name(), c.title(), c.subtitle(), c.tagCode(), c.tagName(),
+              SEED_CARD_IMAGE_BASE, c.coverFile(), startAt, endAt, c.weight(), now, now);
       inserted += insertIfAbsent(jdbc,
           "SELECT COUNT(*) FROM marketing_placement WHERE position_code='HOME_ACTIVITY' AND campaign_id=?",
           new Object[] {c.id()},
           "INSERT INTO marketing_placement(id,position_code,campaign_id,city_code,sort_weight,start_at,"
               + "end_at,status,version,created_by_id,created_at,updated_at) "
-              + "VALUES(?,'HOME_ACTIVITY',?,'chengdu',?,?,?,'ENABLED',1,9001,?,?)",
+              + "VALUES(?,'HOME_ACTIVITY',?,NULL,?,?,?,'ENABLED',1,9001,?,?)",
           c.placementId(), c.id(), c.weight(), startAt, endAt, now, now);
     }
     // 首页内容位（CCR-MKT-003）。title/subtitle 按设计稿的换行拆成两行；target_value 取后端约定
@@ -1381,8 +1386,9 @@ public final class E2eCoreLoopServer {
           b.targetType(), b.targetValue(), b.weight(), startAt, endAt, now, now);
     }
     System.out.println("E2E_MARKETING seeded " + inserted + "/"
-        + (campaigns.size() * 3 + blocks.size()) + " rows (0 = all already present): "
-        + campaigns.size() + " campaigns with store link + placement each, " + blocks.size() + " home blocks");
+        + (campaigns.size() * 2 + blocks.size()) + " rows (0 = all already present): "
+        + campaigns.size() + " platform campaigns with a HOME_ACTIVITY placement each, "
+        + blocks.size() + " home blocks");
   }
 
   /** 幂等插入：业务键已存在则跳过并返回 0；其余约束/必填列错误照常抛出，不被静默吞掉。 */
@@ -1394,12 +1400,10 @@ public final class E2eCoreLoopServer {
   }
 
   /** tag_code 是小程序卡片模板码（决定版式），tag_name 是徽章上显示的文字，两者不要混用。 */
-  private record SeedCampaign(long id, String code, String name, String type, String title,
-      String subtitle, String tagCode, String tagName, String coverKey, int weight) {
+  private record SeedCampaign(long id, String code, String name, String title, String subtitle,
+      String tagCode, String tagName, String coverFile, int weight) {
     /** 首页活动位投放 id：7201xx → 7202xx。 */
     long placementId() { return id + 100; }
-    /** 参与门店行 id：7201xx → 7201(x+10)。 */
-    long storeLinkId() { return id + 10; }
   }
 
   /** 首页内容位；targetValue 为空串表示该跳转类型不需要目标值。 */
