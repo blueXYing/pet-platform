@@ -8,9 +8,9 @@ import com.petplatform.coupon.api.query.CouponCampaignQueryApi;
 import com.petplatform.coupon.biz.domain.service.CouponRule;
 import com.petplatform.coupon.biz.infrastructure.persistence.CouponAdminStore;
 import com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponCampaignEntities.CampaignRow;
-import com.petplatform.merchant.api.dto.MerchantStoreDTO;
-import com.petplatform.merchant.api.query.MerchantQueryApi;
-import com.petplatform.merchant.api.query.StoreIdQuery;
+import com.petplatform.merchant.api.dto.MerchantStoreDisplayDTO;
+import com.petplatform.merchant.api.query.MerchantStoreDisplayApi;
+import com.petplatform.merchant.api.query.MerchantStoreDisplayQuery;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -30,10 +30,12 @@ public final class CouponCampaignQueryService implements CouponCampaignQueryApi 
     private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
 
     private final CouponAdminStore store;
-    private final MerchantQueryApi merchants;
+    // The public store display read (the one behind GET /c/stores/{storeId}): the C faces are
+    // anonymous-browsable, so the owner-scoped MerchantQueryApi would answer 401/404 to a shopper.
+    private final MerchantStoreDisplayApi merchants;
     private final Clock clock;
 
-    public CouponCampaignQueryService(CouponAdminStore store, MerchantQueryApi merchants, Clock clock) {
+    public CouponCampaignQueryService(CouponAdminStore store, MerchantStoreDisplayApi merchants, Clock clock) {
         this.store = Objects.requireNonNull(store);
         this.merchants = merchants;
         this.clock = clock == null ? Clock.systemUTC() : clock;
@@ -59,8 +61,8 @@ public final class CouponCampaignQueryService implements CouponCampaignQueryApi 
             QueryContext context) {
         long storeKey = id(storeId);
         Long user = userId == null || userId.isBlank() ? null : id(userId);
-        MerchantStoreDTO facts = merchants == null ? null : merchants.getStore(
-                new StoreIdQuery(IDS.toApi(storeKey), context));
+        MerchantStoreDisplayDTO facts = merchants == null ? null : merchants.getDisplayStore(
+                new MerchantStoreDisplayQuery(IDS.toApi(storeKey), context));
         if (facts == null || facts.merchantId() == null) throw notFound();
         long merchantId = id(facts.merchantId());
         return store.read(mapper -> {
@@ -131,8 +133,8 @@ public final class CouponCampaignQueryService implements CouponCampaignQueryApi 
         String merchantName = null;
         if (row.merchantOwned() && merchants != null && row.ownerStoreId != null) {
             try {
-                MerchantStoreDTO facts = merchants.getStore(
-                        new StoreIdQuery(IDS.toApi(row.ownerStoreId), context));
+                MerchantStoreDisplayDTO facts = merchants.getDisplayStore(
+                        new MerchantStoreDisplayQuery(IDS.toApi(row.ownerStoreId), context));
                 merchantName = facts == null ? null : facts.merchantName();
             } catch (RuntimeException unreadable) {
                 merchantName = null; // display label only: never fail the read

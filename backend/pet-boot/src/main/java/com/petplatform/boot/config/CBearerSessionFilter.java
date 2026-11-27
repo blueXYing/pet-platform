@@ -166,9 +166,11 @@ public final class CBearerSessionFilter extends OncePerRequestFilter {
         || path.equals("/api/v1/c/encyclopedia/categories")
         || path.equals("/api/v1/c/encyclopedia/breeds")
         || path.matches("/api/v1/c/encyclopedia/breeds/[^/]+")
-        // Contract-71 marketing public reads + contract-72 coupon campaign detail: anonymous
-        // GET passes; a carried bearer is still validated (coupon claimed state).
+        // Contract-71 marketing public reads + contract-72 coupon campaign detail + contract-79
+        // §5 per-store merchant coupon list: anonymous GET passes; a carried bearer is still
+        // validated (coupon claimed state).
         || path.startsWith("/api/v1/c/marketing/")
+        || path.equals("/api/v1/c/coupon-campaigns")
         || path.matches("/api/v1/c/coupon-campaigns/[^/]+")
         // CCR-COM-001 public community reads (feed/detail/comments/topics/hot/profile/media):
         // anonymous GET passes; writes remain mandatory-session through protectedPath.

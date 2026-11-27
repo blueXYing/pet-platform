@@ -207,8 +207,12 @@ public class CSessionSecurityConfiguration {
                     "/api/v1/c/encyclopedia/breeds",
                     "/api/v1/c/encyclopedia/breeds/*").permitAll();
             a.requestMatchers("/api/v1/c/community/**").permitAll();
+            // Contract-79 §5 adds the per-store merchant coupon list (79 号): an anonymous browse
+            // read like the campaign detail; the controller attaches the session when a valid
+            // bearer is carried, so the claimed state follows the reader.
             a.requestMatchers(HttpMethod.GET,
                     "/api/v1/c/marketing/**",
+                    "/api/v1/c/coupon-campaigns",
                     "/api/v1/c/coupon-campaigns/*").permitAll();
             a.requestMatchers(HttpMethod.POST,
                     "/api/v1/c/coupon-campaigns/*/claims").permitAll();

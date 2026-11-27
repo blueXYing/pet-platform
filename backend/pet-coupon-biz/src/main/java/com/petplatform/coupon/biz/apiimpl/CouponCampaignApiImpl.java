@@ -11,7 +11,7 @@ import com.petplatform.coupon.biz.application.CouponClaimService;
 import com.petplatform.coupon.biz.application.MerchantCouponBudgetLedger;
 import com.petplatform.coupon.biz.application.NewUserEligibilityPort;
 import com.petplatform.coupon.biz.infrastructure.persistence.CouponAdminStore;
-import com.petplatform.merchant.api.query.MerchantQueryApi;
+import com.petplatform.merchant.api.query.MerchantStoreDisplayApi;
 import java.time.Clock;
 import java.util.Objects;
 import javax.sql.DataSource;
@@ -30,7 +30,7 @@ public final class CouponCampaignApiImpl
 
     public CouponCampaignApiImpl(DataSource dataSource, SnowflakeIdGenerator ids,
             AdminCouponAuthorizationPort.CouponPort authorization,
-            NewUserEligibilityPort newUserEligibility, MerchantQueryApi merchants, Clock clock) {
+            NewUserEligibilityPort newUserEligibility, MerchantStoreDisplayApi merchants, Clock clock) {
         CouponAdminStore store = new CouponAdminStore(
                 Objects.requireNonNull(dataSource, "dataSource is required"),
                 Objects.requireNonNull(ids, "ids are required"));
