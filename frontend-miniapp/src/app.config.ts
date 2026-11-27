@@ -60,6 +60,10 @@ export default defineAppConfig({
       // list + create/edit pages (Figma 18:9537/18:9694); submit-for-review only.
       'pages/marketing/flash/index',
       'pages/marketing/flash/edit',
+      // Merchant coupon campaigns P3 (79号/CCR-MKT-MERCHANT-COUPON-001): coupon list + editor
+      // (Figma 12:8436/12:8575); draft/submit-for-review only.
+      'pages/marketing/coupon/index',
+      'pages/marketing/coupon/edit',
       // 2026-11-04 user-approved merchant bottom tab (Figma 149:926): the "mine" hub
       // aggregates only already-approved M entries; CCR-PAY-CENTER-001 Stage 7 adds
       // OWNER-only wallet/withdrawal and read-only settlement receiver status pages.

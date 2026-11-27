@@ -71,24 +71,28 @@ test('no navigateTo/redirectTo to the workbench remains in the C-scope entry fil
   assert.deepEqual(offenders, [], `workspace must only be entered via reLaunch:\n${offenders.join('\n')}`)
 })
 
-// Contract-76 P1 marketing routes（HANDOFF §4.5.3）+ 77号 P2（2026-11-18）hub 解封：
-// hub 可导航 =「节日营销」「限时秒杀」与「平台活动」（navigateTo 子页）；未开放工具不得
-// 携带路由；二级页返回一律 reLaunch 明确目标页。
-test('marketing hub: festival campaigns, flash sales and platform enrollments navigate; disabled tools carry no route', () => {
+// Contract-76 P1 marketing routes（HANDOFF §4.5.3）+ 77号 P2（2026-11-18）+ 79号 P3
+// （2026-11-27）hub 解封：hub 可导航 =「优惠券」「限时秒杀」「节日营销」与「平台活动」
+// （navigateTo 子页）；未开放工具不得携带路由；二级页返回一律 reLaunch 明确目标页。
+test('marketing hub: coupons, flash sales, festival campaigns and platform enrollments navigate; disabled tools carry no route', () => {
   const hub = readFileSync(new URL('../pages/marketing/index.tsx', import.meta.url), 'utf8')
   assert.match(hub, /Taro\.navigateTo\(\{ url: '\/merchant\/pages\/marketing\/platform\/index' \}\)/)
   assert.match(hub, /Taro\.reLaunch\(\{ url: '\/merchant\/pages\/workspace\/index' \}\)/)
   // 6 张工具卡按序注册（优惠券/会员卡/限时秒杀/裂变拉新/赠品活动/节日营销）；
-  // P2 解封「限时秒杀」后可导航=限时秒杀+节日营销，其余 available: false（无 url → 不导航）。
+  // P3 解封「优惠券」后可导航=优惠券+限时秒杀+节日营销，其余 available: false（无 url → 不导航）。
   const tools = hub.match(/MARKETING_TOOLS: readonly MarketingTool\[\] = \[([\s\S]*?)\]\n/)![1]
   const titles = [...tools.matchAll(/title: '([^']+)'/g)].map(match => match[1])
   assert.deepEqual(titles, ['优惠券', '会员卡', '限时秒杀', '裂变拉新', '赠品活动', '节日营销'])
   const available = [...tools.matchAll(/title: '([^']+)'[^}]*available: (true|false)/g)].map(match => [match[1], match[2]])
-  assert.deepEqual(available.filter(([, value]) => value === 'true').map(([title]) => title), ['限时秒杀', '节日营销'])
-  assert.equal(new Set(available.filter(([, value]) => value === 'false').map(([title]) => title)).size, 4)
-  // 可导航工具卡目标 = 秒杀列表 + 节日营销列表；其余工具卡不携带任何路由。
+  assert.deepEqual(available.filter(([, value]) => value === 'true').map(([title]) => title), ['优惠券', '限时秒杀', '节日营销'])
+  assert.equal(new Set(available.filter(([, value]) => value === 'false').map(([title]) => title)).size, 3)
+  // 可导航工具卡目标 = 优惠券列表 + 秒杀列表 + 节日营销列表；其余工具卡不携带任何路由。
   const routed = [...tools.matchAll(/title: '([^']+)'[^}]*url: '(\/[^']+)'/g)].map(match => [match[1], match[2]])
-  assert.deepEqual(routed, [['限时秒杀', '/merchant/pages/marketing/flash/index'], ['节日营销', '/merchant/pages/marketing/campaigns/index']])
+  assert.deepEqual(routed, [
+    ['优惠券', '/merchant/pages/marketing/coupon/index'],
+    ['限时秒杀', '/merchant/pages/marketing/flash/index'],
+    ['节日营销', '/merchant/pages/marketing/campaigns/index'],
+  ])
 })
 
 test('marketing child pages return via reLaunch to their definite parents, never navigateBack', () => {
