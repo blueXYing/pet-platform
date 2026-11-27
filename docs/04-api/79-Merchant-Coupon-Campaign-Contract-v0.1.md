@@ -121,12 +121,12 @@ SCHEDULED/ACTIVE/PAUSED ──end(运营)──> ENDED
 
 | 方法 / 路径 | 变化 |
 |---|---|
-| GET `/api/v1/c/coupon-campaigns?storeId=` | **新增**。返回该门店所属商家可领取的商家券活动（状态为 `SCHEDULED/ACTIVE` 且在领取期内、模板可用、总量与预算有余量、开关开启），按 `endAt` 升序；条目同 72 号 §5.1 并增加 `merchantId/merchantName/fundingType="MERCHANT"`。门店不存在 404。不含他商家活动 |
+| GET `/api/v1/c/coupon-campaigns?storeId=` | **新增**。返回该门店所属商家可领取的商家券活动（状态为 `SCHEDULED/ACTIVE` 且在领取期内、模板可用、总量与预算有余量、开关开启），按 `endAt` 升序；条目同 72 号 §5.1 并增加 `merchantId/merchantName/fundingType="MERCHANT"`。匿名可读；携带有效 MINIAPP Bearer 时 `claimed/canClaim` 按该用户计算。门店须经与 `GET /c/stores/{storeId}` 相同的可展示判定，否则 404。不含他商家活动 |
 | GET `/api/v1/c/coupon-campaigns/{campaignId}` | 72 号 §5.1 响应增加 `fundingType`（`PLATFORM/MERCHANT`）与可空 `merchantId/merchantName`；`claimed` 表示"至少领过一次"，`canClaim` 按 `perUserLimit` 判定 |
 | POST `/api/v1/c/coupon-campaigns/{campaignId}/claims` | 不变。商家券活动适用 `perUserLimit` 1..10：未达上限可再次领取，达上限 409 `COUPON_CLAIM_LIMIT_REACHED`（上限为 1 时为 `COUPON_CLAIMED`）；预算/总量耗尽 409 `COUPON_CAMPAIGN_SOLD_OUT` |
 | POST `/api/v1/c/orders` | 不变。商家券用于非本商家订单时 409 `COUPON_SCOPE_MISMATCH`（见 §6.1） |
 
-「我的券」投影（`GET /api/v1/c/coupons`）本契约**不改动**：小程序对其做精确键集解码，出资方标识随 C 端领券入口一并设计后再加。
+「我的券」投影（`GET /api/v1/c/coupons`）本契约**不改动**：小程序对其做精确键集解码。C 端领取入口已落在商家详情页（见 §8），但「我的券」里的出资方标识仍未加——商家券与平台券在该页外观相同，展示方式待产品决定。
 
 ## 6. 使用与结算
 
@@ -181,7 +181,11 @@ SCHEDULED/ACTIVE/PAUSED ──end(运营)──> ENDED
 
 - 小程序商家端：`/merchant/pages/marketing/coupon/index`（Figma `12:8436`）、`/merchant/pages/marketing/coupon/edit`（`12:8575`）。折扣券/兑换券置灰"暂不支持"；「立即上架」改为「提交审核」；增加「预算」输入。营销 hub「优惠券」卡从「筹备中」改为可用。
 - 运营后台：商家券审核列表/详情 + 通过/驳回/暂停/结束。
-- C 端领取入口：后端已就绪（§5），界面入口待产品拍板，本契约不新增 C 端页面。
+- C 端领取入口（2026-11-27 用户裁决）：商家详情页 `frontend-miniapp/src/consumer/pages/store-services/index`（Figma `690:6660`）内新增「店铺优惠券」区块，顾客逛到哪家店就领哪家的券。不新增 C 端页面。细则：
+  - 位置在活动条与服务项目之间；没有可领的券时不渲染区块，页面与设计稿一致。设计稿预览模式不加载券。
+  - 区块读 §5 的列表接口：未登录匿名读取，已登录带会话读取；读取失败只隐藏区块，不影响门店页。
+  - 每张券一行（名称、使用门槛、领取截止、面额），最多展示 3 张。按钮以服务端的 `canClaim` 为准：未达每人限领上限时显示「再领一张」，达上限显示「已领取」。
+  - 领券是与预约同类的动作：匿名点击走登录引导；领取走 72 号 §5 的既有领券接口，领取成功后重读列表。
 
 ## 9. 不做
 
