@@ -101,7 +101,7 @@ export function ServiceRow({ line, idPrefix, onOpen, onBook }: { line: ServiceCa
  * intro, opening hours, reviews) stays DESIGN-SAMPLE copy registered as contract gaps. The promo
  * strip is real when the store has a merchant promotion or an active campaign (contract 71 §3.5).
  */
-export function StoreServicesDesign({ store: storeView, listTop, serviceCount, servicesNode, reviewTop, notice, footer, onBack, serviceCover, onRefreshCover, favoriteNode }: {
+export function StoreServicesDesign({ store: storeView, listTop, serviceCount, servicesNode, reviewTop, notice, footer, onBack, serviceCover, onRefreshCover, favoriteNode, coupon }: {
   store: StoreDetailView | null
   listTop: number
   /** Number of service rows inside the card; the card frame (Figma 96:4716) needs an
@@ -117,6 +117,9 @@ export function StoreServicesDesign({ store: storeView, listTop, serviceCount, s
   onRefreshCover?: () => void
   /** Contract 58 favorite toggle entry (128:3200 BUTTON-25 形态): owned by the host page. */
   favoriteNode?: ReactNode
+  /** 店铺优惠券（79 号 §5 C 端入口，2026-11-27 用户裁决）：活动条与服务项目之间；没有原稿，
+   *  高度由宿主页算好传入，下面的卡片靠绝对定位顺移。无券时宿主页不传。 */
+  coupon?: { node: ReactNode; top: number; height: number } | null
 }) {
   const campaign = storeView?.campaign ?? null
   const promotion = storeView?.promotion ?? null
@@ -177,6 +180,10 @@ export function StoreServicesDesign({ store: storeView, listTop, serviceCount, s
       <Text className='svc-promo-title'>{store.promoTitle}</Text>
       <Text className='svc-promo-sub'>{store.promoSub}</Text>
     </View>}
+    {coupon && <View className='svc-abs svc-coupon-card' style={at(coupon.top, {
+      height: `calc(var(--svc-unit) * ${coupon.height})`,
+      minHeight: 0,
+    })}>{coupon.node}</View>}
     <View className='svc-abs svc-list-card' style={at(listTop, {
       height: `calc(var(--svc-unit) * ${serviceListCardHeight(serviceCount)})`,
       minHeight: 0,

@@ -649,10 +649,12 @@ export class ConsumerApi {
    *  stale context switches. 2026-10-19 C-wiring batch adds the §3.3.3 catalog keyword
    *  search (/c/services, exact path) and the §3.3.4 open-city directory (/c/cities).
    *  2026-10-30 service-catalog batch (contract 74 §3.1/§3.4) adds the category
-   *  dictionary (/c/service-categories) and the featured-store aggregation (/c/stores/featured). */
+   *  dictionary (/c/service-categories) and the featured-store aggregation (/c/stores/featured).
+   *  2026-11-27 merchant coupon entry (contract 79 §5) adds the per-store coupon list
+   *  (/c/coupon-campaigns, exact path) next to the contract-72 campaign detail. */
   async anonymousRequest<T>(spec: RequestSpec, decode: (data: unknown) => T): Promise<T> {
     if (spec.method !== 'GET'
-      || !/^\/api\/v1\/c\/(stores(\/[1-9][0-9]{0,18}(\/services)?|\/featured)?|service-categories|services(\/[1-9][0-9]{0,18})?|encyclopedia\/categories|encyclopedia\/breeds(\/[1-9][0-9]{0,18})?|cities|marketing\/placements|marketing\/campaigns(\/[1-9][0-9]{0,18})?|marketing\/tags|marketing\/merchant-deals|marketing\/home-blocks|coupon-campaigns\/[1-9][0-9]{0,18}|community\/posts(\/[1-9][0-9]{0,18}(\/comments)?)?|community\/hot|community\/topics|community\/users\/[1-9][0-9]{0,18}|community\/media\/[1-9][0-9]{0,18})$/.test(spec.path)) throw new Error('INVALID_PATH')
+      || !/^\/api\/v1\/c\/(stores(\/[1-9][0-9]{0,18}(\/services)?|\/featured)?|service-categories|services(\/[1-9][0-9]{0,18})?|encyclopedia\/categories|encyclopedia\/breeds(\/[1-9][0-9]{0,18})?|cities|marketing\/placements|marketing\/campaigns(\/[1-9][0-9]{0,18})?|marketing\/tags|marketing\/merchant-deals|marketing\/home-blocks|coupon-campaigns(\/[1-9][0-9]{0,18})?|community\/posts(\/[1-9][0-9]{0,18}(\/comments)?)?|community\/hot|community\/topics|community\/users\/[1-9][0-9]{0,18}|community\/media\/[1-9][0-9]{0,18})$/.test(spec.path)) throw new Error('INVALID_PATH')
     const ticket = this.scope.current ? this.scope.capture() : null
     const value = await this.send(spec)
     if (ticket) ticket.assertCurrent()
