@@ -141,7 +141,8 @@ ACTIVE               开通完成，商户号/终端号已写入结算配置
 - 公共回调四个（仅 `pet.payment.enabled=true` 时装配，加入回调安全链白名单）。
 - 结算配置 `PUT /configs/{merchantId}`：存在开通记录的商家，其收单商户号/终端号归开通链路所有——请求不得改成其它值（409），未传时保留系统写入的值。
   （集成测试曾复现：只改账期、不带商户号的请求会把已开通商家的商户号清空。）
-- 支付前置：存在开通记录且非 ACTIVE 的商家，`PaymentMerchantBindings.require` 失败关闭；开通台账表不存在时失败关闭并提示执行 V44。
+- 支付前置：存在开通记录且非 ACTIVE 的商家，`PaymentMerchantBindings.require` 失败关闭；开通台账表不存在（V44 未执行）时视为没有开通记录，
+  门禁不生效——表不存在就不可能有开通进行中的商家，拦掉只会让一个可选功能的迁移缺失拖垮全站支付。
 - 不新增对外事件。
 
 ## 9. 前端影响
@@ -166,8 +167,11 @@ ACTIVE               开通完成，商户号/终端号已写入结算配置
 | `lowest-ratio-percent` | `LAKALA_ONBOARDING_LOWEST_RATIO` | 委托书"本商户最低需分得"比例，百分数（如 `90`、`90.50`） |
 | `cooperation-agreement-name` | `LAKALA_ONBOARDING_COOPERATION_AGREEMENT_NAME` | 电子合同 E2：平台与商家合作协议名称 |
 | `platform-company-name` | `LAKALA_ONBOARDING_PLATFORM_NAME` | 电子合同 E1/E9：平台公司全称 |
+| `ec-org-id` | `LAKALA_ONBOARDING_EC_ORG_ID` | 电子合同的整数机构号；留空时复用数字形式的 `LAKALA_ORG_CODE` |
 
-复用 `LAKALA_ORG_CODE`（须为数字，兼作电子合同的 `org_id`）与 `LAKALA_PLATFORM_RECEIVER_NO`。
+复用 `LAKALA_ORG_CODE`（进件/分账原样使用，不在启动时校验）与 `LAKALA_PLATFORM_RECEIVER_NO`；电子合同的整数 `org_id`
+取 `ec-org-id`，未配置时仅当共享机构代码为纯数字才复用，否则列为缺项 `ecOrgId`。曾把"共享机构代码必须是数字"放在启动期，
+结果让沿用任意机构代码的既有验收上下文整体起不来——凡是共享配置，只在本功能发起时校验。
 最低分账比例**不**沿用 `LAKALA_SPLIT_LOWEST_RATIO`：它是 [0,1) 小数、服务于平台券差额口径，而 1284 与电子合同 E8 要的是百分数，
 两者语义不同，故单列一键。任一项缺失时「发起开通」失败关闭并提示具体缺项，不影响启动；JSON 或比例格式非法则启动失败。
 
@@ -219,4 +223,4 @@ posType、各商家类型 MCC、经营内容、结算周期、费率、最低分
 - 生产进件会在拉卡拉真实创建商户，联调须用真实测试商家并由产品负责人在场确认。
 - 11 号 OpenAPI 未登记本契约与 80 号契约的任何接口（既有缺口，未在本次扩大范围）。
 - 运营后台一期按商家 ID 打开开通页，未做开通列表入口（列表接口已有）。
-- 部署前提：`78`～`84` 号 Schema 须先于本版本执行（Runbook §3.2 已补）；支付门禁会读开通台账，表缺失时下单支付失败关闭。
+- 部署前提：`78`～`84` 号 Schema 须先于使用开通功能执行（Runbook §3.2 已补）；V44 缺失时运营后台开通接口报错，但不影响既有商家支付。

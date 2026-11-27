@@ -321,16 +321,20 @@
 | `lowest-ratio-percent` | `LAKALA_ONBOARDING_LOWEST_RATIO` | 委托书"本商户最低需分得"比例，百分数（如 `90` 或 `90.50`），0～100 且最多两位小数 |
 | `cooperation-agreement-name` | `LAKALA_ONBOARDING_COOPERATION_AGREEMENT_NAME` | 电子合同 E2：平台与商家合作协议名称 |
 | `platform-company-name` | `LAKALA_ONBOARDING_PLATFORM_NAME` | 电子合同 E1/E9：平台公司全称 |
+| `ec-org-id` | `LAKALA_ONBOARDING_EC_ORG_ID` | 电子合同的数字机构号（1208 的 `org_id` 为整数）；留空时复用数字形式的 `LAKALA_ORG_CODE` |
 
-复用 `LAKALA_ORG_CODE`（须为数字）与 `LAKALA_PLATFORM_RECEIVER_NO`。最低分账比例不沿用 `LAKALA_SPLIT_LOWEST_RATIO`：
+复用 `LAKALA_ORG_CODE`（进件与分账原样使用，不做数字校验）与 `LAKALA_PLATFORM_RECEIVER_NO`。
+电子合同要求的整数机构号取 `ec-org-id`，未配置时仅当 `LAKALA_ORG_CODE` 为纯数字才可复用，否则「发起开通」缺项列为 `ecOrgId`；
+这一点绝不在启动时校验，不影响其它功能启动。最低分账比例不沿用 `LAKALA_SPLIT_LOWEST_RATIO`：
 后者是 [0,1) 小数、服务于平台券差额口径，而 1284 与电子合同要的是百分数。任一项缺失或格式非法时「发起开通」失败关闭并提示具体缺项，不影响启动；
 JSON 或比例格式错误则启动失败。
 
 ## 8. 关联契约变化与部署前提
 
 - 80 号 §4.1：存在开通记录的商家，`PUT /configs/{merchantId}` 不得把 `lakalaMerchantNo`/`lakalaTermNo` 改成其它值（`409`）；未传时保留系统写入的值。
-- 支付前置：存在开通记录且状态不是 `ACTIVE` 的商家，订单支付准备失败关闭（`COMMON_DEPENDENCY_UNAVAILABLE`，"商家收单开通尚未完成，暂不能支付"）；
-  开通台账表不存在时同样失败关闭并提示执行 V44。没有开通记录的商家沿用既有行为。
+- 支付前置：存在开通记录且状态不是 `ACTIVE` 的商家，订单支付准备失败关闭（`COMMON_DEPENDENCY_UNAVAILABLE`，"商家收单开通尚未完成，暂不能支付"）。
+  没有开通记录的商家沿用既有行为；V44 尚未执行时不存在开通记录，门禁不生效、不影响既有商家支付
+  （此时运营后台的开通接口会报错，直到执行 V44）。
 - 31 号私有素材：新增用途 `MERCHANT_ONBOARDING_ATTACHMENT`，仅允许 `PLATFORM_OPERATOR` 上传、归属商家主体用户，其余安全链不变。
 - 商家域内部 API：新增 `MerchantAcquiringFactsApi`（商家档案、入驻审核、协议签署、类型、城市、主体用户），不新增 HTTP。
 - RBAC：新增动作码 `settlement.onboarding.write`、`settlement.onboarding.read-sensitive`；超管默认拥有。

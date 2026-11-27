@@ -93,7 +93,7 @@
 | `pet.payment.lakala.stores.<storeId>`（merchant-id/merchant-no/term-no/sub-app-id） | 拉卡拉门店/终端绑定 | 缺绑定=支付绑定校验失败关闭 |
 | `pet.payment.lakala.notification-certificate-path` | 拉卡拉回调验签证书 | **可启动**，但支付回调全部验签失败关闭——等于半开 |
 | `pet.payment.lakala.channel-time-zone` | 渠道时区（如 `Asia/Shanghai`） | 启动失败（dispatch 校验） |
-| `pet.payment.onboarding.*`（CCR-PAY-ONBOARD-001，契约 81） | 与拉卡拉立项约定的平台级参数：回调基址 `LAKALA_ONBOARDING_NOTIFY_BASE_URL`、`LAKALA_ONBOARDING_POS_TYPE` / `MER_BUSI_CONTENT` / `SETTLE_PERIOD` / `FEE_RATES_JSON` / `MCC_DEFAULT` / `MCC_BY_TYPE_JSON` / `DISTRICT_BY_CITY_JSON` / `LOWEST_RATIO` / `COOPERATION_AGREEMENT_NAME` / `PLATFORM_NAME`（清单见 `ops/backend-secrets.env.example` §6） | **可启动**；留空时运营后台「发起开通」失败关闭并提示缺项；JSON 或比例格式错误 = 启动失败。回调基址 + 进件回调路径（基址本身）须 ≤64 字符（1020 的 `retUrl` 上限） |
+| `pet.payment.onboarding.*`（CCR-PAY-ONBOARD-001，契约 81） | 与拉卡拉立项约定的平台级参数：回调基址 `LAKALA_ONBOARDING_NOTIFY_BASE_URL`、`LAKALA_ONBOARDING_POS_TYPE` / `MER_BUSI_CONTENT` / `SETTLE_PERIOD` / `FEE_RATES_JSON` / `MCC_DEFAULT` / `MCC_BY_TYPE_JSON` / `DISTRICT_BY_CITY_JSON` / `LOWEST_RATIO` / `COOPERATION_AGREEMENT_NAME` / `PLATFORM_NAME`，以及可选的数字机构号 `EC_ORG_ID`（共享机构代码不是纯数字时才需要；清单见 `ops/backend-secrets.env.example` §6） | **可启动**；留空时运营后台「发起开通」失败关闭并提示缺项；JSON 或比例格式错误 = 启动失败。回调基址 + 进件回调路径（基址本身）须 ≤64 字符（1020 的 `retUrl` 上限） |
 
 **退款凭证**：不另设键——退款渠道复用上表同一套 dispatch RSA 凭证。`pet.refund.late.enabled`（+worker）、`pet.order.merchant.*`、`pet.aftersale.*` 任一打开时，缺凭证 = 启动失败 "Refund provider credentials or launch configuration unavailable"。
 
@@ -234,7 +234,9 @@ mysql -h <PLACEHOLDER:DB_HOST> -u <PLACEHOLDER:业务账号> -p pet_platform < "
 
 **支付中心结算与商家收单开通增量（CCR-PAY-CENTER-001 阶段 2～8、CCR-PAY-ONBOARD-001，生产共享库按顺序执行）**：
 
-必须在 `75` 之后、**部署包含 PR #235 / 商家收单开通的代码之前**执行。支付准备会读取 `settlement_config` 与开通台账：`settlement_config` 缺失 = 订单支付失败关闭；开通台账缺失 = 支付报"商家收单开通台账不存在，请先执行 V44 迁移"。
+必须在 `75` 之后、**部署包含 PR #235 的代码之前**执行：支付准备会读取 `settlement_config`，该表缺失 = 订单支付失败关闭。
+
+`84`（开通台账）须在**使用运营后台「商家收单开通」之前**执行：缺失时开通接口报错，但不影响既有商家的支付（门禁把"无台账"视为"无开通记录"）。
 
 ```bash
 cd <PLACEHOLDER:仓库检出目录>
