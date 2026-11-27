@@ -203,7 +203,7 @@ public final class AdminMerchantOnboardingController {
                 adminCommand(req, session), requireId(merchantId), requireVersion(body)))), req);
     }
 
-    @PostMapping(value = "/{merchantId}/sync", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping("/{merchantId}/sync")
     Map<String, Object> sync(@PathVariable String merchantId, @RequestBody(required = false) String json,
             HttpServletRequest req) {
         onlyParameters(req);

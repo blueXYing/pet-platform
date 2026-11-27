@@ -17,11 +17,12 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 /**
  * Scoped HTTP exception handler for Contract 80 Stage 7-BE admin settlement and merchant wallet
- * controllers. Emits the uniform {@code {success:false, code, message, data:null, traceId}} envelope.
+ * controllers and for the Contract 81 merchant acquiring onboarding controller. Emits the uniform {@code {success:false, code, message, data:null, traceId}} envelope.
  */
 @RestControllerAdvice(assignableTypes = {
         AdminSettlementController.class,
-        MerchantWalletController.class
+        MerchantWalletController.class,
+        AdminMerchantOnboardingController.class
 })
 @Order(Ordered.HIGHEST_PRECEDENCE + 20)
 public final class PaymentSettlementHttpExceptionHandler {
