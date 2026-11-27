@@ -34,7 +34,12 @@ public class PaymentSettlementHttpConfiguration {
                                 "/api/v1/callbacks/lakala/pay",
                                 "/api/v1/callbacks/lakala/separate",
                                 "/api/v1/callbacks/lakala/withdrawals",
-                                "/api/v1/callbacks/lakala/ledger")
+                                "/api/v1/callbacks/lakala/ledger",
+                                // CCR-PAY-ONBOARD-001 (contract 81 §5); the bare base carries 进件 (1083).
+                                "/api/v1/callbacks/lakala/onboard",
+                                "/api/v1/callbacks/lakala/onboard/ec",
+                                "/api/v1/callbacks/lakala/onboard/ledger-open",
+                                "/api/v1/callbacks/lakala/onboard/bind")
                         .permitAll()
                         .anyRequest().denyAll());
         return http.build();

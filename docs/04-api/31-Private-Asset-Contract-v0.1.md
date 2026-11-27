@@ -46,3 +46,5 @@ READY、用途、图片摘要/类型/大小及normalized对象指针均在素材
 前端上传复用本契约的multipart与原请求恢复机制：purpose=SERVICE_COVER，用户/商家/门店/编辑目标隔离本地日志；READY回执不等于草稿已保存，服务绑定成功后才清理本地上传副本。证照通道原consumer作用域不放宽；封面必须merchant作用域，服务端仍核验OWNER。
 
 首次真实OSS/ClamAV验证因ETag-only阻塞。2026-09-24用户随后在控制台开启mtxoss2版本控制，新上传对象的版本签名GET 200与摘要核验已通过；原私有材料上传/重放及相关测试共19项通过。旧ETag对象未迁移，页面/真机仍需独立验收。agent未修改bucket配置/ACL，生产应用开关未开启。
+
+**增补（2026-11-27，[CCR-PAY-ONBOARD-001](../../planning/ccr/CCR-PAY-ONBOARD-001.md) 商家收单开通，[44 号裁决](../01-prd/44-商家收单开通拉卡拉进件裁决补充-v1.0.md)）**：`purpose` 新增 **`MERCHANT_ONBOARDING_ATTACHMENT`**（商家收单开通附件：银行卡照片、门头/店内照、《分账合作协议》等）。与前述用途不同，该用途只经 `PrivateAssetApi.uploadOperatorAttachment` 由 `PLATFORM_OPERATOR` 在运营后台代传（`POST /api/v1/admin/settlement/onboardings/{merchantId}/assets`，见 [81 号契约](81-Payment-Merchant-Onboarding-Contract-v0.1.md) §4.12），素材归属商家主体用户；上传走同一不可变上传/扫描/规范化管线，仅 `image/jpeg`/`image/png`，单文件 ≤5MB（拉卡拉 1084 限制），不开放给 `POST /api/v1/c/private-assets`，消费端用途域不放宽。

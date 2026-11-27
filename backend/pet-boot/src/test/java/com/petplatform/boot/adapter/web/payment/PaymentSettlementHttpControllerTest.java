@@ -304,7 +304,9 @@ class PaymentSettlementHttpControllerTest {
         when(receiverSvc.receiveBindNotification(any(), any())).thenReturn(null);
 
         LakalaCallbackController controller = new LakalaCallbackController(
-                provider(payRouter), provider(sepWriter), provider(walletCmd), provider(receiverSvc));
+                provider(payRouter), provider(sepWriter), provider(walletCmd), provider(receiverSvc),
+                // CCR-PAY-ONBOARD-001: onboarding callbacks have no service here and must fail closed (503).
+                org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class));
         MockMvc mvc = MockMvcBuilders.standaloneSetup(controller).build();
 
         byte[] payload = "{\"test\":true}".getBytes(StandardCharsets.UTF_8);

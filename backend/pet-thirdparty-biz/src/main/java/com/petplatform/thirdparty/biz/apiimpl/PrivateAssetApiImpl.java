@@ -42,6 +42,14 @@ public final class PrivateAssetApiImpl implements PrivateAssetApi {
   public static final String PET_AVATAR = "PET_AVATAR";
   /** 27号 §6.4 expansion (2026-10-19): store photos/avatar ride the same immutable pipeline. */
   public static final String STORE_PHOTO = "STORE_PHOTO";
+  /**
+   * CCR-PAY-ONBOARD-001: acquiring-onboarding attachments (bank card, storefront, cooperation
+   * agreement) uploaded by operations on behalf of a merchant; never accepted from consumers.
+   */
+  public static final String MERCHANT_ONBOARDING_ATTACHMENT =
+      com.petplatform.thirdparty.api.PrivateAssetApi.MERCHANT_ONBOARDING_ATTACHMENT;
+  /** Lakala 1084 attachment limit; operator uploads are forwarded to the channel as-is. */
+  static final int ONBOARDING_MAX_BYTES = 5 * 1024 * 1024;
   private static final java.util.Set<String> UPLOAD_PURPOSES =
       java.util.Set.of(MERCHANT_APPLICATION_MATERIAL, SERVICE_COVER, "AFTERSALE_EVIDENCE",
           FEEDBACK_ATTACHMENT, PET_AVATAR, STORE_PHOTO);
@@ -86,7 +94,17 @@ public final class PrivateAssetApiImpl implements PrivateAssetApi {
 
   @Override
   public UploadPrivateAssetResult upload(UploadPrivateAssetCommand command) {
-    UploadInput input = validateUpload(command);
+    return upload(command, false);
+  }
+
+  @Override
+  public UploadPrivateAssetResult uploadOperatorAttachment(UploadPrivateAssetCommand command) {
+    return upload(command, true);
+  }
+
+  private UploadPrivateAssetResult upload(
+      UploadPrivateAssetCommand command, boolean operatorUpload) {
+    UploadInput input = validateUpload(command, operatorUpload);
     byte[] source = readBounded(command.content(), command.declaredBytes());
     String sourceHash = sha256Hex(source);
     byte[] requestHash =
@@ -658,16 +676,27 @@ public final class PrivateAssetApiImpl implements PrivateAssetApi {
     }
   }
 
-  private UploadInput validateUpload(UploadPrivateAssetCommand command) {
+  private UploadInput validateUpload(
+      UploadPrivateAssetCommand command, boolean operatorUpload) {
     if (command == null || command.context() == null || command.content() == null)
       throw invalid("上传参数无效");
     PublicContractChecks.requireTerminalRequestId(command.context().requestId());
     long owner = apiId(command.ownerUserId());
-    if (command.context().operatorType() != OperatorType.USER
-        || !command.ownerUserId().equals(command.context().operatorId())) throw forbidden();
-    if (!UPLOAD_PURPOSES.contains(command.purpose())) throw invalid("材料用途无效");
+    long maxBytes = MAX_BYTES;
+    if (operatorUpload) {
+      // Only operations may upload onboarding attachments, and only under the dedicated purpose.
+      if (command.context().operatorType() != OperatorType.PLATFORM_OPERATOR
+          || command.context().operatorId() == null
+          || command.context().operatorId().isBlank()
+          || !MERCHANT_ONBOARDING_ATTACHMENT.equals(command.purpose())) throw forbidden();
+      maxBytes = ONBOARDING_MAX_BYTES;
+    } else {
+      if (command.context().operatorType() != OperatorType.USER
+          || !command.ownerUserId().equals(command.context().operatorId())) throw forbidden();
+      if (!UPLOAD_PURPOSES.contains(command.purpose())) throw invalid("材料用途无效");
+    }
     String media = requireMediaType(command.declaredMediaType());
-    if (command.declaredBytes() < 1 || command.declaredBytes() > MAX_BYTES) throw invalid("文件大小无效");
+    if (command.declaredBytes() < 1 || command.declaredBytes() > maxBytes) throw invalid("文件大小无效");
     return new UploadInput(owner, command.purpose(), media);
   }
 

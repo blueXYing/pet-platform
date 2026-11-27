@@ -87,6 +87,7 @@ final class AfterSaleHttpFixture implements AutoCloseable {
             db.script("81-Payment-Wallet-Schema-v0.1.sql");
             db.script("82-Payment-Reconcile-Schema-v0.1.sql");
             db.script("83-Payment-Merchant-Acquiring-Schema-v0.1.sql");
+            db.script("84-Payment-Merchant-Onboarding-Schema-v0.1.sql");
             jdbc.update("UPDATE merchant_profile_compat SET city_code='chengdu' WHERE merchant_id=710301");
             jdbc.update("INSERT INTO settlement_config(id,merchant_id,settle_days,fee_rate,enabled,lakala_merchant_no,lakala_term_no,version,created_at,updated_at) "
                     + "VALUES(710901,710301,7,0.6000,1,'QA8220000000001','QAT00001',0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))");

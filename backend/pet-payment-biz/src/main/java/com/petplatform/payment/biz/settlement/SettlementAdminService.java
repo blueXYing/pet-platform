@@ -25,6 +25,7 @@ import com.petplatform.payment.biz.domain.service.SettlementAmountCalculator;
 import com.petplatform.payment.biz.domain.service.SettlementAmountCalculator.ShareCalculation;
 import com.petplatform.payment.biz.infrastructure.persistence.PaymentCenterStore.CenterRow;
 import com.petplatform.payment.biz.infrastructure.persistence.PaymentFoundationStore;
+import com.petplatform.payment.biz.infrastructure.persistence.PaymentOnboardingStore;
 import com.petplatform.payment.biz.infrastructure.persistence.PaymentSettlementStore;
 import com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentSettlementMapper.ActionRequestRow;
 import com.petplatform.payment.biz.infrastructure.persistence.mapper.PaymentSettlementMapper.ConfigAuditRow;
@@ -67,6 +68,7 @@ public final class SettlementAdminService implements SettlementAdminApi, Settlem
 
     private final SnowflakeIdGenerator ids;
     private final PaymentSettlementStore store;
+    private final PaymentOnboardingStore onboarding;
     private final JdbcAsyncTaskSubmitter tasks;
     private final FallbackRetryDelegate fallbackRetrier;
     private final String platformMerchantNo;
@@ -93,6 +95,7 @@ public final class SettlementAdminService implements SettlementAdminApi, Settlem
         this.platformReceiverNo = platformReceiverNo == null || platformReceiverNo.isBlank()
                 ? null : platformReceiverNo.trim();
         this.store = new PaymentSettlementStore(source);
+        this.onboarding = new PaymentOnboardingStore(source);
         this.tx = new TransactionTemplate(new DataSourceTransactionManager(source));
         this.tx.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
         this.tx.setTimeout(15);
@@ -140,6 +143,20 @@ public final class SettlementAdminService implements SettlementAdminApi, Settlem
                 return toConfigView(merchantId, current);
             }
             ConfigRow existing = store.settlement.selectConfigByMerchantForUpdate(merchantId);
+            // Contract 81 §8: once a merchant has an onboarding record its acquiring pair is system-owned —
+            // a request may neither replace it nor drop it; every other setting stays editable. Before V44 has
+            // been applied no record can exist, which reads as "not owned" so hand-typed pairs keep working.
+            String effectiveMerchantNo = lakalaMerchantNo;
+            String effectiveTermNo = lakalaTermNo;
+            if (onboarding.findIfApplied(merchantId) != null) {
+                String ownedMerchant = existing == null ? null : existing.lakalaMerchantNo;
+                String ownedTerm = existing == null ? null : existing.lakalaTermNo;
+                if (lakalaMerchantNo != null && !lakalaMerchantNo.equals(ownedMerchant)) {
+                    throw conflict("该商家的收单商户号与终端号由开通流程维护，不能手工修改");
+                }
+                effectiveMerchantNo = ownedMerchant;
+                effectiveTermNo = ownedTerm;
+            }
             long configId;
             Integer beforeDays = null;
             BigDecimal beforeFee = null;
@@ -153,8 +170,8 @@ public final class SettlementAdminService implements SettlementAdminApi, Settlem
                             "id", configId, "merchantId", merchantId,
                             "settleDays", command.settleDays(), "feeRate", feeRate,
                             "enabled", command.enabled(),
-                            "lakalaMerchantNo", lakalaMerchantNo,
-                            "lakalaTermNo", lakalaTermNo,
+                            "lakalaMerchantNo", effectiveMerchantNo,
+                            "lakalaTermNo", effectiveTermNo,
                             "now", PaymentSettlementStore.utc(now)));
                 } catch (DuplicateKeyException race) {
                     throw conflict("concurrent settlement config creation, retry with same requestId");
@@ -170,8 +187,8 @@ public final class SettlementAdminService implements SettlementAdminApi, Settlem
                         "id", existing.id, "version", existing.version,
                         "settleDays", command.settleDays(), "feeRate", feeRate,
                         "enabled", command.enabled(),
-                        "lakalaMerchantNo", lakalaMerchantNo,
-                        "lakalaTermNo", lakalaTermNo,
+                        "lakalaMerchantNo", effectiveMerchantNo,
+                        "lakalaTermNo", effectiveTermNo,
                         "now", PaymentSettlementStore.utc(now)));
                 if (updated != 1) throw conflict("settlement config changed concurrently");
             }
@@ -181,8 +198,8 @@ public final class SettlementAdminService implements SettlementAdminApi, Settlem
                     "beforeSettleDays", beforeDays, "afterSettleDays", command.settleDays(),
                     "beforeFeeRate", beforeFee, "afterFeeRate", feeRate,
                     "beforeEnabled", beforeEnabled, "afterEnabled", command.enabled(),
-                    "beforeLakalaMerchantNo", beforeLklMerchant, "afterLakalaMerchantNo", lakalaMerchantNo,
-                    "beforeLakalaTermNo", beforeLklTerm, "afterLakalaTermNo", lakalaTermNo,
+                    "beforeLakalaMerchantNo", beforeLklMerchant, "afterLakalaMerchantNo", effectiveMerchantNo,
+                    "beforeLakalaTermNo", beforeLklTerm, "afterLakalaTermNo", effectiveTermNo,
                     "operatorType", command.context().operatorType().name(),
                     "operatorId", operatorId, "reason", reason,
                     "now", PaymentSettlementStore.utc(now)));

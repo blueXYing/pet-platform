@@ -86,7 +86,9 @@ public final class AdminPermissionEvaluator {
           // operator-filled receiver onboarding & audited reveal, exception retry & read-only reports.
           "settlement.config.write", "settlement.receiver.write",
           "settlement.receiver.read-sensitive", "settlement.instruction.retry",
-          "settlement.report.read");
+          "settlement.report.read",
+          // CCR-PAY-ONBOARD-001 (contract 81 §2 / ruling 44): merchant acquiring onboarding.
+          "settlement.onboarding.write", "settlement.onboarding.read-sensitive");
 
   public static List<String> evaluate(
       boolean superAdmin, Collection<String> grants, Set<String> deployed) {

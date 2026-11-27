@@ -5,6 +5,7 @@ import com.petplatform.common.CommonApiCodes;
 import com.petplatform.payment.api.command.WalletCommandApi;
 import com.petplatform.payment.biz.center.PaymentCallbackRouter;
 import com.petplatform.payment.biz.infrastructure.provider.LakalaV2Protocol;
+import com.petplatform.payment.biz.settlement.MerchantOnboardingService;
 import com.petplatform.payment.biz.settlement.ReceiverAccountService;
 import com.petplatform.payment.biz.settlement.SettlementReceiptWriter;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,6 +30,10 @@ import org.springframework.web.bind.annotation.RestController;
  *   <li>{@code POST /api/v1/callbacks/lakala/separate} (1297 split/fallback notification)</li>
  *   <li>{@code POST /api/v1/callbacks/lakala/withdrawals} (1272 withdrawal notification)</li>
  *   <li>{@code POST /api/v1/callbacks/lakala/ledger} (1290 receiver bind audit notification)</li>
+ *   <li>{@code POST /api/v1/callbacks/lakala/onboard} (1083 进件回调)</li>
+ *   <li>{@code POST /api/v1/callbacks/lakala/onboard/ec} (1208 signing result)</li>
+ *   <li>{@code POST /api/v1/callbacks/lakala/onboard/ledger-open} (1284 audit result)</li>
+ *   <li>{@code POST /api/v1/callbacks/lakala/onboard/bind} (1290 bind audit, onboarding path)</li>
  * </ul>
  *
  * <p>Every endpoint delegates raw headers + exact raw bytes to its domain verifier/writer so 1009
@@ -48,16 +53,19 @@ public final class LakalaCallbackController {
     private final ObjectProvider<SettlementReceiptWriter> settlementReceipts;
     private final ObjectProvider<WalletCommandApi> walletCommands;
     private final ObjectProvider<ReceiverAccountService> receiverServices;
+    private final ObjectProvider<MerchantOnboardingService> onboardingServices;
 
     public LakalaCallbackController(
             ObjectProvider<PaymentCallbackRouter> paymentCallbacks,
             ObjectProvider<SettlementReceiptWriter> settlementReceipts,
             ObjectProvider<WalletCommandApi> walletCommands,
-            ObjectProvider<ReceiverAccountService> receiverServices) {
+            ObjectProvider<ReceiverAccountService> receiverServices,
+            ObjectProvider<MerchantOnboardingService> onboardingServices) {
         this.paymentCallbacks = paymentCallbacks;
         this.settlementReceipts = settlementReceipts;
         this.walletCommands = walletCommands;
         this.receiverServices = receiverServices;
+        this.onboardingServices = onboardingServices;
     }
 
     @PostMapping("/pay")
@@ -98,6 +106,49 @@ public final class LakalaCallbackController {
             if (receiver == null) throw unavailable("receiver ledger callback handler unavailable");
             receiver.receiveBindNotification(headersMap(req), rawBody);
         });
+    }
+
+    // ---- CCR-PAY-ONBOARD-001 (contract 81 §5) -------------------------------------------
+
+    @PostMapping("/onboard")
+    public ResponseEntity<String> onboardingContractCallback(@RequestBody(required = false) byte[] rawBody,
+            HttpServletRequest req) {
+        return handle("onboard-contract", req, rawBody,
+                onboarding(req, rawBody, MerchantOnboardingService::receiveContractNotification));
+    }
+
+    @PostMapping("/onboard/ec")
+    public ResponseEntity<String> onboardingEcCallback(@RequestBody(required = false) byte[] rawBody,
+            HttpServletRequest req) {
+        return handle("onboard-ec", req, rawBody,
+                onboarding(req, rawBody, MerchantOnboardingService::receiveEcNotification));
+    }
+
+    @PostMapping("/onboard/ledger-open")
+    public ResponseEntity<String> onboardingLedgerOpenCallback(@RequestBody(required = false) byte[] rawBody,
+            HttpServletRequest req) {
+        return handle("onboard-ledger-open", req, rawBody,
+                onboarding(req, rawBody, MerchantOnboardingService::receiveLedgerOpenNotification));
+    }
+
+    @PostMapping("/onboard/bind")
+    public ResponseEntity<String> onboardingBindCallback(@RequestBody(required = false) byte[] rawBody,
+            HttpServletRequest req) {
+        return handle("onboard-bind", req, rawBody,
+                onboarding(req, rawBody, MerchantOnboardingService::receiveBindNotification));
+    }
+
+    @FunctionalInterface
+    private interface OnboardingAction {
+        void run(MerchantOnboardingService service, Map<String, String> headers, byte[] rawBody);
+    }
+
+    private Runnable onboarding(HttpServletRequest req, byte[] rawBody, OnboardingAction action) {
+        return () -> {
+            MerchantOnboardingService service = onboardingServices.getIfAvailable();
+            if (service == null) throw unavailable("merchant onboarding callback handler unavailable");
+            action.run(service, headersMap(req), rawBody);
+        };
     }
 
     private ResponseEntity<String> handle(String kind, HttpServletRequest req, byte[] rawBody, Runnable action) {
