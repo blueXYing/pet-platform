@@ -265,6 +265,10 @@ public final class MerchantOnboardingService implements MerchantOnboardingApi, M
             target.rejectReason = null;
             target.lastErrorCode = null;
             target.lastErrorMessage = null;
+            if (row == null) {
+                // A new record is inserted at version 0 and then saved once, so every save bumps the version.
+                store.insert(target, PaymentOnboardingStore.utc(now));
+            }
             save(target, now);
             audit(target, "PROFILE_SAVE", requestKey, fingerprint, command.context(), profile.reason(),
                     Map.of("status", DRAFT, "acctNoLast4", nvl(target.acctNoLast4)), now);
@@ -353,7 +357,7 @@ public final class MerchantOnboardingService implements MerchantOnboardingApi, M
             save(row, now);
             audit(row, "EC_APPLIED", requestKey, fingerprint, command.context(), null,
                     Map.of("ecOrderNo", nvl(row.ecOrderNo), "ecApplyId", nvl(row.ecApplyId)), now);
-            enqueuePoll(row, now, row.ecOrderNo);
+            enqueuePoll(row, now);
             return view(row);
         });
     }
@@ -397,10 +401,12 @@ public final class MerchantOnboardingService implements MerchantOnboardingApi, M
             if (row == null) throw notFound("开通资料不存在");
             if (row.version != command.expectedVersion()) throw conflict("资料已被修改，请刷新后重试");
             if (LEDGER_REJECTED.equals(row.status)) {
+                row.status = LEDGER_APPLYING;
                 row.ledgerOrderNo = null;
                 row.ledgerApplyId = null;
                 row.ledgerSubmittedAt = null;
             } else if (BIND_REJECTED.equals(row.status)) {
+                row.status = BIND_APPLYING;
                 if (!blank(command.cooperationAssetId())) {
                     row.cooperationAssetId = command.cooperationAssetId().trim();
                 }
@@ -416,7 +422,7 @@ public final class MerchantOnboardingService implements MerchantOnboardingApi, M
             save(row, now);
             audit(row, "RETRY", requestKey, fingerprint, command.context(), command.reason(),
                     Map.of("status", row.status), now);
-            enqueueAdvance(row, now, "retry-" + row.version);
+            enqueueAdvance(row, now);
             return view(row);
         });
     }
@@ -446,7 +452,7 @@ public final class MerchantOnboardingService implements MerchantOnboardingApi, M
             save(row, now);
             audit(row, "CONTRACT_ADOPTED", requestKey, fingerprint, command.context(), reason,
                     Map.of("contractId", contractId), now);
-            enqueuePoll(row, now, contractId);
+            enqueuePoll(row, now);
             return view(row);
         });
     }
@@ -617,7 +623,7 @@ public final class MerchantOnboardingService implements MerchantOnboardingApi, M
             row.lastErrorMessage = null;
             save(row, now);
             audit(row, "EC_SIGNED", null, null, null, null, Map.of("ecNo", row.ecNo), now);
-            enqueueAdvance(row, now, "ec-" + row.version);
+            enqueueAdvance(row, now);
             return null;
         });
     }
@@ -855,7 +861,7 @@ public final class MerchantOnboardingService implements MerchantOnboardingApi, M
                 row.lastErrorMessage = null;
                 save(row, now);
                 audit(row, "CONTRACT_SUBMITTED", null, null, null, null, Map.of("contractId", row.contractId), now);
-                enqueuePoll(row, now, row.contractId);
+                enqueuePoll(row, now);
             } else if (unresolved != null) {
                 row.status = CONTRACT_UNKNOWN;
                 row.lastErrorCode = "ADD_MER_OUTCOME_UNKNOWN";
@@ -905,14 +911,14 @@ public final class MerchantOnboardingService implements MerchantOnboardingApi, M
                 row.lastErrorMessage = null;
                 save(row, now);
                 audit(row, "LEDGER_SUBMITTED", null, null, null, null, Map.of("applyId", nvl(row.ledgerApplyId)), now);
-                enqueuePoll(row, now, row.ledgerApplyId);
+                enqueuePoll(row, now);
             } else if (unresolved != null) {
                 row.lastErrorCode = "LEDGER_OUTCOME_UNKNOWN";
                 row.lastErrorMessage = "开通分账申请结果未知，系统将定时向拉卡拉核实";
                 save(row, now);
                 audit(row, "LEDGER_UNKNOWN", null, null, null, null,
                         Map.of("ledgerOrderNo", nvl(row.ledgerOrderNo)), now);
-                enqueuePoll(row, now, nvl(row.merCupNo) + "-" + nvl(row.ledgerOrderNo));
+                enqueuePoll(row, now);
             } else {
                 row.status = LEDGER_REJECTED;
                 row.rejectReason = truncate("拉卡拉拒绝开通分账：" + refused.getMessage());
@@ -959,14 +965,14 @@ public final class MerchantOnboardingService implements MerchantOnboardingApi, M
                 row.lastErrorMessage = null;
                 save(row, now);
                 audit(row, "BIND_SUBMITTED", null, null, null, null, Map.of("applyId", nvl(row.bindApplyId)), now);
-                enqueuePoll(row, now, row.bindApplyId);
+                enqueuePoll(row, now);
             } else if (unresolved != null) {
                 row.lastErrorCode = "BIND_OUTCOME_UNKNOWN";
                 row.lastErrorMessage = "绑定申请结果未知，系统将定时向拉卡拉核实";
                 save(row, now);
                 audit(row, "BIND_UNKNOWN", null, null, null, null,
                         Map.of("bindOrderNo", nvl(row.bindOrderNo)), now);
-                enqueuePoll(row, now, nvl(row.merCupNo) + "-" + nvl(row.bindOrderNo));
+                enqueuePoll(row, now);
             } else {
                 row.status = BIND_REJECTED;
                 row.rejectReason = truncate("拉卡拉拒绝绑定：" + refused.getMessage());
@@ -997,7 +1003,7 @@ public final class MerchantOnboardingService implements MerchantOnboardingApi, M
             row.lastErrorMessage = null;
             save(row, now);
             audit(row, "EC_SIGNED", null, null, null, null, Map.of("ecNo", row.ecNo, "source", "QUERY"), now);
-            enqueueAdvance(row, now, "ec-" + row.version);
+            enqueueAdvance(row, now);
             return true;
         });
     }
@@ -1064,7 +1070,7 @@ public final class MerchantOnboardingService implements MerchantOnboardingApi, M
         save(row, now);
         audit(row, action, null, null, null, null,
                 Map.of("merCupNo", row.merCupNo, "termNo", nvl(row.termNo)), now);
-        enqueueAdvance(row, now, "ledger-" + row.version);
+        enqueueAdvance(row, now);
     }
 
     private void applyLedgerDecided(OnboardingRow row, boolean approved, String remark, OffsetDateTime now) {
@@ -1077,7 +1083,7 @@ public final class MerchantOnboardingService implements MerchantOnboardingApi, M
             save(row, now);
             audit(row, "LEDGER_OPENED", null, null, null, null,
                     Map.of("applyId", nvl(row.ledgerApplyId)), now);
-            enqueueAdvance(row, now, "bind-" + row.version);
+            enqueueAdvance(row, now);
             return;
         }
         row.status = LEDGER_REJECTED;
@@ -1278,40 +1284,41 @@ public final class MerchantOnboardingService implements MerchantOnboardingApi, M
         row.cooperationAssetId = profile.cooperationAssetId();
     }
 
-    /** Blank sensitive inputs keep the stored value when a record already exists (contract 81 §4.4). */
+    /**
+     * Blank sensitive inputs (ID numbers, mobiles, card number, names) keep the stored value when a record
+     * already exists (contract 81 §4.4), so an operator edits a draft without retyping every secret.
+     * Attachments are replaced as sent because their asset ids come back in clear.
+     */
     private SaveOnboardingCommand mergeKeptSecrets(SaveOnboardingCommand command, OnboardingRow existing) {
         if (existing == null) return command;
         MerchantProfileInput merchant = command.merchant();
         SettlementProfileInput settle = command.settlement();
         if (merchant == null || settle == null) return command;
-        Map<String, String> keptAttachments = new LinkedHashMap<>();
-        for (String type : MerchantOnboardingValidator.KNOWN_ATTACHMENTS) {
-            String provided = command.attachments().get(type);
-            keptAttachments.put(type, blank(provided) ? attachmentsOf(existing).get(type) : provided);
-        }
         return new SaveOnboardingCommand(command.context(), command.merchantId(), command.expectedVersion(),
                 new MerchantProfileInput(merchant.merRegName(), merchant.merBizName(), merchant.merRegDistCode(),
                         merchant.merRegAddr(), merchant.mccCode(), merchant.merBlisName(),
                         blank(merchant.merBlisNo()) ? decrypt(existing, F_LICENSE_NO, existing.merBlisNoCipher)
                                 : merchant.merBlisNo(),
-                        merchant.merBlisStDt(), merchant.merBlisExpDt(), merchant.larName(),
+                        merchant.merBlisStDt(), merchant.merBlisExpDt(),
+                        blank(merchant.larName()) ? existing.larName : merchant.larName(),
                         blank(merchant.larIdcard()) ? decrypt(existing, F_LAR_IDCARD, existing.larIdcardCipher)
                                 : merchant.larIdcard(),
                         merchant.larIdcardStDt(), merchant.larIdcardExpDt(),
                         blank(merchant.larMobile()) ? decrypt(existing, F_LAR_MOBILE, existing.larMobileCipher)
                                 : merchant.larMobile(),
-                        merchant.contactName(),
+                        blank(merchant.contactName()) ? existing.contactName : merchant.contactName(),
                         blank(merchant.contactMobile())
                                 ? decrypt(existing, F_CONTACT_MOBILE, existing.contactMobileCipher)
                                 : merchant.contactMobile()),
-                new SettlementProfileInput(settle.acctTypeCode(), settle.acctName(),
+                new SettlementProfileInput(settle.acctTypeCode(),
+                        blank(settle.acctName()) ? existing.acctName : settle.acctName(),
                         blank(settle.acctNo()) ? decrypt(existing, F_ACCT_NO, existing.acctNoCipher) : settle.acctNo(),
                         settle.acctIdType(),
                         blank(settle.acctIdcard()) ? decrypt(existing, F_ACCT_IDCARD, existing.acctIdcardCipher)
                                 : settle.acctIdcard(),
                         settle.acctIdExpDt(), settle.openningBankCode(), settle.openningBankName(),
                         settle.clearingBankCode()),
-                keptAttachments,
+                command.attachments(),
                 blank(command.cooperationAssetId()) ? existing.cooperationAssetId : command.cooperationAssetId(),
                 command.reason());
     }
@@ -1520,17 +1527,20 @@ public final class MerchantOnboardingService implements MerchantOnboardingApi, M
                 "now", PaymentOnboardingStore.utc(now)));
     }
 
-    private void enqueueAdvance(OnboardingRow row, OffsetDateTime now, String token) {
+    /** Task keys carry the row version: every transition saves the row first, so keys never collide. */
+    private void enqueueAdvance(OnboardingRow row, OffsetDateTime now) {
         OffsetDateTime at = now.truncatedTo(ChronoUnit.MILLIS);
-        tasks.enqueueAt(MerchantOnboardingTasks.advanceKey(row.merchantId, token), MerchantOnboardingTasks.OWNER_MODULE,
+        tasks.enqueueAt(MerchantOnboardingTasks.advanceKey(row.merchantId, "v" + row.version),
+                MerchantOnboardingTasks.OWNER_MODULE,
                 MerchantOnboardingTasks.ADVANCE_TYPE, MerchantOnboardingTasks.BIZ_TYPE, row.merchantId, null,
                 MerchantOnboardingTasks.payload(row.merchantId), MerchantOnboardingTasks.ADVANCE_MAX_RETRY,
                 MerchantOnboardingTasks.ADVANCE_POLICY, at);
     }
 
-    private void enqueuePoll(OnboardingRow row, OffsetDateTime now, String token) {
+    private void enqueuePoll(OnboardingRow row, OffsetDateTime now) {
         OffsetDateTime at = now.truncatedTo(ChronoUnit.MILLIS).plus(MerchantOnboardingTasks.POLL_DELAYS.getFirst());
-        tasks.enqueueAt(MerchantOnboardingTasks.pollKey(row.merchantId, token), MerchantOnboardingTasks.OWNER_MODULE,
+        tasks.enqueueAt(MerchantOnboardingTasks.pollKey(row.merchantId, "v" + row.version),
+                MerchantOnboardingTasks.OWNER_MODULE,
                 MerchantOnboardingTasks.POLL_TYPE, MerchantOnboardingTasks.BIZ_TYPE, row.merchantId, null,
                 MerchantOnboardingTasks.payload(row.merchantId), MerchantOnboardingTasks.POLL_MAX_RETRY,
                 MerchantOnboardingTasks.POLL_POLICY, at);
@@ -1600,7 +1610,7 @@ public final class MerchantOnboardingService implements MerchantOnboardingApi, M
                     kept.put(entry.getKey(), entry.getValue());
                 }
             }
-            return Map.copyOf(kept);
+            return java.util.Collections.unmodifiableMap(new TreeMap<>(kept));
         } catch (IOException malformed) {
             throw unavailable("附件资料损坏");
         }
@@ -1706,6 +1716,8 @@ public final class MerchantOnboardingService implements MerchantOnboardingApi, M
         new TreeMap<>(command.attachments()).forEach((type, asset) -> text.append('|').append(type)
                 .append('=').append(nvl(asset)));
         text.append('|').append(nvl(command.cooperationAssetId()));
+        // The audited reason is part of the request: same requestId + other reason is a conflict.
+        text.append('|').append(nvl(command.reason()));
         return sha256(text.toString());
     }
 

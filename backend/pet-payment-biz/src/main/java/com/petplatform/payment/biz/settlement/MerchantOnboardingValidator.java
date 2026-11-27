@@ -6,7 +6,6 @@ import com.petplatform.payment.api.dto.OnboardingTypes.MerchantProfileInput;
 import com.petplatform.payment.api.dto.OnboardingTypes.SaveOnboardingCommand;
 import com.petplatform.payment.api.dto.OnboardingTypes.SettlementProfileInput;
 import java.time.LocalDate;
-import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -62,7 +61,9 @@ final class MerchantOnboardingValidator {
         String merRegAddr = text(raw.merRegAddr(), 6, 80, "商户详细地址");
         String mccCode = raw.mccCode() == null || raw.mccCode().isBlank()
                 ? null : matches(raw.mccCode(), MCC, "MCC 须为 4 位数字");
-        String merBlisNo = upper(matches(raw.merBlisNo(), LICENSE_NO, "营业执照号须为 8～40 位数字与大写字母"));
+        // Operators may type the unified social credit code in lower case; Lakala expects upper case.
+        String merBlisNo = raw.merBlisNo() == null ? "" : raw.merBlisNo().trim().toUpperCase(java.util.Locale.ROOT);
+        merBlisNo = matches(merBlisNo, LICENSE_NO, "营业执照号须为 8～40 位数字与大写字母");
         LocalDate merBlisStDt = date(raw.merBlisStDt(), "营业执照开始日期");
         LocalDate merBlisExpDt = date(raw.merBlisExpDt(), "营业执照有效期");
         ordered(merBlisStDt, merBlisExpDt, "营业执照", today);
@@ -111,9 +112,15 @@ final class MerchantOnboardingValidator {
         for (String required : REQUIRED_ATTACHMENTS) {
             if (!attachments.containsKey(required)) throw invalid("缺少必传附件：" + required);
         }
-        if ("58".equals(acctTypeCode) && acctIdcard != null) {
+        if (acctIdcard != null) {
+            if (!"58".equals(acctTypeCode)) throw invalid("仅对私结算支持非法人结算人");
             for (String required : SETTLER_ATTACHMENTS) {
                 if (!attachments.containsKey(required)) throw invalid("非法人结算缺少附件：" + required);
+            }
+        } else {
+            // Contract 81 §4.4: the settler attachments must be absent when the settler is the legal person.
+            for (String extra : SETTLER_ATTACHMENTS) {
+                if (attachments.containsKey(extra)) throw invalid("结算人为法人本人时以下附件必须留空：" + extra);
             }
         }
         String cooperationAssetId = blank(command.cooperationAssetId()) ? null
@@ -125,7 +132,8 @@ final class MerchantOnboardingValidator {
                         merBlisName, merBlisNo, iso(merBlisStDt), iso(merBlisExpDt), larName, larIdcard,
                         iso(larIdcardStDt), iso(larIdcardExpDt), larMobile, contactName, contactMobile),
                 new SettlementProfileInput(acctTypeCode, acctName, acctNo,
-                        acctIdcard == null ? null : RESIDENT_ID_TYPE, acctIdcard, iso(acctIdExpDt),
+                        acctIdcard == null ? null : RESIDENT_ID_TYPE, acctIdcard,
+                        acctIdExpDt == null ? null : iso(acctIdExpDt),
                         openningBankCode, openningBankName, clearingBankCode),
                 Map.copyOf(attachments), cooperationAssetId, reason);
     }
@@ -135,8 +143,15 @@ final class MerchantOnboardingValidator {
         String value = raw == null ? "" : raw.trim().toUpperCase();
         if (ID_15.matcher(value).matches()) return value;
         if (!ID_18.matcher(value).matches()) throw invalid(label + "格式不正确");
-        YearMonth birth = YearMonth.of(Integer.parseInt(value.substring(6, 10)), Integer.parseInt(value.substring(10, 12)));
-        if (birth.getYear() < 1900 || birth.isAfter(YearMonth.now())) throw invalid(label + "出生日期不正确");
+        // Birth date must be a real calendar day between 1900 and today (checked before the check digit).
+        LocalDate birth;
+        try {
+            birth = LocalDate.of(Integer.parseInt(value.substring(6, 10)),
+                    Integer.parseInt(value.substring(10, 12)), Integer.parseInt(value.substring(12, 14)));
+        } catch (java.time.DateTimeException impossibleDate) {
+            throw invalid(label + "出生日期不正确");
+        }
+        if (birth.getYear() < 1900 || birth.isAfter(LocalDate.now())) throw invalid(label + "出生日期不正确");
         int sum = 0;
         for (int i = 0; i < 17; i++) sum += (value.charAt(i) - '0') * ID_WEIGHTS[i];
         if (ID_CHECKS[sum % 11] != value.charAt(17)) throw invalid(label + "校验位不正确");
@@ -164,10 +179,6 @@ final class MerchantOnboardingValidator {
         String value = raw == null ? "" : raw.trim();
         if (!pattern.matcher(value).matches()) throw invalid(message);
         return value;
-    }
-
-    private static String upper(String value) {
-        return value.toUpperCase(java.util.Locale.ROOT);
     }
 
     private static LocalDate date(String raw, String label) {

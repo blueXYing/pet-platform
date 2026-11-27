@@ -142,10 +142,18 @@ public final class SettlementAdminService implements SettlementAdminApi, Settlem
                 return toConfigView(merchantId, current);
             }
             ConfigRow existing = store.settlement.selectConfigByMerchantForUpdate(merchantId);
-            // Contract 81 §8: once a merchant has an onboarding record its acquiring pair is system-owned.
-            if (lakalaMerchantNo != null && onboarding.onboarding.selectByMerchantId(merchantId) != null
-                    && !lakalaMerchantNo.equals(existing == null ? null : existing.lakalaMerchantNo)) {
-                throw conflict("该商家的收单商户号与终端号由开通流程维护，不能手工修改");
+            // Contract 81 §8: once a merchant has an onboarding record its acquiring pair is system-owned —
+            // a request may neither replace it nor drop it; every other setting stays editable.
+            String effectiveMerchantNo = lakalaMerchantNo;
+            String effectiveTermNo = lakalaTermNo;
+            if (onboarding.onboarding.selectByMerchantId(merchantId) != null) {
+                String ownedMerchant = existing == null ? null : existing.lakalaMerchantNo;
+                String ownedTerm = existing == null ? null : existing.lakalaTermNo;
+                if (lakalaMerchantNo != null && !lakalaMerchantNo.equals(ownedMerchant)) {
+                    throw conflict("该商家的收单商户号与终端号由开通流程维护，不能手工修改");
+                }
+                effectiveMerchantNo = ownedMerchant;
+                effectiveTermNo = ownedTerm;
             }
             long configId;
             Integer beforeDays = null;
@@ -160,8 +168,8 @@ public final class SettlementAdminService implements SettlementAdminApi, Settlem
                             "id", configId, "merchantId", merchantId,
                             "settleDays", command.settleDays(), "feeRate", feeRate,
                             "enabled", command.enabled(),
-                            "lakalaMerchantNo", lakalaMerchantNo,
-                            "lakalaTermNo", lakalaTermNo,
+                            "lakalaMerchantNo", effectiveMerchantNo,
+                            "lakalaTermNo", effectiveTermNo,
                             "now", PaymentSettlementStore.utc(now)));
                 } catch (DuplicateKeyException race) {
                     throw conflict("concurrent settlement config creation, retry with same requestId");
@@ -177,8 +185,8 @@ public final class SettlementAdminService implements SettlementAdminApi, Settlem
                         "id", existing.id, "version", existing.version,
                         "settleDays", command.settleDays(), "feeRate", feeRate,
                         "enabled", command.enabled(),
-                        "lakalaMerchantNo", lakalaMerchantNo,
-                        "lakalaTermNo", lakalaTermNo,
+                        "lakalaMerchantNo", effectiveMerchantNo,
+                        "lakalaTermNo", effectiveTermNo,
                         "now", PaymentSettlementStore.utc(now)));
                 if (updated != 1) throw conflict("settlement config changed concurrently");
             }
@@ -188,8 +196,8 @@ public final class SettlementAdminService implements SettlementAdminApi, Settlem
                     "beforeSettleDays", beforeDays, "afterSettleDays", command.settleDays(),
                     "beforeFeeRate", beforeFee, "afterFeeRate", feeRate,
                     "beforeEnabled", beforeEnabled, "afterEnabled", command.enabled(),
-                    "beforeLakalaMerchantNo", beforeLklMerchant, "afterLakalaMerchantNo", lakalaMerchantNo,
-                    "beforeLakalaTermNo", beforeLklTerm, "afterLakalaTermNo", lakalaTermNo,
+                    "beforeLakalaMerchantNo", beforeLklMerchant, "afterLakalaMerchantNo", effectiveMerchantNo,
+                    "beforeLakalaTermNo", beforeLklTerm, "afterLakalaTermNo", effectiveTermNo,
                     "operatorType", command.context().operatorType().name(),
                     "operatorId", operatorId, "reason", reason,
                     "now", PaymentSettlementStore.utc(now)));
