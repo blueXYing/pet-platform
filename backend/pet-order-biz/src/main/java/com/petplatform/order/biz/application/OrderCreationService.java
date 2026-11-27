@@ -293,16 +293,26 @@ public final class OrderCreationService {
         // plus its ledger row; any failure here rolls the whole business transaction back.
         // Contract 77 §6.6: the coupon discounts the flash-effective price, not the list price.
         BigDecimal discount = BigDecimal.ZERO;
+        String couponFundingType = null;
+        BigDecimal merchantCouponDiscount = BigDecimal.ZERO;
         if (command.couponInstanceId() != null) {
             if (coupons == null) throw unavailable("coupon freeze provider is not implemented");
-            discount = coupons.freeze(new com.petplatform.coupon.api.command.CouponCommandApi.CouponFreezeCommand(
-                    command.context(), Long.toString(orderId), command.couponInstanceId(),
-                    input.userId(), command.storeId(), effectivePrice, held.holdExpireAt()))
-                    .discountAmount();
+            com.petplatform.coupon.api.command.CouponCommandApi.CouponFreezeResult frozen =
+                    coupons.freeze(new com.petplatform.coupon.api.command.CouponCommandApi.CouponFreezeCommand(
+                            command.context(), Long.toString(orderId), command.couponInstanceId(),
+                            input.userId(), command.storeId(), effectivePrice, held.holdExpireAt(),
+                            // Contract 79 section 6.1: the order's merchant gates merchant coupons.
+                            merchant.merchantId()));
+            discount = frozen.discountAmount();
+            // Contract 79 section 6.2: the funding source rides the order snapshot so settlement
+            // can tell merchant-funded discounts from the platform subsidy without reading coupons.
+            couponFundingType = frozen.fundingType();
+            merchantCouponDiscount = "MERCHANT".equals(couponFundingType) ? discount : BigDecimal.ZERO;
         }
         BigDecimal payAmount = effectivePrice.subtract(discount);
         writeOrder(input, merchant, service, pet, held, orderId, orderNo, discount, payAmount,
-                effectivePrice, originalPrice, flashDiscount, priceSource, flashPriceId);
+                effectivePrice, originalPrice, flashDiscount, priceSource, flashPriceId,
+                couponFundingType, merchantCouponDiscount);
         Receipt receipt = new Receipt(Long.toString(orderId), Long.toString(orderNo),
                 MONEY.format(payAmount), held.holdExpireAt().toString());
         store.succeed(input.key(), serializeReceipt(receipt));
@@ -630,7 +640,8 @@ public final class OrderCreationService {
             BookingServiceFacts service, PetSnapshotDTO pet, HoldResult held,
             long orderId, long orderNo, BigDecimal discount, BigDecimal payAmount,
             BigDecimal effectivePrice, BigDecimal originalPrice, BigDecimal flashDiscount,
-            String priceSource, String flashPriceId) {
+            String priceSource, String flashPriceId, String couponFundingType,
+            BigDecimal merchantCouponDiscount) {
         CreateOrderCommand command = input.command();
         Long flashPriceKey = flashPriceId == null ? null : IDS.fromApi(flashPriceId);
         Map<String, Object> order = values();
@@ -652,6 +663,10 @@ public final class OrderCreationService {
         order.put("priceSource", priceSource);
         order.put("flashPriceId", flashPriceKey);
         order.put("discountAmount", discount);
+        // Contract 79 section 6.2: coupon funding source and the merchant-funded part of the
+        // discount. Orders without a merchant coupon book 0.00, exactly like pre-P3 rows.
+        order.put("couponFundingType", couponFundingType);
+        order.put("merchantCouponDiscount", merchantCouponDiscount);
         order.put("payAmount", payAmount);
         order.put("appointmentStart", utc(held.startAt()));
         order.put("appointmentEnd", utc(held.endAt()));

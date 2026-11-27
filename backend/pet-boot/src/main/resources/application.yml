@@ -100,6 +100,10 @@ pet:
   coupon:
     grant:
       max-per-template: 10
+    merchant:
+      # 商家自建优惠券（契约 79）：商家端与运营审核端点、C 端商家券列表、预算账本消费者。
+      # 关闭时已发放商家券的冻结闸门照常生效；隔离单测用裸默认值，dev/test/prod 在各自档案开启。
+      enabled: false
   community:
     media:
       public-base-url: ${COMMUNITY_MEDIA_PUBLIC_BASE_URL:${OSS_PUBLIC_BASE_URL:}}

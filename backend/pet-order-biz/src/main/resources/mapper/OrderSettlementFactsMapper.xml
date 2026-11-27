@@ -4,7 +4,8 @@
   <select id="selectForSettlement" resultType="com.petplatform.order.biz.infrastructure.persistence.mapper.OrderSettlementFactsMapper$SettlementOrderRow">
     SELECT id, merchant_id, store_id, order_stage, payment_status, verification_status,
            original_price, flash_discount, discount_amount, pay_amount, refunded_amount,
-           current_refund_application_id, refund_order_id, current_aftersale_id, verified_at
+           current_refund_application_id, refund_order_id, current_aftersale_id, verified_at,
+           merchant_coupon_discount
     FROM pet_order
     WHERE id = #{orderId}
   </select>

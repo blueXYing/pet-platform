@@ -63,6 +63,10 @@ public class CCouponCampaignController {
         out.put("startAt", time(view.startAt()));
         out.put("endAt", time(view.endAt()));
         out.put("status", view.status());
+        // Contract 79 section 5: funding source and the owning merchant (null for platform campaigns).
+        out.put("fundingType", view.fundingType());
+        out.put("merchantId", view.merchantId());
+        out.put("merchantName", view.merchantName());
         return ok(out, req);
     }
 

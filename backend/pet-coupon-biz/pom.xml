@@ -69,5 +69,7 @@
             <scope>test</scope>
         </dependency>
         <dependency><groupId>com.petplatform</groupId><artifactId>pet-schedule-api</artifactId></dependency>
+        <!-- contract 79: owner admission (MerchantAdmissionQueryApi) and display names (MerchantQueryApi) -->
+        <dependency><groupId>com.petplatform</groupId><artifactId>pet-merchant-api</artifactId></dependency>
     </dependencies>
 </project>

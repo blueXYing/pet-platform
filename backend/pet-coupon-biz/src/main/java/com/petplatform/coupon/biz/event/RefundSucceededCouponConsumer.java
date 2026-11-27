@@ -9,6 +9,9 @@ import com.petplatform.common.CommonApiCodes;
 import com.petplatform.common.DecimalPublicIdCodec;
 import com.petplatform.common.PublicContractChecks;
 import com.petplatform.common.SnowflakeIdGenerator;
+import com.petplatform.coupon.biz.application.MerchantCouponBudgetLedger;
+import com.petplatform.coupon.biz.domain.service.CouponRule;
+import com.petplatform.coupon.biz.infrastructure.persistence.CouponAdminStore;
 import com.petplatform.coupon.biz.infrastructure.persistence.CouponLifecycleStore;
 import com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponLifecycleInstanceEntity;
 import com.petplatform.coupon.biz.infrastructure.persistence.mapper.CouponLifecycleMapper;
@@ -58,15 +61,19 @@ public final class RefundSucceededCouponConsumer implements IntegrationEventCons
 
     private final JdbcOutboxConsumeGuard claims;
     private final CouponLifecycleStore store;
+    private final CouponAdminStore budget;
+    private final MerchantCouponBudgetLedger ledger;
     private final SnowflakeIdGenerator ids;
     private final TransactionTemplate transaction;
 
     public RefundSucceededCouponConsumer(DataSource source, SnowflakeIdGenerator ids,
             JdbcOutboxConsumeGuard claims) {
         Objects.requireNonNull(source, "source is required");
-        this.ids = Objects.requireNonNull(ids, "ids is required");
+        this.ids = Objects.requireNonNull(ids, "ids are required");
         this.claims = Objects.requireNonNull(claims, "claims is required");
         this.store = CouponLifecycleStore.joining(source);
+        this.budget = new CouponAdminStore(source, ids);
+        this.ledger = new MerchantCouponBudgetLedger(budget);
         this.transaction = new TransactionTemplate(new DataSourceTransactionManager(source));
         transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         transaction.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
@@ -120,9 +127,24 @@ public final class RefundSucceededCouponConsumer implements IntegrationEventCons
         try {
             mapper.insertLedger(ledgerId, couponId, row.getUserId(), decoded.orderId(),
                     "REFUND_RESTORE", "USED", "AVAILABLE",
-                    "CPN:RESTORE:" + decoded.refundOrderId(), "full refund restore", now());
+                    "CPN:RESTORE:" + decoded.refundOrderId, "full refund restore", now());
         } catch (DuplicateKeyException replayed) {
             throw unavailable("coupon restore ledger request already exists");
+        }
+        // Contract 79 section 6.3: a restored merchant coupon is no longer merchant spend. The
+        // budget entry joins this same transaction (same DataSource, transaction-bound connection).
+        if ("MERCHANT".equals(row.getTemplateFundingType())) {
+            LocalDateTime at = now();
+            budget.join(admin -> {
+                var usage = admin.selectMerchantCouponByInstance(couponId);
+                CouponRule rule = usage == null ? null : CouponRule.parse(usage.ruleJson);
+                if (usage == null || !"MERCHANT".equals(usage.fundingType) || rule == null) {
+                    throw unavailable("merchant coupon budget usage is unreadable");
+                }
+                ledger.unuse(admin, usage.campaignId, couponId, decoded.orderId(),
+                        decoded.refundOrderId, rule.amountOff(), at);
+                return null;
+            });
         }
     }
 

@@ -11,7 +11,9 @@
     <sql id="instanceWithTemplate">
         SELECT i.id, i.user_id, i.status, i.order_id, i.expire_at, i.freeze_expire_at,
                t.status AS template_status, t.valid_start_at AS template_valid_start_at,
-               t.valid_end_at AS template_valid_end_at, t.rule_json
+               t.valid_end_at AS template_valid_end_at, t.rule_json,
+               t.funding_type AS template_funding_type,
+               t.owner_merchant_id AS template_owner_merchant_id
         FROM coupon_instance i
         JOIN coupon_template t ON t.id = i.coupon_template_id
     </sql>

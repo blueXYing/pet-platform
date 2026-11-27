@@ -8,8 +8,10 @@ import com.petplatform.coupon.biz.application.AdminCouponAuthorizationPort;
 import com.petplatform.coupon.biz.application.AdminCouponCampaignService;
 import com.petplatform.coupon.biz.application.CouponCampaignQueryService;
 import com.petplatform.coupon.biz.application.CouponClaimService;
+import com.petplatform.coupon.biz.application.MerchantCouponBudgetLedger;
 import com.petplatform.coupon.biz.application.NewUserEligibilityPort;
 import com.petplatform.coupon.biz.infrastructure.persistence.CouponAdminStore;
+import com.petplatform.merchant.api.query.MerchantQueryApi;
 import java.time.Clock;
 import java.util.Objects;
 import javax.sql.DataSource;
@@ -28,17 +30,24 @@ public final class CouponCampaignApiImpl
 
     public CouponCampaignApiImpl(DataSource dataSource, SnowflakeIdGenerator ids,
             AdminCouponAuthorizationPort.CouponPort authorization,
-            NewUserEligibilityPort newUserEligibility, Clock clock) {
+            NewUserEligibilityPort newUserEligibility, MerchantQueryApi merchants, Clock clock) {
         CouponAdminStore store = new CouponAdminStore(
                 Objects.requireNonNull(dataSource, "dataSource is required"),
                 Objects.requireNonNull(ids, "ids are required"));
         Clock resolvedClock = clock == null ? Clock.systemUTC() : clock;
         this.admin = new AdminCouponCampaignService(store,
                 Objects.requireNonNull(authorization, "authorization is required"), resolvedClock);
-        this.query = new CouponCampaignQueryService(store, resolvedClock);
+        this.query = new CouponCampaignQueryService(store, merchants, resolvedClock);
+        // Merchant coupons write their budget ledger next to the claim (contract 79 section 6.3).
         this.claims = new CouponClaimService(store,
                 Objects.requireNonNull(newUserEligibility, "newUserEligibility is required"),
-                resolvedClock);
+                new MerchantCouponBudgetLedger(store), resolvedClock);
+    }
+
+    @Override
+    public java.util.List<CouponCampaignView> listMerchantCampaigns(String storeId, String userId,
+            com.petplatform.common.QueryContext context) {
+        return query.listMerchantCampaigns(storeId, userId, context);
     }
 
     @Override

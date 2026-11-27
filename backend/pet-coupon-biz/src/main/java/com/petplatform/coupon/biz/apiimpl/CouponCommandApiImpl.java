@@ -58,6 +58,7 @@ public final class CouponCommandApiImpl implements CouponCommandApi {
         String storeId = requireStore(command.storeId());
         BigDecimal orderAmount = amount(command.orderAmount(), "orderAmount");
         LocalDateTime deadline = utc(command.freezeExpireAt(), "freezeExpireAt");
+        long merchantId = id(command.merchantId(), "merchantId");
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         guard.requireHeld(storeId, source);
         return store.work(mapper -> {
@@ -87,13 +88,21 @@ public final class CouponCommandApiImpl implements CouponCommandApi {
             if (threshold != null && orderAmount.compareTo(threshold) < 0) throw notAvailable();
             // A payable order must stay positive: the 40/41 channel cannot settle zero amounts.
             if (discount.compareTo(orderAmount) >= 0) throw notAvailable();
+            // Contract 79 section 6.1: a merchant-funded coupon only discounts the orders of its
+            // owning merchant. Platform coupons keep their contract-61 behavior untouched.
+            boolean merchantFunded = "MERCHANT".equals(row.getTemplateFundingType());
+            if (merchantFunded && (row.getTemplateOwnerMerchantId() == null
+                    || row.getTemplateOwnerMerchantId() != merchantId)) {
+                throw new ApiException("COUPON_SCOPE_MISMATCH", "该优惠券仅限发券商家的服务使用");
+            }
             if (mapper.freezeInstance(couponId, userId, orderId, deadline, now) != 1) {
                 // Lost the row-level race: another order froze this instance first (CPN-004).
                 throw notAvailable();
             }
             ledger(mapper, couponId, userId, orderId, "FREEZE", "AVAILABLE", "FROZEN",
                     "CPN:FREEZE:" + orderId, "booking freeze", now);
-            return new CouponFreezeResult(IDS.toApi(couponId), discount);
+            return new CouponFreezeResult(IDS.toApi(couponId), discount,
+                    merchantFunded ? "MERCHANT" : "PLATFORM");
         });
     }
 

@@ -15,6 +15,9 @@ public class CouponAdminEntities {
         private Long id;
         private String name;
         private String status;
+        private String ownerType;
+        private Long ownerMerchantId;
+        private String fundingType;
         private Long totalStock;
         private Long issuedCount;
         private LocalDateTime validStartAt;
@@ -30,6 +33,12 @@ public class CouponAdminEntities {
         public void setName(String name) { this.name = name; }
         public String getStatus() { return status; }
         public void setStatus(String status) { this.status = status; }
+        public String getOwnerType() { return ownerType; }
+        public void setOwnerType(String ownerType) { this.ownerType = ownerType; }
+        public Long getOwnerMerchantId() { return ownerMerchantId; }
+        public void setOwnerMerchantId(Long ownerMerchantId) { this.ownerMerchantId = ownerMerchantId; }
+        public String getFundingType() { return fundingType; }
+        public void setFundingType(String fundingType) { this.fundingType = fundingType; }
         public Long getTotalStock() { return totalStock; }
         public void setTotalStock(Long totalStock) { this.totalStock = totalStock; }
         public Long getIssuedCount() { return issuedCount; }

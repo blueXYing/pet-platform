@@ -18,19 +18,23 @@ import java.util.Objects;
 /**
  * C-side active claim kernel (contract 72 §5.2). One transaction locks the campaign and the
  * template, re-checks the window/limits/audience, draws down campaign stock/budget, inserts the
- * AVAILABLE instance + ISSUE ledger + claim row, and draws down template stock. The unique
- * (campaign_id,user_id) key is the per-user concurrency guard; request_id is the replay guard.
+ * AVAILABLE instance + ISSUE ledger + claim row, and draws down template stock. The per-user
+ * limit is decided with a count under the campaign row lock (platform campaigns stay at one
+ * claim per user; merchant campaigns honour per_user_limit, contract 79); request_id is the
+ * replay guard.
  */
 public final class CouponClaimService implements CouponClaimApi {
 
     private final CouponAdminStore store;
     private final NewUserEligibilityPort newUserEligibility;
+    private final MerchantCouponBudgetLedger budgetLedger;
     private final Clock clock;
 
     public CouponClaimService(CouponAdminStore store, NewUserEligibilityPort newUserEligibility,
-            Clock clock) {
+            MerchantCouponBudgetLedger budgetLedger, Clock clock) {
         this.store = Objects.requireNonNull(store);
         this.newUserEligibility = newUserEligibility;
+        this.budgetLedger = budgetLedger;
         this.clock = clock == null ? Clock.systemUTC() : clock;
     }
 
@@ -76,9 +80,17 @@ public final class CouponClaimService implements CouponClaimApi {
                 if (now.isBefore(template.getValidStartAt()) || now.isAfter(template.getValidEndAt())) {
                     throw conflict("COUPON_CAMPAIGN_NOT_CLAIMABLE", "券模板不在有效期内");
                 }
-                if (mapper.countUserClaims(campaignId, userId) > 0
-                        || mapper.selectClaimByCampaignUser(campaignId, userId) != null) {
-                    throw conflict("COUPON_CLAIMED", "您已领取过该活动券");
+                CouponRule rule = CouponRule.parse(template.getRuleJson());
+                if (rule == null) throw conflict("COUPON_CAMPAIGN_NOT_CLAIMABLE", "券规则不可用");
+                // Per-user limit under the campaign row lock. Platform campaigns keep the
+                // contract-72 rule of exactly one claim; merchant campaigns honour perUserLimit.
+                boolean merchantOwned = campaign.merchantOwned();
+                int perUserLimit = merchantOwned && campaign.perUserLimit != null
+                        && campaign.perUserLimit > 1 ? campaign.perUserLimit : 1;
+                long claimedSoFar = mapper.countUserClaims(campaignId, userId);
+                if (claimedSoFar >= perUserLimit) {
+                    throw conflict(perUserLimit == 1 ? "COUPON_CLAIMED" : "COUPON_CLAIM_LIMIT_REACHED",
+                            perUserLimit == 1 ? "您已领取过该活动券" : "已达到每人限领次数");
                 }
                 if ("NEW_USER".equals(campaign.audienceType)) {
                     if (newUserEligibility == null) unavailable("新用户资格校验不可用");
@@ -91,8 +103,6 @@ public final class CouponClaimService implements CouponClaimApi {
                     }
                     if (!newUser) throw conflict("COUPON_CAMPAIGN_NOT_CLAIMABLE", "仅新用户可领取");
                 }
-                CouponRule rule = CouponRule.parse(template.getRuleJson());
-                if (rule == null) throw conflict("COUPON_CAMPAIGN_NOT_CLAIMABLE", "券规则不可用");
                 if (mapper.incrementCouponCampaignIssue(campaignId, rule.amountOff(), now) != 1) {
                     throw conflict("COUPON_CAMPAIGN_SOLD_OUT", "券已抢完或预算已耗尽");
                 }
@@ -110,8 +120,15 @@ public final class CouponClaimService implements CouponClaimApi {
                     throw conflict("COUPON_CAMPAIGN_SOLD_OUT", "券模板库存已用尽");
                 }
                 long claimId = store.nextId();
-                if (mapper.insertClaim(claimId, campaignId, userId, instanceId, requestId, now) != 1) {
+                if (mapper.insertClaim(claimId, campaignId, userId, instanceId,
+                        (int) claimedSoFar + 1, requestId, now) != 1) {
                     unavailable("coupon claim insert failed");
+                }
+                // Merchant coupons commit their face value to the separate budget ledger
+                // (contract 79 section 6.3) in the same transaction as the claim.
+                if (merchantOwned && "MERCHANT".equals(campaign.templateFundingType)) {
+                    if (budgetLedger == null) unavailable("merchant coupon budget ledger is unavailable");
+                    budgetLedger.reserve(mapper, campaign, instanceId, rule.amountOff(), now);
                 }
                 return new ClaimReceipt(Long.toUnsignedString(campaignId), Long.toUnsignedString(claimId),
                         Long.toUnsignedString(instanceId), rule.amountOff(),

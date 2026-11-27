@@ -6,6 +6,8 @@ import java.time.OffsetDateTime;
 /**
  * ORDER-owned authoritative pricing, refund and verification snapshot for settlement calculation
  * (Contract 75 §5.5 & Contract 78 §3). IDs are decimal strings across modules.
+ * merchantCouponDiscount (contract 79 §6.2) is the part of discountAmount funded by the merchant;
+ * it is 0.00 for orders without a merchant coupon, exactly like every pre-P3 row.
  */
 public record OrderSettlementFact(
         String orderId,
@@ -21,4 +23,5 @@ public record OrderSettlementFact(
         String currentRefundApplicationId,
         String refundOrderId,
         String currentAfterSaleId,
-        OffsetDateTime verifiedAt) {}
+        OffsetDateTime verifiedAt,
+        BigDecimal merchantCouponDiscount) {}

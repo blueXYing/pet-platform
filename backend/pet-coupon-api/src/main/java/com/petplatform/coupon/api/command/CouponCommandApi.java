@@ -38,12 +38,21 @@ public interface CouponCommandApi {
      */
     CouponReleaseResult release(CouponReleaseCommand command);
 
-    /** Freeze request; discountable order amount is the current OWNER service price snapshot. */
+    /**
+     * Freeze request; discountable order amount is the current OWNER service price snapshot.
+     * merchantId (contract 79) is the order's merchant: a merchant-funded coupon may only be
+     * frozen for an order of its owning merchant.
+     */
     record CouponFreezeCommand(CommandContext context, String orderId, String couponInstanceId,
-            String userId, String storeId, BigDecimal orderAmount, OffsetDateTime freezeExpireAt) {}
+            String userId, String storeId, BigDecimal orderAmount, OffsetDateTime freezeExpireAt,
+            String merchantId) {}
 
-    /** Frozen instance id plus the discount the order must book (payAmount = orderAmount - discount). */
-    record CouponFreezeResult(String couponInstanceId, BigDecimal discountAmount) {}
+    /**
+     * Frozen instance id, the discount the order must book (payAmount = orderAmount - discount)
+     * and the coupon's funding source (PLATFORM/MERCHANT, contract 79 section 6.1).
+     */
+    record CouponFreezeResult(String couponInstanceId, BigDecimal discountAmount,
+            String fundingType) {}
 
     /** Consume request; consumedAt carries the proven channel paidAt for coupon_instance.used_at. */
     record CouponConsumeCommand(CommandContext context, String orderId, String storeId,

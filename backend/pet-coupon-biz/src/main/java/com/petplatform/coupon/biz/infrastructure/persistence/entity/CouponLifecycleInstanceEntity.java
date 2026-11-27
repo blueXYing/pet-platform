@@ -21,6 +21,13 @@ public final class CouponLifecycleInstanceEntity {
     private LocalDateTime templateValidStartAt;
     private LocalDateTime templateValidEndAt;
     private String ruleJson;
+    private String templateFundingType;
+    private Long templateOwnerMerchantId;
+
+    public String getTemplateFundingType() { return templateFundingType; }
+    public void setTemplateFundingType(String templateFundingType) { this.templateFundingType = templateFundingType; }
+    public Long getTemplateOwnerMerchantId() { return templateOwnerMerchantId; }
+    public void setTemplateOwnerMerchantId(Long templateOwnerMerchantId) { this.templateOwnerMerchantId = templateOwnerMerchantId; }
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }

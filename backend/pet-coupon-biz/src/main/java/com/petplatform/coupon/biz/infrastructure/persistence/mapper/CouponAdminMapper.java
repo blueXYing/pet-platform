@@ -5,7 +5,11 @@ import com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponAdminE
 import com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponAdminEntities.AdminLedgerEntity;
 import com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponAdminEntities.AdminTemplateEntity;
 import com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponCampaignEntities.CampaignRow;
+import com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponCampaignEntities.CampaignUsageRow;
 import com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponCampaignEntities.ClaimRow;
+import com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponCampaignEntities.MerchantCouponBudgetRow;
+import com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponCampaignEntities.MerchantCouponStatsRow;
+import com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponCampaignEntities.MerchantCouponUsageRow;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -215,11 +219,13 @@ public interface CouponAdminMapper {
 
     ClaimRow selectClaimByRequestId(@Param("requestId") String requestId);
 
+    /** claim_no is the user's ordinal claim within the campaign (1..perUserLimit, contract 79). */
     int insertClaim(
             @Param("id") long id,
             @Param("campaignId") long campaignId,
             @Param("userId") long userId,
             @Param("couponInstanceId") long couponInstanceId,
+            @Param("claimNo") int claimNo,
             @Param("requestId") String requestId,
             @Param("now") LocalDateTime now);
 
@@ -234,4 +240,175 @@ public interface CouponAdminMapper {
             @Param("traceId") String traceId,
             @Param("detailJson") String detailJson,
             @Param("now") LocalDateTime now);
+
+    // ---------------------------------------------------------------- merchant coupons (contract 79)
+
+    /** Merchant campaign template is created DRAFT; operator approval activates it. */
+    int insertMerchantTemplate(
+            @Param("id") long id,
+            @Param("name") String name,
+            @Param("merchantId") long merchantId,
+            @Param("validStartAt") LocalDateTime validStartAt,
+            @Param("validEndAt") LocalDateTime validEndAt,
+            @Param("ruleJson") String ruleJson,
+            @Param("now") LocalDateTime now);
+
+    /** Editable only while DRAFT and never issued. */
+    int updateMerchantTemplate(
+            @Param("id") long id,
+            @Param("name") String name,
+            @Param("validStartAt") LocalDateTime validStartAt,
+            @Param("validEndAt") LocalDateTime validEndAt,
+            @Param("ruleJson") String ruleJson,
+            @Param("expectedVersion") long expectedVersion,
+            @Param("now") LocalDateTime now);
+
+    int activateMerchantTemplate(
+            @Param("id") long id,
+            @Param("expectedVersion") long expectedVersion,
+            @Param("now") LocalDateTime now);
+
+    int insertMerchantCouponCampaign(
+            @Param("id") long id,
+            @Param("merchantId") long merchantId,
+            @Param("storeId") long storeId,
+            @Param("name") String name,
+            @Param("templateId") long templateId,
+            @Param("perUserLimit") int perUserLimit,
+            @Param("totalLimit") int totalLimit,
+            @Param("budgetLimit") BigDecimal budgetLimit,
+            @Param("startAt") LocalDateTime startAt,
+            @Param("endAt") LocalDateTime endAt,
+            @Param("description") String description,
+            @Param("createdById") long createdById,
+            @Param("now") LocalDateTime now);
+
+    /** DRAFT/REJECTED only; version CAS. */
+    int updateMerchantCouponCampaign(
+            @Param("campaignId") long campaignId,
+            @Param("name") String name,
+            @Param("perUserLimit") int perUserLimit,
+            @Param("totalLimit") int totalLimit,
+            @Param("budgetLimit") BigDecimal budgetLimit,
+            @Param("startAt") LocalDateTime startAt,
+            @Param("endAt") LocalDateTime endAt,
+            @Param("description") String description,
+            @Param("expectedVersion") long expectedVersion,
+            @Param("now") LocalDateTime now);
+
+    /** DRAFT/REJECTED -> PENDING_REVIEW. */
+    int submitMerchantCouponCampaign(
+            @Param("campaignId") long campaignId,
+            @Param("expectedVersion") long expectedVersion,
+            @Param("now") LocalDateTime now);
+
+    /** DRAFT/REJECTED/PENDING_REVIEW -> CANCELED. */
+    int cancelMerchantCouponCampaign(
+            @Param("campaignId") long campaignId,
+            @Param("expectedVersion") long expectedVersion,
+            @Param("now") LocalDateTime now);
+
+    /** PENDING_REVIEW -> toStatus (SCHEDULED/ACTIVE/REJECTED) with the review facts. */
+    int reviewMerchantCouponCampaign(
+            @Param("campaignId") long campaignId,
+            @Param("expectedVersion") long expectedVersion,
+            @Param("toStatus") String toStatus,
+            @Param("rejectReason") String rejectReason,
+            @Param("reviewerType") String reviewerType,
+            @Param("reviewerId") long reviewerId,
+            @Param("now") LocalDateTime now);
+
+    /** SCHEDULED/ACTIVE -> PAUSED. */
+    int pauseMerchantCouponCampaign(
+            @Param("campaignId") long campaignId,
+            @Param("expectedVersion") long expectedVersion,
+            @Param("now") LocalDateTime now);
+
+    /** SCHEDULED/ACTIVE/PAUSED -> ENDED. */
+    int endMerchantCouponCampaign(
+            @Param("campaignId") long campaignId,
+            @Param("expectedVersion") long expectedVersion,
+            @Param("now") LocalDateTime now);
+
+    List<CampaignRow> selectMerchantCouponCampaigns(
+            @Param("merchantId") long merchantId,
+            @Param("status") String status,
+            @Param("limit") int limit,
+            @Param("offset") int offset);
+
+    long countMerchantCouponCampaigns(
+            @Param("merchantId") long merchantId, @Param("status") String status);
+
+    /** Operator review list across merchants, newest update first. */
+    List<CampaignRow> selectMerchantCouponCampaignsForReview(
+            @Param("status") String status,
+            @Param("merchantId") Long merchantId,
+            @Param("limit") int limit,
+            @Param("offset") int offset);
+
+    long countMerchantCouponCampaignsForReview(
+            @Param("status") String status, @Param("merchantId") Long merchantId);
+
+    /** SCHEDULED/ACTIVE merchant campaigns inside their claim window with a usable template. */
+    List<CampaignRow> selectClaimableMerchantCouponCampaigns(
+            @Param("merchantId") long merchantId, @Param("now") LocalDateTime now);
+
+    MerchantCouponStatsRow selectMerchantCouponStats(
+            @Param("merchantId") long merchantId,
+            @Param("monthStart") LocalDateTime monthStart,
+            @Param("monthEnd") LocalDateTime monthEnd);
+
+    /** One row per merchant campaign: used_count / driven_order_count by its template. */
+    List<CampaignUsageRow> selectMerchantCouponUsage(@Param("merchantId") long merchantId);
+
+    /** The same counters for explicit merchant campaigns (operator review list across merchants). */
+    List<CampaignUsageRow> selectMerchantCouponUsageByIds(@Param("campaignIds") List<Long> campaignIds);
+
+    /** The coupon instance currently USED for the order and the campaign it was claimed from. */
+    MerchantCouponUsageRow selectMerchantCouponByOrder(@Param("orderId") long orderId);
+
+    /** The campaign and template funding behind a claimed instance, whatever its status. */
+    MerchantCouponUsageRow selectMerchantCouponByInstance(@Param("instanceId") long instanceId);
+
+    int insertMerchantCouponBudget(
+            @Param("id") long id,
+            @Param("campaignId") long campaignId,
+            @Param("merchantId") long merchantId,
+            @Param("budgetLimit") BigDecimal budgetLimit,
+            @Param("now") LocalDateTime now);
+
+    /** Budget of a never-issued campaign may follow the campaign edit. */
+    int updateMerchantCouponBudgetLimit(
+            @Param("campaignId") long campaignId,
+            @Param("budgetLimit") BigDecimal budgetLimit,
+            @Param("now") LocalDateTime now);
+
+    MerchantCouponBudgetRow selectMerchantCouponBudgetForUpdate(@Param("campaignId") long campaignId);
+
+    /** Version CAS; the non-negative guards keep the account from crossing zero. */
+    int updateMerchantCouponBudgetAmounts(
+            @Param("campaignId") long campaignId,
+            @Param("issuedDelta") BigDecimal issuedDelta,
+            @Param("usedDelta") BigDecimal usedDelta,
+            @Param("expectedVersion") long expectedVersion,
+            @Param("now") LocalDateTime now);
+
+    int insertMerchantCouponBudgetLedger(
+            @Param("id") long id,
+            @Param("campaignId") long campaignId,
+            @Param("merchantId") long merchantId,
+            @Param("couponInstanceId") long couponInstanceId,
+            @Param("orderId") Long orderId,
+            @Param("entryType") String entryType,
+            @Param("amount") BigDecimal amount,
+            @Param("issuedAfter") BigDecimal issuedAfter,
+            @Param("usedAfter") BigDecimal usedAfter,
+            @Param("requestId") String requestId,
+            @Param("now") LocalDateTime now);
+
+    /** Null when the request id has no ledger row (idempotency probe). */
+    Long selectMerchantCouponBudgetLedgerId(@Param("requestId") String requestId);
+
+    /** Every merchant budget account joined with the campaign facts needed to audit it. */
+    List<MerchantCouponBudgetRow> selectMerchantCouponBudgetAudit();
 }

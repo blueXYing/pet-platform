@@ -352,7 +352,8 @@ class PaymentBookingOrderStage8MySqlTest {
                     new BigDecimal("100.00"), BigDecimal.ZERO,
                     new BigDecimal("20.00"), payAmount, BigDecimal.ZERO,
                     null, null, null,
-                    OffsetDateTime.ofInstant(baseNow, ZoneOffset.UTC));
+                    OffsetDateTime.ofInstant(baseNow, ZoneOffset.UTC),
+                    BigDecimal.ZERO); // merchantCouponDiscount (contract 79): platform coupon only
             var claims = new JdbcOutboxConsumeGuard(db.source, db.ids);
             var onPaid = new SettlementEventConsumers.OnPaymentSucceeded(db.source, claims, orderSettlementFacts, settlementAdmin);
             var onVerified = new SettlementEventConsumers.OnOrderVerified(db.source, claims, orderSettlementFacts, settlementAdmin);

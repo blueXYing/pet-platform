@@ -57,6 +57,8 @@ public final class OrderSettlementFactsApiImpl implements OrderSettlementFactsAp
                 row.currentRefundApplicationId == null ? null : IDS.toApi(row.currentRefundApplicationId),
                 row.refundOrderId == null ? null : IDS.toApi(row.refundOrderId),
                 row.currentAftersaleId == null ? null : IDS.toApi(row.currentAftersaleId),
-                row.verifiedAt == null ? null : row.verifiedAt.atOffset(ZoneOffset.UTC));
+                row.verifiedAt == null ? null : row.verifiedAt.atOffset(ZoneOffset.UTC),
+                // Contract 79 section 6.2: NULL reads as 0.00 so legacy rows keep their meaning.
+                row.merchantCouponDiscount == null ? BigDecimal.ZERO.setScale(2) : row.merchantCouponDiscount);
     }
 }
