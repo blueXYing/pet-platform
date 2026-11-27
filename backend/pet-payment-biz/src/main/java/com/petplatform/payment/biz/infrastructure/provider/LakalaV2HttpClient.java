@@ -57,7 +57,14 @@ public final class LakalaV2HttpClient {
             LakalaV2Protocol.LIST_RELATION_APPLY_PATH,
             LakalaV2Protocol.EWALLET_BALANCE_QUERY_PATH,
             LakalaV2Protocol.EWALLET_WITHDRAW_D1_PATH,
-            LakalaV2Protocol.EWALLET_WITHDRAW_QUERY_PATH);
+            LakalaV2Protocol.EWALLET_WITHDRAW_QUERY_PATH,
+            // CCR-PAY-ONBOARD-001 (1020 / 1082 / 1284 / 1286 / 1208 / 1212).
+            LakalaV2Protocol.ADD_MER_PATH,
+            LakalaV2Protocol.QUERY_CONTRACT_PATH,
+            LakalaV2Protocol.APPLY_LEDGER_MER_PATH,
+            LakalaV2Protocol.QUERY_LEDGER_MER_PATH,
+            LakalaV2Protocol.EC_APPLY_PATH,
+            LakalaV2Protocol.EC_QUERY_STATUS_PATH);
 
     public record VerifiedV2Response(
             String retCode,
@@ -81,6 +88,21 @@ public final class LakalaV2HttpClient {
         @Override
         public String toString() {
             return "VerifiedV2Response[retCode=" + retCode + "]";
+        }
+    }
+
+    /**
+     * Raw signed response bytes (1004 response signature already verified) for endpoints whose body is not the
+     * {@code retCode/retMsg/respData} envelope, e.g. the electronic-contract family {@code code/msg/resp_data}.
+     */
+    public record RawVerifiedResponse(byte[] rawBody, String rawResponseSha256) {
+        public RawVerifiedResponse {
+            rawBody = rawBody == null ? new byte[0] : rawBody.clone();
+        }
+
+        @Override
+        public byte[] rawBody() {
+            return rawBody.clone();
         }
     }
 
@@ -176,6 +198,17 @@ public final class LakalaV2HttpClient {
         } catch (LakalaV2Protocol.ProtocolException | LakalaProtocol.ProtocolException failure) {
             throw unknown(Reason.CHANNEL_RESPONSE);
         }
+    }
+
+    /** Sends a prepared request with full 1004 signing and response verification; no envelope parsing. */
+    public RawVerifiedResponse postRaw(PreparedV2Request prepared, RequestNonce nonce) {
+        noTransaction();
+        if (prepared == null) throw new IllegalArgumentException("Prepared Lakala request absent");
+        byte[] raw = send(prepared, nonce);
+        if (raw == null || raw.length == 0 || raw.length > MAX_RESPONSE_BYTES) {
+            throw unknown(Reason.CHANNEL_RESPONSE);
+        }
+        return new RawVerifiedResponse(raw, sha256(raw));
     }
 
     // ---- Stage 4 Typed MMS Methods ---------------------------------------------------------
@@ -370,7 +403,7 @@ public final class LakalaV2HttpClient {
         }
     }
 
-    private static ChannelUnknownException unknown(Reason reason) {
+    static ChannelUnknownException unknown(Reason reason) {
         return new ChannelUnknownException(reason);
     }
 }

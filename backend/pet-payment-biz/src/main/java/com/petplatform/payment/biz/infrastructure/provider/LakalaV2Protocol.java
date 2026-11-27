@@ -9,6 +9,9 @@ import java.nio.ByteBuffer;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.security.PublicKey;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.LinkedHashMap;
@@ -28,6 +31,11 @@ import java.util.regex.Pattern;
  * /1289 (queryReceiverDetail), /1290 (applyBind & async callback), /1872 (listRelationApply),
  * /1004 (request/response signature) & /1009 (notification signature).
  * No network call, key or certificate lookup occurs here.
+ *
+ * <p>Envelope families (CCR-PAY-ONBOARD-001 §5), chosen by endpoint path in {@link #buildV2Request}:
+ * {@code reqData + ver + timestamp + reqId} for mms (1084/1020/1082), and
+ * {@code reqData + reqId + version + reqTime} for the ledger family (1284/1286/1287/1288/1289/1290/1872)
+ * exactly as the authoritative Lakala document examples show.
  */
 public final class LakalaV2Protocol {
     public static final String UPLOAD_FILE_PATH = "/api/v2/mms/openApi/uploadFile";
@@ -37,12 +45,27 @@ public final class LakalaV2Protocol {
     public static final String APPLY_BIND_PATH = "/api/v2/mms/openApi/ledger/applyBind";
     public static final String LIST_RELATION_APPLY_PATH = "/api/v2/mms/openApi/ledger/openWeb/listRelationApply";
 
+    // CCR-PAY-ONBOARD-001 paths: 1020 addMer / 1082 queryContract / 1284 applyLedgerMer / 1286 queryLedgerMer.
+    public static final String ADD_MER_PATH = "/api/v2/mms/openApi/addMer";
+    public static final String QUERY_CONTRACT_PATH = "/api/v2/mms/openApi/queryContract";
+    public static final String APPLY_LEDGER_MER_PATH = "/api/v2/mms/openApi/ledger/applyLedgerMer";
+    public static final String QUERY_LEDGER_MER_PATH = "/api/v2/mms/openApi/ledger/queryLedgerMer";
+    /** 1208 / 1212 electronic-contract paths use {@code req_data + ver + timestamp + req_id}. */
+    public static final String EC_APPLY_PATH = "/api/v3/mms/open_api/ec/apply";
+    public static final String EC_QUERY_STATUS_PATH = "/api/v3/mms/open_api/ec/q_status";
+    private static final String EC_PATH_PREFIX = "/api/v3/mms/open_api/ec/";
+
     // Stage 5 LAEP paths declared here so LakalaV2HttpClient can serve Stage 4 & Stage 5 uniformly.
     public static final String EWALLET_BALANCE_QUERY_PATH = "/api/v2/laep/industry/ewalletBalanceQuery";
     public static final String EWALLET_WITHDRAW_D1_PATH = "/api/v2/laep/industry/ewalletWithdrawD1";
     public static final String EWALLET_WITHDRAW_QUERY_PATH = "/api/v2/laep/industry/ewalletWithdrawQuery";
 
     public static final String V2_VER = "1.0.0";
+    /** Ledger family envelope: official examples send {@code version: "2.0"} plus {@code reqTime} (yyyyMMddHHmmss). */
+    static final String LEDGER_PATH_PREFIX = "/api/v2/mms/openApi/ledger/";
+    static final String LEDGER_ENVELOPE_VERSION = "2.0";
+    private static final DateTimeFormatter LEDGER_REQ_TIME = DateTimeFormatter.ofPattern("uuuuMMddHHmmss");
+    private static final ZoneId CHANNEL_ZONE = ZoneId.of("Asia/Shanghai");
     public static final String MMS_DATA_VERSION = "1.0";
     public static final String SUCCESS_CODE = "000000";
     /** Ruling 40 §5.4: split receivers MUST always use active withdrawal ("01"), never auto-settle. */
@@ -84,7 +107,7 @@ public final class LakalaV2Protocol {
 
     public record PreparedV2Request(String path, byte[] rawBody) {
         public PreparedV2Request {
-            if (path == null || !path.startsWith("/api/v2/")) invalid();
+            if (path == null || !isSupportedPath(path)) invalid();
             if (rawBody == null || rawBody.length == 0) invalid();
             rawBody = rawBody.clone();
         }
@@ -294,23 +317,37 @@ public final class LakalaV2Protocol {
 
     // ---- Generic v2 Envelope Builders & Parsers (reusable by Stage 5) ----------------------
 
+    /** Endpoint path families this protocol may serialize; anything else is rejected before signing. */
+    static boolean isSupportedPath(String path) {
+        return path != null && (path.startsWith("/api/v2/") || path.startsWith(EC_PATH_PREFIX));
+    }
+
     /**
-     * Wraps {@code reqData} in the standard Lakala v2 envelope:
-     * {@code {"reqData":{...},"ver":"1.0.0","timestamp":"<millis>","reqId":"<32hex>"}}.
+     * Wraps {@code reqData} in the Lakala envelope of the endpoint's family (see class comment):
+     * mms {@code {"reqData":{...},"ver":"1.0.0","timestamp":"<millis>","reqId":"<32hex>"}},
+     * ledger {@code {"reqData":{...},"reqId":"<32hex>","version":"2.0","reqTime":"yyyyMMddHHmmss"}},
+     * electronic contract {@code {"req_data":{...},"ver":"1.0.0","timestamp":"<millis>","req_id":"<32hex>"}}.
      */
     public static PreparedV2Request buildV2Request(String path, Object reqData,
             long timestampMillis, String reqId) {
-        if (path == null || !path.startsWith("/api/v2/") || reqData == null || timestampMillis <= 0) {
+        if (!isSupportedPath(path) || reqData == null || timestampMillis <= 0) {
             invalid();
         }
-        if (reqId == null || !REQ_ID.matcher(reqId).matches()) {
-            invalid();
-        }
+        requireReqId(reqId);
+        boolean electronicContract = path.startsWith(EC_PATH_PREFIX);
         Map<String, Object> envelope = new LinkedHashMap<>();
-        envelope.put("reqData", reqData);
-        envelope.put("ver", V2_VER);
-        envelope.put("timestamp", Long.toString(timestampMillis));
-        envelope.put("reqId", reqId);
+        envelope.put(electronicContract ? "req_data" : "reqData", reqData);
+        if (path.startsWith(LEDGER_PATH_PREFIX)) {
+            envelope.put("reqId", reqId);
+            envelope.put("version", LEDGER_ENVELOPE_VERSION);
+            envelope.put("reqTime", LEDGER_REQ_TIME.format(
+                    Instant.ofEpochMilli(timestampMillis).atZone(CHANNEL_ZONE)));
+        } else {
+            envelope.put("ver", V2_VER);
+            envelope.put("timestamp", Long.toString(timestampMillis));
+            // 1212 q_status example: req_data + ver + timestamp + req_id.
+            envelope.put(electronicContract ? "req_id" : "reqId", reqId);
+        }
         try {
             return new PreparedV2Request(path, JSON.writeValueAsBytes(envelope));
         } catch (IOException failure) {
@@ -682,6 +719,18 @@ public final class LakalaV2Protocol {
         };
     }
 
+    /** Serializes with the strict shared mapper (same configuration as every envelope). */
+    static byte[] toJsonBytes(Object value) throws IOException {
+        if (value == null) invalid();
+        return JSON.writeValueAsBytes(value);
+    }
+
+    /** Validates the 32-hex request id shared by every envelope family. */
+    static String requireReqId(String reqId) {
+        if (reqId == null || !REQ_ID.matcher(reqId).matches()) invalid();
+        return reqId;
+    }
+
     static String normalizeExt(String raw) {
         String ext = required(raw, 16).trim().toLowerCase(Locale.ROOT);
         if (ext.startsWith(".")) ext = ext.substring(1);
@@ -712,7 +761,7 @@ public final class LakalaV2Protocol {
         return value != null && !value.isBlank();
     }
 
-    private static JsonNode json(byte[] body) {
+    static JsonNode json(byte[] body) {
         if (body == null || body.length == 0) invalid();
         try {
             String utf8 = StandardCharsets.UTF_8.newDecoder()
@@ -727,13 +776,13 @@ public final class LakalaV2Protocol {
         }
     }
 
-    private static String requiredField(JsonNode parent, String name, int max) {
+    static String requiredField(JsonNode parent, String name, int max) {
         JsonNode node = parent.get(name);
         if (node == null || !node.isTextual()) invalid();
         return required(node.textValue(), max);
     }
 
-    private static String optionalField(JsonNode parent, String name, int max) {
+    static String optionalField(JsonNode parent, String name, int max) {
         JsonNode node = parent.get(name);
         if (node == null || node.isNull()) return null;
         if (!node.isTextual()) invalid();
@@ -742,13 +791,13 @@ public final class LakalaV2Protocol {
         return required(text, max);
     }
 
-    private static String requiredStringOrNumber(JsonNode parent, String name, int max) {
+    static String requiredStringOrNumber(JsonNode parent, String name, int max) {
         String value = optionalStringOrNumber(parent, name, max);
         if (value == null) invalid();
         return value;
     }
 
-    private static String optionalStringOrNumber(JsonNode parent, String name, int max) {
+    static String optionalStringOrNumber(JsonNode parent, String name, int max) {
         JsonNode node = parent.get(name);
         if (node == null || node.isNull()) return null;
         if (node.isTextual()) {
@@ -762,7 +811,7 @@ public final class LakalaV2Protocol {
         return null;
     }
 
-    private static String optionalFreeText(JsonNode parent, String name, int max) {
+    static String optionalFreeText(JsonNode parent, String name, int max) {
         JsonNode node = parent.get(name);
         if (node == null || node.isNull()) return null;
         if (!node.isTextual()) invalid();
@@ -772,7 +821,7 @@ public final class LakalaV2Protocol {
         return text.length() > max ? text.substring(0, max) : text;
     }
 
-    private static int optionalInt(JsonNode parent, String name, int fallback) {
+    static int optionalInt(JsonNode parent, String name, int fallback) {
         JsonNode node = parent.get(name);
         if (node == null || node.isNull()) return fallback;
         if (node.isIntegralNumber() && node.canConvertToInt()) return node.intValue();
@@ -783,7 +832,7 @@ public final class LakalaV2Protocol {
         return fallback;
     }
 
-    private static String required(String value, int max) {
+    static String required(String value, int max) {
         if (value == null || value.isBlank() || value.length() > max
                 || value.codePoints().anyMatch(Character::isISOControl)) {
             invalid();
@@ -791,7 +840,7 @@ public final class LakalaV2Protocol {
         return value;
     }
 
-    private static void invalid() {
+    static void invalid() {
         throw new ProtocolException("Lakala v2 protocol fact is invalid");
     }
 
