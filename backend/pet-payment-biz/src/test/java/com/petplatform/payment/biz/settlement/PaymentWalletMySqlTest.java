@@ -303,7 +303,8 @@ class PaymentWalletMySqlTest {
                 "79-Payment-Settlement-Fallback-Schema-v0.1.sql",
                 "80-Payment-Receiver-Schema-v0.1.sql",
                 "81-Payment-Wallet-Schema-v0.1.sql",
-                "83-Payment-Merchant-Acquiring-Schema-v0.1.sql");
+                "83-Payment-Merchant-Acquiring-Schema-v0.1.sql",
+                "84-Payment-Merchant-Onboarding-Schema-v0.1.sql");
 
         final String name;
         final String baseUrl;

@@ -461,7 +461,8 @@ class PaymentSettlementFallbackMySqlTest {
                 "75-Payment-Center-Schema-v0.1.sql",
                 "78-Payment-Settlement-Schema-v0.1.sql",
                 "79-Payment-Settlement-Fallback-Schema-v0.1.sql",
-                "83-Payment-Merchant-Acquiring-Schema-v0.1.sql");
+                "83-Payment-Merchant-Acquiring-Schema-v0.1.sql",
+                "84-Payment-Merchant-Onboarding-Schema-v0.1.sql");
 
         final String dbName;
         final String baseUrl;

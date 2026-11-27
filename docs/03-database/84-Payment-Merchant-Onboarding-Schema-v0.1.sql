@@ -39,12 +39,13 @@ CREATE TABLE payment_merchant_onboarding (
     openning_bank_code       VARCHAR(20)    CHARACTER SET ascii COLLATE ascii_bin NOT NULL COMMENT '结算账户开户行号',
     openning_bank_name       VARCHAR(40)    NOT NULL COMMENT '结算账户开户行名称',
     clearing_bank_code       VARCHAR(20)    CHARACTER SET ascii COLLATE ascii_bin NOT NULL COMMENT '结算账户清算行号',
-    pos_type                 VARCHAR(32)    CHARACTER SET ascii COLLATE ascii_bin NOT NULL COMMENT '进件 POS 类型快照',
-    mcc_code                 VARCHAR(8)     CHARACTER SET ascii COLLATE ascii_bin NOT NULL COMMENT '银联 MCC 快照',
-    mer_busi_content         VARCHAR(64)    CHARACTER SET ascii COLLATE ascii_bin NOT NULL COMMENT '经营内容字典值快照',
-    settle_period            VARCHAR(8)     CHARACTER SET ascii COLLATE ascii_bin NOT NULL COMMENT '结算周期快照',
-    fee_data_json            TEXT           NOT NULL COMMENT '进件费率集合 JSON 快照',
-    split_lowest_ratio       DECIMAL(5,2)   NOT NULL COMMENT '开通分账最低分账比例（百分比）快照',
+    -- 平台级参数在「发起开通」时固化；草稿阶段为空（mcc_code 兼作按商家覆盖的 MCC）。
+    pos_type                 VARCHAR(32)    CHARACTER SET ascii COLLATE ascii_bin NULL COMMENT '进件 POS 类型快照',
+    mcc_code                 VARCHAR(8)     CHARACTER SET ascii COLLATE ascii_bin NULL COMMENT '银联 MCC（按商家覆盖值；发起后为快照）',
+    mer_busi_content         VARCHAR(64)    CHARACTER SET ascii COLLATE ascii_bin NULL COMMENT '经营内容字典值快照',
+    settle_period            VARCHAR(8)     CHARACTER SET ascii COLLATE ascii_bin NULL COMMENT '结算周期快照',
+    fee_data_json            TEXT           NULL COMMENT '进件费率集合 JSON 快照',
+    split_lowest_ratio       DECIMAL(5,2)   NULL COMMENT '开通分账最低分账比例（百分比）快照',
     attachments_json         TEXT           NOT NULL COMMENT '附件类型 → 平台私有素材 ID 的 JSON 对象；拉卡拉 attFileId 不落库',
     cooperation_asset_id     VARCHAR(64)    CHARACTER SET ascii COLLATE ascii_bin NULL COMMENT '《分账合作协议》私有素材 ID',
     ec_order_no              VARCHAR(32)    CHARACTER SET ascii COLLATE ascii_bin NULL COMMENT '电子合同申请流水号',
@@ -91,7 +92,7 @@ CREATE TABLE payment_merchant_onboarding (
     )),
     CONSTRAINT ck_onboarding_acct_type CHECK (acct_type_code IN ('57', '58')),
     CONSTRAINT ck_onboarding_lar_id_type CHECK (lar_id_type = '01'),
-    CONSTRAINT ck_onboarding_split_ratio CHECK (split_lowest_ratio >= 0.00 AND split_lowest_ratio <= 100.00),
+    CONSTRAINT ck_onboarding_split_ratio CHECK (split_lowest_ratio IS NULL OR (split_lowest_ratio > 0.00 AND split_lowest_ratio <= 100.00)),
     CONSTRAINT ck_onboarding_settler CHECK (
         (acct_id_type IS NULL AND acct_idcard_cipher IS NULL AND acct_idcard_masked IS NULL AND acct_id_exp_dt IS NULL)
         OR (acct_id_type IS NOT NULL AND acct_idcard_cipher IS NOT NULL AND acct_idcard_masked IS NOT NULL AND acct_id_exp_dt IS NOT NULL)

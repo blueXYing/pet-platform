@@ -499,7 +499,8 @@ class AdminFacesFixRegressionHttpTest {
                             "80-Payment-Receiver-Schema-v0.1.sql",
                             "81-Payment-Wallet-Schema-v0.1.sql",
                             "82-Payment-Reconcile-Schema-v0.1.sql",
-                            "83-Payment-Merchant-Acquiring-Schema-v0.1.sql")) {
+                            "83-Payment-Merchant-Acquiring-Schema-v0.1.sql",
+                            "84-Payment-Merchant-Onboarding-Schema-v0.1.sql")) {
                         ScriptUtils.executeSqlScript(connection, new FileSystemResource(
                                 root.resolve("docs/03-database/" + schema)));
                     }
