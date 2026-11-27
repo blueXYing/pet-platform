@@ -333,8 +333,9 @@ JSON 或比例格式错误则启动失败。
 
 - 80 号 §4.1：存在开通记录的商家，`PUT /configs/{merchantId}` 不得把 `lakalaMerchantNo`/`lakalaTermNo` 改成其它值（`409`）；未传时保留系统写入的值。
 - 支付前置：存在开通记录且状态不是 `ACTIVE` 的商家，订单支付准备失败关闭（`COMMON_DEPENDENCY_UNAVAILABLE`，"商家收单开通尚未完成，暂不能支付"）。
-  没有开通记录的商家沿用既有行为；V44 尚未执行时不存在开通记录，门禁不生效、不影响既有商家支付
-  （此时运营后台的开通接口会报错，直到执行 V44）。
+  没有开通记录的商家沿用既有行为；V44 尚未执行时不存在开通记录，门禁不生效、不影响既有商家支付，
+  `PUT /configs/{merchantId}` 的"收单对归开通流程所有"判断同样按无记录处理（手输的收单对照常可编辑）；
+  此时只有运营后台的开通接口本身会报错，直到执行 V44。
 - 31 号私有素材：新增用途 `MERCHANT_ONBOARDING_ATTACHMENT`，仅允许 `PLATFORM_OPERATOR` 上传、归属商家主体用户，其余安全链不变。
 - 商家域内部 API：新增 `MerchantAcquiringFactsApi`（商家档案、入驻审核、协议签署、类型、城市、主体用户），不新增 HTTP。
 - RBAC：新增动作码 `settlement.onboarding.write`、`settlement.onboarding.read-sensitive`；超管默认拥有。
