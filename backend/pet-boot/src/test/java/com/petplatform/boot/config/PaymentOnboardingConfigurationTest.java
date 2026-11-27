@@ -24,7 +24,8 @@ class PaymentOnboardingConfigurationTest {
 
         PaymentOnboardingConfiguration.OnboardingProperties wrongRatio = properties(null);
         assertThat(assertThrows(IllegalStateException.class, () -> PaymentOnboardingConfiguration.check(true,
-                new PaymentOnboardingConfiguration.OnboardingProperties("", "", "", "", "", "", "", "", "0", "", "")))
+                new PaymentOnboardingConfiguration.OnboardingProperties(
+                        "", "", "", "", "", "", "", "", "0", "", "", "")))
                 .getMessage()).contains("lowest-ratio-percent");
         assertThat(wrongRatio).isNotNull();
     }
@@ -35,7 +36,7 @@ class PaymentOnboardingConfigurationTest {
                 "https://pet.example/api/v1/callbacks/lakala/onboard", "CLOUD_DISTRIBUTION", "654", "T+1",
                 "[{\"feeRateTypeCode\":\"302\",\"feeRateTypeName\":\"微信\",\"feeRatePct\":\"0.60\"}]",
                 "5995", "{\"PET_HOSPITAL\":\"0742\"}", "{\"chengdu\":\"510100\"}", "90.50",
-                "宠物平台商家合作协议", "示例科技有限公司");
+                "宠物平台商家合作协议", "示例科技有限公司", null);
         Settings settings = PaymentOnboardingConfiguration.settings(properties,
                 new PaymentSettlementConfiguration.SettlementSettings("0", " 1950836 ", "https://x/sep", false, "",
                         " SR20261126PLAT01 "));
@@ -50,8 +51,26 @@ class PaymentOnboardingConfigurationTest {
         assertThat(settings.notifyBaseUrl().length()).isLessThanOrEqualTo(64);
     }
 
+    @Test
+    void aFreeFormSharedOrganizationCodeNeverStopsStartup() {
+        // Other features may configure the shared org code freely; the electronic contract needs an
+        // integer org id, taken from the dedicated property or from a numeric shared code only.
+        PaymentOnboardingConfiguration.OnboardingProperties blank = properties(null);
+        Settings freeForm = PaymentOnboardingConfiguration.settings(blank,
+                new PaymentSettlementConfiguration.SettlementSettings("0", "org-test", "https://x/sep", false, "", ""));
+        assertThat(freeForm.orgCode()).isEqualTo("org-test");
+        assertThat(freeForm.ecOrgId()).isEmpty();
+        assertDoesNotThrow(() -> PaymentOnboardingConfiguration.check(true, blank));
+        PaymentOnboardingConfiguration.OnboardingProperties dedicated =
+                new PaymentOnboardingConfiguration.OnboardingProperties("", "", "", "", "", "", "", "", "", "", "",
+                        " 1950836 ");
+        assertThat(PaymentOnboardingConfiguration.settings(dedicated,
+                new PaymentSettlementConfiguration.SettlementSettings("0", "org-test", "https://x/sep", false, "", ""))
+                .ecOrgId()).isEqualTo("1950836");
+    }
+
     private static PaymentOnboardingConfiguration.OnboardingProperties properties(String feeRatesJson) {
         return new PaymentOnboardingConfiguration.OnboardingProperties("", "", "", "", feeRatesJson, "", "", "", "",
-                "", "");
+                "", "", "");
     }
 }

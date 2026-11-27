@@ -70,11 +70,12 @@ public class PaymentOnboardingConfiguration {
             String districtByCityJson,
             String lowestRatioPercent,
             String cooperationAgreementName,
-            String platformCompanyName) {
+            String platformCompanyName,
+            String ecOrgId) {
         MerchantOnboardingSettingsParser.Raw raw() {
             return new MerchantOnboardingSettingsParser.Raw(notifyBaseUrl, posType, merBusiContent, settlePeriod,
                     feeRatesJson, mccDefault, mccByMerchantTypeJson, districtByCityJson, lowestRatioPercent,
-                    cooperationAgreementName, platformCompanyName);
+                    cooperationAgreementName, platformCompanyName, ecOrgId);
         }
     }
 
@@ -143,7 +144,14 @@ public class PaymentOnboardingConfiguration {
 
         @Bean
         @ConditionalOnMissingBean(MerchantOnboardingChannel.class)
-        MerchantOnboardingChannel merchantOnboardingChannel(LakalaV2HttpClient v2, ObjectProvider<Clock> clocks) {
+        MerchantOnboardingChannel merchantOnboardingChannel(
+                ObjectProvider<LakalaV2HttpClient> clients, ObjectProvider<Clock> clocks) {
+            // The signed client is only wired when the receiver channel is not replaced; never let its
+            // absence stop the application from starting (onboarding then answers 503).
+            LakalaV2HttpClient v2 = clients.getIfAvailable();
+            if (v2 == null) {
+                return MerchantOnboardingChannel.failClosed();
+            }
             return new LakalaMerchantOnboardingChannel(
                     new com.petplatform.payment.biz.infrastructure.provider.LakalaOnboardingHttpClient(v2),
                     v2, clocks.getIfAvailable(Clock::systemUTC));

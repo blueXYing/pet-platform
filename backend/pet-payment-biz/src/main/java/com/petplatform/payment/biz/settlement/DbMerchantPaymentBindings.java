@@ -23,7 +23,9 @@ import javax.sql.DataSource;
  *
  * <p>Ruling 44 §2: a merchant with an acquiring onboarding record that has not reached {@code ACTIVE}
  * fails closed even if a pair was typed earlier — Lakala settles nothing for split-flagged trades of a
- * merchant whose split business is not opened and bound.
+ * merchant whose split business is not opened and bound. Before the onboarding migration (V44) has been
+ * applied no onboarding record can exist, so a missing ledger table counts as "no record" and never
+ * blocks payments of merchants that were configured by hand.
  */
 public final class DbMerchantPaymentBindings implements PaymentMerchantBindings {
     private static final DecimalPublicIdCodec IDS = new DecimalPublicIdCodec();
@@ -64,7 +66,8 @@ public final class DbMerchantPaymentBindings implements PaymentMerchantBindings 
         try {
             onboarding = this.onboarding.onboarding.selectByMerchantId(parsedMerchantId);
         } catch (org.springframework.jdbc.BadSqlGrammarException missingTable) {
-            throw unavailable("商家收单开通台账不存在，请先执行 V44 迁移");
+            // V44 not applied yet: there cannot be an in-progress onboarding, so the gate stays open.
+            onboarding = null;
         } catch (RuntimeException dbFailure) {
             throw unavailable("商家收单开通状态不可用");
         }

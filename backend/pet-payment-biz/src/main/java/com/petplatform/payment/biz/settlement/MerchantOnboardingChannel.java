@@ -163,6 +163,39 @@ public interface MerchantOnboardingChannel {
         }
     }
 
+    /**
+     * Fail-closed channel when the signed Lakala client is not wired (e.g. a deployment where the receiver
+     * channel is replaced). Every call answers 503 so onboarding can never proceed against nothing while
+     * the rest of the application still starts.
+     */
+    static MerchantOnboardingChannel failClosed() {
+        return new MerchantOnboardingChannel() {
+            private <T> T unavailable() {
+                throw new com.petplatform.common.ApiException(
+                        com.petplatform.common.CommonApiCodes.DEPENDENCY_UNAVAILABLE,
+                        "拉卡拉渠道未配置，无法办理商家收单开通");
+            }
+
+            @Override public Uploaded uploadAttachment(String orderNo, String orgCode, String attType,
+                    String extName, byte[] content) { return unavailable(); }
+            @Override public EcApplied applyElectronicContract(EcApplication application) { return unavailable(); }
+            @Override public EcProgress queryElectronicContract(String orderNo, String orgId, String ecApplyId) {
+                return unavailable();
+            }
+            @Override public ContractAdded addMerchant(ContractApplication application) { return unavailable(); }
+            @Override public ContractProgress queryContract(String orderNo, String orgCode, String contractId) {
+                return unavailable();
+            }
+            @Override public LedgerApplied applyLedger(LedgerApplication application) { return unavailable(); }
+            @Override public LedgerProgress queryLedger(String orderNo, String orgCode, String merCupNo) {
+                return unavailable();
+            }
+            @Override public BindApplied applyBind(BindApplication application) { return unavailable(); }
+            @Override public BindProgress queryBind(String orderNo, String orgCode, String merCupNo,
+                    String receiverNo, String applyId) { return unavailable(); }
+        };
+    }
+
     /** Outcome unknown (transport failure, unverifiable or malformed response): never resubmit blindly. */
     final class Unknown extends RuntimeException {
         public Unknown(String reason, Throwable cause) {

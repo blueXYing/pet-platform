@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.petplatform.common.*;
 import com.petplatform.task.core.*;
+import com.petplatform.thirdparty.api.PrivateAssetApi;
 import com.petplatform.thirdparty.api.PrivateAssetApiCodes;
 import com.petplatform.thirdparty.biz.apiimpl.PrivateAssetApiImpl;
 import com.petplatform.thirdparty.biz.apiimpl.PrivateAssetReconcileTaskHandler;
@@ -492,6 +493,63 @@ class PrivateAssetCoreMySqlTest {
                   ApiException.class, () -> api.readReadyForSystem(uploaded.assetId(), sysCtx))
               .code());
     }
+  }
+
+  @Test
+  void operatorUploadForMerchantOnboardingBelongsToTheMerchantOwner() throws Exception {
+    try (var db = new PrivateAssetMySqlTestDatabase()) {
+      var api = fixture(db, new MemoryStore(), Clock.systemUTC());
+      String requestId = "00000000-0000-0000-0000-000000000071";
+      String onboarding = PrivateAssetApi.MERCHANT_ONBOARDING_ATTACHMENT;
+
+      // PLATFORM_OPERATOR + the onboarding purpose: the asset belongs to the merchant's owner user.
+      UploadPrivateAssetResult uploaded = api.uploadOperatorAttachment(
+          upload("42", requestId, SOURCE, onboarding,
+              context(requestId, OperatorType.PLATFORM_OPERATOR, "77")));
+      assertNotNull(uploaded.assetId());
+      assertEquals(PrivateAssetStatus.READY, uploaded.status());
+
+      // Same requestId replays the same asset instead of storing a second copy.
+      assertEquals(
+          uploaded.assetId(),
+          api.uploadOperatorAttachment(
+              upload("42", requestId, SOURCE, onboarding,
+                  context(requestId, OperatorType.PLATFORM_OPERATOR, "77")))
+              .assetId());
+
+      // The consumer entry point never accepts the onboarding purpose.
+      String consumerRequest = "00000000-0000-0000-0000-000000000072";
+      assertEquals(
+          CommonApiCodes.INVALID_ARGUMENT,
+          assertThrows(
+                  ApiException.class,
+                  () -> api.upload(
+                      upload("42", consumerRequest, SOURCE, onboarding,
+                          context(consumerRequest, OperatorType.USER, "42"))))
+              .code());
+      // The operator entry point is scoped to the onboarding purpose only.
+      String otherRequest = "00000000-0000-0000-0000-000000000073";
+      assertEquals(
+          CommonApiCodes.FORBIDDEN,
+          assertThrows(
+                  ApiException.class,
+                  () -> api.uploadOperatorAttachment(
+                      upload("42", otherRequest, SOURCE, PURPOSE,
+                          context(otherRequest, OperatorType.PLATFORM_OPERATOR, "77"))))
+              .code());
+
+      // The onboarding chain reads it back as SYSTEM right before the Lakala 1084 upload.
+      PrivateAssetContent content =
+          api.readReadyForSystem(
+              uploaded.assetId(), new QueryContext("tr-sys", OperatorType.SYSTEM, null));
+      assertEquals(SOURCE.length, content.content().length);
+    }
+  }
+
+  private static UploadPrivateAssetCommand upload(
+      String owner, String requestId, byte[] content, String purpose, CommandContext context) {
+    return new UploadPrivateAssetCommand(
+        owner, purpose, "image/png", content.length, new ByteArrayInputStream(content), context);
   }
 
   private static PrivateAssetApiImpl fixture(

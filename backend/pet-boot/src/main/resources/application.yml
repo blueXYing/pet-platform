@@ -208,3 +208,5 @@ pet:
       cooperation-agreement-name: ${LAKALA_ONBOARDING_COOPERATION_AGREEMENT_NAME:}
       # 电子合同 E1/E9：平台公司全称
       platform-company-name: ${LAKALA_ONBOARDING_PLATFORM_NAME:}
+      # 电子合同 org_id（数字机构号）；留空时复用数字形式的 settlement.org-code
+      ec-org-id: ${LAKALA_ONBOARDING_EC_ORG_ID:}

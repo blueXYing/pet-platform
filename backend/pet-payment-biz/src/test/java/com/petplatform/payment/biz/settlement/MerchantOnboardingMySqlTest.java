@@ -143,6 +143,7 @@ class MerchantOnboardingMySqlTest {
             assertEquals(1, signing.platform().feeRates().size());
             EcApplication ec = f.channel.ec;
             assertEquals(NOTIFY_BASE + "/ec", ec.retUrl());
+            assertEquals("1950836", ec.orgId());
             assertEquals(LEGAL_ID, ec.legalIdCard());
             assertEquals("示例科技有限公司", ec.partnerName());
             assertEquals("宠物平台商家合作协议", ec.cooperationAgreementName());
@@ -642,7 +643,7 @@ class MerchantOnboardingMySqlTest {
                     NOTIFY_BASE, "1950836", "CLOUD_DISTRIBUTION", "654", "T+1",
                     List.of(new MerchantOnboardingChannel.FeeRate("302", "微信", "0.60")),
                     "5995", Map.of("PET_HOSPITAL", "0742"), Map.of("chengdu", "510100"),
-                    new BigDecimal("90.50"), PLATFORM_RECEIVER, "宠物平台商家合作协议", "示例科技有限公司");
+                    new BigDecimal("90.50"), PLATFORM_RECEIVER, "宠物平台商家合作协议", "示例科技有限公司", null);
             service = new MerchantOnboardingService(
                     db.source, ids::incrementAndGet, cipher,
                     assetId -> new AssetContent(assetId, "png", "a.png", PNG),

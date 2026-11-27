@@ -40,7 +40,8 @@ public final class MerchantOnboardingSettingsParser {
             String districtByCityJson,
             String lowestRatioPercent,
             String cooperationAgreementName,
-            String platformCompanyName) {}
+            String platformCompanyName,
+            String ecOrgId) {}
 
     private MerchantOnboardingSettingsParser() {}
 
@@ -77,9 +78,13 @@ public final class MerchantOnboardingSettingsParser {
                 throw new IllegalArgumentException("lowest-ratio-percent 须在 (0, 100] 之间");
             }
         }
+        // The shared org code is only trimmed here: it is a free-form Lakala string for 进件/分账, and
+        // other features may configure it freely. Whether an integer org id exists for the electronic
+        // contract is decided per onboarding attempt, never at start-up.
         String org = blank(orgCode) ? "" : orgCode.trim();
-        if (!org.isEmpty() && !org.chars().allMatch(Character::isDigit)) {
-            throw new IllegalArgumentException("pet.payment.settlement.org-code 须为数字（拉卡拉机构号）");
+        String ecOrg = blank(raw.ecOrgId()) ? "" : raw.ecOrgId().trim();
+        if (!ecOrg.isEmpty() && !ecOrg.chars().allMatch(Character::isDigit)) {
+            throw new IllegalArgumentException("ec-org-id 须为数字（拉卡拉机构号）");
         }
         return new MerchantOnboardingService.Settings(
                 blank(raw.notifyBaseUrl()) ? "" : raw.notifyBaseUrl().trim(),
@@ -90,7 +95,7 @@ public final class MerchantOnboardingSettingsParser {
                 fees, mccDefault, mccByType, districts, ratio,
                 blank(platformReceiverNo) ? "" : platformReceiverNo.trim(),
                 blank(raw.cooperationAgreementName()) ? "" : raw.cooperationAgreementName().trim(),
-                blank(raw.platformCompanyName()) ? "" : raw.platformCompanyName().trim());
+                blank(raw.platformCompanyName()) ? "" : raw.platformCompanyName().trim(), ecOrg);
     }
 
     private static List<Map<String, String>> objects(String json, String key) {

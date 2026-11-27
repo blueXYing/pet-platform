@@ -165,7 +165,8 @@ public final class MerchantOnboardingService implements MerchantOnboardingApi, M
             BigDecimal lowestRatio,
             String platformReceiverNo,
             String cooperationAgreementName,
-            String platformCompanyName) {
+            String platformCompanyName,
+            String ecOrgId) {
         public Settings {
             feeRates = feeRates == null ? List.of() : List.copyOf(feeRates);
             mccByMerchantType = mccByMerchantType == null ? Map.of() : Map.copyOf(mccByMerchantType);
@@ -1360,7 +1361,8 @@ public final class MerchantOnboardingService implements MerchantOnboardingApi, M
 
     private EcApplication ecApplication(OnboardingRow row) {
         String company = settings.platformCompanyName().trim();
-        return new EcApplication(row.ecOrderNo, settings.orgCode().trim(), row.larName,
+        // 1208 declares org_id as Integer: the dedicated onboarding value, else the shared code when numeric.
+        return new EcApplication(row.ecOrderNo, ecOrgId(), row.larName,
                 decrypt(row, F_LAR_IDCARD, row.larIdcardCipher),
                 decrypt(row, F_LAR_MOBILE, row.larMobileCipher),
                 decrypt(row, F_LICENSE_NO, row.merBlisNoCipher), row.merBlisName,
@@ -1575,9 +1577,8 @@ public final class MerchantOnboardingService implements MerchantOnboardingApi, M
         List<String> missing = new ArrayList<>();
         if (blank(settings.notifyBaseUrl())) missing.add("notifyBaseUrl");
         else if (notifyUrl("").length() > ADD_MER_RET_URL_LIMIT) missing.add("notifyBaseUrlTooLong");
-        if (blank(settings.orgCode()) || !settings.orgCode().trim().chars().allMatch(Character::isDigit)) {
-            missing.add("orgCode");
-        }
+        if (blank(settings.orgCode())) missing.add("orgCode");
+        if (ecOrgId() == null) missing.add("ecOrgId");
         if (blank(settings.posType())) missing.add("posType");
         if (blank(settings.merBusiContent())) missing.add("merBusiContent");
         if (blank(settings.settlePeriod())) missing.add("settlePeriod");
@@ -1589,6 +1590,13 @@ public final class MerchantOnboardingService implements MerchantOnboardingApi, M
         if (blank(settings.platformCompanyName())) missing.add("platformCompanyName");
         if (facts != null && mccFor(facts, mccOverride) == null) missing.add("mccCode");
         return missing;
+    }
+
+    /** Integer organization id for the electronic contract, or {@code null} when none is configured. */
+    private String ecOrgId() {
+        if (!blank(settings.ecOrgId())) return settings.ecOrgId().trim();
+        String shared = settings.orgCode().trim();
+        return !shared.isEmpty() && shared.chars().allMatch(Character::isDigit) ? shared : null;
     }
 
     private String mccFor(MerchantOnboardingFacts facts, String override) {
