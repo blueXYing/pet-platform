@@ -199,7 +199,7 @@ for f in 25 06 14 26 28 29 13 31 33 35 52 54 37 38 39 40 41 42 43 44 45 46 47 48
 done
 ```
 
-**opt-in Flyway 迁移（默认全关，生产共享库不执行）**：`db/admin-auth-migration/V26`、`db/service-migration/V27+V28+V29+V30`、`db/schedule-migration/V29`、`db/staff-member-migration/V30+V31`、`db/admin-trade-migration/V32`、`db/marketing-migration/V33~V36`。这些仅面向"隔离库"（库名前缀硬校验，如 `auth001_*`/`schw001_*`），由 `pet.*.migration-enabled` + `pet.*.migration-database` 显式指定才执行；误配 = 启动失败保护（35号 §五：误开 = 对共享库执行迁移，绝不默认开）。**生产按 §3.2 的 SQL 顺序建库即可，无需触发任何 opt-in 迁移。**
+**opt-in Flyway 迁移（默认全关，生产共享库不执行）**：`db/admin-auth-migration/V26`、`db/service-migration/V27+V28+V29+V30`、`db/schedule-migration/V29`、`db/staff-member-migration/V30+V31`、`db/admin-trade-migration/V32`、`db/order-migration/V31+V32`、`db/marketing-migration/V33~V38`。其中 `order-migration/V32` 与 `marketing-migration/V38`（契约 79）修改的是核心券表与订单表，库内须先有 06 号核心表。这些仅面向"隔离库"（库名前缀硬校验，如 `auth001_*`/`schw001_*`），由 `pet.*.migration-enabled` + `pet.*.migration-database` 显式指定才执行；误配 = 启动失败保护（35号 §五：误开 = 对共享库执行迁移，绝不默认开）。**生产按 §3.2 的 SQL 顺序建库即可，无需触发任何 opt-in 迁移。**
 
 **营销/社区/服务目录增量（2026-10-30 起，生产共享库按顺序执行）**：
 

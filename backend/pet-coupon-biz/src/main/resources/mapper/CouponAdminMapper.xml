@@ -538,24 +538,25 @@
         <foreach collection="campaignIds" item="item" open="(" separator="," close=")">#{item}</foreach>
     </select>
 
-    <select id="selectMerchantCouponByOrder"
-            resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponCampaignEntities$MerchantCouponUsageRow">
+    <sql id="claimedMerchantCoupon">
         SELECT i.id AS coupon_instance_id, cl.campaign_id, c.owner_merchant_id AS campaign_merchant_id,
                t.funding_type, t.owner_merchant_id AS template_owner_merchant_id, t.rule_json
         FROM coupon_instance i
         INNER JOIN coupon_template t ON t.id=i.coupon_template_id
         INNER JOIN coupon_claim cl ON cl.coupon_instance_id=i.id
+        INNER JOIN coupon_campaign c ON c.id=cl.campaign_id
+    </sql>
+
+    <select id="selectMerchantCouponByOrder"
+            resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponCampaignEntities$MerchantCouponUsageRow">
+        <include refid="claimedMerchantCoupon"/>
         WHERE i.order_id=#{orderId} AND i.status='USED'
         LIMIT 1
     </select>
 
     <select id="selectMerchantCouponByInstance"
             resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponCampaignEntities$MerchantCouponUsageRow">
-        SELECT i.id AS coupon_instance_id, cl.campaign_id, c.owner_merchant_id AS campaign_merchant_id,
-               t.funding_type, t.owner_merchant_id AS template_owner_merchant_id, t.rule_json
-        FROM coupon_instance i
-        INNER JOIN coupon_template t ON t.id=i.coupon_template_id
-        INNER JOIN coupon_claim cl ON cl.coupon_instance_id=i.id
+        <include refid="claimedMerchantCoupon"/>
         WHERE i.id=#{instanceId}
         LIMIT 1
     </select>

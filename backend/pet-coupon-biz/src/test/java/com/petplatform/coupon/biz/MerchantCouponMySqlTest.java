@@ -289,7 +289,7 @@ class MerchantCouponMySqlTest {
         long orderId = NUMBERS.incrementAndGet();
         freeze(coupon, orderId, MERCHANT_A, STORE_A);
         lifecycle.consume(new com.petplatform.coupon.api.command.CouponCommandApi.CouponConsumeCommand(
-                userCmd(), Long.toString(orderId), Long.toString(STORE_A), OffsetDateTime.now(ZoneOffset.UTC)));
+                userCmd(), Long.toString(orderId), Long.toString(STORE_A), instant()));
 
         paid.consume(paidEvent(orderId, coupon, NUMBERS.incrementAndGet()));
         paid.consume(paidEvent(orderId, coupon, NUMBERS.incrementAndGet())); // replay: no second entry
@@ -483,8 +483,13 @@ class MerchantCouponMySqlTest {
             long order, long merchant, long store) {
         return lifecycle.freeze(new com.petplatform.coupon.api.command.CouponCommandApi.CouponFreezeCommand(
                 userCmd(), Long.toString(order), Long.toString(coupon), Long.toString(USER),
-                Long.toString(store), new BigDecimal("100.00"), OffsetDateTime.now(ZoneOffset.UTC).plusMinutes(10),
+                Long.toString(store), new BigDecimal("100.00"), instant().plusMinutes(10),
                 Long.toString(merchant)));
+    }
+
+    /** Millisecond precision on purpose: the lifecycle commands reject finer instants. */
+    private static OffsetDateTime instant() {
+        return OffsetDateTime.now(ZoneOffset.UTC).truncatedTo(java.time.temporal.ChronoUnit.MILLIS);
     }
 
     private static DispatchedEvent paidEvent(long orderId, long coupon, long eventId) {

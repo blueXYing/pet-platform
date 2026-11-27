@@ -298,7 +298,7 @@ CREATE TABLE coupon_campaign (
     id                BIGINT NOT NULL,
     name              VARCHAR(50) NOT NULL,
     template_id       BIGINT NOT NULL,
-    owner_type        VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT 'PLATFORM' COMMENT 'PLATFORM/MERCHANT（契约 79）',
+    owner_type        VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT 'PLATFORM' COMMENT 'PLATFORM/MERCHANT',
     owner_merchant_id BIGINT NOT NULL DEFAULT 0 COMMENT '商家券活动的归属商家；平台活动为 0',
     owner_store_id    BIGINT NULL COMMENT '创建时所在门店；NULL 表示全商家门店',
     audience_type     VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
@@ -313,7 +313,7 @@ CREATE TABLE coupon_campaign (
     status            VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
     live_name         VARCHAR(50) GENERATED ALWAYS AS (
         CASE WHEN status IN ('CANCELED','ENDED') THEN NULL ELSE name END
-    ) STORED COMMENT '未终结活动的名称；已取消/已结束为 NULL（契约 79，72 号：同期不重名）',
+    ) STORED COMMENT '未终结活动的名称；已取消/已结束为 NULL',
     version           INT NOT NULL DEFAULT 1,
     created_by_id     BIGINT NOT NULL,
     created_by_type   VARCHAR(24) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT 'PLATFORM_OPERATOR' COMMENT '创建者类型',
@@ -331,30 +331,30 @@ CREATE TABLE coupon_campaign (
     KEY idx_coupon_campaign_template (template_id, status),
     CONSTRAINT chk_coupon_campaign_audience CHECK (audience_type IN ('ALL','NEW_USER')),
     CONSTRAINT chk_coupon_campaign_claim CHECK (claim_method = 'ACTIVE_CLAIM'),
-    CONSTRAINT chk_coupon_campaign_status CHECK (status IN ('DRAFT','PENDING_REVIEW','REJECTED','CANCELED','SCHEDULED','ACTIVE','PAUSED','ENDED')),
+    CONSTRAINT chk_coupon_campaign_limit CHECK (
+        per_user_limit BETWEEN 1 AND 10 AND total_limit BETWEEN 1 AND 1000000
+        AND budget_limit > 0 AND start_at < end_at
+    ),
     CONSTRAINT chk_coupon_campaign_owner CHECK (
         (owner_type = 'PLATFORM' AND owner_merchant_id = 0)
         OR (owner_type = 'MERCHANT' AND owner_merchant_id > 0)
     ),
-    CONSTRAINT chk_coupon_campaign_limit CHECK (
-        per_user_limit BETWEEN 1 AND 10 AND total_limit BETWEEN 1 AND 1000000
-        AND budget_limit > 0 AND start_at < end_at
-    )
+    CONSTRAINT chk_coupon_campaign_status CHECK (status IN ('DRAFT','PENDING_REVIEW','REJECTED','CANCELED','SCHEDULED','ACTIVE','PAUSED','ENDED'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
-  COMMENT='券活动/批次（关联既有券模板，仅主动领取；商家券活动见契约 79）';
+  COMMENT='券活动/批次（关联既有券模板，仅主动领取）';
 
 CREATE TABLE coupon_claim (
     id                  BIGINT NOT NULL,
     campaign_id         BIGINT NOT NULL,
     user_id             BIGINT NOT NULL,
     coupon_instance_id  BIGINT NOT NULL,
-    claim_no            INT NOT NULL DEFAULT 1 COMMENT '同一用户在同一活动的第几次领取，从 1 起（契约 79）',
+    claim_no            INT NOT NULL DEFAULT 1 COMMENT '同一用户在同一活动的第几次领取，从 1 起',
     claimed_at          DATETIME(3) NOT NULL,
     request_id          VARCHAR(191) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
     PRIMARY KEY (id),
-    UNIQUE KEY uk_coupon_claim_user_no (campaign_id, user_id, claim_no),
     UNIQUE KEY uk_coupon_claim_instance (coupon_instance_id),
     UNIQUE KEY uk_coupon_claim_request (request_id),
+    UNIQUE KEY uk_coupon_claim_user_no (campaign_id, user_id, claim_no),
     KEY idx_coupon_claim_user_time (user_id, claimed_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
   COMMENT='C 端券活动领取记录（平台活动每人一张；商家券活动每人最多 per_user_limit 张）';

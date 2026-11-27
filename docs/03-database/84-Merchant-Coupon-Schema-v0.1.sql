@@ -9,9 +9,9 @@
 -- 1. 券模板：归属与出资方
 -- ============================================================
 ALTER TABLE coupon_template
-    ADD COLUMN owner_type        VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT 'PLATFORM' COMMENT 'PLATFORM/MERCHANT' AFTER status,
+    ADD COLUMN owner_type        VARCHAR(16) NOT NULL DEFAULT 'PLATFORM' COMMENT 'PLATFORM/MERCHANT（CCR-MKT-MERCHANT-COUPON-001）' AFTER status,
     ADD COLUMN owner_merchant_id BIGINT NULL COMMENT '商家券模板的归属商家；平台券为 NULL' AFTER owner_type,
-    ADD COLUMN funding_type      VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT 'PLATFORM' COMMENT '出资方 PLATFORM/MERCHANT' AFTER owner_merchant_id,
+    ADD COLUMN funding_type      VARCHAR(16) NOT NULL DEFAULT 'PLATFORM' COMMENT '出资方 PLATFORM/MERCHANT' AFTER owner_merchant_id,
     ADD CONSTRAINT chk_coupon_template_owner CHECK (
         (owner_type = 'PLATFORM' AND owner_merchant_id IS NULL AND funding_type = 'PLATFORM')
         OR (owner_type = 'MERCHANT' AND owner_merchant_id IS NOT NULL AND funding_type = 'MERCHANT')
@@ -35,7 +35,7 @@ ALTER TABLE coupon_campaign
     -- 72 号：同期不重名。已取消/已结束的活动名称为 NULL，唯一键对其不生效，即释放名称。
     ADD COLUMN live_name VARCHAR(50) GENERATED ALWAYS AS (
         CASE WHEN status IN ('CANCELED','ENDED') THEN NULL ELSE name END
-    ) STORED COMMENT '未终结活动的名称；已取消/已结束为 NULL',
+    ) STORED COMMENT '未终结活动的名称；已取消/已结束为 NULL' AFTER status,
     ADD UNIQUE KEY uk_coupon_campaign_owner_live_name (owner_merchant_id, live_name),
     DROP CHECK chk_coupon_campaign_status,
     ADD CONSTRAINT chk_coupon_campaign_status CHECK (status IN ('DRAFT','PENDING_REVIEW','REJECTED','CANCELED','SCHEDULED','ACTIVE','PAUSED','ENDED')),
@@ -50,7 +50,8 @@ ALTER TABLE coupon_campaign
 ALTER TABLE coupon_claim
     ADD COLUMN claim_no INT NOT NULL DEFAULT 1 COMMENT '同一用户在同一活动的第几次领取，从 1 起' AFTER coupon_instance_id,
     DROP INDEX uk_coupon_claim_user,
-    ADD UNIQUE KEY uk_coupon_claim_user_no (campaign_id, user_id, claim_no);
+    ADD UNIQUE KEY uk_coupon_claim_user_no (campaign_id, user_id, claim_no),
+    COMMENT='C 端券活动领取记录（平台活动每人一张；商家券活动每人最多 per_user_limit 张）';
 
 CREATE TABLE merchant_coupon_budget (
     id              BIGINT         NOT NULL,
