@@ -64,10 +64,7 @@ public final class DbMerchantPaymentBindings implements PaymentMerchantBindings 
         }
         OnboardingRow onboarding;
         try {
-            onboarding = this.onboarding.onboarding.selectByMerchantId(parsedMerchantId);
-        } catch (org.springframework.jdbc.BadSqlGrammarException missingTable) {
-            // V44 not applied yet: there cannot be an in-progress onboarding, so the gate stays open.
-            onboarding = null;
+            onboarding = this.onboarding.findIfApplied(parsedMerchantId);
         } catch (RuntimeException dbFailure) {
             throw unavailable("商家收单开通状态不可用");
         }

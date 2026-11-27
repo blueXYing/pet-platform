@@ -10,9 +10,14 @@ import java.util.HashMap;
 import java.util.Map;
 import javax.sql.DataSource;
 import org.mybatis.spring.SqlSessionTemplate;
+import org.springframework.jdbc.BadSqlGrammarException;
 
 /** PAYMENT-owned merchant acquiring onboarding persistence (Contract 81 / V44), sharing the caller's transaction. */
 public final class PaymentOnboardingStore {
+    /** MySQL error code and SQL state of a table that does not exist (yet). */
+    private static final int TABLE_MISSING = 1146;
+    private static final String TABLE_MISSING_STATE = "42S02";
+
     public final PaymentOnboardingMapper onboarding;
     private final PaymentFoundationMapper shared;
 
@@ -20,6 +25,25 @@ public final class PaymentOnboardingStore {
         SqlSessionTemplate template = PaymentMybatis.template(source);
         this.onboarding = template.getMapper(PaymentOnboardingMapper.class);
         this.shared = template.getMapper(PaymentFoundationMapper.class);
+    }
+
+    /**
+     * The merchant's onboarding row, or {@code null} when there is none. A ledger table that does not exist
+     * (V44 not applied yet) cannot hold a record either, so it reads as "none" for the callers that only
+     * guard pre-existing behaviour — payments and settlement configuration keep working until the schema
+     * catches up. Every other failure is rethrown: a broken database must still fail closed.
+     */
+    public OnboardingRow findIfApplied(long merchantId) {
+        try {
+            return onboarding.selectByMerchantId(merchantId);
+        } catch (BadSqlGrammarException failure) {
+            if (failure.getSQLException() != null
+                    && (failure.getSQLException().getErrorCode() == TABLE_MISSING
+                            || TABLE_MISSING_STATE.equals(failure.getSQLException().getSQLState()))) {
+                return null;
+            }
+            throw failure;
+        }
     }
 
     public void session() {
@@ -109,7 +133,6 @@ public final class PaymentOnboardingStore {
         values.put("submittedAt", row.submittedAt);
         values.put("completedAt", row.completedAt);
         values.put("version", row.version);
-        values.put("createdAt", row.createdAt);
         values.put("createdAt", row.createdAt == null ? now : row.createdAt);
         values.put("updatedAt", now);
         return values;

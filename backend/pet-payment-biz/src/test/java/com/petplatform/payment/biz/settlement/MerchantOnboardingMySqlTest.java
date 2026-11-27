@@ -262,6 +262,28 @@ class MerchantOnboardingMySqlTest {
     }
 
     @Test
+    void aLedgerThatWasNeverMigratedKeepsHandConfiguredMerchantsPayingAndEditable() throws Exception {
+        try (Fixture f = new Fixture()) {
+            f.admin().upsertConfig(new UpsertSettlementConfigCommand(command("cfg-manual-0"), MERCHANT, 7,
+                    new BigDecimal("0.6000"), true, MER_CUP, TERM, "手输"));
+            // Code can reach an environment before V44 does: a ledger that does not exist holds no in-progress
+            // onboarding, so neither the payment gate nor settlement configuration may be blocked by it.
+            try (Connection c = f.db.source.getConnection(); Statement s = c.createStatement()) {
+                s.execute("DROP TABLE payment_merchant_onboarding_audit");
+                s.execute("DROP TABLE payment_merchant_onboarding");
+            }
+            Binding binding = f.bindings().require(MERCHANT, "710302");
+            assertEquals(MER_CUP, binding.merchantNo());
+            assertEquals(TERM, binding.termNo());
+            assertEquals(PLATFORM_APP, binding.subAppId());
+            assertEquals(9, f.admin().upsertConfig(new UpsertSettlementConfigCommand(command("cfg-days-0"), MERCHANT, 9,
+                    new BigDecimal("0.7000"), true, MER_CUP, TERM, "调整账期")).settleDays());
+            assertEquals(MER_CUP + "|" + TERM, f.queryString(
+                    "SELECT CONCAT(lakala_merchant_no,'|',lakala_term_no) FROM settlement_config WHERE merchant_id=9001"));
+        }
+    }
+
+    @Test
     void unknownOutcomeIsNeverResubmittedAndCanBeAdoptedOrDiscarded() throws Exception {
         try (Fixture f = new Fixture()) {
             f.service.saveProfile(save(0, id("save-1")));
