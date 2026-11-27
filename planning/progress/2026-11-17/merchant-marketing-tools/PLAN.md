@@ -187,9 +187,9 @@ pet-payment ───事件──> pet-membercard（充值成功）/ pet-order�
 | `planning/ccr/CCR-PAY-CENTER-002.md` | CCR | 支付中心：`MEMBER_RECHARGE` bizType、内部支付方式、充值资金结算/对账 |
 | `docs/04-api/76-Merchant-Marketing-Tools-Contract-v0.1.md` | 契约 | P1 API/Schema/审核/错误码 |
 | `docs/04-api/77-Service-Flash-Price-Contract-v0.1.md` | 契约 | P2 |
-| `docs/04-api/78-Merchant-Coupon-Campaign-Contract-v0.1.md` | 契约 | P3（或 72 号 v0.2） |
-| `docs/04-api/79-Merchant-Referral-Contract-v0.1.md` | 契约 | P4 |
-| `docs/04-api/80-Member-Card-Contract-v0.1.md` | 契约 | P5 |
+| `docs/04-api/79-Merchant-Coupon-Campaign-Contract-v0.1.md` | 契约 | P3（原定 78 号，已被支付结算契约占用，改用 79） |
+| `docs/04-api/79-Merchant-Referral-Contract-v0.1.md` | 契约 | P4（原预留的 79 已被 P3 使用，开工时另择空号） |
+| `docs/04-api/80-Member-Card-Contract-v0.1.md` | 契约 | P5（开工时另择空号） |
 | 更新 `71` | 契约 v0.4 | P1 字段；明确商家不可发布；新增 `playType` 白名单 |
 | 更新 `72` | 契约 v0.2 | P3 商家券 |
 | 更新 `38`、`SSOT`、`12` 错误码、事件目录 | 文档 | 范围/错误码/事件登记 |
@@ -833,11 +833,11 @@ member_card_audit / member_card_command
 
 ## 附录 C：契约/错误码/事件登记清单
 
-- 契约：71 v0.4（P1）、76（P1）、77（P2）、72 v0.2/78（P3）、79（P4）、80（P5）；同步 38/11/27/74/75/61/12。
+- 契约：71 v0.4（P1）、76（P1）、77（P2）、72 v0.2/79（P3）、P4（开工时另择空号）、P5（开工时另择空号）；同步 38/11/27/74/75/61/12。
 - 错误码（按 12 号登记，命名以最终契约为准）：
   - P1：`MARKETING_ASSET_INVALID`、`MARKETING_ASSET_TOO_LARGE`、`CAMPAIGN_THEME_INVALID`、`CAMPAIGN_PLAY_TYPE_INVALID`、`MARKETING_STORE_NOT_ELIGIBLE`。
   - P2：`FLASH_PRICE_NOT_FOUND`、`FLASH_PRICE_STATE_NOT_ALLOWED`、`FLASH_PRICE_WINDOW_OVERLAP`、`FLASH_PRICE_QUOTA_EXCEEDED`、`FLASH_PRICE_LIMIT_REACHED`、`FLASH_PRICE_INVALID`。
-  - P3：`MERCHANT_COUPON_NOT_ELIGIBLE`、`MERCHANT_COUPON_BUDGET_EXCEEDED`、`MERCHANT_COUPON_TEMPLATE_INVALID`。
+  - P3（已按契约 79 落定）：`MERCHANT_COUPON_INVALID`、`MERCHANT_COUPON_NOT_FOUND`、`MERCHANT_COUPON_STATE_NOT_ALLOWED`、`MERCHANT_COUPON_NAME_DUPLICATE`；`COUPON_SCOPE_MISMATCH`（既有码，启用）；领取侧复用 72 号的四个码。
   - P4：`REFERRAL_CODE_INVALID`、`REFERRAL_ALREADY_BOUND`、`REFERRAL_NOT_ELIGIBLE`、`REFERRAL_LIMIT_REACHED`。
   - P5：`MEMBER_CARD_NOT_FOUND`、`MEMBER_CARD_STATE_NOT_ALLOWED`、`MEMBER_CARD_BALANCE_INSUFFICIENT`、`MEMBER_CARD_COUNT_INSUFFICIENT`、`MEMBER_CARD_EXPIRED`、`MEMBER_CARD_RECHARGE_INVALID`、`MEMBER_CARD_REFUND_NOT_ALLOWED`。
 - 事件：

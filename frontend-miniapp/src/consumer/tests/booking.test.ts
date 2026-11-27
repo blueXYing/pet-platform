@@ -375,6 +375,8 @@ test('create error mapping covers every contract code and the common envelope', 
   assert.match(bookingCreateMessage(new ApiError('STORE_DISABLED', 409)), /门店已停用/)
   assert.match(bookingCreateMessage(new ApiError('SERVICE_NOT_BOOKABLE', 409)), /不可预约/)
   assert.match(bookingCreateMessage(new ApiError('COUPON_NOT_AVAILABLE', 409)), /优惠券不可用/)
+  // 契约 79 §6.1：商家券用于非本商家订单，提示去券重选。
+  assert.match(bookingCreateMessage(new ApiError('COUPON_SCOPE_MISMATCH', 409)), /仅限发券商家/)
   assert.match(bookingCreateMessage(new ApiError('IDEMPOTENCY_KEY_CONFLICT', 409)), /请求编号/)
   assert.match(bookingCreateMessage(new ApiError('COMMON_UNAUTHORIZED', 401)), /重新登录/)
   assert.match(bookingCreateMessage(new ApiError('COMMON_INVALID_ARGUMENT', 400)), /无效/)

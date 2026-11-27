@@ -295,34 +295,51 @@ CREATE TABLE marketing_asset_audit (
   COMMENT='营销素材上传 append-only 审计';
 
 CREATE TABLE coupon_campaign (
-    id              BIGINT NOT NULL,
-    name            VARCHAR(50) NOT NULL,
-    template_id     BIGINT NOT NULL,
-    audience_type   VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
-    per_user_limit  INT NOT NULL DEFAULT 1,
-    total_limit     INT NOT NULL,
-    budget_limit    DECIMAL(18,2) NOT NULL,
-    issued_count    INT NOT NULL DEFAULT 0,
-    issued_amount   DECIMAL(18,2) NOT NULL DEFAULT 0.00,
-    start_at        DATETIME(3) NOT NULL,
-    end_at          DATETIME(3) NOT NULL,
-    claim_method    VARCHAR(24) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
-    status          VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
-    version         INT NOT NULL DEFAULT 1,
-    created_by_id   BIGINT NOT NULL,
-    created_at      DATETIME(3) NOT NULL,
-    updated_at      DATETIME(3) NOT NULL,
+    id                BIGINT NOT NULL,
+    name              VARCHAR(50) NOT NULL,
+    template_id       BIGINT NOT NULL,
+    owner_type        VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT 'PLATFORM' COMMENT 'PLATFORM/MERCHANT',
+    owner_merchant_id BIGINT NOT NULL DEFAULT 0 COMMENT '商家券活动的归属商家；平台活动为 0',
+    owner_store_id    BIGINT NULL COMMENT '创建时所在门店；NULL 表示全商家门店',
+    audience_type     VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    per_user_limit    INT NOT NULL DEFAULT 1,
+    total_limit       INT NOT NULL,
+    budget_limit      DECIMAL(18,2) NOT NULL,
+    issued_count      INT NOT NULL DEFAULT 0,
+    issued_amount     DECIMAL(18,2) NOT NULL DEFAULT 0.00,
+    start_at          DATETIME(3) NOT NULL,
+    end_at            DATETIME(3) NOT NULL,
+    claim_method      VARCHAR(24) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    status            VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    live_name         VARCHAR(50) GENERATED ALWAYS AS (
+        CASE WHEN status IN ('CANCELED','ENDED') THEN NULL ELSE name END
+    ) STORED COMMENT '未终结活动的名称；已取消/已结束为 NULL',
+    version           INT NOT NULL DEFAULT 1,
+    created_by_id     BIGINT NOT NULL,
+    created_by_type   VARCHAR(24) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT 'PLATFORM_OPERATOR' COMMENT '创建者类型',
+    description       VARCHAR(300) NULL COMMENT '活动说明',
+    reject_reason     VARCHAR(500) NULL COMMENT '运营驳回原因',
+    submitted_at      DATETIME(3) NULL COMMENT '最近一次提交审核时间',
+    reviewed_at       DATETIME(3) NULL COMMENT '最近一次审核时间',
+    reviewed_by_type  VARCHAR(24) CHARACTER SET ascii COLLATE ascii_bin NULL COMMENT '审核人类型',
+    reviewed_by_id    BIGINT NULL COMMENT '审核人',
+    created_at        DATETIME(3) NOT NULL,
+    updated_at        DATETIME(3) NOT NULL,
     PRIMARY KEY (id),
-    UNIQUE KEY uk_coupon_campaign_name (name),
+    UNIQUE KEY uk_coupon_campaign_owner_live_name (owner_merchant_id, live_name),
     KEY idx_coupon_campaign_status_time (status, start_at, end_at),
     KEY idx_coupon_campaign_template (template_id, status),
     CONSTRAINT chk_coupon_campaign_audience CHECK (audience_type IN ('ALL','NEW_USER')),
     CONSTRAINT chk_coupon_campaign_claim CHECK (claim_method = 'ACTIVE_CLAIM'),
-    CONSTRAINT chk_coupon_campaign_status CHECK (status IN ('DRAFT','SCHEDULED','ACTIVE','PAUSED','ENDED')),
     CONSTRAINT chk_coupon_campaign_limit CHECK (
         per_user_limit BETWEEN 1 AND 10 AND total_limit BETWEEN 1 AND 1000000
         AND budget_limit > 0 AND start_at < end_at
-    )
+    ),
+    CONSTRAINT chk_coupon_campaign_owner CHECK (
+        (owner_type = 'PLATFORM' AND owner_merchant_id = 0)
+        OR (owner_type = 'MERCHANT' AND owner_merchant_id > 0)
+    ),
+    CONSTRAINT chk_coupon_campaign_status CHECK (status IN ('DRAFT','PENDING_REVIEW','REJECTED','CANCELED','SCHEDULED','ACTIVE','PAUSED','ENDED'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
   COMMENT='券活动/批次（关联既有券模板，仅主动领取）';
 
@@ -331,15 +348,16 @@ CREATE TABLE coupon_claim (
     campaign_id         BIGINT NOT NULL,
     user_id             BIGINT NOT NULL,
     coupon_instance_id  BIGINT NOT NULL,
+    claim_no            INT NOT NULL DEFAULT 1 COMMENT '同一用户在同一活动的第几次领取，从 1 起',
     claimed_at          DATETIME(3) NOT NULL,
     request_id          VARCHAR(191) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
     PRIMARY KEY (id),
-    UNIQUE KEY uk_coupon_claim_user (campaign_id, user_id),
     UNIQUE KEY uk_coupon_claim_instance (coupon_instance_id),
     UNIQUE KEY uk_coupon_claim_request (request_id),
+    UNIQUE KEY uk_coupon_claim_user_no (campaign_id, user_id, claim_no),
     KEY idx_coupon_claim_user_time (user_id, claimed_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
-  COMMENT='C 端券活动领取记录（一人一活动一张）';
+  COMMENT='C 端券活动领取记录（平台活动每人一张；商家券活动每人最多 per_user_limit 张）';
 
 CREATE TABLE coupon_campaign_audit (
     id              BIGINT NOT NULL,
@@ -357,6 +375,42 @@ CREATE TABLE coupon_campaign_audit (
     KEY idx_coupon_campaign_audit_row (campaign_id, created_at, id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
   COMMENT='券活动写动作 append-only 审计';
+
+-- CCR-MKT-MERCHANT-COUPON-001（契约 79 / SQL84）：商家券预算账户与预算账本，与 coupon_ledger 分离。
+CREATE TABLE merchant_coupon_budget (
+    id              BIGINT         NOT NULL,
+    campaign_id     BIGINT         NOT NULL,
+    merchant_id     BIGINT         NOT NULL,
+    budget_limit    DECIMAL(18,2)  NOT NULL,
+    issued_amount   DECIMAL(18,2)  NOT NULL DEFAULT 0.00 COMMENT '已领取券面额合计',
+    used_amount     DECIMAL(18,2)  NOT NULL DEFAULT 0.00 COMMENT '处于 USED 的券实例面额合计',
+    version         BIGINT         NOT NULL DEFAULT 0,
+    created_at      DATETIME(3)    NOT NULL,
+    updated_at      DATETIME(3)    NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_merchant_coupon_budget_campaign (campaign_id),
+    KEY idx_merchant_coupon_budget_merchant (merchant_id, campaign_id),
+    CONSTRAINT chk_merchant_coupon_budget CHECK (budget_limit > 0 AND issued_amount >= 0 AND used_amount >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+  COMMENT='商家券预算账户（与券台账分离）';
+
+CREATE TABLE merchant_coupon_budget_ledger (
+    id                  BIGINT         NOT NULL,
+    campaign_id         BIGINT         NOT NULL,
+    merchant_id         BIGINT         NOT NULL,
+    coupon_instance_id  BIGINT         NOT NULL,
+    order_id            BIGINT         NULL,
+    entry_type          VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL COMMENT 'RESERVE/USE/UNUSE',
+    amount              DECIMAL(18,2)  NOT NULL,
+    issued_after        DECIMAL(18,2)  NOT NULL,
+    used_after          DECIMAL(18,2)  NOT NULL,
+    request_id          VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    created_at          DATETIME(3)    NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_merchant_coupon_budget_ledger_request (request_id),
+    KEY idx_merchant_coupon_budget_ledger_campaign (campaign_id, created_at, id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+  COMMENT='商家券预算账本 append-only';
 
 -- CCR-MKT-003: 首页运营内容位（热门服务 / 宠友圈热门容器 / 植物&异宠）。
 -- 预留 sponsor_merchant_id / sponsor_store_id 供后续商家竞价；V1 不做竞价结算。

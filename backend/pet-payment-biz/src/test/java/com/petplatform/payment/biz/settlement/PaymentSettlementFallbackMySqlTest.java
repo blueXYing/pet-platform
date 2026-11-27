@@ -641,7 +641,8 @@ class PaymentSettlementFallbackMySqlTest {
             OrderSettlementFactsApi factsApi = (oid, ctx) -> new OrderSettlementFact(
                     ORDER_ID, MERCHANT_ID, STORE_ID, false, true,
                     originalPrice, BigDecimal.ZERO, platformCoupon, paidAmount,
-                    cumulativeRefunded, null, null, null, dbNow().minusDays(8));
+                    cumulativeRefunded, null, null, null, dbNow().minusDays(8),
+                    BigDecimal.ZERO); // merchantCouponDiscount (contract 79): platform coupon only
             var consumer = new SettlementEventConsumers.OnRefundSucceeded(
                     source, new JdbcOutboxConsumeGuard(source, ids), factsApi, admin);
             String eventId = Long.toString(seq.incrementAndGet());

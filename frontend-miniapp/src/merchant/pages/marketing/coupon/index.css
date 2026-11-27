@@ -1,0 +1,30 @@
+/* 优惠券列表页专属（共享基础在 ../index.css；Figma 12:8436）
+   设计值：内容区左右 31rpx；banner 复用共享 mmk-banner（渐变 #53bfee→#c0ecff r31）；
+   统计卡复用 mmk-stats/mmk-stat（白底 r31，数值 31rpx/700，标签 21rpx #9ca3af）；
+   卡片白底 r31 内边距 31rpx，标题 27rpx/600 #111827，副文案 23rpx #9ca3af，
+   胶囊 23rpx 圆角 999（进行中 #c0ecff/#16a34a，已结束 #f3f4f6/#9ca3af）。 */
+.mmc-body { padding: 24rpx 30rpx 0; }
+.mmc-stats-error { display: block; margin-top: 10rpx; font-size: 20rpx; color: #9ca3af; text-align: center; }
+.mmc-listbar { display: flex; align-items: center; margin-top: 24rpx; }
+.mmc-listbar-count { flex: 1; font-size: 27rpx; color: #6b7280; }
+.mmc-listbar-create { display: flex; align-items: center; padding: 8rpx 12rpx; }
+.mmc-listbar-create text { font-size: 27rpx; font-weight: 600; color: #ff7a00; }
+.mmc-listbar-plus { width: 24rpx; height: 24rpx; margin-right: 8rpx; }
+.mmc-cards { margin-top: 4rpx; }
+.mmc-card { padding: 30rpx; margin-top: 22rpx; border-radius: 31rpx; background: #ffffff; border: 2rpx solid #c0ecff; }
+.mmc-card-head { display: flex; align-items: center; }
+.mmc-card-title { flex: 1; min-width: 0; font-size: 27rpx; line-height: 38rpx; font-weight: 600; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mmc-pill { flex-shrink: 0; margin-left: 12rpx; padding: 4rpx 16rpx; border-radius: 999rpx; font-size: 23rpx; line-height: 32rpx; }
+.mmc-pill-online { background: #c0ecff; color: #16a34a; }
+.mmc-pill-ended { background: #f3f4f6; color: #9ca3af; }
+.mmc-pill-draft { background: #f3f4f6; color: #6b7280; }
+.mmc-pill-review { background: #eff6ff; color: #2563eb; }
+.mmc-pill-rejected { background: #fef2f2; color: #dc2626; }
+.mmc-pill-scheduled { background: #fffbeb; color: #d97706; }
+.mmc-pill-paused { background: #fff7ed; color: #ea580c; }
+.mmc-pill-canceled { background: #f3f4f6; color: #9ca3af; }
+.mmc-card-sub { display: block; margin-top: 6rpx; font-size: 23rpx; color: #9ca3af; }
+.mmc-card-window { display: block; margin-top: 16rpx; font-size: 23rpx; color: #9ca3af; }
+.mmc-card-reject { display: block; margin-top: 8rpx; font-size: 23rpx; color: #dc2626; }
+.mmc-load-more { margin-top: 22rpx; padding: 18rpx 0; text-align: center; font-size: 25rpx; color: #5baae8; border-radius: 24rpx; background: #ffffff; border: 2rpx solid #c0ecff; }
+.mmc-tail { display: block; margin-top: 24rpx; font-size: 20rpx; color: #9ca3af; text-align: center; }

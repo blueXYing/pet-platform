@@ -40,3 +40,6 @@ pet:
       icon-url-allow-http: true
     flash-price:
       enabled: true
+  coupon:
+    merchant:
+      enabled: true

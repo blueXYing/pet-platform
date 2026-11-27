@@ -46,13 +46,16 @@ public class CouponCampaignConfiguration {
     CouponCampaignApiImpl couponCampaignApi(
             DataSource source, ObjectProvider<SnowflakeIdGenerator> ids,
             AdminCouponAuthorizationPort.CouponPort authorization,
-            NewUserEligibilityPort newUserEligibility, ObjectProvider<Clock> clock) {
+            NewUserEligibilityPort newUserEligibility,
+            ObjectProvider<com.petplatform.merchant.api.query.MerchantQueryApi> merchants,
+            ObjectProvider<Clock> clock) {
         SnowflakeIdGenerator provider = ids.getIfAvailable();
         if (provider == null) {
             throw new IllegalStateException("Coupon campaign kernel requires a Snowflake ID provider");
         }
+        // Contract 79: merchant coupons claim through the same kernel and carry display names.
         return new CouponCampaignApiImpl(source, provider, authorization, newUserEligibility,
-                clock.getIfAvailable(Clock::systemUTC));
+                merchants.getIfAvailable(), clock.getIfAvailable(Clock::systemUTC));
     }
 
     static final class CampaignNewUserEligibility implements NewUserEligibilityPort {

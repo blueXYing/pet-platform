@@ -429,7 +429,8 @@ class PaymentSettlementMySqlTest {
             OrderSettlementFactsApi factsApi = (orderId, ctx) -> new OrderSettlementFact(
                     orderId, "5040", "6040", false, orderVerified.get(),
                     new BigDecimal("100.00"), BigDecimal.ZERO.setScale(2), new BigDecimal("20.00"),
-                    new BigDecimal("80.00"), orderRefunded.get(), null, null, null, orderVerAt.get());
+                    new BigDecimal("80.00"), orderRefunded.get(), null, null, null, orderVerAt.get(),
+                    BigDecimal.ZERO); // merchantCouponDiscount (contract 79): platform coupon only
 
             var onPaid = new SettlementEventConsumers.OnPaymentSucceeded(db.source, claims, factsApi, admin);
             var onVerified = new SettlementEventConsumers.OnOrderVerified(db.source, claims, factsApi, admin);
@@ -488,6 +489,41 @@ class PaymentSettlementMySqlTest {
     }
 
     // ---- Test fixtures & helpers -----------------------------------------------------------
+
+    /**
+     * Contract 79 section 6.2: the paid-order consumer books the merchant-funded part of the
+     * coupon discount as merchant_discount_amount and keeps only the rest as platform subsidy.
+     * Original 100, no flash, coupon 20 of which the merchant funds 10, paid 80, fee 0.6%:
+     * split base = 100 - 0 - 10 = 90 = paid 80 + platform subsidy 10; merchant share 89.46.
+     */
+    @Test
+    void merchantCouponDiscountIsMerchantFundedNotPlatformSubsidy() throws Exception {
+        try (Db db = Db.open()) {
+            var admin = db.adminService();
+            admin.upsertConfig(new UpsertSettlementConfigCommand(
+                    new CommandContext("req-mc", "t", OperatorType.PLATFORM_OPERATOR, "1", "ADMIN"),
+                    "5040", 10, new BigDecimal("0.6000"), true, "v1"));
+            OrderSettlementFactsApi factsApi = (orderId, ctx) -> new OrderSettlementFact(
+                    "3040", "5040", "6040", false, false,
+                    new BigDecimal("100.00"), BigDecimal.ZERO.setScale(2), new BigDecimal("20.00"),
+                    new BigDecimal("80.00"), BigDecimal.ZERO.setScale(2), null, null, null, null,
+                    new BigDecimal("10.00"));
+            db.insertPaidPayment(1040L, 2040L, 3040L, 5040L, "1", new BigDecimal("80.00"), LOG_NO, LOG_DATE);
+
+            new SettlementEventConsumers.OnPaymentSucceeded(db.source,
+                    new JdbcOutboxConsumeGuard(db.source, db.ids), factsApi, admin)
+                    .consume(event("9501", "PaymentSucceededEvent.v1", 1, "PAYMENT", 1040L,
+                            "{\"paymentOrderId\":\"1040\",\"orderId\":\"3040\",\"channelTradeNo\":\"T1\","
+                                    + "\"paidAmount\":80.00,\"paidAt\":\"2026-11-18T00:00:00Z\"}"));
+
+            SettlementOrderView view = admin.getByPaymentId("1040",
+                    new QueryContext("t", OperatorType.SYSTEM, null));
+            assertEquals(new BigDecimal("10.00"), view.merchantDiscountAmount());
+            assertEquals(new BigDecimal("10.00"), view.platformSubsidyAmount());
+            assertEquals(new BigDecimal("90.00"), view.splitBase());
+            assertEquals(new BigDecimal("89.46"), view.merchantShare());
+        }
+    }
 
     private static DispatchedEvent event(String id, String type, int ver, String aggType, long aggId, String json) {
         return new DispatchedEvent(id, type, ver, OffsetDateTime.now(ZoneOffset.UTC), aggType, aggId, "trace", json);

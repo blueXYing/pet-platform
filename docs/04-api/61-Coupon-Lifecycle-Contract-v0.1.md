@@ -36,11 +36,17 @@ CCR-C006 D1 遗留的 rule_json 结构随本契约冻结为固定四键对象（
 - 解析失败/类型不符/精度超限的成员按缺失处理；`amountOff` 缺失的券视为不可用（FREEZE 拒绝）。
 - V1 资格判定仅使用 amountOff/thresholdAmount；scopeSummary 为展示级字段，类目级适用范围的结构化
   scope 键随券模板管理 Issue 交付后再启用（CCR-CPN-LIFECYCLE-RULES-001 §3，V1 不自行发明）。
+  商家券的适用范围只做「归属商家 = 订单商家」判定（[79 号](79-Merchant-Coupon-Campaign-Contract-v0.1.md)）。
+- 模板的归属与出资方不进 `rule_json`，由 `coupon_template.owner_type/owner_merchant_id/funding_type`
+  列承载（[79 号](79-Merchant-Coupon-Campaign-Contract-v0.1.md)）；平台券存量行 `owner_type/funding_type`
+  全部为 `PLATFORM`（`owner_merchant_id` 为 NULL）。
 
 ## 3. 冻结（下单选券，38 号锁内）
 
 内部命令：`pet-coupon-api` 新增 `CouponCommandApi.freeze(CouponFreezeCommand)`，返回
-`CouponFreezeResult(couponInstanceId, discountAmount)`。调用方为 ORDER 创建内核，约束：
+`CouponFreezeResult(couponInstanceId, discountAmount, fundingType)`。`fundingType` 与
+`CouponFreezeCommand` 携带的订单 `merchantId` 均自 [79 号](79-Merchant-Coupon-Campaign-Contract-v0.1.md) 增加。
+调用方为 ORDER 创建内核，约束：
 
 - 仅可在已持有同店 ScheduleCapacityGuard 的可写事务内调用（`requireHeld` 强制）；缺提供器时维持
   38 号既有语义 503 失败关闭、不创建业务行。
@@ -49,6 +55,9 @@ CCR-C006 D1 遗留的 rule_json 结构随本契约冻结为固定四键对象（
   ④ 模板 `status='ACTIVE'` 且 `now ∈ [valid_start_at, valid_end_at]`；
   ⑤ `rule.amountOff` 可解析且 >0；⑥ `thresholdAmount` 存在时 `orderAmount >= thresholdAmount`；
   ⑦ `amountOff < orderAmount`（折后应付必须大于零：渠道不可收 0 元单，V1 无 0 元单规则，CCR §4）。
+  ⑧ 实例所属模板 `funding_type=MERCHANT` 时，模板 `owner_merchant_id` 必须等于订单 `merchantId`
+  （[79 号](79-Merchant-Coupon-Campaign-Contract-v0.1.md) 增补；不满足时返回 409 `COUPON_SCOPE_MISMATCH`
+  而非 `COUPON_NOT_AVAILABLE`，平台券不受影响）。
 - `discountAmount = rule.amountOff`（全额抵扣券面额，不做比例/阶梯折算）；`payAmount = orderAmount - discountAmount`。
 - 写入（与 ORDER/SCH 同事务，全部同 DataSource 当前读）：
   `coupon_instance` 行级 CAS：`UPDATE ... SET status='FROZEN', order_id=:orderId, frozen_at=now,
@@ -129,6 +138,8 @@ guard 事务内调用：
   rule_json 结构自本契约冻结（§2），投影键不再允许为 null 之外的新形态。
 - 12 号错误码表无新增码：复用 `COUPON_NOT_AVAILABLE`（冻结资格/并发失败）、`COUPON_NOT_FOUND`
   （C 端读侧既有 404 语义不变）。
+- 契约 79 起，商家券用于非本商家的订单时，下单冻结返回 409 `COUPON_SCOPE_MISMATCH`
+  （12 号 §9 既有码，自契约 79 启用）；C 端处理方式与 `COUPON_NOT_AVAILABLE` 相同——去券重选。
 
 ## 8. 事件与任务族对齐
 

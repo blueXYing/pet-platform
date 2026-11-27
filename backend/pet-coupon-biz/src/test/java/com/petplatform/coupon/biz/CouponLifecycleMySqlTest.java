@@ -42,6 +42,8 @@ class CouponLifecycleMySqlTest {
 
     private static final long USER = 9_410_000_000_000_201L;
     private static final String STORE = "94100000000000901";
+    /** Order merchant of the freeze command (contract 79); irrelevant for platform coupons. */
+    private static final long MERCHANT = 9_410_000_000_000_101L;
     private static final AtomicLong NUMBERS = new AtomicLong(41_000_000L);
     // Deterministic positive id stand-in; the coupon module only needs uniqueness.
     private static final SnowflakeIdGenerator IDS = NUMBERS::incrementAndGet;
@@ -103,7 +105,8 @@ class CouponLifecycleMySqlTest {
 
     private CouponFreezeCommand freeze(long couponId, long orderId, String price, OffsetDateTime deadline) {
         return new CouponFreezeCommand(context("freeze"), Long.toString(orderId),
-                Long.toString(couponId), Long.toString(USER), STORE, new BigDecimal(price), deadline);
+                Long.toString(couponId), Long.toString(USER), STORE, new BigDecimal(price), deadline,
+                Long.toString(MERCHANT));
     }
 
     private static OffsetDateTime deadline() {

@@ -214,17 +214,22 @@
         c.id,c.name,c.template_id,c.audience_type,c.per_user_limit,c.total_limit,c.budget_limit,
         c.issued_count,c.issued_amount,c.start_at,c.end_at,c.claim_method,c.status,c.version,
         c.created_by_id,c.created_at,c.updated_at,
+        c.owner_type,c.owner_merchant_id,c.owner_store_id,c.created_by_type,c.description,
+        c.reject_reason,c.submitted_at,c.reviewed_at,c.reviewed_by_type,c.reviewed_by_id,
         t.name AS template_name,t.status AS template_status,
         t.valid_start_at AS template_valid_start_at,t.valid_end_at AS template_valid_end_at,
+        t.funding_type AS template_funding_type,t.owner_merchant_id AS template_owner_merchant_id,
         t.rule_json
     </sql>
 
+    <!-- Platform operator face (contract 72): merchant campaigns (contract 79) never show here. -->
     <select id="selectCouponCampaigns"
             resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponCampaignEntities$CampaignRow">
         SELECT <include refid="couponCampaignColumns"/>
         FROM coupon_campaign c
         INNER JOIN coupon_template t ON t.id=c.template_id
         <where>
+            c.owner_type='PLATFORM'
             <if test="status != null">AND c.status=#{status}</if>
         </where>
         ORDER BY c.created_at DESC, c.id DESC
@@ -234,6 +239,7 @@
     <select id="countCouponCampaigns" resultType="long">
         SELECT COUNT(*) FROM coupon_campaign
         <where>
+            owner_type='PLATFORM'
             <if test="status != null">AND status=#{status}</if>
         </where>
     </select>
@@ -293,7 +299,7 @@
 
     <select id="selectCouponClaims"
             resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponCampaignEntities$ClaimRow">
-        SELECT id,campaign_id,user_id,coupon_instance_id,claimed_at,request_id
+        SELECT id,campaign_id,user_id,coupon_instance_id,claim_no,claimed_at,request_id
         FROM coupon_claim
         WHERE campaign_id=#{campaignId}
         ORDER BY claimed_at DESC, id DESC
@@ -308,25 +314,29 @@
         SELECT COUNT(*) FROM coupon_claim WHERE campaign_id=#{campaignId} AND user_id=#{userId}
     </select>
 
+    <!-- Merchant campaigns allow several claims per user (contract 79); callers decide limits
+         with countUserClaims under the campaign row lock, so this only answers "any claim?". -->
     <select id="selectClaimByCampaignUser"
             resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponCampaignEntities$ClaimRow">
-        SELECT id,campaign_id,user_id,coupon_instance_id,claimed_at,request_id
+        SELECT id,campaign_id,user_id,coupon_instance_id,claim_no,claimed_at,request_id
         FROM coupon_claim
         WHERE campaign_id=#{campaignId} AND user_id=#{userId}
+        ORDER BY claim_no ASC
+        LIMIT 1
     </select>
 
     <select id="selectClaimByRequestId"
             resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponCampaignEntities$ClaimRow">
-        SELECT id,campaign_id,user_id,coupon_instance_id,claimed_at,request_id
+        SELECT id,campaign_id,user_id,coupon_instance_id,claim_no,claimed_at,request_id
         FROM coupon_claim
         WHERE request_id=#{requestId}
     </select>
 
     <insert id="insertClaim">
         INSERT INTO coupon_claim
-            (id,campaign_id,user_id,coupon_instance_id,claimed_at,request_id)
+            (id,campaign_id,user_id,coupon_instance_id,claim_no,claimed_at,request_id)
         VALUES
-            (#{id},#{campaignId},#{userId},#{couponInstanceId},#{now},#{requestId})
+            (#{id},#{campaignId},#{userId},#{couponInstanceId},#{claimNo},#{now},#{requestId})
     </insert>
 
     <insert id="insertCouponCampaignAudit">
@@ -337,5 +347,277 @@
             (#{id},#{campaignId},#{actionType},#{fromStatus},#{toStatus},#{operatorId},#{requestId},
              #{traceId},#{detailJson},#{now})
     </insert>
+
+    <!-- merchant self-built coupons (contract 79 / CCR-MKT-MERCHANT-COUPON-001) -->
+
+    <insert id="insertMerchantTemplate">
+        INSERT INTO coupon_template
+            (id,name,status,owner_type,owner_merchant_id,funding_type,total_stock,issued_count,
+             valid_start_at,valid_end_at,rule_json,version,created_at,updated_at)
+        VALUES
+            (#{id},#{name},'DRAFT','MERCHANT',#{merchantId},'MERCHANT',NULL,0,
+             #{validStartAt},#{validEndAt},#{ruleJson},0,#{now},#{now})
+    </insert>
+
+    <update id="updateMerchantTemplate">
+        UPDATE coupon_template
+        SET name=#{name}, valid_start_at=#{validStartAt}, valid_end_at=#{validEndAt},
+            rule_json=#{ruleJson}, version=version+1, updated_at=#{now}
+        WHERE id=#{id} AND status='DRAFT' AND owner_type='MERCHANT'
+          AND version=#{expectedVersion} AND issued_count=0
+    </update>
+
+    <update id="activateMerchantTemplate">
+        UPDATE coupon_template
+        SET status='ACTIVE', version=version+1, updated_at=#{now}
+        WHERE id=#{id} AND status='DRAFT' AND owner_type='MERCHANT' AND version=#{expectedVersion}
+    </update>
+
+    <insert id="insertMerchantCouponCampaign">
+        INSERT INTO coupon_campaign
+            (id,name,template_id,owner_type,owner_merchant_id,owner_store_id,audience_type,
+             per_user_limit,total_limit,budget_limit,issued_count,issued_amount,start_at,end_at,
+             claim_method,status,version,created_by_id,created_by_type,description,created_at,updated_at)
+        VALUES
+            (#{id},#{name},#{templateId},'MERCHANT',#{merchantId},#{storeId},'ALL',
+             #{perUserLimit},#{totalLimit},#{budgetLimit},0,0.00,#{startAt},#{endAt},
+             'ACTIVE_CLAIM','DRAFT',1,#{createdById},'MERCHANT_OWNER',#{description},#{now},#{now})
+    </insert>
+
+    <update id="updateMerchantCouponCampaign">
+        UPDATE coupon_campaign
+        SET name=#{name}, per_user_limit=#{perUserLimit}, total_limit=#{totalLimit},
+            budget_limit=#{budgetLimit}, start_at=#{startAt}, end_at=#{endAt},
+            description=#{description}, version=version+1, updated_at=#{now}
+        WHERE id=#{campaignId} AND owner_type='MERCHANT'
+          AND status IN ('DRAFT','REJECTED') AND version=#{expectedVersion}
+    </update>
+
+    <update id="submitMerchantCouponCampaign">
+        UPDATE coupon_campaign
+        SET status='PENDING_REVIEW', reject_reason=NULL, submitted_at=#{now},
+            version=version+1, updated_at=#{now}
+        WHERE id=#{campaignId} AND owner_type='MERCHANT'
+          AND status IN ('DRAFT','REJECTED') AND version=#{expectedVersion}
+    </update>
+
+    <update id="cancelMerchantCouponCampaign">
+        UPDATE coupon_campaign
+        SET status='CANCELED', version=version+1, updated_at=#{now}
+        WHERE id=#{campaignId} AND owner_type='MERCHANT'
+          AND status IN ('DRAFT','REJECTED','PENDING_REVIEW') AND version=#{expectedVersion}
+    </update>
+
+    <update id="reviewMerchantCouponCampaign">
+        UPDATE coupon_campaign
+        SET status=#{toStatus}, reject_reason=#{rejectReason}, reviewed_at=#{now},
+            reviewed_by_type=#{reviewerType}, reviewed_by_id=#{reviewerId},
+            version=version+1, updated_at=#{now}
+        WHERE id=#{campaignId} AND owner_type='MERCHANT' AND status='PENDING_REVIEW'
+          AND version=#{expectedVersion}
+    </update>
+
+    <update id="pauseMerchantCouponCampaign">
+        UPDATE coupon_campaign
+        SET status='PAUSED', version=version+1, updated_at=#{now}
+        WHERE id=#{campaignId} AND owner_type='MERCHANT'
+          AND status IN ('SCHEDULED','ACTIVE') AND version=#{expectedVersion}
+    </update>
+
+    <update id="endMerchantCouponCampaign">
+        UPDATE coupon_campaign
+        SET status='ENDED', version=version+1, updated_at=#{now}
+        WHERE id=#{campaignId} AND owner_type='MERCHANT'
+          AND status IN ('SCHEDULED','ACTIVE','PAUSED') AND version=#{expectedVersion}
+    </update>
+
+    <sql id="merchantCouponOfMerchant">
+        FROM coupon_campaign c
+        INNER JOIN coupon_template t ON t.id=c.template_id
+        WHERE c.owner_type='MERCHANT' AND c.owner_merchant_id=#{merchantId}
+        <if test="status != null">AND c.status=#{status}</if>
+    </sql>
+
+    <select id="selectMerchantCouponCampaigns"
+            resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponCampaignEntities$CampaignRow">
+        SELECT <include refid="couponCampaignColumns"/>
+        <include refid="merchantCouponOfMerchant"/>
+        ORDER BY c.created_at DESC, c.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countMerchantCouponCampaigns" resultType="long">
+        SELECT COUNT(*) <include refid="merchantCouponOfMerchant"/>
+    </select>
+
+    <select id="selectMerchantCouponCampaignsForReview"
+            resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponCampaignEntities$CampaignRow">
+        SELECT <include refid="couponCampaignColumns"/>
+        FROM coupon_campaign c
+        INNER JOIN coupon_template t ON t.id=c.template_id
+        WHERE c.owner_type='MERCHANT'
+        <if test="status != null">AND c.status=#{status}</if>
+        <if test="merchantId != null">AND c.owner_merchant_id=#{merchantId}</if>
+        ORDER BY c.updated_at DESC, c.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countMerchantCouponCampaignsForReview" resultType="long">
+        SELECT COUNT(*) FROM coupon_campaign
+        WHERE owner_type='MERCHANT'
+        <if test="status != null">AND status=#{status}</if>
+        <if test="merchantId != null">AND owner_merchant_id=#{merchantId}</if>
+    </select>
+
+    <!-- Budget headroom is re-checked in Java (rule_json amount is parsed by the coupon kernel). -->
+    <select id="selectClaimableMerchantCouponCampaigns"
+            resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponCampaignEntities$CampaignRow">
+        SELECT <include refid="couponCampaignColumns"/>
+        FROM coupon_campaign c
+        INNER JOIN coupon_template t ON t.id=c.template_id
+        WHERE c.owner_type='MERCHANT' AND c.owner_merchant_id=#{merchantId}
+          AND c.status IN ('SCHEDULED','ACTIVE')
+          AND c.start_at &lt;= #{now} AND c.end_at &gt; #{now}
+          AND t.status='ACTIVE' AND t.funding_type='MERCHANT'
+          AND t.valid_start_at &lt;= #{now} AND t.valid_end_at &gt; #{now}
+          AND c.issued_count &lt; c.total_limit
+        ORDER BY c.end_at ASC, c.id ASC
+    </select>
+
+    <!-- One merchant campaign owns exactly one template, so instance counters key on template_id. -->
+    <select id="selectMerchantCouponStats"
+            resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponCampaignEntities$MerchantCouponStatsRow">
+        SELECT
+          (SELECT COUNT(*) FROM coupon_campaign
+             WHERE owner_type='MERCHANT' AND owner_merchant_id=#{merchantId}) AS total_campaign_count,
+          (SELECT COUNT(*) FROM coupon_campaign
+             WHERE owner_type='MERCHANT' AND owner_merchant_id=#{merchantId}
+               AND status='ACTIVE') AS active_campaign_count,
+          (SELECT COUNT(*) FROM coupon_campaign
+             WHERE owner_type='MERCHANT' AND owner_merchant_id=#{merchantId}
+               AND status='PENDING_REVIEW') AS pending_review_count,
+          (SELECT COUNT(*) FROM coupon_claim cl
+             JOIN coupon_campaign c ON c.id=cl.campaign_id
+             WHERE c.owner_type='MERCHANT' AND c.owner_merchant_id=#{merchantId}
+               AND cl.claimed_at &gt;= #{monthStart} AND cl.claimed_at &lt; #{monthEnd}) AS month_issued_count,
+          (SELECT COALESCE(SUM(c.issued_count),0) FROM coupon_campaign c
+             WHERE c.owner_type='MERCHANT' AND c.owner_merchant_id=#{merchantId}) AS issued_count,
+          (SELECT COUNT(*) FROM coupon_instance i
+             JOIN coupon_template t ON t.id=i.coupon_template_id
+             WHERE t.owner_type='MERCHANT' AND t.owner_merchant_id=#{merchantId}
+               AND i.status='USED') AS used_count,
+          (SELECT COUNT(DISTINCT l.order_id) FROM coupon_ledger l
+             JOIN coupon_instance i ON i.id=l.coupon_instance_id
+             JOIN coupon_template t ON t.id=i.coupon_template_id
+             WHERE t.owner_type='MERCHANT' AND t.owner_merchant_id=#{merchantId}
+               AND l.action='CONSUME') AS driven_order_count
+    </select>
+
+    <select id="selectMerchantCouponUsage"
+            resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponCampaignEntities$CampaignUsageRow">
+        SELECT c.id AS campaign_id,
+               (SELECT COUNT(*) FROM coupon_instance i
+                 WHERE i.coupon_template_id=c.template_id AND i.status='USED') AS used_count,
+               (SELECT COUNT(DISTINCT l.order_id) FROM coupon_ledger l
+                 JOIN coupon_instance i ON i.id=l.coupon_instance_id
+                 WHERE i.coupon_template_id=c.template_id AND l.action='CONSUME') AS driven_order_count
+        FROM coupon_campaign c
+        WHERE c.owner_type='MERCHANT' AND c.owner_merchant_id=#{merchantId}
+    </select>
+
+    <select id="selectMerchantCouponUsageByIds"
+            resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponCampaignEntities$CampaignUsageRow">
+        SELECT c.id AS campaign_id,
+               (SELECT COUNT(*) FROM coupon_instance i
+                 WHERE i.coupon_template_id=c.template_id AND i.status='USED') AS used_count,
+               (SELECT COUNT(DISTINCT l.order_id) FROM coupon_ledger l
+                 JOIN coupon_instance i ON i.id=l.coupon_instance_id
+                 WHERE i.coupon_template_id=c.template_id AND l.action='CONSUME') AS driven_order_count
+        FROM coupon_campaign c
+        WHERE c.owner_type='MERCHANT' AND c.id IN
+        <foreach collection="campaignIds" item="item" open="(" separator="," close=")">#{item}</foreach>
+    </select>
+
+    <sql id="claimedMerchantCoupon">
+        SELECT i.id AS coupon_instance_id, cl.campaign_id, c.owner_merchant_id AS campaign_merchant_id,
+               t.funding_type, t.owner_merchant_id AS template_owner_merchant_id, t.rule_json
+        FROM coupon_instance i
+        INNER JOIN coupon_template t ON t.id=i.coupon_template_id
+        INNER JOIN coupon_claim cl ON cl.coupon_instance_id=i.id
+        INNER JOIN coupon_campaign c ON c.id=cl.campaign_id
+    </sql>
+
+    <select id="selectMerchantCouponByOrder"
+            resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponCampaignEntities$MerchantCouponUsageRow">
+        <include refid="claimedMerchantCoupon"/>
+        WHERE i.order_id=#{orderId} AND i.status='USED'
+        LIMIT 1
+    </select>
+
+    <select id="selectMerchantCouponByInstance"
+            resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponCampaignEntities$MerchantCouponUsageRow">
+        <include refid="claimedMerchantCoupon"/>
+        WHERE i.id=#{instanceId}
+        LIMIT 1
+    </select>
+
+    <!-- Budget account and append-only budget ledger (contract 79 section 6.3). -->
+
+    <insert id="insertMerchantCouponBudget">
+        INSERT INTO merchant_coupon_budget
+            (id,campaign_id,merchant_id,budget_limit,issued_amount,used_amount,version,created_at,updated_at)
+        VALUES
+            (#{id},#{campaignId},#{merchantId},#{budgetLimit},0.00,0.00,0,#{now},#{now})
+    </insert>
+
+    <update id="updateMerchantCouponBudgetLimit">
+        UPDATE merchant_coupon_budget
+        SET budget_limit=#{budgetLimit}, version=version+1, updated_at=#{now}
+        WHERE campaign_id=#{campaignId} AND issued_amount=0.00
+    </update>
+
+    <select id="selectMerchantCouponBudgetForUpdate"
+            resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponCampaignEntities$MerchantCouponBudgetRow">
+        SELECT id,campaign_id,merchant_id,budget_limit,issued_amount,used_amount,version
+        FROM merchant_coupon_budget
+        WHERE campaign_id=#{campaignId}
+        FOR UPDATE
+    </select>
+
+    <update id="updateMerchantCouponBudgetAmounts">
+        UPDATE merchant_coupon_budget
+        SET issued_amount=issued_amount+#{issuedDelta},
+            used_amount=used_amount+#{usedDelta},
+            version=version+1, updated_at=#{now}
+        WHERE campaign_id=#{campaignId} AND version=#{expectedVersion}
+          AND issued_amount+#{issuedDelta} &gt;= 0
+          AND used_amount+#{usedDelta} &gt;= 0
+    </update>
+
+    <insert id="insertMerchantCouponBudgetLedger">
+        INSERT INTO merchant_coupon_budget_ledger
+            (id,campaign_id,merchant_id,coupon_instance_id,order_id,entry_type,amount,
+             issued_after,used_after,request_id,created_at)
+        VALUES
+            (#{id},#{campaignId},#{merchantId},#{couponInstanceId},#{orderId},#{entryType},#{amount},
+             #{issuedAfter},#{usedAfter},#{requestId},#{now})
+    </insert>
+
+    <select id="selectMerchantCouponBudgetLedgerId" resultType="java.lang.Long">
+        SELECT id FROM merchant_coupon_budget_ledger WHERE request_id=#{requestId}
+    </select>
+
+    <select id="selectMerchantCouponBudgetAudit"
+            resultType="com.petplatform.coupon.biz.infrastructure.persistence.entity.CouponCampaignEntities$MerchantCouponBudgetRow">
+        SELECT b.id,b.campaign_id,b.merchant_id,b.budget_limit,b.issued_amount,b.used_amount,b.version,
+               c.issued_amount AS campaign_issued_amount,
+               JSON_UNQUOTE(JSON_EXTRACT(t.rule_json,'$.amountOff')) AS campaign_amount_off,
+               (SELECT COUNT(*) FROM coupon_instance i
+                 WHERE i.coupon_template_id=c.template_id AND i.status='USED') AS campaign_used_count
+        FROM merchant_coupon_budget b
+        INNER JOIN coupon_campaign c ON c.id=b.campaign_id
+        INNER JOIN coupon_template t ON t.id=c.template_id
+        WHERE c.owner_type='MERCHANT'
+    </select>
 
 </mapper>

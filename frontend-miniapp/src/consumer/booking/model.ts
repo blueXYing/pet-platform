@@ -435,6 +435,7 @@ const createCodeMessages: Readonly<Record<string, string>> = {
   SCHEDULE_CAPACITY_EXCEEDED: '该时段已约满，请重新选择时段',
   SCHEDULE_PICKUP_RETURN_INTERVAL_INVALID: '接送间隔不足 120 分钟，请重新选择送回时段',
   COUPON_NOT_AVAILABLE: '所选优惠券不可用或已被占用，请取消用券或换一张后重试',
+  COUPON_SCOPE_MISMATCH: '该优惠券仅限发券商家的服务使用，请取消用券或换一张后重试',
   IDEMPOTENCY_KEY_CONFLICT: '该请求编号已被其他内容使用，请勿重复提交，稍后重试',
 }
 export function bookingCreateMessage(error: unknown): string {

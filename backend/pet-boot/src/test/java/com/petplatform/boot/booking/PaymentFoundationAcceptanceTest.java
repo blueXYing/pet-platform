@@ -649,7 +649,7 @@ class PaymentFoundationAcceptanceTest {
         if (discount.compareTo(command.orderAmount()) >= 0) {
           throw new ApiException("COUPON_NOT_AVAILABLE", "not discountable");
         }
-        return new CouponFreezeResult(command.couponInstanceId(), discount);
+        return new CouponFreezeResult(command.couponInstanceId(), discount, "PLATFORM");
       }
       @Override public CouponConsumeResult consume(CouponConsumeCommand command) {
         long couponId = db.jdbc.queryForObject(

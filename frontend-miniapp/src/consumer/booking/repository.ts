@@ -23,6 +23,8 @@ export const paymentSlot = (orderId: string): string => `order-pay:${orderId}`
 const CREATE_DEFINITELY_REJECTED: ReadonlySet<string> = new Set([
   'MERCHANT_DISABLED', 'STORE_DISABLED', 'SERVICE_NOT_BOOKABLE', 'SCHEDULE_NOT_AVAILABLE',
   'SCHEDULE_CAPACITY_EXCEEDED', 'SCHEDULE_PICKUP_RETURN_INTERVAL_INVALID', 'COUPON_NOT_AVAILABLE',
+  // 契约 79 §6.1：商家券只能用于发券商家自己的订单，同样按去券重选处理。
+  'COUPON_SCOPE_MISMATCH',
 ])
 
 export class RealBookingRepository implements BookingDeps {

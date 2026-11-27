@@ -27,7 +27,9 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
         MarketingCController.class,
         MarketingAssetController.class,
         AdminCouponCampaignController.class,
-        CCouponCampaignController.class})
+        CCouponCampaignController.class,
+        MerchantCouponAdminController.class,
+        CMerchantCouponCampaignController.class})
 @Order(Ordered.HIGHEST_PRECEDENCE + 10)
 public class MarketingHttpExceptionHandler {
 
@@ -63,7 +65,12 @@ public class MarketingHttpExceptionHandler {
             Map.entry("COUPON_CLAIM_LIMIT_REACHED", 409),
             Map.entry("COUPON_CLAIMED", 409),
             Map.entry("MARKETING_ASSET_INVALID", 400),
-            Map.entry("MARKETING_ASSET_TOO_LARGE", 413));
+            Map.entry("MARKETING_ASSET_TOO_LARGE", 413),
+            // Contract 79 (merchant self-built coupons P3): operator review and the C-side list.
+            Map.entry(com.petplatform.coupon.api.error.MerchantCouponApiCodes.INVALID, 400),
+            Map.entry(com.petplatform.coupon.api.error.MerchantCouponApiCodes.NOT_FOUND, 404),
+            Map.entry(com.petplatform.coupon.api.error.MerchantCouponApiCodes.STATE_NOT_ALLOWED, 409),
+            Map.entry(com.petplatform.coupon.api.error.MerchantCouponApiCodes.NAME_DUPLICATE, 409));
 
     @ExceptionHandler(ApiException.class)
     ApiResponse<Void> apiException(ApiException error, HttpServletResponse response) {

@@ -72,6 +72,8 @@ public class CServiceExceptionHandler {
             // Coupon lifecycle (contract 61 §7): freeze ineligibility/lost race through the
             // booking kernel reuses the Error12 §12 coupon code with its registry 409 status.
             Map.entry("COUPON_NOT_AVAILABLE", 409),
+            // Contract 79 §6.1: a merchant coupon used on an order of another merchant.
+            Map.entry("COUPON_SCOPE_MISMATCH", 409),
             Map.entry("COMMON_RATE_LIMITED", 429),
             Map.entry("COMMON_INTERNAL_ERROR", 500),
             Map.entry("COMMON_DEPENDENCY_UNAVAILABLE", 503),

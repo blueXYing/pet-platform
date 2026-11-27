@@ -1,0 +1,38 @@
+/* 创建/编辑优惠券页专属（共享基础在 ../index.css；Figma 12:8575）
+   设计值：输入/日期/文本域 #f9fafb 底 + #e5e7eb 描边 r23，文字 27rpx #111827、占位 #9ca3af；
+   优惠形式 chip 圆角 999、高 74rpx、左右 33rpx，选中 #5baae8/白字，置灰文字 #9ca3af；
+   主按钮 #5baae8 r23；活动说明 204rpx 高。头图不做（CCR）、立即上架开关改审核说明（41号 §2.1）、
+   预算字段为 41号 §5.4 产品要求（设计稿无）。 */
+.mmce-edit { padding: 10rpx 30rpx 40rpx; }
+.mmce-banner { margin-top: 24rpx; padding: 24rpx; border-radius: 24rpx; background: #ffffff; border: 2rpx solid #c0ecff; }
+.mmce-banner-reject { border-color: #fecaca; background: #fef2f2; }
+.mmce-banner-title { display: block; font-size: 25rpx; font-weight: 600; color: #dc2626; }
+.mmce-banner-title-plain { display: block; font-size: 25rpx; font-weight: 600; color: #111827; }
+.mmce-banner-text { display: block; margin-top: 8rpx; font-size: 23rpx; color: #6b7280; }
+
+.mmce-chips { display: flex; gap: 16rpx; margin-top: 14rpx; flex-wrap: wrap; }
+.mmce-chip { display: flex; align-items: center; justify-content: center; height: 74rpx; padding: 0 33rpx; border-radius: 999rpx; background: #ffffff; border: 2rpx solid #e5e7eb; }
+.mmce-chip text { font-size: 27rpx; color: #4b5563; }
+.mmce-chip-active { background: #5baae8; border-color: #5baae8; }
+.mmce-chip-active text { color: #ffffff; }
+.mmce-chip-disabled { background: #f9fafb; border-color: #e5e7eb; }
+.mmce-chip-disabled text { color: #c0c6cf; }
+.mmce-chip-hint { margin-left: 8rpx; font-size: 21rpx; }
+
+.mmce-quota-head { display: flex; }
+.mmce-quota-second { margin-left: auto; }
+.mmce-quota-row { display: flex; gap: 24rpx; }
+.mmce-quota-input { flex: 1; }
+.mmce-textarea { height: 204rpx; margin-top: 14rpx; }
+
+.mmce-review-note { margin-top: 30rpx; padding: 24rpx 30rpx; border-radius: 31rpx; background: #ffffff; border: 2rpx solid #c0ecff; }
+.mmce-review-title { display: block; font-size: 27rpx; font-weight: 500; color: #111827; }
+.mmce-review-text { display: block; margin-top: 6rpx; font-size: 23rpx; color: #9ca3af; }
+
+.mmce-actions { display: flex; gap: 22rpx; margin-top: 36rpx; }
+.mmce-action { flex: 1; height: 92rpx; border-radius: 24rpx; background: #5baae8; display: flex; align-items: center; justify-content: center; }
+.mmce-action-secondary { background: #ffffff; border: 2rpx solid #c0ecff; }
+.mmce-action-text { font-size: 27rpx; font-weight: 600; color: #ffffff; }
+.mmce-action-text-secondary { color: #5baae8; }
+.mmce-action-disabled { opacity: 0.55; }
+.mmce-tail { margin-top: 28rpx; text-align: center; }

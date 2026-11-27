@@ -101,8 +101,11 @@ public final class SettlementEventConsumers {
                         fact.storeId(),
                         fact.originalPrice(),
                         fact.flashDiscount(),
-                        BigDecimal.ZERO.setScale(2),
-                        fact.discountAmount(),
+                        // Contract 79 section 6.2 (78 section 3): the merchant-funded part of the
+                        // coupon discount leaves the split base; the rest of the discount stays
+                        // the platform-funded snapshot. Pre-P3 rows book 0.00 here, as before.
+                        fact.merchantCouponDiscount(),
+                        fact.discountAmount().subtract(fact.merchantCouponDiscount()).max(BigDecimal.ZERO),
                         paidAmount,
                         event.eventId()));
             });

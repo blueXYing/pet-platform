@@ -93,6 +93,18 @@ public final class CouponAdminStore {
         return run(work, execution, true);
     }
 
+    /**
+     * Runs on the caller's already-open transaction on the same DataSource and never opens one:
+     * the mapper session takes the transaction-bound connection, so its writes commit or roll
+     * back together with the caller's work (budget ledger entries next to coupon lifecycle writes).
+     */
+    public <T> T join(Work<T> work) {
+        if (!org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("coupon admin join requires an open transaction");
+        }
+        return work.run(template.getMapper(CouponAdminMapper.class));
+    }
+
     public Binding admit(String requestKey, AdminCouponCanonicalParams.Canonical canonical) {
         return run(m -> {
             CouponAdminBindingEntity row = m.selectBindingForUpdate(requestKey);

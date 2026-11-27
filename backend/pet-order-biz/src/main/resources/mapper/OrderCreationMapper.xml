@@ -26,12 +26,14 @@
        service_staff_id,order_stage,payment_status,verification_status,fulfillment_type,
        original_amount,discount_amount,pay_amount,refunded_amount,reschedule_count,
        original_price,flash_discount,price_source,flash_price_id,
+       coupon_funding_type,merchant_coupon_discount,
        appointment_start_at,appointment_end_at,payment_expire_at,version,created_at,updated_at)
     VALUES
       (#{id},#{orderNo},#{userId},#{merchantId},#{storeId},#{serviceId},#{petId},#{reservationId},
        NULL,'PENDING_PAYMENT','INIT','UNVERIFIED',#{fulfillmentType},
        #{price},#{discountAmount},#{payAmount},0.00,0,
        #{originalPrice},#{flashDiscount},#{priceSource},#{flashPriceId,jdbcType=BIGINT},
+       #{couponFundingType,jdbcType=VARCHAR},#{merchantCouponDiscount},
        #{appointmentStart},#{appointmentEnd},#{paymentExpireAt},0,UTC_TIMESTAMP(3),UTC_TIMESTAMP(3))
   </insert>
   <insert id="insertServiceSnapshot">

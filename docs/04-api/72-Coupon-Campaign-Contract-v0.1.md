@@ -1,6 +1,7 @@
 # 券活动与领取契约 v0.1（CPN-003）
 
 状态：IMPLEMENTED_INTERNAL_DEFAULT_OFF，最终以实现 PR 的 CI 为准。2026-10-27。
+2026-11-27 修订（[契约 79](79-Merchant-Coupon-Campaign-Contract-v0.1.md) / [CCR-MKT-MERCHANT-COUPON-001](../../planning/ccr/CCR-MKT-MERCHANT-COUPON-001.md)）：商家自建优惠券复用本契约的活动与领取模型；商家券活动的归属、审核态与每人限领见契约 79，平台券活动行为不变。
 依据：[38 号裁决补充](../01-prd/38-营销活动中心裁决补充-v1.0.md)、
 [CCR-MKT-001](../../planning/ccr/CCR-MKT-001.md)、运营端 PRD 6.4.2、C 端 PRD 5.1.21/5.4.4、
 [61 号券生命周期契约](61-Coupon-Lifecycle-Contract-v0.1.md)、
@@ -20,17 +21,17 @@
 | 字段 | 类型 | 约束 |
 |---|---|---|
 | campaignId | String | Snowflake |
-| name | String | 2..50，同期不重名 |
+| name | String | 2..50，同期不重名；平台活动之间不重名，商家券活动按归属商家不重名（仅约束未终结活动，已取消/已结束的活动释放名称；契约 79） |
 | templateId | String | 必须是 ACTIVE 券模板，且模板在有效期内 |
 | audienceType | enum | `ALL` / `NEW_USER` |
-| perUserLimit | int | V1 固定 1（PRD 1..10，多张同活动后续扩展） |
+| perUserLimit | int | 平台活动固定 1；商家券活动 1..10（契约 79） |
 | totalLimit | int | 1..1,000,000 |
 | budgetLimit | Decimal(18,2) | >0；`>= amountOff × 最低计划发放量` 由运营输入保证，服务端只校验 >0 |
 | issuedCount | int | 已领取数 |
 | issuedAmount | Decimal(18,2) | 已领取券面额合计；预算守卫使用 |
 | startAt/endAt | ISO-8601 | `startAt < endAt`，且必须在模板有效期内 |
 | claimMethod | enum | V1 固定 `ACTIVE_CLAIM` |
-| status | enum | `DRAFT/SCHEDULED/ACTIVE/PAUSED/ENDED` |
+| status | enum | `DRAFT/SCHEDULED/ACTIVE/PAUSED/ENDED`；商家券活动另有 `PENDING_REVIEW/REJECTED/CANCELED`（契约 79） |
 | version | int | 乐观锁 |
 
 ### 2.2 `coupon_claim`
@@ -44,8 +45,10 @@
 | claimedAt | ISO-8601 | UTC 毫秒 |
 | requestId | String | 终端幂等键 |
 
-`UNIQUE(campaign_id,user_id)` 防一人多领；`UNIQUE(request_id)` 防重放。V1 每人限领固定为 1；
-perUserLimit>1 的多次领取需另开 CCR 调整唯一键与并发守卫。
+唯一键是 `UNIQUE(campaign_id,user_id,claim_no)`（`claim_no`＝同一用户在同一活动的第几次领取，自 1 起；契约 79
+由 `UNIQUE(campaign_id,user_id)` 改来），`UNIQUE(request_id)` 防重放。平台活动每人限领仍固定为 1（服务层在
+活动行锁内判定）；`perUserLimit>1` 的多次领取由 CCR-MKT-MERCHANT-COUPON-001（契约 79）对商家券活动放开，
+并发守卫同样在活动行锁内判定。
 
 ## 3. 规则
 
@@ -64,6 +67,7 @@ perUserLimit>1 的多次领取需另开 CCR 调整唯一键与并发守卫。
   不可用失败关闭 503/404，不默认放行。
 - 同一用户重复领取同活动：`(campaign_id,user_id)` 已存在时，同 requestId 同参返回首回执；
   新 requestId 返回 409 `COUPON_CLAIMED`；`perUserLimit` 满返回 409 `COUPON_CLAIM_LIMIT_REACHED`。
+  以上为平台活动规则（每人一张）；商家券活动按每人限领 1..10 多次领取，见契约 79。
 - 券实例/台账/订单链路零改动：下单仍走 61 号冻结，支付成功消费，超时释放，退款按 SSOT §9。
 
 ## 4. 运营端接口
@@ -122,4 +126,4 @@ perUserLimit>1 的多次领取需另开 CCR 调整唯一键与并发守卫。
 
 ## 7. 不做
 
-折扣券、积分抵扣混合、第三方券包、被动发券自动触发、商家自主发券、券转赠、券活动预算分摊/结算。
+折扣券、积分抵扣混合、第三方券包、被动发券自动触发、商家不经审核直接发券（商家自建优惠券已由契约 79 交付，须运营审核）、券转赠、券活动预算分摊/结算（商家券预算账本见契约 79）。

@@ -23,5 +23,6 @@ public interface OrderSettlementFactsMapper {
         public Long refundOrderId;
         public Long currentAftersaleId;
         public LocalDateTime verifiedAt;
+        public BigDecimal merchantCouponDiscount;
     }
 }

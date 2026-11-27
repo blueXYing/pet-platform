@@ -58,6 +58,8 @@ import SettlementOrderListPage from './pages/SettlementOrderListPage';
 import SettlementWithdrawalListPage from './pages/SettlementWithdrawalListPage';
 import SettlementSubsidyReportPage from './pages/SettlementSubsidyReportPage';
 import SettlementReconcilePage from './pages/SettlementReconcilePage';
+import { createMerchantCouponAdminClient } from './api/merchantCouponAdmin';
+import MerchantCouponPage from './pages/MerchantCouponPage';
 
 const READ_ACTION = 'merchant.application.read';
 const auth = createAuthClient();
@@ -80,6 +82,7 @@ const serviceFlashPriceAdmin = createServiceFlashPriceAdminClient();
 const communityAdmin = createCommunityAdminClient();
 const serviceCategories = createServiceCategoryAdminClient();
 const settlementAdmin = createSettlementAdminClient();
+const merchantCouponAdmin = createMerchantCouponAdminClient();
 
 /** 403 文案与旧版逐字一致；缺省兜底是积分任务配置。 */
 const FORBIDDEN_TITLES: Record<string, string> = {
@@ -103,6 +106,8 @@ const FORBIDDEN_TITLES: Record<string, string> = {
   'community.post.read': '403 · 无社区审核权限',
   'marketing.campaign.read': '403 · 无营销活动权限',
   'service.flash-price.read': '403 · 无秒杀审核权限',
+  'coupon.campaign.read': '403 · 无商家券审核权限',
+  'coupon.campaign.publish': '403 · 无商家券审核操作权限',
   'settlement.report.read': '403 · 无结算报表权限',
   'settlement.config.write': '403 · 无结算配置权限',
   'settlement.receiver.write': '403 · 无分账接收方管理权限',
@@ -146,6 +151,7 @@ export function App() {
     serviceCategories.resetContext(nextToken);
     agreementAdmin.resetContext(nextToken);
     settlementAdmin.resetContext(nextToken);
+    merchantCouponAdmin.resetContext(nextToken);
     try {
       const nextSession = await sessions.session(nextToken);
       const nextPermissions = await sessions.permissions(nextToken);
@@ -200,6 +206,7 @@ export function App() {
     serviceCategories.resetContext();
     agreementAdmin.resetContext();
     settlementAdmin.resetContext();
+    merchantCouponAdmin.resetContext();
   }, [token]);
 
   if (location.pathname !== '/login' && !token) return <Navigate to="/login" replace />;
@@ -233,6 +240,7 @@ export function App() {
   const canManageServiceCategories = permissions?.actionCodes.includes('service.category.manage') === true;
   const canReadFlashPrices = permissions?.actionCodes.includes('service.flash-price.read') === true;
   const canReviewFlashPrices = permissions?.actionCodes.includes('service.flash-price.review') === true;
+  const canReadMerchantCoupons = permissions?.actionCodes.includes('coupon.campaign.read') === true;
   const canReadSettlement = permissions?.actionCodes.includes('settlement.report.read') === true;
   const canWriteSettlementConfig = permissions?.actionCodes.includes('settlement.config.write') === true;
   const canWriteSettlementReceiver = permissions?.actionCodes.includes('settlement.receiver.write') === true;
@@ -280,6 +288,7 @@ export function App() {
     { type: 'group', label: '运营', children: [
       menuItem('/ops/marketing', '营销活动', canReadMarketing),
       menuItem('/ops/service-flash-prices', '秒杀审核', canReadFlashPrices),
+      menuItem('/ops/merchant-coupons', '商家券审核', canReadMerchantCoupons),
       menuItem('/ops/coupons/templates', '券模板', canReadCoupons),
       menuItem('/ops/coupons/instances', '券实例台账', canReadInstances),
       menuItem('/ops/ledger/points', '积分台账', canReadPointsLedger),
@@ -324,6 +333,7 @@ export function App() {
     <Route path="/ops/settings/agreement" element={guard(<AgreementAdminPage client={agreementAdmin} canWrite={permissions?.actionCodes.includes('merchant.application.decide') === true} onAuthLost={signOut} />, 'system.parameter.read')} />
     <Route path="/ops/service-categories" element={guard(<ServiceCategoryAdminPage client={serviceCategories} canWrite={canManageServiceCategories} onAuthLost={signOut} />, 'service.category.read')} />
     <Route path="/ops/service-flash-prices" element={guard(<ServiceFlashPricePage client={serviceFlashPriceAdmin} canReview={canReviewFlashPrices} onAuthLost={signOut} />, 'service.flash-price.read')} />
+    <Route path="/ops/merchant-coupons" element={guard(<MerchantCouponPage client={merchantCouponAdmin} canReview={canPublishCouponCampaigns} onAuthLost={signOut} />, 'coupon.campaign.read')} />
     <Route path="/ops/community" element={guard(<CommunityModerationPage client={communityAdmin} canModerate={canModerateCommunity} canHandleReports={canHandleCommunityReports} onAuthLost={signOut} />, 'community.post.read')} />
     <Route path="/ops/marketing" element={guard(<MarketingCenterPage client={marketingAdmin} couponClient={couponAdmin} categoryClient={serviceCategories} canManage={canManageMarketing} canPublish={canPublishMarketing} canReview={canReviewMarketing} canCouponManage={canManageCouponCampaigns} canCouponPublish={canPublishCouponCampaigns} onAuthLost={signOut} />, 'marketing.campaign.read')} />
     <Route path="/settlement/configs" element={guard(<SettlementConfigPage client={settlementAdmin} canWrite={canWriteSettlementConfig} onAuthLost={signOut} />, ['settlement.report.read', 'settlement.config.write'])} />

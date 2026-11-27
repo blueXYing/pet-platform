@@ -85,6 +85,9 @@ assert.deepEqual(packages.map(p => ({ root: p.root, pages: p.pages })), [
     // Service flash price P2 (77号): flash list + editor (Figma 18:9537/18:9694).
     'pages/marketing/flash/index',
     'pages/marketing/flash/edit',
+    // Merchant coupon campaigns P3 (79号): coupon list + editor (Figma 12:8436/12:8575).
+    'pages/marketing/coupon/index',
+    'pages/marketing/coupon/edit',
     // 2026-11-04 Figma restore PR #211 batch 1: user-approved minimal "我的" hub above the tab bar.
     'pages/mine/index',
     // CCR-PAY-CENTER-001 Stage 7 (Contract 80 §5): OWNER-only wallet/withdrawal & read-only receiver status.

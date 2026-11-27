@@ -27,7 +27,8 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
       ServiceFlashPriceAdminController.class,
       MerchantScheduleController.class,
       MerchantOrderVerificationController.class,
-      MerchantVerificationReadController.class
+      MerchantVerificationReadController.class,
+      MerchantCouponController.class
     })
 @Order(Ordered.HIGHEST_PRECEDENCE + 20)
 public final class MerchantHttpExceptionHandler {
@@ -69,6 +70,12 @@ public final class MerchantHttpExceptionHandler {
                   .FLASH_PRICE_INVALID, 409),
           Map.entry(com.petplatform.service.api.error.ServiceFlashPriceApiCodes
                   .FLASH_PRICE_DISABLED, 503),
+          // Merchant self-built coupons (contract 79 §7): 400 for malformed input, 404 for a
+          // missing/unowned row, 409 for state and naming conflicts.
+          Map.entry(com.petplatform.coupon.api.error.MerchantCouponApiCodes.INVALID, 400),
+          Map.entry(com.petplatform.coupon.api.error.MerchantCouponApiCodes.NOT_FOUND, 404),
+          Map.entry(com.petplatform.coupon.api.error.MerchantCouponApiCodes.STATE_NOT_ALLOWED, 409),
+          Map.entry(com.petplatform.coupon.api.error.MerchantCouponApiCodes.NAME_DUPLICATE, 409),
           // Verification HTTP slice (47号§4/48号K2 via 10号; 12号 §7 codes are 409 business
           // conflicts — failed code checks themselves return as 200 receipts, not errors).
           Map.entry("VERIFICATION_NOT_ALLOWED", 409),
