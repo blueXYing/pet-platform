@@ -277,6 +277,8 @@ CREATE TABLE pet_order (
     price_source                    VARCHAR(16)    NOT NULL DEFAULT 'LIST' COMMENT 'LIST/FLASH',
     flash_price_id                  BIGINT         NULL COMMENT '闪价记录',
     discount_amount                 DECIMAL(18,2)  NOT NULL DEFAULT 0.00,
+    coupon_funding_type             VARCHAR(16)    NULL COMMENT 'PLATFORM/MERCHANT；无券为 NULL（契约 79 §6.2）',
+    merchant_coupon_discount        DECIMAL(18,2)  NOT NULL DEFAULT 0.00 COMMENT '出资方为商家的券面额；无商家券为 0.00',
     pay_amount                      DECIMAL(18,2)  NOT NULL,
     refunded_amount                 DECIMAL(18,2)  NOT NULL DEFAULT 0.00,
     reschedule_count                INT            NOT NULL DEFAULT 0,
@@ -598,6 +600,9 @@ CREATE TABLE coupon_template (
     id                    BIGINT         NOT NULL,
     name                  VARCHAR(128)   NOT NULL,
     status                VARCHAR(16)    NOT NULL COMMENT 'DRAFT/ACTIVE/OFFLINE',
+    owner_type            VARCHAR(16)    NOT NULL DEFAULT 'PLATFORM' COMMENT 'PLATFORM/MERCHANT（CCR-MKT-MERCHANT-COUPON-001）',
+    owner_merchant_id     BIGINT         NULL COMMENT '商家券模板的归属商家；平台券为 NULL',
+    funding_type          VARCHAR(16)    NOT NULL DEFAULT 'PLATFORM' COMMENT '出资方 PLATFORM/MERCHANT',
     total_stock           BIGINT         NULL,
     issued_count          BIGINT         NOT NULL DEFAULT 0,
     valid_start_at        DATETIME(3)    NOT NULL,
@@ -607,7 +612,11 @@ CREATE TABLE coupon_template (
     created_at            DATETIME(3)    NOT NULL,
     updated_at            DATETIME(3)    NOT NULL,
     PRIMARY KEY (id),
-    KEY idx_coupon_template_status_time (status, valid_start_at, valid_end_at)
+    KEY idx_coupon_template_status_time (status, valid_start_at, valid_end_at),
+    CONSTRAINT chk_coupon_template_owner CHECK (
+        (owner_type = 'PLATFORM' AND owner_merchant_id IS NULL AND funding_type = 'PLATFORM')
+        OR (owner_type = 'MERCHANT' AND owner_merchant_id IS NOT NULL AND funding_type = 'MERCHANT')
+    )
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE coupon_instance (

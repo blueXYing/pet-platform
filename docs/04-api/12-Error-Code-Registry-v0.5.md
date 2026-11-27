@@ -128,7 +128,7 @@ HTTP 映射只属于 Adapter 层；内部 Java API 通过稳定 code 表达同�
 |---|---|
 | COUPON_NOT_FOUND | 券不存在 |
 | COUPON_NOT_AVAILABLE | 券不可用 |
-| COUPON_SCOPE_MISMATCH | 不满足使用范围 |
+| COUPON_SCOPE_MISMATCH | 不满足使用范围（契约 79 / CCR-MKT-MERCHANT-COUPON-001，2026-11-27 起启用，HTTP 409） |
 | COUPON_THRESHOLD_NOT_MET | 未达到使用门槛 |
 | COUPON_ALREADY_FROZEN | 已被其他订单冻结 |
 | COUPON_FREEZE_EXPIRED | 冻结已失效 |
@@ -212,7 +212,7 @@ HTTP 映射只属于 Adapter 层；内部 Java API 通过稳定 code 表达同�
 |---|---|
 | COUPON_NOT_FOUND | 券不存在 |
 | COUPON_NOT_AVAILABLE | 券不可用 |
-| COUPON_SCOPE_MISMATCH | 不满足使用范围 |
+| COUPON_SCOPE_MISMATCH | 不满足使用范围（契约 79 / CCR-MKT-MERCHANT-COUPON-001，2026-11-27 起启用，HTTP 409） |
 | COUPON_THRESHOLD_NOT_MET | 未达到使用门槛 |
 | COUPON_ALREADY_FROZEN | 已被其他订单冻结 |
 | COUPON_FREEZE_EXPIRED | 冻结已失效 |
@@ -266,6 +266,10 @@ HTTP 映射只属于 Adapter 层；内部 Java API 通过稳定 code 表达同�
 | FLASH_PRICE_LIMIT_REACHED | 超出闪价每人限领 | 409 |
 | FLASH_PRICE_INVALID | 闪价折扣/价格约束不满足（flashPrice ≥ 当前价等） | 409 |
 | FLASH_PRICE_DISABLED | 开关关闭时内部 reserve 被调用（fail-closed，不应发生） | 503 |
+| MERCHANT_COUPON_INVALID | 商家券活动请求字段不合法（契约 79 / CCR-MKT-MERCHANT-COUPON-001，2026-11-27）；状态机或动作前置条件不满足另用 MERCHANT_COUPON_STATE_NOT_ALLOWED | 400 |
+| MERCHANT_COUPON_NOT_FOUND | 商家券活动不存在或不属于该商家 | 404 |
+| MERCHANT_COUPON_STATE_NOT_ALLOWED | 商家券活动状态机不允许该动作，或动作前置条件不满足（活动已过有效期、券模板不可编辑/不可通过；版本已变化用 COMMON_CONFLICT） | 409 |
+| MERCHANT_COUPON_NAME_DUPLICATE | 同一商家内存在同名且未终结（非 `CANCELED/ENDED`）的活动 | 409 |
 | MERCHANT_NOT_FOUND | 商家不存在 |
 | MERCHANT_DISABLED | 商家不可接受新订单 |
 | STORE_NOT_FOUND | 门店不存在 |
@@ -525,7 +529,7 @@ HTTP 映射只属于 Adapter 层；内部 Java API 通过稳定 code 表达同�
 |---|---|
 | COUPON_NOT_FOUND | 券不存在 |
 | COUPON_NOT_AVAILABLE | 券不可用 |
-| COUPON_SCOPE_MISMATCH | 不满足使用范围 |
+| COUPON_SCOPE_MISMATCH | 不满足使用范围（契约 79 / CCR-MKT-MERCHANT-COUPON-001，2026-11-27 起启用，HTTP 409） |
 | COUPON_THRESHOLD_NOT_MET | 未达到使用门槛 |
 | COUPON_ALREADY_FROZEN | 已被其他订单冻结 |
 | COUPON_FREEZE_EXPIRED | 冻结已失效 |
@@ -756,6 +760,22 @@ C 端分类筛选的未知/停用 `categoryCode` 按 74 号契约 §8 的通用�
 通用复用：400 `COMMON_INVALID_ARGUMENT`（字段结构/长度/枚举，如 `priceModeLabel` 非法、驳回原因为空）、401 `COMMON_UNAUTHORIZED`、403 `COMMON_FORBIDDEN`（商家非 OWNER、员工写、运营动作码 `service.flash-price.read/review` 缺失）、404 `COMMON_NOT_FOUND`（服务不存在）、409 `COMMON_CONFLICT`（乐观 version 冲突/请求锁忙）/`IDEMPOTENCY_KEY_CONFLICT`（同 requestId 异参）、503 `COMMON_DEPENDENCY_UNAVAILABLE`。
 
 语义区分：`FLASH_PRICE_INVALID` 是业务价格约束失败（参数结构合法但闪价不满足 >0 且 < 当前价）；折扣率不在 (0,10) 或超 1 位小数等结构问题走 `COMMON_INVALID_ARGUMENT`。运营审核通过时重读服务当前价发现 `flashPrice ≥ 当前价` 用 `FLASH_PRICE_INVALID`（提示商家调整），不是 STATE_NOT_ALLOWED。新动作码 `service.flash-price.read/review` 登记 `AdminPermissionEvaluator.DEPLOYED_ACTIONS`。
+
+## 商家自建优惠券（契约 79，CCR-MKT-MERCHANT-COUPON-001，2026-11-27）
+
+新增业务码（同时登记 §12 MERCHANT/SERVICE 表；`COUPON_SCOPE_MISMATCH` 为 §9 COUPON 表既有码，本次启用）：
+
+| Code | 含义 | 建议 HTTP |
+|---|---|---:|
+| MERCHANT_COUPON_INVALID | 商家券活动请求字段不合法 | 400 |
+| MERCHANT_COUPON_NOT_FOUND | 商家券活动不存在或不属于该商家 | 404 |
+| MERCHANT_COUPON_STATE_NOT_ALLOWED | 商家券活动状态机不允许该动作，或动作前置条件不满足（活动已过有效期、券模板不可编辑/不可通过） | 409 |
+| MERCHANT_COUPON_NAME_DUPLICATE | 同一商家内存在同名且未终结（非 `CANCELED/ENDED`）的活动 | 409 |
+| COUPON_SCOPE_MISMATCH | 商家券用于非本商家订单：冻结时实例所属模板 `funding_type=MERCHANT` 且 `owner_merchant_id` ≠ 订单 `merchantId`（61 号 §3 资格判定第 ⑧ 条）；平台券不受影响。既有码，自契约 79 起启用 | 409 |
+
+商家准入不新增错误码：当前用户不是该门店 OWNER 时复用 `COMMON_NOT_FOUND`（404，与活动不存在不可区分）；商家或门店不可运营时复用服务域既定的 409 状态码。运营端沿 ADMIN_WEB Bearer 与既有动作码 `coupon.campaign.read`（读）/ `coupon.campaign.publish`（审核与处置），不新增动作码。
+
+领取侧复用 72 号既有码（均 409，见上文「营销活动中心 HTTP 状态映射」）：`COUPON_CAMPAIGN_NOT_CLAIMABLE`、`COUPON_CAMPAIGN_SOLD_OUT`、`COUPON_CLAIM_LIMIT_REACHED`、`COUPON_CLAIMED`。
 
 ## 社区 HTTP 状态映射（2026-10-28 73 号，CCR-COM-001）
 

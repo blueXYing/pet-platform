@@ -51,7 +51,7 @@ Schema：[SQL78](../03-database/78-Payment-Settlement-Schema-v0.1.sql)、[SQL79]
 沿用 40 号 §2/§3、CCR §5、75 号 §5.5：
 
 1. **原始分账基数**：
-   `base0 = original_price - flash_discount_amount - merchant_discount_amount`（均 `>= 0.00`；V1 `merchant_discount_amount = 0.00`）。
+   `base0 = original_price - flash_discount_amount - merchant_discount_amount`（均 `>= 0.00`；`merchant_discount_amount` 取订单快照 `pet_order.merchant_coupon_discount`，见[契约 79](./79-Merchant-Coupon-Campaign-Contract-v0.1.md)，无商家券为 `0.00`）。
 2. **分账前退款重算**：
    - `refunded_amount >= paid_amount` → 结算单 `CANCELED`（`split_base = 0.00`, `merchant_share = 0.00`）。
    - `0 < refunded_amount < paid_amount` → 按已付剩余比例向下取整到分：

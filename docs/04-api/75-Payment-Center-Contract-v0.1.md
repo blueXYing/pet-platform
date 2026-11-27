@@ -136,7 +136,7 @@ record CenterPaymentSuccessFact(String paymentId, String paymentNo, String bizTy
 依据 [41 号裁决补充](../01-prd/41-商家营销工具与会员卡裁决补充-v1.0.md) §4.6，[40 号裁决补充](../01-prd/40-支付中心订单分账与提现裁决补充-v1.0.md) §3.4「预留商家券：V1 券模板无出资方字段，现有券全部按平台券处理」中对**服务限时价格（闪价）**的口径放开如下：
 
 1. **分账基数 = 服务原价 − 闪价优惠 − 商家券优惠**；平台券不扣商家（沿用 40 号 §3.1，分账基数按使用平台券之前的价格计算）。
-2. 闪价优惠 = 订单快照 `original_price − price`（= `pet_order.flash_discount`，`price_source=FLASH` 时 >0）；商家券优惠 = 出资方为商家的券面额（P3 交付，当前恒 0）。订单快照字段（`original_price/flash_discount/price_source/flash_price_id`）由 38 号下单内核落库（契约 77 §6.5），阶段 2 分账直接读取，不重算。
+2. 闪价优惠 = 订单快照 `original_price − price`（= `pet_order.flash_discount`，`price_source=FLASH` 时 >0）；商家券优惠 = 出资方为商家的券面额（[契约 79](79-Merchant-Coupon-Campaign-Contract-v0.1.md)：订单快照 `pet_order.merchant_coupon_discount`，无商家券为 0）。订单快照字段（`original_price/flash_discount/price_source/flash_price_id`）由 38 号下单内核落库（契约 77 §6.5），阶段 2 分账直接读取，不重算。
 3. 闪价订单实付 = 闪价 − 券（折后应付 >0，61 号）；商家份额 = 分账基数 × (1 − 商家对外手续费率)，向下取整（40 号 §2 不变）。
 4. **本节为契约口径**：支付中心阶段 2（结算单/分账执行）未交付前不实现任何计算；P2 仅保证订单快照可提供上述字段。阶段 2 实现时以本节与 40 号 §2/§3 为准，遇 NULL（存量 LIST 订单无闪价字段语义）按闪价优惠 0 处理，不猜测。
 

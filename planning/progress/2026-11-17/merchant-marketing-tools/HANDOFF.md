@@ -135,11 +135,13 @@ git -C /mnt/d/wt-marketing-tools status --short
 |---|---|---|
 | P1 | 41 号 + CCR-MKT-TOOLS-001 + 76 号契约在仓库（已存在） | 测试/架构/构建通过；开关默认关闭 |
 | P2 | 41 号补充在仓库；执行者先创建 CCR-SVC-FLASH-PRICE-001 + 77 号契约 + 38/11/74/75 修订 | P2 测试通过；开关默认关闭 |
-| P3 | 支付中心阶段 2 代码/契约在仓库（检查 `settlement_order`/`SettlementAdminApi`）；执行者先创建 CCR-MKT-MERCHANT-COUPON-001 + 78 号契约 | 预算/分账/退款联调 |
+| P3 | 支付中心阶段 2 代码/契约在仓库（检查 `settlement_order`/`SettlementAdminApi`）；执行者先创建 CCR-MKT-MERCHANT-COUPON-001 + 79 号契约 | 预算/分账/退款联调 |
 | P4a | P3 可用；执行者先创建 CCR-MKT-REFERRAL-001 + 79 号契约 | 奖励/防刷/退款撤销测试 |
 | P4b | 支付中心阶段 5+ | 另立 CCR |
 | P5 | 法务/财务书面确认 + 支付中心阶段 2–6 + 订单支付方式契约；执行者先创建 CCR-MEMBER-CARD-001 + 80 号契约 + CCR-PAY-CENTER-002 | 各子阶段验收；资金对账一致 |
 | P6 | 新裁决 + 事件/隐私评审 | 归因口径验收 |
+
+编号说明——`docs/04-api` 的 78、80 已被支付结算契约占用（PR #235），P3 改用 79；P4/P5 原预留的 79/80 已不可用，开工时另择空号。
 
 **门禁缺失时**：停止，报告缺失的文件/接口/表，不要用 stub/假数据绕过，也不要问用户「是否继续」。
 
@@ -480,7 +482,7 @@ service_flash_price_command  -- requestId 幂等
 ### 6.1 文档/数据
 
 - 新建 `planning/ccr/CCR-MKT-MERCHANT-COUPON-001.md`。
-- 新建 `docs/04-api/78-Merchant-Coupon-Campaign-Contract-v0.1.md`（或 72 号 v0.2）。
+- 新建 `docs/04-api/79-Merchant-Coupon-Campaign-Contract-v0.1.md`（或 72 号 v0.2）。
 - 更新 61（模板归属，不改生命周期）、75（分账基数）、12。
 - `coupon_template` 增 `owner_type/owner_merchant_id/funding_type`；`coupon_campaign` 增 `owner_type/owner_merchant_id/owner_store_id/status` 审核态/`reject_reason/budget_reserved/budget_used`；新增 `merchant_coupon_budget`、审计/幂等表。
 
@@ -586,7 +588,7 @@ service_flash_price_command  -- requestId 幂等
 ```text
 你负责执行本仓库的 Phase 3（商家自建优惠券）。
 先读 HANDOFF.md §6 与 PLAN.md §8、41 号补充 §5；先检查支付中心阶段 2（settlement_order/SettlementAdminApi）是否存在。
-不存在就停止并报告缺失项，不要 stub、不要问用户。存在则第一步创建 CCR-MKT-MERCHANT-COUPON-001、78 号契约并修订 61/75/12，然后按规格实现，不叠加平台券，不做商家直接发布。
+不存在就停止并报告缺失项，不要 stub、不要问用户。存在则第一步创建 CCR-MKT-MERCHANT-COUPON-001、79 号契约并修订 61/75/12，然后按规格实现，不叠加平台券，不做商家直接发布。
 完成后按 §10 模板报告。
 ```
 

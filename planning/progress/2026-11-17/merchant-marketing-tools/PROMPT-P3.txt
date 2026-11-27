@@ -4,5 +4,5 @@
 分支：以用户本条消息为准；若未指定，沿用当前 worktree 的当前分支。开工前核对 `git -C /mnt/d/wt-marketing-tools rev-parse --show-toplevel` 与 `git -C /mnt/d/wt-marketing-tools branch --show-current`；不一致就停止并报告，不要切换 worktree、不要操作 /mnt/d/wt-*。
 
 先读 HANDOFF.md §6 与 PLAN.md §8、41 号补充 §5；先检查支付中心阶段 2（settlement_order/SettlementAdminApi）是否存在。
-不存在就停止并报告缺失项，不要 stub、不要问用户。存在则第一步创建 CCR-MKT-MERCHANT-COUPON-001、78 号契约并修订 61/75/12，然后按规格实现，不叠加平台券，不做商家直接发布。
+不存在就停止并报告缺失项，不要 stub、不要问用户。存在则第一步创建 CCR-MKT-MERCHANT-COUPON-001、79 号契约并修订 61/75/12，然后按规格实现，不叠加平台券，不做商家直接发布。
 不要用 Docker；不要 push main/develop。完成后按 HANDOFF.md §10 模板报告。
