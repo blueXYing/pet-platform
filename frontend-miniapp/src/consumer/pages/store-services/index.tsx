@@ -17,6 +17,9 @@ import { detailActionGate, detailReadAllowed } from './browse-gate'
 import { DetailFavoriteEntry, useFootprintRecord } from '../../favtrack/detail-tracking'
 import { ServiceRow, StoreServicesDesign, reviewCardHeight, serviceListCardHeight } from './view'
 import { BookingSheet } from '../../components/booking-sheet/booking-sheet'
+import { ApiError } from '../../../shared/request'
+import { MarketingRepository, type CouponCampaignView } from '../../marketing/model'
+import { STORE_COUPON_LIMIT, StoreCouponCard, claimSuccessTitle, couponButton, storeCouponCardHeight } from './coupons'
 
 // Node 690:6660 (服务-商家详情页), 402x1306. The 服务项目 region binds the frozen
 // GET /api/v1/c/stores/{storeId}/services contract; since the /c/stores slice (2026-09-22)
@@ -38,6 +41,9 @@ export default function StoreServicesPage() {
   const [items, setItems] = useState<ServiceItemView[]>([])
   const [store, setStore] = useState<StoreDetailView | null>(null)
   const [notice, setNotice] = useState('')
+  // 店铺优惠券（79 号 §5 C 端入口，2026-11-27 用户裁决）：商家详情页内的「店铺优惠券」区块。
+  const [coupons, setCoupons] = useState<readonly CouponCampaignView[]>([])
+  const [claiming, setClaiming] = useState<string | null>(null)
   const mounted = useRef(true)
   const sequence = useRef(0)
   const previousRevision = useRef(revision)
@@ -50,12 +56,19 @@ export default function StoreServicesPage() {
   const storeRepository = useRef<StoreDirectoryDeps>(preview
     ? new PreviewStoreRepository()
     : new RealStoreRepository(consumerApi, () => new MerchantApplicationRepository(consumerApi).cities()))
+  const couponRepository = useRef(new MarketingRepository(consumerApi))
   const load = useCallback(async () => {
     const currentRevision = scope.revision
     const current = ++sequence.current
     setPhase('loading'); setNotice('')
     if (!isContractId(storeId)) { setPhase('invalid'); return }
     if (!detailReadAllowed(preview, scenario)) { setPhase('expired'); return }
+    // The coupon block is an enhancement of the store page: its read never fails the page, and
+    // it is anonymous when logged out, session-carried when logged in (claimed state follows
+    // the reader). The design-cut preview keeps the page byte-identical to node 690:6660.
+    const couponRead: Promise<readonly CouponCampaignView[]> = preview ? Promise.resolve([])
+      : runCatalogRead(scope, () => couponRepository.current.storeCoupons(storeId, Boolean(scope.current)))
+        .catch(() => [])
     try {
       // Anonymous-browsable per STR-D8 (same pattern as the directory page PR#75): with a
       // consumer context runCatalogRead still guards stale context switches; logged out the
@@ -66,6 +79,9 @@ export default function StoreServicesPage() {
       setStore(storeView)
       const page: ServicePage = await runCatalogRead(scope, () => repository.current.list(storeId, 1, 20))
       if (!mounted.current || current !== sequence.current || currentRevision !== scope.revision) return
+      const storeCoupons = await couponRead
+      if (!mounted.current || current !== sequence.current || currentRevision !== scope.revision) return
+      setCoupons(storeCoupons)
       setItems(page.items); setPhase('ready')
     } catch (error) {
       if (!mounted.current || current !== sequence.current || currentRevision !== scope.revision) return
@@ -113,12 +129,49 @@ export default function StoreServicesPage() {
     if (!canInteract()) return
     Taro.navigateTo({ url: `/consumer/pages/store-services/service-detail?preview=${preview ? '1' : '0'}&serviceId=${encodeURIComponent(service.serviceId)}` }).catch(() => setNotice('页面跳转失败，请重试'))
   }
+  // 领券是与预约同类的「动作」（STR-D8）：匿名点击走登录引导；领取走 72 号既有的领券接口，
+  // 成功后按服务端判定重读列表（每人限领多张的商家券可显示「再领一张」）。
+  async function claimCoupon(coupon: CouponCampaignView) {
+    if (!ready || claiming !== null) return
+    if (detailActionGate(context) === 'login-required') {
+      void Taro.showModal({ title: '请先登录', content: '领取优惠券需要先登录，是否前往登录？', confirmText: '去登录', cancelText: '暂不' })
+        .then(answer => { if (answer.confirm) void Taro.switchTab({ url: '/consumer/pages/mine/index' }).catch(() => setNotice('页面跳转失败，请重试')) })
+        .catch(() => setNotice(''))
+      return
+    }
+    if (couponButton(coupon, false).disabled) return
+    setClaiming(coupon.campaignId)
+    try {
+      const receipt = await couponRepository.current.claim(coupon.campaignId)
+      const next = await runCatalogRead(scope, () => couponRepository.current.storeCoupons(storeId, true))
+        .catch(() => null)
+      if (!mounted.current) return
+      setCoupons(next ?? coupons.map(current => current.campaignId === coupon.campaignId ? { ...current, claimed: true } : current))
+      void Taro.showToast({ title: claimSuccessTitle(receipt.amountOff), icon: 'none' })
+    } catch (error) {
+      if (!mounted.current) return
+      const message = (error instanceof ApiError && error.statusCode === 401) || (error instanceof Error && error.message === 'LOGIN_REQUIRED') ? '请先登录后领取'
+        : error instanceof ApiError && error.code === 'COUPON_CLAIMED' ? '您已领取过这张券'
+          : error instanceof ApiError && error.code === 'COUPON_CLAIM_LIMIT_REACHED' ? '这张券您已领到上限'
+            : error instanceof ApiError && error.code === 'COUPON_CAMPAIGN_SOLD_OUT' ? '券已抢完，下次早点来'
+              : '领取失败，请稍后重试'
+      void Taro.showToast({ title: message, icon: 'none' })
+    } finally {
+      if (mounted.current) setClaiming(null)
+    }
+  }
   const count = items.length
   // The promo/activity strip is the 621..696 band; when the store has neither a merchant
   // promotion nor an active campaign, start the service list at 621 instead of leaving a gap.
   const hasPromo = Boolean(store?.campaign || store?.promotion)
-  const listTop = hasPromo ? 711.5 : 621
+  // 店铺优惠券卡接在活动条之后、服务项目之前；没有券时服务项目的起点与设计稿完全一致。
+  const couponTop = hasPromo ? 711.5 : 621
+  const couponHeight = coupons.length > 0 ? storeCouponCardHeight(Math.min(coupons.length, STORE_COUPON_LIMIT), coupons.length) : 0
+  const listTop = couponHeight > 0 ? couponTop + couponHeight + 15.5 : couponTop
   const reviewTop = listTop + serviceListCardHeight(count) + 15.5
+  const couponBlock = couponHeight > 0
+    ? { node: <StoreCouponCard coupons={coupons} claiming={claiming} onClaim={coupon => void claimCoupon(coupon)} />, top: couponTop, height: couponHeight }
+    : null
   return <View>
     <ConsumerPageLayout page='storeServices' unit={unit} navigation={preview ? { idPrefix: 'svc', disabled: !ready, onSelect: key => void switchConsumerTab(key), referencePlacement: undefined } : undefined} className={`svc-page${bookingService ? ' bks-lock' : ''}`} style={style}>
     <View className='svc-status-area' />
@@ -133,7 +186,8 @@ export default function StoreServicesPage() {
       servicesNode={count === 0
         ? <View className='svc-list-empty'><Text>暂无服务</Text></View>
         : items.map(service => <ServiceRow key={service.serviceId} idPrefix='svc-row' line={{ service, description: preview ? designSamples.listDescription[service.serviceId] : undefined }}
-            onOpen={() => openDetail(service)} onBook={() => bookService(service)} />)} />}
+            onOpen={() => openDetail(service)} onBook={() => bookService(service)} />)}
+      coupon={couponBlock} />}
     </ConsumerPageLayout>
     {/* 弹层渲染在 .svc-page 之外（同 booking 直连页：页面级 button 重置不作用于弹层）。 */}
     {bookingService && ready && <BookingSheet key={`${revision}-${bookingService.serviceId}`} idPrefix='svc-booking' preview={preview}

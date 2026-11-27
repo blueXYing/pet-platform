@@ -26,7 +26,7 @@
 
 ### 2.2 不做
 
-折扣券、兑换券、券包；平台券与商家券叠加；商家向指定用户发券；活动头图上传；新客专享；商家直接发布；暂停后恢复；曝光/点击/净 GMV；C 端领取界面（入口待产品拍板，后端接口已就绪）；41 号 §3.1 提到的商家活动玩法 `MERCHANT_COUPON`（执行包没有它的规格）。
+折扣券、兑换券、券包；平台券与商家券叠加；商家向指定用户发券；活动头图上传；新客专享；商家直接发布；暂停后恢复；曝光/点击/净 GMV；C 端独立领取页面（入口已于 2026-11-27 拍板为商家详情页内的区块，见 79 号 §8；不新增页面）；41 号 §3.1 提到的商家活动玩法 `MERCHANT_COUPON`（执行包没有它的规格）。
 
 ## 3. 决策
 
@@ -59,7 +59,7 @@
 | 预算账本 | `coupon_campaign` 增 `budget_reserved/budget_used` + 新表 | 只用独立表 `merchant_coupon_budget(_ledger)`，活动表只保留既有 `budget_limit/issued_amount` | 41 号 §5.4 要求预算账本与券台账分离，不在活动表上再加预算余额列 |
 | 日对账 | "日对账" | **本 PR 不含**；后续独立 PR 由券模块自建告警表并挂每日调度 | 实施时发现支付中心差异表 `reconcile_diff` 对业务类型/差异类型有取值约束，挂进去要新增迁移并改动 #235 刚落的对账服务与差异页面，不宜叠在本 PR。本 PR 用自动化测试钉住"结算单金额 = 订单快照 = 券面额"与预算账本不变量 |
 | 审核动作码 | 未指定 | 复用 `coupon.campaign.read` / `coupon.campaign.publish` | 不新增权限码，避免三处硬编码权限清单与安全链改动 |
-| 活动头图 | 未提及 | 不做 | 头图只在 C 端领取界面展示，而该界面入口尚未拍板 |
+| 活动头图 | 未提及 | 不做 | 头图只在 C 端领取界面展示，而商家详情页的领取区块没有头图位（入口已于 2026-11-27 拍板，见 79 号 §8） |
 | 开关 | "新增开关默认 false" | `pet.coupon.merchant.enabled`：`application.yml` 为 `false`，`dev/test/prod` 各为 `true` | 与 #234 对闪价开关的处理一致（三套环境装配一致的全量能力，隔离单测用裸默认值） |
 
 ## 4. Schema / API / Event 变更
@@ -69,6 +69,8 @@
 - 内部 API：`CouponFreezeCommand(+merchantId)`、`CouponFreezeResult(+fundingType)`、`OrderSettlementFact(+merchantCouponDiscount)`；`pet-coupon-api` 新增商家券管理接口（商家端、运营审核端）。
 - Event：消费既有 `OrderPaidEvent.v1`（写预算账本 `USE`）；不新增事件类型，`OrderPaidEvent.v1` 载荷键集不变。
 - HTTP：商家端 7 个端点、运营端 6 个端点、C 端 1 个新端点（详见 79 号）。新端点不进入 11 号 OpenAPI 与 `e2e/contract_smoke.py` 家族（与 77、80 号一致）。
+- C 端安全链（2026-11-27 补）：`GET /api/v1/c/coupon-campaigns` 加入 `CBearerSessionFilter.optionalSessionPath`（匿名 GET 放行，携带的 Bearer 照常校验）与 `CSessionSecurityConfiguration` 的 GET 放行清单；`CBearerSessionFilterCouponCampaignPathsTest`、`MerchantCouponListChainHttpTest` 钉住。
+- 小程序入口（2026-11-27 用户裁决，79 号 §8）：商家详情页 `consumer/pages/store-services` 内的「店铺优惠券」区块；`anonymousRequest` 的路径白名单加入该列表路径；无原稿，登记在设计源登记表 §4 与 §4.30。
 
 ## 5. 兼容与回滚
 
@@ -91,5 +93,6 @@
 | 放宽 `coupon_claim` 唯一键削弱平台活动防重 | 平台活动每人限领仍由服务层固定为 1，且在活动行锁内判定；回归测试覆盖平台活动重复领取 |
 | 冻结闸门改动触及常开的券生命周期内核 | 只增加一条读取模板列后的判定；平台券路径不变；`CouponLifecycleMySqlTest` 全量回归 |
 | 结算写入点改动影响存量订单 | 存量订单 `merchant_coupon_discount` 默认 0，公式等价；结算测试覆盖三种券场景 |
-| 商家券无法在 C 端领取（入口未拍板） | 后端接口就绪；界面入口作为独立事项推进，不阻塞本阶段合入 |
+| C 端领取入口 | 已于 2026-11-27 由用户拍板：商家详情页内的「店铺优惠券」区块（79 号 §8），顾客逛到哪家店就领哪家的券 |
+| #236 登记的 C 端列表接口在真实应用里不可达（做入口时发现） | 两处原因：①没有接进 C 端安全链——既不在「匿名可选会话」的路径归类里，也不在 GET 放行清单里，真实流量落到 `anyRequest().denyAll()` 得 403；②按商家本人视角查门店归属（`MerchantQueryApi.getStore` 取调用者的用户 ID 查名下门店），顾客未登录得 401、已登录得 404。#236 的测试一层用商家身份、一层给控制器打了桩，都没走真实链路。已修：安全链两处补上；券模块改用公开的门店展示读法 `MerchantStoreDisplayApi.getDisplayStore`（与 `GET /c/stores/{storeId}` 同一判定）；补了路径归类单测和走完整安全链的 HTTP 测试（撤掉修复时该测试报 `期望 200、实际 403`） |
 | 逐笔日对账未随本 PR 交付 | 不变量由单写入路径保证并有测试覆盖；日对账作为紧随其后的独立 PR，上线前完成 |

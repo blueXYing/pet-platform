@@ -31,11 +31,16 @@ import com.petplatform.merchant.api.dto.MerchantMembershipPageDTO;
 import com.petplatform.merchant.api.dto.MerchantOrderEligibilityDTO;
 import com.petplatform.merchant.api.dto.MerchantStaffDTO;
 import com.petplatform.merchant.api.dto.MerchantStoreDTO;
+import com.petplatform.merchant.api.dto.MerchantStoreDisplayDTO;
+import com.petplatform.merchant.api.dto.MerchantStoreDisplayPageDTO;
 import com.petplatform.merchant.api.query.MerchantAdmissionQuery;
 import com.petplatform.merchant.api.query.MerchantAdmissionQueryApi;
 import com.petplatform.merchant.api.query.MerchantMembershipQuery;
 import com.petplatform.merchant.api.query.MerchantOrderEligibilityQuery;
 import com.petplatform.merchant.api.query.MerchantQueryApi;
+import com.petplatform.merchant.api.query.MerchantStoreDisplayApi;
+import com.petplatform.merchant.api.query.MerchantStoreDisplayPageQuery;
+import com.petplatform.merchant.api.query.MerchantStoreDisplayQuery;
 import com.petplatform.merchant.api.query.MerchantStaffQuery;
 import com.petplatform.merchant.api.query.StoreIdQuery;
 import com.petplatform.schedule.api.protection.ScheduleCapacityGuardApi;
@@ -98,7 +103,7 @@ class MerchantCouponMySqlTest {
                 .MerchantCouponAdmissionGate(admissions("OWNER")), java.time.Clock.systemUTC());
         admin = new MerchantCouponAdminService(store(), authz, merchants, java.time.Clock.systemUTC());
         campaigns = new CouponCampaignApiImpl(db.dataSource(), IDS, authz, (userId, trace) -> true,
-                merchants, java.time.Clock.systemUTC());
+                displays, java.time.Clock.systemUTC());
         var guard = new ScheduleCapacityGuardApi() {
             @Override public void acquire(List<String> storeIds, QueryContext context) {}
             @Override public void requireHeld(String storeId, javax.sql.DataSource callerSource) {}
@@ -413,6 +418,21 @@ class MerchantCouponMySqlTest {
 
         @Override
         public MerchantStaffDTO getStaff(MerchantStaffQuery query) {
+            throw new UnsupportedOperationException("not used by the merchant coupon face");
+        }
+    };
+
+    // The C faces read the store through the public display projection, never the owner-scoped
+    // MerchantQueryApi above (a shopper is not the store owner).
+    private static final MerchantStoreDisplayApi displays = new MerchantStoreDisplayApi() {
+        @Override
+        public MerchantStoreDisplayDTO getDisplayStore(MerchantStoreDisplayQuery query) {
+            return new MerchantStoreDisplayDTO(Long.toString(MERCHANT_A), query.storeId(), "商家甲", "门店甲",
+                    null, null, null, null, null, null, null, null);
+        }
+
+        @Override
+        public MerchantStoreDisplayPageDTO pageDisplayStores(MerchantStoreDisplayPageQuery query) {
             throw new UnsupportedOperationException("not used by the merchant coupon face");
         }
     };

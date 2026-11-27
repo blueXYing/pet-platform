@@ -1,4 +1,5 @@
 import { id, object, type ConsumerApi } from '../../shared/consumer-api'
+import type { RequestSpec } from '../../shared/request'
 
 export type MarketingTag = Readonly<{ tagCode: string; tagName: string; campaignCount: number }>
 
@@ -216,7 +217,15 @@ export function decodeClaim(value: unknown): ClaimReceipt {
   }
 }
 
-/** Thin real API layer; every read is public/anonymous, the claim uses the C session. */
+/** 79 号 §5：门店所属商家可领的商家券。条目同 72 号 §5.1，79 号新增成员不参与解码。 */
+export function decodeStoreCoupons(value: unknown): readonly CouponCampaignView[] {
+  const v = object(value)
+  if (!Array.isArray(v.items) || v.items.length > 50) fail()
+  return v.items.map(couponOf).filter((coupon: CouponCampaignView | null): coupon is CouponCampaignView => coupon !== null)
+}
+
+/** Thin real API layer; reads are public/anonymous. The claim and the session-aware store coupon
+ *  list use the C session. */
 export class MarketingRepository {
   constructor(private api: ConsumerApi) {}
 
@@ -256,5 +265,14 @@ export class MarketingRepository {
   async claim(couponCampaignId: string) {
     const requestId = await this.api.uuid()
     return this.api.request({ path: `/api/v1/c/coupon-campaigns/${encodeURIComponent(couponCampaignId)}/claims`, method: 'POST', requestId }, decodeClaim)
+  }
+
+  /**
+   * 79 号 §5：门店所属商家的可领商家券。浏览是匿名的（STR-D8）；带 C 会话读取时
+   * `claimed/canClaim` 跟随读者，由调用方按当前是否有会话选择。
+   */
+  storeCoupons(storeId: string, session: boolean) {
+    const spec: RequestSpec = { method: 'GET', path: '/api/v1/c/coupon-campaigns', data: { storeId } }
+    return session ? this.api.request(spec, decodeStoreCoupons) : this.api.anonymousRequest(spec, decodeStoreCoupons)
   }
 }
