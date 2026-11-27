@@ -61,8 +61,8 @@ const emptyAttachments = (): Record<OnboardingAttachmentType, string> => {
   return record;
 };
 
-// 详情只回脱敏值：凡是详情里以 Masked/脱敏形态返回的字段（证号、手机号、卡号、户名、法人/联系人姓名、执照号）
-// 一律不回填表单，须运营重新填写明文后再保存，避免把脱敏串当明文提交。
+// 详情只回脱敏值：证号、手机号、卡号、户名、法人/联系人姓名、执照号一律不回填表单。编辑已有资料时这些字段
+// 留空表示保持原值（契约 81 §4.4，服务端回填库中明文），填写则覆盖；新开通时必须完整填写明文。
 function formFromDetail(detail: OnboardingDetailView): OnboardingFormState {
   return {
     merRegName: detail.merchant.merRegName ?? '',
@@ -164,39 +164,67 @@ function validateDateRange(label: string, start: string, end: string): string {
   return '';
 }
 
-function validateOnboardingForm(form: OnboardingFormState): string {
+// 已有资料里哪些敏感字段可以"留空保持原值"（由详情决定：库里确实存有该值才行）。
+type KeepableSecrets = {
+  licenseNo: boolean;
+  larName: boolean;
+  larIdcard: boolean;
+  larMobile: boolean;
+  contactName: boolean;
+  contactMobile: boolean;
+  acctName: boolean;
+  acctNo: boolean;
+  settler: boolean;
+};
+
+const keepNothing: KeepableSecrets = {
+  licenseNo: false,
+  larName: false,
+  larIdcard: false,
+  larMobile: false,
+  contactName: false,
+  contactMobile: false,
+  acctName: false,
+  acctNo: false,
+  settler: false,
+};
+
+// 契约 §4.4 校验规则的前端镜像（任一不满足提示运营；服务端仍为准）。keep 为 true 的敏感字段允许留空。
+function validateOnboardingForm(form: OnboardingFormState, keep: KeepableSecrets = keepNothing): string {
   const merRegName = form.merRegName.trim();
   const merBlisName = form.merBlisName.trim();
-  if (merRegName.length < 2 || merRegName.length > 80) return '注册名称须为 2～80 字';
+  // 拉卡拉 1020：注册名称不少于 4 个汉字，地址与名称上限 80 字。
+  if (merRegName.length < 4 || merRegName.length > 80) return '注册名称须为 4～80 字';
   const merBizName = form.merBizName.trim();
-  if (merBizName && (merBizName.length < 2 || merBizName.length > 64)) return '经营名称非空时须为 2～64 字';
+  if (merBizName && (merBizName.length < 4 || merBizName.length > 64)) return '经营名称非空时须为 4～64 字';
   if (!/^[0-9]{6,8}$/.test(form.merRegDistCode.trim())) return '地区码须为 6～8 位数字';
   const merRegAddr = form.merRegAddr.trim();
-  if (merRegAddr.length < 6 || merRegAddr.length > 200) return '注册地址须为 6～200 字';
+  if (merRegAddr.length < 6 || merRegAddr.length > 80) return '注册地址须为 6～80 字';
   const mccCode = form.mccCode.trim();
   if (mccCode && !/^[0-9]{4}$/.test(mccCode)) return 'MCC 编码留空时取平台映射，填写时须为 4 位数字';
-  if (merBlisName.length < 2 || merBlisName.length > 80) return '营业执照名称须为 2～80 字';
+  if (merBlisName.length < 4 || merBlisName.length > 80) return '营业执照名称须为 4～80 字';
   if (merRegName !== merBlisName) return '注册名称须与营业执照名称一致';
-  if (!/^[0-9A-Z]{8,40}$/.test(form.merBlisNo.trim())) return '营业执照编号须为 8～40 位数字与大写字母';
+  const merBlisNo = form.merBlisNo.trim().toUpperCase();
+  if (!(keep.licenseNo && merBlisNo === '') && !/^[0-9A-Z]{8,40}$/.test(merBlisNo)) return '营业执照编号须为 8～40 位数字与字母';
   const licenceRangeError = validateDateRange('营业执照有效期', form.merBlisStDt.trim(), form.merBlisExpDt.trim());
   if (licenceRangeError) return licenceRangeError;
-  if (!/^[\u4e00-\u9fa5]{2,20}$/.test(form.larName.trim())) return '法人姓名须为 2～20 个汉字';
-  if (!isValidMainlandId(form.larIdcard.trim())) return '法人身份证号须为 15 或 18 位大陆居民身份证并通过校验位';
+  if (!(keep.larName && form.larName.trim() === '') && !/^[\u4e00-\u9fa5]{2,20}$/.test(form.larName.trim())) return '法人姓名须为 2～20 个汉字';
+  if (!(keep.larIdcard && form.larIdcard.trim() === '') && !isValidMainlandId(form.larIdcard.trim())) return '法人身份证号须为 15 或 18 位大陆居民身份证并通过校验位';
   const larRangeError = validateDateRange('法人证件有效期', form.larIdcardStDt.trim(), form.larIdcardExpDt.trim());
   if (larRangeError) return larRangeError;
-  if (!/^1\d{10}$/.test(form.larMobile.trim())) return '法人手机号须为 11 位手机号';
-  if (!/^[\u4e00-\u9fa5]{2,20}$/.test(form.contactName.trim())) return '联系人姓名须为 2～20 个汉字';
-  if (!/^1\d{10}$/.test(form.contactMobile.trim())) return '联系人手机号须为 11 位手机号';
+  if (!(keep.larMobile && form.larMobile.trim() === '') && !/^1\d{10}$/.test(form.larMobile.trim())) return '法人手机号须为 11 位手机号';
+  if (!(keep.contactName && form.contactName.trim() === '') && !/^[\u4e00-\u9fa5]{2,20}$/.test(form.contactName.trim())) return '联系人姓名须为 2～20 个汉字';
+  if (!(keep.contactMobile && form.contactMobile.trim() === '') && !/^1\d{10}$/.test(form.contactMobile.trim())) return '联系人手机号须为 11 位手机号';
   if (form.acctTypeCode !== '57' && form.acctTypeCode !== '58') return '结算账户类型须为对公（57）或对私（58）';
   const acctName = form.acctName.trim();
-  if (acctName.length < 2 || acctName.length > 40) return '结算户名须为 2～40 字';
-  if (form.acctTypeCode === '57' && acctName !== merRegName) return '对公账户的结算户名须与注册名称一致';
-  if (!/^[0-9]{8,40}$/.test(form.acctNo.trim())) return '结算账号须为 8～40 位数字';
+  if (!(keep.acctName && acctName === '') && (acctName.length < 2 || acctName.length > 40)) return '结算户名须为 2～40 字';
+  if (form.acctTypeCode === '57' && acctName !== '' && acctName !== merRegName) return '对公账户的结算户名须与注册名称一致';
+  if (!(keep.acctNo && form.acctNo.trim() === '') && !/^[0-9]{8,40}$/.test(form.acctNo.trim())) return '结算账号须为 8～40 位数字';
   const settlerRequired = form.acctTypeCode === '58' && form.settlePersonDiffers;
   if (settlerRequired) {
-    if (!isValidMainlandId(form.acctIdcard.trim())) return '结算人证件号须为 15 或 18 位大陆居民身份证并通过校验位';
-    if (form.acctIdcard.trim() === form.larIdcard.trim()) return '结算人证件号与法人身份证号相同，应改按「结算人为法人本人」填写';
-    if (!isValidYmd(form.acctIdExpDt.trim())) return '结算人证件有效期须为合法的 yyyy-MM-dd 日期';
+    if (!(keep.settler && form.acctIdcard.trim() === '') && !isValidMainlandId(form.acctIdcard.trim())) return '结算人证件号须为 15 或 18 位大陆居民身份证并通过校验位';
+    if (form.acctIdcard.trim() !== '' && form.acctIdcard.trim() === form.larIdcard.trim()) return '结算人证件号与法人身份证号相同，应改按「结算人为法人本人」填写';
+    if (!(keep.settler && form.acctIdExpDt.trim() === '') && !isValidYmd(form.acctIdExpDt.trim())) return '结算人证件有效期须为合法的 yyyy-MM-dd 日期';
   }
   if (!/^[0-9A-Za-z]{6,20}$/.test(form.openningBankCode.trim())) return '开户行行号须为 6～20 位数字或字母';
   const openningBankName = form.openningBankName.trim();
@@ -211,7 +239,7 @@ function validateOnboardingForm(form: OnboardingFormState): string {
     if (settlerRequired && !filled) return `非法人结算时须上传「${ONBOARDING_ATTACHMENT_LABELS[type]}」`;
     if (!settlerRequired && filled) return `结算人为法人本人时「${ONBOARDING_ATTACHMENT_LABELS[type]}」必须留空`;
   }
-  if (form.cooperationAssetId.trim() && !/^[0-9A-Za-z_-]{1,64}$/.test(form.cooperationAssetId.trim())) return '《分账合作协议》附件须为有效的素材 ID';
+  if (form.cooperationAssetId.trim() && !/^[1-9][0-9]{0,18}$/.test(form.cooperationAssetId.trim())) return '《分账合作协议》附件须为有效的私有素材 ID（十进制数字）';
   const reason = form.reason.trim();
   if (reason.length < 2 || reason.length > 256) return '操作原因须为 2～256 字（写入审计日志）';
   return '';
@@ -413,6 +441,21 @@ export default function OnboardingPage({ client, canWrite, canReadSensitive, onA
     }
   }
 
+  // 已有资料（详情存在）时敏感字段留空表示保持原值；结算人字段仅当库里已有结算人资料时才可留空。
+  const keepable: KeepableSecrets = detail && !recordMissing
+    ? {
+        licenseNo: true,
+        larName: true,
+        larIdcard: true,
+        larMobile: true,
+        contactName: true,
+        contactMobile: true,
+        acctName: true,
+        acctNo: true,
+        settler: detail.settlement.acctIdType !== null && detail.settlement.acctIdType !== undefined,
+      }
+    : keepNothing;
+
   function buildSavePayload(expectedVersion: number): OnboardingSaveRequest {
     if (!form) throw new Error('form-missing');
     const settlerRequired = form.acctTypeCode === '58' && form.settlePersonDiffers;
@@ -425,24 +468,24 @@ export default function OnboardingPage({ client, canWrite, canReadSensitive, onA
         merRegAddr: form.merRegAddr.trim(),
         mccCode: form.mccCode.trim() || null,
         merBlisName: form.merBlisName.trim(),
-        merBlisNo: form.merBlisNo.trim(),
+        merBlisNo: form.merBlisNo.trim().toUpperCase() || null,
         merBlisStDt: form.merBlisStDt.trim(),
         merBlisExpDt: form.merBlisExpDt.trim(),
-        larName: form.larName.trim(),
-        larIdcard: form.larIdcard.trim(),
+        larName: form.larName.trim() || null,
+        larIdcard: form.larIdcard.trim().toUpperCase() || null,
         larIdcardStDt: form.larIdcardStDt.trim(),
         larIdcardExpDt: form.larIdcardExpDt.trim(),
-        larMobile: form.larMobile.trim(),
-        contactName: form.contactName.trim(),
-        contactMobile: form.contactMobile.trim(),
+        larMobile: form.larMobile.trim() || null,
+        contactName: form.contactName.trim() || null,
+        contactMobile: form.contactMobile.trim() || null,
       },
       settlement: {
         acctTypeCode: form.acctTypeCode,
-        acctName: form.acctName.trim(),
-        acctNo: form.acctNo.trim(),
+        acctName: form.acctName.trim() || null,
+        acctNo: form.acctNo.trim() || null,
         acctIdType: settlerRequired ? '01' : null,
-        acctIdcard: settlerRequired ? form.acctIdcard.trim() : null,
-        acctIdExpDt: settlerRequired ? form.acctIdExpDt.trim() : null,
+        acctIdcard: settlerRequired ? form.acctIdcard.trim().toUpperCase() || null : null,
+        acctIdExpDt: settlerRequired ? form.acctIdExpDt.trim() || null : null,
         openningBankCode: form.openningBankCode.trim(),
         openningBankName: form.openningBankName.trim(),
         clearingBankCode: form.clearingBankCode.trim(),
@@ -464,7 +507,7 @@ export default function OnboardingPage({ client, canWrite, canReadSensitive, onA
       setFormError('请先查询商家后再保存资料。');
       return;
     }
-    const validationError = validateOnboardingForm(form);
+    const validationError = validateOnboardingForm(form, keepable);
     if (validationError) {
       setFormError(validationError);
       return;
@@ -901,17 +944,17 @@ export default function OnboardingPage({ client, canWrite, canReadSensitive, onA
             type="info"
             showIcon
             style={{ marginBottom: 12 }}
-            message="详情仅回脱敏值：营业执照号、法人/联系人姓名与手机号、结算户名与卡号、结算人证件号等敏感字段需重新填写完整明文后再保存。"
+            message="编辑已有资料：营业执照号、法人/联系人姓名与手机号、结算户名与卡号、结算人证件号等敏感字段留空表示保持原值，填写则覆盖。"
           />}
           <form onSubmit={event => { event.preventDefault(); void handleSave(); }}>
             <h3 style={{ margin: '0 0 8px' }}>主体信息</h3>
             <div className="mkt-form-grid">
               <div className="filter-item">
-                <label htmlFor="ob-merRegName">注册名称（2～80 字，须与营业执照名称一致）</label>
+                <label htmlFor="ob-merRegName">注册名称（4～80 字，须与营业执照名称一致）</label>
                 <Input id="ob-merRegName" value={form.merRegName} disabled={busy} maxLength={80} onChange={event => updateForm('merRegName', event.target.value)} />
               </div>
               <div className="filter-item">
-                <label htmlFor="ob-merBizName">经营名称（选填，2～64 字）</label>
+                <label htmlFor="ob-merBizName">经营名称（选填，4～64 字）</label>
                 <Input id="ob-merBizName" value={form.merBizName} disabled={busy} maxLength={64} onChange={event => updateForm('merBizName', event.target.value)} />
               </div>
               <div className="filter-item">
@@ -920,19 +963,19 @@ export default function OnboardingPage({ client, canWrite, canReadSensitive, onA
                 <span className="hint">默认取城市码映射，可手工修改。</span>
               </div>
               <div className="filter-item">
-                <label htmlFor="ob-merRegAddr">注册地址（6～200 字）</label>
-                <Input id="ob-merRegAddr" value={form.merRegAddr} disabled={busy} maxLength={200} onChange={event => updateForm('merRegAddr', event.target.value)} />
+                <label htmlFor="ob-merRegAddr">注册地址（6～80 字，拉卡拉上限 80 字）</label>
+                <Input id="ob-merRegAddr" value={form.merRegAddr} disabled={busy} maxLength={80} onChange={event => updateForm('merRegAddr', event.target.value)} />
               </div>
               <div className="filter-item">
                 <label htmlFor="ob-mccCode">MCC 编码（留空取平台映射，填写须 4 位数字）</label>
                 <Input id="ob-mccCode" value={form.mccCode} disabled={busy} maxLength={4} onChange={event => updateForm('mccCode', event.target.value)} />
               </div>
               <div className="filter-item">
-                <label htmlFor="ob-merBlisName">营业执照名称（2～80 字）</label>
+                <label htmlFor="ob-merBlisName">营业执照名称（4～80 字）</label>
                 <Input id="ob-merBlisName" value={form.merBlisName} disabled={busy} maxLength={80} onChange={event => updateForm('merBlisName', event.target.value)} />
               </div>
               <div className="filter-item">
-                <label htmlFor="ob-merBlisNo">营业执照编号（8～40 位数字与大写字母）</label>
+                <label htmlFor="ob-merBlisNo">营业执照编号（8～40 位数字与字母，编辑时留空保持原值）</label>
                 <Input id="ob-merBlisNo" value={form.merBlisNo} disabled={busy} maxLength={40} onChange={event => updateForm('merBlisNo', event.target.value)} />
               </div>
               <div className="filter-item">

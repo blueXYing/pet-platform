@@ -180,7 +180,7 @@ test('81 §4 新开通：defaults 带出空表单，校验拦截后完整保存�
 
   // 空表单校验拦截：可读提示且不发 PUT
   await page.getByRole('button', { name: '保存资料' }).click();
-  await expect(page.getByRole('alert').filter({ hasText: '注册地址' })).toContainText('注册地址须为 6～200 字');
+  await expect(page.getByRole('alert').filter({ hasText: '注册地址' })).toContainText('注册地址须为 6～80 字');
   expect(writes.filter(w => w.method === 'PUT')).toHaveLength(0);
 
   // 完整填写 §4.4 资料并上传六个必传附件
@@ -428,4 +428,45 @@ test('81 §4 未准入：显示原因并禁用保存/发起', async ({ page }) =
   await expect(page.getByRole('button', { name: '发起开通' })).toBeDisabled();
   await expect(page.getByRole('button', { name: '保存资料' })).toBeDisabled();
   expect(writes).toHaveLength(0);
+});
+
+// 81 §4.4 编辑已有资料：敏感字段留空保持原值（PUT 对留空字段传 null），只改非敏感字段即可保存。
+test('81 §4 编辑已有资料：敏感字段留空保持原值，仅改非敏感字段即可保存', async ({ page }) => {
+  const writes = captureWrites(page);
+  const saved: OnboardingDetailView = detailView({
+    version: 2,
+    merchant: { ...detailBase.merchant, merBizName: '示例宠物医院高新店' },
+    attachments: {
+      FR_ID_CARD_FRONT: '101', FR_ID_CARD_BEHIND: '102', BANK_CARD: '103', BUSINESS_LICENCE: '104',
+      MERCHANT_PHOTO: '105', SHOPINNER: '106', ID_CARD_FRONT: null, ID_CARD_BEHIND: null, NO_LEGAL_PERSON_SETT_AUTH_LETTER: null,
+    },
+    updatedAt: '2026-11-27T07:00:00.000Z',
+  });
+  await page.route(`**${ROOT}/${MER}/audits`, route => route.fulfill(envelope([])));
+  await page.route(`**${ROOT}/${MER}/defaults`, route => route.fulfill(envelope(defaultsView())));
+  await page.route(`**${ROOT}/${MER}`, route => route.fulfill(envelope(
+    route.request().method() === 'PUT' ? saved : detailView({ attachments: saved.attachments }),
+  )));
+  await signIn(page);
+  await queryMerchant(page);
+
+  // 已有资料：提示"留空保持原值"，不再要求重新填写明文
+  await expect(page.getByText(/留空表示保持原值/)).toBeVisible();
+  // 敏感字段全部留空，只改经营名称即可保存；PUT 对留空的敏感字段传 null
+  await page.locator('#ob-merBizName').fill('示例宠物医院高新店');
+  await page.getByRole('button', { name: '保存资料' }).click();
+  await expect(page.getByText(/已保存/)).toBeVisible();
+  const puts = writes.filter(w => w.method === 'PUT' && w.path === `${ROOT}/${MER}`);
+  expect(puts).toHaveLength(1);
+  const body = puts[0].body as unknown as {
+    expectedVersion: number; merchant: Record<string, unknown>; settlement: Record<string, unknown>;
+  };
+  expect(body.expectedVersion).toBe(1);
+  expect(body.merchant.merBizName).toBe('示例宠物医院高新店');
+  for (const field of ['merBlisNo', 'larName', 'larIdcard', 'larMobile', 'contactName', 'contactMobile']) {
+    expect(body.merchant[field], field).toBeNull();
+  }
+  expect(body.settlement.acctName).toBeNull();
+  expect(body.settlement.acctNo).toBeNull();
+  expect(body.settlement.acctIdType).toBeNull();
 });

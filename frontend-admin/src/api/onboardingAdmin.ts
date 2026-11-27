@@ -211,6 +211,7 @@ export type OnboardingDetailView = {
   updatedAt: string | null;
 };
 
+// 契约 81 §4.4：敏感字段传 null（或空）表示保持库中原值，仅编辑已有资料时有效；新开通须全部填写。
 export type OnboardingSaveRequest = {
   expectedVersion: number;
   merchant: {
@@ -220,21 +221,21 @@ export type OnboardingSaveRequest = {
     merRegAddr: string;
     mccCode: string | null;
     merBlisName: string;
-    merBlisNo: string;
+    merBlisNo: string | null;
     merBlisStDt: string;
     merBlisExpDt: string;
-    larName: string;
-    larIdcard: string;
+    larName: string | null;
+    larIdcard: string | null;
     larIdcardStDt: string;
     larIdcardExpDt: string;
-    larMobile: string;
-    contactName: string;
-    contactMobile: string;
+    larMobile: string | null;
+    contactName: string | null;
+    contactMobile: string | null;
   };
   settlement: {
     acctTypeCode: string;
-    acctName: string;
-    acctNo: string;
+    acctName: string | null;
+    acctNo: string | null;
     acctIdType: string | null;
     acctIdcard: string | null;
     acctIdExpDt: string | null;
