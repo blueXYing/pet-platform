@@ -165,6 +165,12 @@ final class AfterSaleHttpFixture implements AutoCloseable {
             if(!Boolean.TRUE.equals(overrides.get("pet.order.auto-confirm.worker.enabled"))&&context.containsBean("orderAutoConfirmWorker")){
                 context.getBean("orderAutoConfirmWorker",com.petplatform.task.core.AsyncTaskWorker.class).close();
             }
+            // #234 removed pet.refund.application.worker.enabled, so the refund-application worker and
+            // its reconciler assemble whenever pet.payment is on. These slices are written against a
+            // silent kernel ("the worker stays off"): a live worker decides a past-deadline application
+            // and creates the refund order while the test is still mid-request.
+            for(String name:List.of("refundApplicationWorker","refundApplicationReconciler"))
+                if(context.containsBean(name))context.getBean(name,AutoCloseable.class).close();
             baseUrl="http://127.0.0.1:"+context.getEnvironment().getProperty("local.server.port")+"/api/v1";
             context.getBean(AdminAuthService.class).bootstrap("qa-http-operator","QA HTTP operator",PASSWORD.toCharArray(),"Isolated HTTP acceptance");
             buyerToken=loginBuyer();otherToken=loginOther();ownerToken=loginOwner();adminToken=loginAdmin();
