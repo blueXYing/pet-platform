@@ -294,6 +294,51 @@ class OrderQueryHttpTest {
         assertEquals("2026-10-04T12:30:00.000Z", completed.get("verifiedAt"));
     }
 
+    /**
+     * §3.7 name supplement (2026-11-27 ruling, PRD supplement 42 §十三): the detail carries the
+     * creation-time snapshot names for the confirm-payment sheet — from the order domain's own
+     * snapshot row, never from merchant/service storage. An own order without a snapshot row
+     * reports null names, LIST rows never carry the supplement, and a foreign order keeps the
+     * same uniform 404 (the supplement opens no enumeration surface).
+     */
+    @Test
+    void detailCarriesTheCreationTimeSnapshotNames() {
+        snapshot(fixture, PENDING_PAY_1, "萌宠之家宠物店", "上门喂养");
+        Map<String, Object> detail = detailOf(PENDING_PAY_1);
+        assertEquals("萌宠之家宠物店", detail.get("storeName"));
+        assertEquals("上门喂养", detail.get("serviceName"));
+        // The order facts themselves are untouched by the supplement.
+        assertEquals("128.00", detail.get("payAmount"));
+
+        // An own order without a snapshot row: null names, not an error.
+        Map<String, Object> bare = detailOf(PENDING_PAY_2);
+        assertTrue(bare.containsKey("storeName"));
+        assertNull(bare.get("storeName"));
+        assertNull(bare.get("serviceName"));
+
+        // Detail only: LIST rows never carry the supplement.
+        for (Map<String, Object> row : items(orders.list(null, null, null,
+                request("GET", "/api/v1/c/orders", null)))) {
+            assertFalse(row.containsKey("storeName"));
+            assertFalse(row.containsKey("serviceName"));
+        }
+
+        // Anti-enumeration is unchanged: a foreign order with a snapshot row is still one 404.
+        snapshot(fixture, FOREIGN, "别人的宠物店", "别人下的单");
+        assertEquals(CommonApiCodes.NOT_FOUND, assertThrows(ApiException.class,
+                () -> orders.detail(Long.toString(FOREIGN),
+                        request("GET", "/api/v1/c/orders/" + FOREIGN, null))).code());
+    }
+
+    /** Minimal creation-time snapshot row (the NOT NULL columns of 06 号 order_service_snapshot). */
+    private static void snapshot(Fixture fixture, long orderId, String storeName, String serviceName) {
+        fixture.jdbc.update("INSERT INTO order_service_snapshot(id,order_id,service_id,service_name,"
+                        + "service_price,service_duration_minutes,merchant_name,store_name,store_address,"
+                        + "created_at) VALUES(?,?,?,?,88.00,60,?,?,?,'2026-10-01 09:00:00.000')",
+                orderId + 500_000L, orderId, SERVICE, serviceName, storeName, storeName,
+                "成都市锦江区某路 1 号");
+    }
+
     @SuppressWarnings("unchecked")
     private static Map<String, Boolean> actions(Map<String, Object> data) {
         return (Map<String, Boolean>) data.get("actions");

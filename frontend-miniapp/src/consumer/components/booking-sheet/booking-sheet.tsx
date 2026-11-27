@@ -22,6 +22,7 @@ import { thresholdLabel, type CouponView } from '../../coupon-points/model'
 import { ORDER_CREATE_SLOT, RealBookingRepository } from '../../booking/repository'
 import { RealAddressRepository } from '../../address/repository'
 import { addressFlat, type AddressView } from '../../address/model'
+import { PaySheet } from '../pay-sheet/pay-sheet'
 import './booking-sheet.css'
 
 // 预约下单半屏弹层（Figma 690:4506「立即预约」原稿形态：服务详情页/门店页之上的白色半屏
@@ -30,7 +31,8 @@ import './booking-sheet.css'
 // - 接送（PICKUP_DELIVERY）双时段选窗（接宠/送回，送回 >= 接宠+120 分钟置灰联动）；
 // - 宠物选择/备注/接送地址/确认信息；
 // - 幂等提交与恢复（order:create 槽 23号 X-Request-Id 重放，未确认载荷还原选择后重试）；
-// - 成功回执（CreateOrderData 五字段）+ 去支付/订单详情入口（支付链路不变）。
+// - 成功回执（CreateOrderData 五字段）+ 去支付/订单详情入口：去支付在本弹层之上弹出确认支付半屏
+//   （components/pay-sheet，43 号裁决），支付链路本身不变。
 // 原稿时段为固定 60 分钟槽，与已批分钟级 availability 契约冲突，沿既有登记视同设计缺稿：
 // 时段格仍渲染契约窗口（slotViews 现成展示值），配色/几何按 690:4506（#f0fbff 底、
 // #85d2f3 选中、#d3b7a6 置灰、#5baae8 确认按钮，PIL 对渲染图采样核对）。
@@ -88,6 +90,8 @@ export function BookingSheet({ serviceId, storeId: storeIdParam, preview, scenar
   const [slotAuthExpired, setSlotAuthExpired] = useState(false)
   const [busy, setBusy] = useState(false)
   const [receipt, setReceipt] = useState<CreateOrderReceipt | null>(null)
+  // 43 号裁决（2026-11-27）：回执态「去支付」在本弹层之上弹出确认支付半屏（PaySheet），不再跳转整页。
+  const [payOpen, setPayOpen] = useState(false)
   const [coverNow, setCoverNow] = useState(Date.now)
   const mounted = useRef(true)
   const sequence = useRef(0)
@@ -279,12 +283,15 @@ export function BookingSheet({ serviceId, storeId: storeIdParam, preview, scenar
   }
   function goPay() {
     if (!receipt) return
-    void Taro.navigateTo({ url: `/consumer/pages/booking/pay?${preview ? 'preview=1&' : ''}orderId=${encodeURIComponent(receipt.orderId)}` })
-      .catch(() => setNotice('页面跳转失败，请重试'))
+    setPayOpen(true)
   }
   function goOrderDetail() {
     if (!receipt) return
     void Taro.navigateTo({ url: `/consumer/pages/orders/detail?${preview ? 'preview=1&' : ''}orderId=${encodeURIComponent(receipt.orderId)}` })
+      .catch(() => setNotice('页面跳转失败，请重试'))
+  }
+  function goOrderList() {
+    void Taro.navigateTo({ url: `/consumer/pages/orders/list${preview ? '?preview=1' : ''}` })
       .catch(() => setNotice('页面跳转失败，请重试'))
   }
   function goPetForm() {
@@ -319,7 +326,8 @@ export function BookingSheet({ serviceId, storeId: storeIdParam, preview, scenar
   const coverUrl = service === null ? null : usableCoverUrl(service.cover, coverNow)
   const sheetTitle = service === null ? '立即预约' : bookingSheetTitle(service.fulfillmentType)
 
-  return <View className='bks-mask' style={style} onClick={onClose} catchMove>
+  return <>
+  <View className='bks-mask' style={style} onClick={onClose} catchMove>
     <View className='bks-sheet' onClick={event => event.stopPropagation()} catchMove>
       <View className='bks-head'>
         <Text className='bks-title'>{sheetTitle}</Text>
@@ -509,6 +517,12 @@ export function BookingSheet({ serviceId, storeId: storeIdParam, preview, scenar
       </View>}
     </View>
   </View>
+  {/* 确认支付半屏叠在本弹层之上（遮罩 z-index 更高）：关闭回到回执态；查看订单走原 navigateTo 保留当前页。 */}
+  {payOpen && receipt && <PaySheet orderId={receipt.orderId} preview={preview} scenario={scenario}
+    onClose={() => setPayOpen(false)}
+    onOpenOrderDetail={() => { setPayOpen(false); goOrderDetail() }}
+    onOpenOrderList={() => { setPayOpen(false); goOrderList() }} />}
+  </>
 }
 
 const selectable = (item: AvailabilityItem): boolean => item.available && item.remainingCapacity > 0

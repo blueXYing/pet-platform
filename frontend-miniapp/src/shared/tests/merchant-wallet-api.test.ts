@@ -162,12 +162,14 @@ test('error messages cover 403 OWNER-only, 409 conflict and invalid amount', () 
   assert.match(merchantWalletErrorMessage(new Error('PENDING_WRITE_CHANGED')), /原金额重试/)
 })
 
-test('product hard-rule static guards for wallet, receiver, and C-end pay.tsx', () => {
+test('product hard-rule static guards for wallet, receiver, and C-end pay sheet', () => {
   const stripComments = (src: string) => src.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '')
   const walletPage = stripComments(readFileSync(new URL('../../merchant/pages/wallet/index.tsx', import.meta.url), 'utf8'))
   const receiverPage = stripComments(readFileSync(new URL('../../merchant/pages/wallet/receiver.tsx', import.meta.url), 'utf8'))
   const withdrawalsPage = stripComments(readFileSync(new URL('../../merchant/pages/wallet/withdrawals.tsx', import.meta.url), 'utf8'))
-  const payPage = stripComments(readFileSync(new URL('../../consumer/pages/booking/pay.tsx', import.meta.url), 'utf8'))
+  const payHost = stripComments(readFileSync(new URL('../../consumer/pages/booking/pay.tsx', import.meta.url), 'utf8'))
+  // 43 号裁决（2026-11-27）：支付发起逻辑平移到确认支付半屏 PaySheet，booking/pay 仅作兜底宿主。
+  const paySheet = stripComments(readFileSync(new URL('../../consumer/components/pay-sheet/pay-sheet.tsx', import.meta.url), 'utf8'))
 
   // 40 号 §5.5 / §8 / §9：商家钱包无短信验证码、无平台补贴展示
   assert.doesNotMatch(walletPage, /验证码|smsCode|otp/i)
@@ -178,9 +180,12 @@ test('product hard-rule static guards for wallet, receiver, and C-end pay.tsx', 
   for (const src of [walletPage, receiverPage, withdrawalsPage]) {
     assert.doesNotMatch(src, /Taro\.navigateBack/)
   }
-  // C 端 pay.tsx：真实模式调用 Taro.requestPayment，preview 跳过，不展示渠道选择器，不虚构已支付态
-  assert.match(payPage, /Taro\.requestPayment\(/)
-  assert.match(payPage, /if \(preview\)/)
-  assert.match(payPage, /微信支付已提交，正在确认订单支付结果，请前往订单详情查看最终状态。/)
-  assert.match(payPage, /已取消微信支付，可点击按钮重新发起。/)
+  // C 端确认支付（PaySheet + booking/pay 兜底宿主）：真实模式调用 Taro.requestPayment，preview 跳过，
+  // 不展示渠道选择器（V1 小程序不展示支付方式选择，HTTP 契约 10），不虚构已支付态
+  assert.match(payHost, /<PaySheet\b/)
+  assert.match(paySheet, /Taro\.requestPayment\(/)
+  assert.match(paySheet, /if \(preview\)/)
+  assert.match(paySheet, /微信支付已提交，正在确认订单支付结果，请前往订单详情查看最终状态。/)
+  assert.match(paySheet, /已取消微信支付，可点击按钮重新发起。/)
+  assert.doesNotMatch(paySheet, /支付宝/)
 })

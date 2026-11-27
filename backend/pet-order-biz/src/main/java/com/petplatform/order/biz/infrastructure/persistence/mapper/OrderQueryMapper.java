@@ -1,5 +1,6 @@
 package com.petplatform.order.biz.infrastructure.persistence.mapper;
 
+import com.petplatform.order.biz.infrastructure.persistence.entity.OrderNameFactsEntity;
 import com.petplatform.order.biz.infrastructure.persistence.entity.OrderQueryViewEntity;
 import java.util.List;
 import org.apache.ibatis.annotations.Param;
@@ -19,6 +20,14 @@ public interface OrderQueryMapper {
             @Param("limit") int limit, @Param("offset") long offset);
 
     OrderQueryViewEntity selectMineById(@Param("id") long id, @Param("userId") long userId);
+
+    /**
+     * HTTP contract 10 §3.7 name supplement (2026-11-27 ruling): the creation-time snapshot
+     * names of the caller's own order. The join on pet_order.user_id is the ownership check —
+     * no row for a foreign or absent id; an own order without a snapshot row comes back with
+     * null names.
+     */
+    OrderNameFactsEntity selectSnapshotNames(@Param("id") long id, @Param("userId") long userId);
 
     /** 07号 §7.1 amendment (contract 58): earliest successful payment instant, null when none. */
     java.time.LocalDateTime selectFirstPaidAt(@Param("userId") long userId);

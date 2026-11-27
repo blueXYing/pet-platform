@@ -1,0 +1,68 @@
+/* 确认支付半屏弹层（Figma 690:4837「确认支付」，2026-11-27 用户裁决 43 号）。几何/取色按原稿节点值
+   （402 宽设计稿，--bps-unit = windowWidth/402）：遮罩 #000 30%；面板白底、顶部圆角 9、左右留白 33、
+   上留白 16；标题「确认支付」16/700 #1d0d07 + 32x32 ×（#577683）；摘要卡 #f0fbff r8、内边距 16：
+   店铺名 12/16 #1d0d07（右侧服务名 12/16 #577683）、实付金额 12/16 #577683 + ¥ 24/32 700 #ff9500；
+   支付方式标签 12/16 rgba(0,0,0,.85)；选项行 335x58 r8 #f0fbff + 1px #c0ecff、内边距 13、间距 12：
+   微信图标 25x24（原稿矢量切图 assets/wechat-pay.svg）+ 名称 14/20 #1d0d07 + 右侧 20x20 单选
+   （2px #5baae8 描边 + 10x10 实心点 #5baae8）；BUTTON-294 335x44 胶囊 #5baae8 / #f8f5ee 14/20 500，
+   距上方 20，下方留白 28（叠加底部安全区）。
+   与原稿的登记差异：小程序不做支付方式选择（HTTP 契约 10「C 端小程序 V1.0 不展示支付方式选择」），
+   只保留固定的微信支付一行、不渲染支付宝行，标签由「选择支付方式」改为「支付方式」；摘要卡多一行
+   服务时间（确认支付的必要信息）；按钮下方多一个「查看订单详情」文字入口。
+   WXSS 铁律同 booking-sheet：元素样式一律 .bps-sheet 两段选择器；button 重置不用 margin !important
+   （间距放 View 包裹层）；状态仅 className 变体，禁 data-*。 */
+
+.bps-mask { position: fixed; left: 0; right: 0; top: 0; bottom: 0; background: rgba(0, 0, 0, .3); z-index: 1100; display: flex; flex-direction: column; justify-content: flex-end; }
+.bps-sheet view, .bps-sheet button, .bps-sheet text, .bps-sheet image { box-sizing: border-box; }
+.bps-sheet button { padding: 0; margin: 0; border: 0; border-radius: 0; background: transparent; font: inherit; line-height: normal; text-align: left; }
+.bps-sheet button::after { border: 0; }
+.bps-sheet button[disabled] { opacity: .65; color: inherit; }
+.bps-sheet { background: #ffffff; border-radius: calc(var(--bps-unit) * 9) calc(var(--bps-unit) * 9) 0 0; padding: calc(var(--bps-unit) * 16) calc(var(--bps-unit) * 33) calc(var(--bps-unit) * 28 + env(safe-area-inset-bottom)); font-family: Roboto, 'Noto Sans SC', sans-serif; color: #1d0d07; }
+
+/* 头部：标题 + × 关闭（原稿 DIV-251：335x32，标题 16/700，BUTTON-255 32x32）。 */
+.bps-sheet .bps-head { display: flex; align-items: center; justify-content: space-between; height: calc(var(--bps-unit) * 32); }
+.bps-sheet .bps-title { font-size: calc(var(--bps-unit) * 16); line-height: calc(var(--bps-unit) * 24); font-weight: 700; color: #1d0d07; }
+.bps-sheet .bps-close { width: calc(var(--bps-unit) * 32); height: calc(var(--bps-unit) * 32); display: flex; align-items: center; justify-content: center; font-size: calc(var(--bps-unit) * 20); line-height: 1; color: #577683; }
+
+/* 摘要卡（原稿 DIV-258：335x92 #f0fbff r8，内边距 16）。店铺名 | 服务名一行，服务时间一行（登记差异），
+   实付金额一行：标签 12 #577683 底对齐 ¥ 24/32 700 #ff9500。 */
+.bps-sheet .bps-summary { margin-top: calc(var(--bps-unit) * 16); padding: calc(var(--bps-unit) * 16); background: #f0fbff; border-radius: calc(var(--bps-unit) * 8); }
+.bps-sheet .bps-summary-head { display: flex; align-items: center; justify-content: space-between; gap: calc(var(--bps-unit) * 8); }
+.bps-sheet .bps-store { flex: 1 1 auto; min-width: 0; font-size: calc(var(--bps-unit) * 12); line-height: calc(var(--bps-unit) * 16); color: #1d0d07; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bps-sheet .bps-service { flex: 0 1 auto; min-width: 0; font-size: calc(var(--bps-unit) * 12); line-height: calc(var(--bps-unit) * 16); color: #577683; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bps-sheet .bps-time { display: block; margin-top: calc(var(--bps-unit) * 4); font-size: calc(var(--bps-unit) * 11); line-height: calc(var(--bps-unit) * 16); color: #577683; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bps-sheet .bps-amount-row { display: flex; align-items: flex-end; justify-content: space-between; gap: calc(var(--bps-unit) * 8); margin-top: calc(var(--bps-unit) * 12); }
+.bps-sheet .bps-amount-label { font-size: calc(var(--bps-unit) * 12); line-height: calc(var(--bps-unit) * 16); color: #577683; }
+.bps-sheet .bps-amount { font-size: calc(var(--bps-unit) * 24); line-height: calc(var(--bps-unit) * 32); font-weight: 700; color: #ff9500; }
+
+/* 支付方式：标签（原稿 P-273 12 rgba(0,0,0,.85)）+ 固定的微信支付行（原稿 BUTTON-277：335x58
+   #f0fbff r8 描边 1px #c0ecff）。单选 20x20：2px #5baae8 描边 + 10x10 实心点（选中态）。 */
+.bps-sheet .bps-label { display: block; margin-top: calc(var(--bps-unit) * 16); margin-bottom: calc(var(--bps-unit) * 8); font-size: calc(var(--bps-unit) * 12); line-height: calc(var(--bps-unit) * 16); color: rgba(0, 0, 0, .85); }
+.bps-sheet .bps-method { display: flex; align-items: center; gap: calc(var(--bps-unit) * 12); height: calc(var(--bps-unit) * 58); padding: 0 calc(var(--bps-unit) * 13); background: #f0fbff; border: calc(var(--bps-unit) * 1) solid #c0ecff; border-radius: calc(var(--bps-unit) * 8); }
+.bps-sheet .bps-method-icon { flex-shrink: 0; width: calc(var(--bps-unit) * 32); height: calc(var(--bps-unit) * 32); display: flex; align-items: center; justify-content: center; }
+.bps-sheet .bps-method-img { width: calc(var(--bps-unit) * 25); height: calc(var(--bps-unit) * 24); }
+.bps-sheet .bps-method-name { flex: 1; min-width: 0; font-size: calc(var(--bps-unit) * 14); line-height: calc(var(--bps-unit) * 20); color: #1d0d07; }
+.bps-sheet .bps-radio { flex-shrink: 0; width: calc(var(--bps-unit) * 20); height: calc(var(--bps-unit) * 20); border-radius: calc(var(--bps-unit) * 9999); border: calc(var(--bps-unit) * 2) solid #5baae8; display: flex; align-items: center; justify-content: center; }
+.bps-sheet .bps-radio-dot { width: calc(var(--bps-unit) * 10); height: calc(var(--bps-unit) * 10); border-radius: calc(var(--bps-unit) * 9999); background: #5baae8; }
+
+/* 状态/提示族：读取中/无效/未登录/读取失败、取消或失败提示、不可支付说明、回执说明。 */
+.bps-sheet .bps-state { padding: calc(var(--bps-unit) * 48) 0 calc(var(--bps-unit) * 24); text-align: center; font-size: calc(var(--bps-unit) * 14); line-height: calc(var(--bps-unit) * 22); color: #577683; }
+.bps-sheet .bps-state-wrap { margin-top: calc(var(--bps-unit) * 8); text-align: center; }
+.bps-sheet .bps-state-action { color: #3185ba; font-size: calc(var(--bps-unit) * 12); line-height: calc(var(--bps-unit) * 18); text-align: center; }
+.bps-sheet .bps-notice { display: block; margin-top: calc(var(--bps-unit) * 10); font-size: calc(var(--bps-unit) * 12); line-height: calc(var(--bps-unit) * 18); color: #a23e2d; }
+.bps-sheet .bps-hint { display: block; margin-top: calc(var(--bps-unit) * 8); font-size: calc(var(--bps-unit) * 11); line-height: calc(var(--bps-unit) * 17); color: #577683; }
+.bps-sheet .bps-gate { margin-top: calc(var(--bps-unit) * 12); padding: calc(var(--bps-unit) * 10) calc(var(--bps-unit) * 12); background: #fff6e5; border-radius: calc(var(--bps-unit) * 8); font-size: calc(var(--bps-unit) * 12); line-height: calc(var(--bps-unit) * 18); color: #a23e2d; }
+.bps-sheet .bps-note { display: block; margin-top: calc(var(--bps-unit) * 12); text-align: center; font-size: calc(var(--bps-unit) * 10); line-height: calc(var(--bps-unit) * 15); color: #8aa0ac; }
+
+/* 回执态（支付已提交、结果以服务端为准）：摘要卡复用，徽标「确认中/已发起」#ff9500。 */
+.bps-sheet .bps-receipt-head { display: flex; align-items: baseline; justify-content: space-between; gap: calc(var(--bps-unit) * 8); }
+.bps-sheet .bps-receipt-no { font-size: calc(var(--bps-unit) * 14); line-height: calc(var(--bps-unit) * 20); font-weight: 500; color: #1d0d07; overflow-wrap: anywhere; }
+.bps-sheet .bps-badge { flex-shrink: 0; padding: calc(var(--bps-unit) * 1) calc(var(--bps-unit) * 8); border-radius: calc(var(--bps-unit) * 4); background: #ffd9a8; font-size: calc(var(--bps-unit) * 10); line-height: calc(var(--bps-unit) * 15); color: #ff9500; }
+
+/* 底部按钮（原稿 BUTTON-294：335x44 胶囊 #5baae8/#f8f5ee，距上方 20）与文字入口「查看订单详情」。
+   button 一律不带 CSS margin（宿主页有 .xx-page button { margin: 0 !important } 重置）：间距放包裹层。 */
+.bps-sheet .bps-action-wrap { margin-top: calc(var(--bps-unit) * 20); }
+.bps-sheet .bps-action { display: block; width: 100%; height: calc(var(--bps-unit) * 44); border-radius: calc(var(--bps-unit) * 9999); background: #5baae8; color: #f8f5ee; font-size: calc(var(--bps-unit) * 14); line-height: calc(var(--bps-unit) * 44); font-weight: 500; text-align: center; }
+.bps-sheet .bps-action[disabled] { opacity: .65; }
+.bps-sheet .bps-secondary-wrap { margin-top: calc(var(--bps-unit) * 10); }
+.bps-sheet .bps-secondary { display: block; width: 100%; font-size: calc(var(--bps-unit) * 12); line-height: calc(var(--bps-unit) * 18); color: #577683; text-align: center; }

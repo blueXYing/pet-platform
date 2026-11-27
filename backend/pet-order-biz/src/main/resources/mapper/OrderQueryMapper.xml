@@ -66,6 +66,16 @@
         <include refid="mineProjection"/>
         WHERE id = #{id} AND user_id = #{userId}
     </select>
+    <!-- HTTP contract 10 §3.7 name supplement (2026-11-27 ruling, PRD supplement 42 §十三): the
+         creation-time snapshot names of the caller's own order for the C confirm-payment sheet.
+         The join on pet_order.user_id is the ownership check (no row for a foreign or absent id);
+         LEFT JOIN keeps an own order without a snapshot row readable with null names. -->
+    <select id="selectSnapshotNames" resultType="com.petplatform.order.biz.infrastructure.persistence.entity.OrderNameFactsEntity">
+        SELECT s.store_name AS storeName, s.service_name AS serviceName
+        FROM pet_order o
+        LEFT JOIN order_service_snapshot s ON s.order_id = o.id
+        WHERE o.id = #{id} AND o.user_id = #{userId}
+    </select>
     <!-- 07号 §7.1 amendment (contract 58 / CCR-POINTS-TASK-001): pure fact read for the
          points referral kernel. Only the instant is exposed; no session subject is needed. -->
     <select id="selectFirstPaidAt" resultType="java.time.LocalDateTime">

@@ -47,4 +47,10 @@ public final class OrderQueryApiImpl implements OrderQueryApi {
     public java.time.OffsetDateTime firstPaidAt(UserOrderFactQuery query) {
         return service.firstPaidAt(query);
     }
+
+    /** HTTP contract 10 §3.7 name supplement (2026-11-27 ruling): snapshot names of an own order. */
+    @Override
+    public OrderNameFacts getOrderNames(OrderIdQuery query) {
+        return service.getOrderNames(query);
+    }
 }

@@ -9,8 +9,10 @@ import com.petplatform.order.api.dto.OrderSnapshotDTO;
 import com.petplatform.order.api.dto.ReviewEligibilityDTO;
 import com.petplatform.order.api.query.OrderQueryApi.MyOrderListQuery;
 import com.petplatform.order.api.query.OrderQueryApi.OrderIdQuery;
+import com.petplatform.order.api.query.OrderQueryApi.OrderNameFacts;
 import com.petplatform.order.biz.application.OrderDisplayStatus.Facts;
 import com.petplatform.order.biz.infrastructure.persistence.OrderQueryStore;
+import com.petplatform.order.biz.infrastructure.persistence.entity.OrderNameFactsEntity;
 import com.petplatform.order.biz.infrastructure.persistence.entity.OrderQueryViewEntity;
 import java.math.BigDecimal;
 import java.time.ZoneOffset;
@@ -75,6 +77,25 @@ public final class OrderQueryService {
             throw new ApiException(CommonApiCodes.NOT_FOUND, "订单不存在");
         }
         return project(row, clock.instant().atOffset(java.time.ZoneOffset.UTC));
+    }
+
+    /**
+     * HTTP contract 10 §3.7 name supplement (2026-11-27 ruling, PRD supplement 42 §十三): the
+     * creation-time snapshot names behind the C confirm-payment sheet. Scoped exactly like
+     * {@link #getOrder(OrderIdQuery)} — the statement joins pet_order.user_id, so a foreign or
+     * absent id stays one indistinguishable COMMON_NOT_FOUND; an own order without a snapshot
+     * row is a legitimate answer with null names.
+     */
+    public OrderNameFacts getOrderNames(OrderIdQuery query) {
+        Objects.requireNonNull(query, "query is required");
+        long id = parse(query.orderId());
+        OrderNameFactsEntity row =
+                store.read(mapper -> mapper.selectSnapshotNames(id, subject(query.context())));
+        if (row == null) {
+            // Anti-enumeration: absent and foreign ids share one indistinguishable answer.
+            throw new ApiException(CommonApiCodes.NOT_FOUND, "订单不存在");
+        }
+        return new OrderNameFacts(row.getStoreName(), row.getServiceName());
     }
 
     /**

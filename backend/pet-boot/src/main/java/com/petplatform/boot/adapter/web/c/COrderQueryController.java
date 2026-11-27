@@ -13,6 +13,7 @@ import com.petplatform.common.OperatorType;
 import com.petplatform.common.PageResult;
 import com.petplatform.common.QueryContext;
 import com.petplatform.order.api.query.OrderQueryApi.MyOrderListQuery;
+import com.petplatform.order.api.query.OrderQueryApi.OrderNameFacts;
 import com.petplatform.order.biz.apiimpl.OrderQueryApiImpl;
 import com.petplatform.user.biz.application.UserAuthService.MiniSessionView;
 import jakarta.servlet.http.HttpServletRequest;
@@ -94,10 +95,11 @@ public class COrderQueryController {
         } catch (NumberFormatException overflow) {
             throw invalid();
         }
-        com.petplatform.order.api.dto.OrderSnapshotDTO value = orders.getOrder(
+        com.petplatform.order.api.query.OrderQueryApi.OrderIdQuery idQuery =
                 new com.petplatform.order.api.query.OrderQueryApi.OrderIdQuery(
                         orderId,
-                        new QueryContext(trace(req), OperatorType.USER, session.userId())));
+                        new QueryContext(trace(req), OperatorType.USER, session.userId()));
+        com.petplatform.order.api.dto.OrderSnapshotDTO value = orders.getOrder(idQuery);
         Map<String, Object> body =
                 com.petplatform.order.biz.application.OrderSnapshotWire.fields(value);
         // Contract 77 §6.5 flash-price snapshot tail (CCR-SVC-FLASH-PRICE-001): detail-only raw
@@ -111,7 +113,26 @@ public class COrderQueryController {
         // a missing/ineligible contact source degrades to a null section; order facts never
         // fail because merchant facts fail.
         body.put("merchantContact", merchantContact(value.storeId()));
+        // §3.7 name supplement (2026-11-27 ruling, PRD supplement 42 §十三): the creation-time
+        // snapshot names (store, service) join the same owner-scoped detail projection for the
+        // C confirm-payment sheet (Figma 690:4837). Detail only; an own order without a snapshot
+        // row reports null names, and a failed name read never fails the order read.
+        OrderNameFacts names = orderNames(idQuery);
+        body.put("storeName", names == null ? null : names.storeName());
+        body.put("serviceName", names == null ? null : names.serviceName());
         return ApiResponse.success(body, trace(req));
+    }
+
+    /**
+     * Creation-time snapshot names of the own order; null when unavailable. The order read above
+     * already succeeded and must never fail because the supplement did.
+     */
+    private OrderNameFacts orderNames(com.petplatform.order.api.query.OrderQueryApi.OrderIdQuery idQuery) {
+        try {
+            return orders.getOrderNames(idQuery);
+        } catch (RuntimeException unavailable) {
+            return null;
+        }
     }
 
     /** Masked display number plus the dialable line; null when absent or unavailable. */
