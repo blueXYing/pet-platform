@@ -162,15 +162,28 @@ final class AfterSaleHttpFixture implements AutoCloseable {
                     public VerifiedResult query(RefundRequest request){channelCalls.incrementAndGet();throw new AssertionError("HTTP slice has no historical money to query");}
                 });
             }).run(properties.entrySet().stream().map(e->"--"+e.getKey()+"="+e.getValue()).toArray(String[]::new));
-            if(!Boolean.TRUE.equals(overrides.get("pet.order.auto-confirm.worker.enabled"))&&context.containsBean("orderAutoConfirmWorker")){
-                context.getBean("orderAutoConfirmWorker",com.petplatform.task.core.AsyncTaskWorker.class).close();
+            // These slices are written against a silent kernel ("the worker stays off"): nothing in
+            // the background may decide, expire, refund or dispatch while a test is mid-request.
+            // Before #234 the fixture pinned every worker off through switches; #234 removed them
+            // and kept only the order worker's opt-in, so the rest ran inside these tests (a live
+            // worker decided past-deadline refund applications and cancelled unpaid bookings).
+            // Background beans stay closed unless the test opts in through its historic key.
+            Map<String,String> optIn=Map.of(
+                "orderAutoConfirmWorker","pet.order.auto-confirm.worker.enabled",
+                "orderAutoConfirmReconciler","pet.order.auto-confirm.worker.enabled",
+                "merchantRefundWorker","pet.order.merchant.worker.enabled",
+                "merchantRefundReconciler","pet.order.merchant.worker.enabled");
+            // The task reconcilers, the outbox relay and the settlement scanners are not task
+            // workers and are closed by name; a rename must surface in AfterSaleHttpFixtureSilenceTest.
+            List<String> background=new ArrayList<>(List.of("orderAutoConfirmReconciler","merchantRefundReconciler",
+                    "afterSaleReconciler","lateRefundDeadTaskReconciler","adminTradeRefundReconciler",
+                    "refundApplicationReconciler","outboxDispatcher","dailyReconcileScheduler","settlementCompensationScanner"));
+            background.addAll(context.getBeansOfType(com.petplatform.task.core.AsyncTaskWorker.class).keySet());
+            for(String name:background){
+                if(!context.containsBean(name))continue;
+                String key=optIn.get(name);if(key!=null&&Boolean.TRUE.equals(overrides.get(key)))continue;
+                context.getBean(name,AutoCloseable.class).close();
             }
-            // #234 removed pet.refund.application.worker.enabled, so the refund-application worker and
-            // its reconciler assemble whenever pet.payment is on. These slices are written against a
-            // silent kernel ("the worker stays off"): a live worker decides a past-deadline application
-            // and creates the refund order while the test is still mid-request.
-            for(String name:List.of("refundApplicationWorker","refundApplicationReconciler"))
-                if(context.containsBean(name))context.getBean(name,AutoCloseable.class).close();
             baseUrl="http://127.0.0.1:"+context.getEnvironment().getProperty("local.server.port")+"/api/v1";
             context.getBean(AdminAuthService.class).bootstrap("qa-http-operator","QA HTTP operator",PASSWORD.toCharArray(),"Isolated HTTP acceptance");
             buyerToken=loginBuyer();otherToken=loginOther();ownerToken=loginOwner();adminToken=loginAdmin();
