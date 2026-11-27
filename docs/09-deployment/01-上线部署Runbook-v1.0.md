@@ -93,6 +93,7 @@
 | `pet.payment.lakala.stores.<storeId>`（merchant-id/merchant-no/term-no/sub-app-id） | 拉卡拉门店/终端绑定 | 缺绑定=支付绑定校验失败关闭 |
 | `pet.payment.lakala.notification-certificate-path` | 拉卡拉回调验签证书 | **可启动**，但支付回调全部验签失败关闭——等于半开 |
 | `pet.payment.lakala.channel-time-zone` | 渠道时区（如 `Asia/Shanghai`） | 启动失败（dispatch 校验） |
+| `pet.payment.onboarding.*`（CCR-PAY-ONBOARD-001，契约 81） | 与拉卡拉立项约定的平台级参数：回调基址 `LAKALA_ONBOARDING_NOTIFY_BASE_URL`、`LAKALA_ONBOARDING_POS_TYPE` / `MER_BUSI_CONTENT` / `SETTLE_PERIOD` / `FEE_RATES_JSON` / `MCC_DEFAULT` / `MCC_BY_TYPE_JSON` / `DISTRICT_BY_CITY_JSON` / `LOWEST_RATIO` / `COOPERATION_AGREEMENT_NAME` / `PLATFORM_NAME`（清单见 `ops/backend-secrets.env.example` §6） | **可启动**；留空时运营后台「发起开通」失败关闭并提示缺项；JSON 或比例格式错误 = 启动失败。回调基址 + 进件回调路径（基址本身）须 ≤64 字符（1020 的 `retUrl` 上限） |
 
 **退款凭证**：不另设键——退款渠道复用上表同一套 dispatch RSA 凭证。`pet.refund.late.enabled`（+worker）、`pet.order.merchant.*`、`pet.aftersale.*` 任一打开时，缺凭证 = 启动失败 "Refund provider credentials or launch configuration unavailable"。
 
@@ -230,6 +231,27 @@ mysql -h <PLACEHOLDER:DB_HOST> -u <PLACEHOLDER:业务账号> -p pet_platform < "
 - `71` 给营销投放位/首页内容位补 `HOT_SERVICE_TOP`/`HOT_SERVICE` CHECK；`V36` 是同一变更的存量库 Flyway 版本。
 - 关闭营销时不执行 `63/71`；先执行 `70/72` 再开 `pet.service.query/command`；`pet.marketing.campaign.category-validation.enabled` 保持 false，待存量活动分类码清理完成后再开启。
 - 回滚：先关营销开关，保留新表/新列（旧代码忽略）；`71` 的 CHECK 回滚需先停用并删除 `HOT_SERVICE_TOP`/`HOT_SERVICE` 行，再恢复旧 CHECK；执行前全量备份。
+
+**支付中心结算与商家收单开通增量（CCR-PAY-CENTER-001 阶段 2～8、CCR-PAY-ONBOARD-001，生产共享库按顺序执行）**：
+
+必须在 `75` 之后、**部署包含 PR #235 / 商家收单开通的代码之前**执行。支付准备会读取 `settlement_config` 与开通台账：`settlement_config` 缺失 = 订单支付失败关闭；开通台账缺失 = 支付报"商家收单开通台账不存在，请先执行 V44 迁移"。
+
+```bash
+cd <PLACEHOLDER:仓库检出目录>
+for f in \
+  78-Payment-Settlement-Schema-v0.1.sql \
+  79-Payment-Settlement-Fallback-Schema-v0.1.sql \
+  80-Payment-Receiver-Schema-v0.1.sql \
+  81-Payment-Wallet-Schema-v0.1.sql \
+  82-Payment-Reconcile-Schema-v0.1.sql \
+  83-Payment-Merchant-Acquiring-Schema-v0.1.sql \
+  84-Payment-Merchant-Onboarding-Schema-v0.1.sql; do
+  mysql -h <PLACEHOLDER:DB_HOST> -u <PLACEHOLDER:业务账号> -p pet_platform < "docs/03-database/$f"
+done
+```
+
+- 验收：`SHOW TABLES LIKE 'payment_merchant_onboarding%';` 应有 2 张表；`SHOW COLUMNS FROM settlement_config LIKE 'lakala_%';` 应有 2 列。
+- 回滚：保留表与列（旧代码忽略）；存量商家的商户号/终端号不受开通台账影响。
 
 ### 3.3 后端构建
 

@@ -82,13 +82,14 @@ ACTIVE               开通完成，商户号/终端号已写入结算配置
 | BIND_APPLYING | 回调/查询：通过 | ACTIVE：同事务写结算配置商户号/终端号 |
 | BIND_APPLYING | 回调/查询：拒绝，或等待超时 | BIND_REJECTED |
 | BIND_REJECTED | 运营「重新提交」（可更换合作协议） | BIND_APPLYING（新流水） |
-| 任意等待态 | 运营「同步」 | 立即执行一次当前步的渠道查询并按上表推进 |
+| 任意等待态 | 运营「同步」 | 当前步已提交则立即查询并按上表推进；当前步待提交则重新执行一次提交 |
+| 任意等待态 | 轮询用尽（约 5 天） | 签署超时回 `DRAFT`（`EC_SIGN_TIMEOUT`）；其余进入对应 `*_REJECTED`（原因"等待…超时"） |
 
 约束：
 
 1. 网络调用一律在数据库事务之外；每个推进动作是"事务内校验版本并固化流水号 → 事务外调渠道 → 事务内按版本落结果"。
 2. **提交类接口结果未知时不自动重发**。电子合同结果未知 → 回 DRAFT；进件结果未知 → CONTRACT_UNKNOWN（避免在拉卡拉重复建商户）；
-   开通分账/绑定结果未知时保留 APPLYING，由按商户号/接收方编号的查询确认结果。
+   开通分账/绑定结果未知时保留 APPLYING（`*_OUTCOME_UNKNOWN`），由按商户号的查询确认结果。
 3. 进件通过后资料不可修改（修改结算账户属拉卡拉商户资料变更，不在范围）；仅 LEDGER/BIND 驳回可重新提交当前步。
 4. 回调与查询按"当前状态 + 业务键（进件 ID/流水号/申请编号/商户号）"幂等：过期或重复事件只记审计，不改状态。
 
@@ -116,8 +117,11 @@ ACTIVE               开通完成，商户号/终端号已写入结算配置
 - 每个等待态投递 `MERCHANT_ONBOARDING_POLL:{merchantId}` 任务，按 1m/5m/15m/1h/6h 退避查询，最多 20 次（约 5 天）；
   用尽后当前步转为 REJECTED（原因"等待超时"），运营可重新提交。查询不依赖回调是否送达。
 - 推进任务失败按 10s/30s/2m/10m 重试 6 次；仍失败则保留状态并记录 `last_error_code/message`，运营可点「同步」或「重新提交」。
-- 并发：记录 `version` 乐观锁；同一商家同一时刻只允许一个推进（任务键按商家唯一，`async_task` 唯一约束保证）。
-- 幂等：运营写操作带 `X-Request-Id`，`request_key` 唯一、同键异参返回 409。
+- 并发：记录 `version` 乐观锁；定时任务键为"任务类型:商家:记录版本"（每次状态流转都先保存并递增版本），
+  所以同一版本只会有一个同类任务，新一轮申请也不会撞上上一轮已结束的任务（集成测试曾复现：键用渠道受理编号时第三轮进件推进静默失败）。
+- 进件结果落库不看版本：回调或成功响应到达时，即使运营已把记录改回 DRAFT，也以拉卡拉结果为准进入 CONTRACT_APPLYING。
+- 幂等：运营写操作带 `X-Request-Id`，`request_key` 唯一、同键异参（含操作原因不同）返回 409。
+- 编辑已有资料时敏感字段留空保持原值（服务端先回填库中明文再校验），附件整体替换。
 
 ## 7. Schema 影响
 
@@ -135,8 +139,9 @@ ACTIVE               开通完成，商户号/终端号已写入结算配置
 - 运营网页 `/api/v1/admin/settlement/onboardings/**`，新增权限码 `settlement.onboarding.write`、`settlement.onboarding.read-sensitive`；
   读取沿用 `settlement.report.read`。超管默认拥有全部已部署动作码（SSOT §二十四）。
 - 公共回调四个（仅 `pet.payment.enabled=true` 时装配，加入回调安全链白名单）。
-- 结算配置 `PUT /configs/{merchantId}`：存在开通记录的商家不接受手改商户号/终端号。
-- 支付前置：存在开通记录且非 ACTIVE 的商家，`PaymentMerchantBindings.require` 失败关闭。
+- 结算配置 `PUT /configs/{merchantId}`：存在开通记录的商家，其收单商户号/终端号归开通链路所有——请求不得改成其它值（409），未传时保留系统写入的值。
+  （集成测试曾复现：只改账期、不带商户号的请求会把已开通商家的商户号清空。）
+- 支付前置：存在开通记录且非 ACTIVE 的商家，`PaymentMerchantBindings.require` 失败关闭；开通台账表不存在时失败关闭并提示执行 V44。
 - 不新增对外事件。
 
 ## 9. 前端影响
@@ -158,9 +163,13 @@ ACTIVE               开通完成，商户号/终端号已写入结算配置
 | `fee-rates-json` | `LAKALA_ONBOARDING_FEE_RATES_JSON` | 进件费率集合 JSON |
 | `mcc-default` / `mcc-by-merchant-type-json` | `LAKALA_ONBOARDING_MCC_DEFAULT` / `LAKALA_ONBOARDING_MCC_BY_TYPE_JSON` | MCC 及按商家类型映射 |
 | `district-by-city-json` | `LAKALA_ONBOARDING_DISTRICT_BY_CITY_JSON` | 平台城市码 → 拉卡拉地区码 |
-| `cooperation-agreement-name` | `LAKALA_ONBOARDING_COOPERATION_AGREEMENT_NAME` | 委托书 E2：平台与商家合作协议名称 |
+| `lowest-ratio-percent` | `LAKALA_ONBOARDING_LOWEST_RATIO` | 委托书"本商户最低需分得"比例，百分数（如 `90`、`90.50`） |
+| `cooperation-agreement-name` | `LAKALA_ONBOARDING_COOPERATION_AGREEMENT_NAME` | 电子合同 E2：平台与商家合作协议名称 |
+| `platform-company-name` | `LAKALA_ONBOARDING_PLATFORM_NAME` | 电子合同 E1/E9：平台公司全称 |
 
-复用 `LAKALA_ORG_CODE`、`LAKALA_SPLIT_LOWEST_RATIO`、`LAKALA_PLATFORM_RECEIVER_NO`。任一项缺失或格式非法时，「发起开通」失败关闭并提示具体缺项，不影响启动。
+复用 `LAKALA_ORG_CODE`（须为数字，兼作电子合同的 `org_id`）与 `LAKALA_PLATFORM_RECEIVER_NO`。
+最低分账比例**不**沿用 `LAKALA_SPLIT_LOWEST_RATIO`：它是 [0,1) 小数、服务于平台券差额口径，而 1284 与电子合同 E8 要的是百分数，
+两者语义不同，故单列一键。任一项缺失时「发起开通」失败关闭并提示具体缺项，不影响启动；JSON 或比例格式非法则启动失败。
 
 ## 11. 测试影响
 
@@ -208,3 +217,6 @@ posType、各商家类型 MCC、经营内容、结算周期、费率、最低分
 - 拉卡拉人工审核时长不可控，轮询上限约 5 天，超时转人工重新提交。
 - 《分账合作协议》模板尚未取得（40 号 §9），一期由运营上传；取得模板前该步无法在生产走通。
 - 生产进件会在拉卡拉真实创建商户，联调须用真实测试商家并由产品负责人在场确认。
+- 11 号 OpenAPI 未登记本契约与 80 号契约的任何接口（既有缺口，未在本次扩大范围）。
+- 运营后台一期按商家 ID 打开开通页，未做开通列表入口（列表接口已有）。
+- 部署前提：`78`～`84` 号 Schema 须先于本版本执行（Runbook §3.2 已补）；支付门禁会读开通台账，表缺失时下单支付失败关闭。

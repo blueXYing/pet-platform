@@ -57,6 +57,7 @@
 - `PUT /api/v1/admin/settlement/configs/{merchantId}`（权限：`settlement.config.write`，`X-Request-Id`）
   - 请求体：`{ settleDays: number(7..30), feeRate: string("0.6000"), enabled: boolean, lakalaMerchantNo?: string|null, lakalaTermNo?: string|null, reason?: string }`
   - 校验：`lakalaMerchantNo` 与 `lakalaTermNo` 须成对为空或同时为 1～32 位 ASCII 字母数字；模式 A 下未配置收单商户号/终端号的商家下单支付失败关闭。
+  - 2026-11-27 补充（[81 号契约](81-Payment-Merchant-Onboarding-Contract-v0.1.md) §8，44 号裁决）：已有收单开通记录的商家，其收单商户号与终端号由开通链路维护——请求不得改为其它值（409），未传时保留系统写入的值；其余结算设置照常可改。
   - 返回 `SettlementConfigView`
 
 ### 4.2 分账接收方开通与台账（运营代填，40 号 §4）
