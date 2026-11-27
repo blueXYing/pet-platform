@@ -67,6 +67,7 @@ public final class SettlementAdminService implements SettlementAdminApi, Settlem
 
     private final SnowflakeIdGenerator ids;
     private final PaymentSettlementStore store;
+    private final com.petplatform.payment.biz.infrastructure.persistence.PaymentOnboardingStore onboarding;
     private final JdbcAsyncTaskSubmitter tasks;
     private final FallbackRetryDelegate fallbackRetrier;
     private final String platformMerchantNo;
@@ -93,6 +94,7 @@ public final class SettlementAdminService implements SettlementAdminApi, Settlem
         this.platformReceiverNo = platformReceiverNo == null || platformReceiverNo.isBlank()
                 ? null : platformReceiverNo.trim();
         this.store = new PaymentSettlementStore(source);
+        this.onboarding = new com.petplatform.payment.biz.infrastructure.persistence.PaymentOnboardingStore(source);
         this.tx = new TransactionTemplate(new DataSourceTransactionManager(source));
         this.tx.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
         this.tx.setTimeout(15);
@@ -140,6 +142,11 @@ public final class SettlementAdminService implements SettlementAdminApi, Settlem
                 return toConfigView(merchantId, current);
             }
             ConfigRow existing = store.settlement.selectConfigByMerchantForUpdate(merchantId);
+            // Contract 81 §8: once a merchant has an onboarding record its acquiring pair is system-owned.
+            if (lakalaMerchantNo != null && onboarding.onboarding.selectByMerchantId(merchantId) != null
+                    && !lakalaMerchantNo.equals(existing == null ? null : existing.lakalaMerchantNo)) {
+                throw conflict("该商家的收单商户号与终端号由开通流程维护，不能手工修改");
+            }
             long configId;
             Integer beforeDays = null;
             BigDecimal beforeFee = null;

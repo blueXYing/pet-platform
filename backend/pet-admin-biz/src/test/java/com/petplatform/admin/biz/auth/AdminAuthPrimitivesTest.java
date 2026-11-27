@@ -112,7 +112,8 @@ class AdminAuthPrimitivesTest {
             "coupon.campaign.read", "coupon.campaign.manage", "coupon.campaign.publish",
             "settlement.config.write", "settlement.receiver.write",
             "settlement.receiver.read-sensitive", "settlement.instruction.retry",
-            "settlement.report.read"),
+            "settlement.report.read",
+            "settlement.onboarding.write", "settlement.onboarding.read-sensitive"),
         AdminPermissionEvaluator.DEPLOYED_ACTIONS);
     assertEquals(AdminPermissionEvaluator.DEPLOYED_ACTIONS.stream().sorted().toList(),AdminPermissionEvaluator.evaluate(true,List.of("refund.retry"),AdminPermissionEvaluator.DEPLOYED_ACTIONS));
         // A proposed-but-undeployed code (merchant.freeze: AUTH-001 matrix row, explicitly not

@@ -46,7 +46,8 @@ public final class PrivateAssetApiImpl implements PrivateAssetApi {
    * CCR-PAY-ONBOARD-001: acquiring-onboarding attachments (bank card, storefront, cooperation
    * agreement) uploaded by operations on behalf of a merchant; never accepted from consumers.
    */
-  public static final String MERCHANT_ONBOARDING_ATTACHMENT = "MERCHANT_ONBOARDING_ATTACHMENT";
+  public static final String MERCHANT_ONBOARDING_ATTACHMENT =
+      com.petplatform.thirdparty.api.PrivateAssetApi.MERCHANT_ONBOARDING_ATTACHMENT;
   /** Lakala 1084 attachment limit; operator uploads are forwarded to the channel as-is. */
   static final int ONBOARDING_MAX_BYTES = 5 * 1024 * 1024;
   private static final java.util.Set<String> UPLOAD_PURPOSES =

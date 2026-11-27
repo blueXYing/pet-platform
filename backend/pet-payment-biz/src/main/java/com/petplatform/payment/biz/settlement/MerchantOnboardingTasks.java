@@ -55,7 +55,7 @@ public final class MerchantOnboardingTasks {
     /** One execution for one merchant; implementations must not throw for business outcomes. */
     @FunctionalInterface
     public interface Step {
-        Outcome execute(long merchantId);
+        Outcome execute(long merchantId, int retryCount);
     }
 
     public record Payload(long merchantId, int retryCount) {}
@@ -114,7 +114,7 @@ public final class MerchantOnboardingTasks {
 
             @Override
             public TaskExecutionResult execute(TaskExecutionContext context, Payload payload) {
-                return mapping.apply(step.execute(payload.merchantId()), payload.retryCount());
+                return mapping.apply(step.execute(payload.merchantId(), payload.retryCount()), payload.retryCount());
             }
         }, lease -> decode(lease, type, policy), lease -> "TASK:" + lease.taskKey());
     }

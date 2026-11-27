@@ -11,6 +11,10 @@ import java.util.List;
  * Internal owner for private merchant-application assets. No method exposes an object key or URL.
  */
 public interface PrivateAssetApi {
+
+  /** Purpose of operator-uploaded merchant acquiring onboarding attachments (CCR-PAY-ONBOARD-001). */
+  String MERCHANT_ONBOARDING_ATTACHMENT = "MERCHANT_ONBOARDING_ATTACHMENT";
+
   UploadPrivateAssetResult upload(UploadPrivateAssetCommand command);
 
   List<PrivateAssetFact> resolveOwned(ResolveOwnedPrivateAssetsQuery query);
